@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 — 2026-09-02
+
+- Fixes the first-run window being visually clipped at the bottom on Windows display scaling/DPI configurations.
+- Sizes the outer Win32 window from an explicit 680×500 client area with `AdjustWindowRectEx`, so the title bar and frame no longer consume space reserved for controls.
+- Simplifies the first-run composition: smaller shield/title block, shorter correction and undo copy, a direct Settings hint, aligned footer row, and deliberate bottom padding.
+- Keeps the existing one-click `OK`, autostart-default, local-only privacy wording, and G-on-shield branding.
+- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 0.8.1.
+
 ## 0.8.0 — 2026-09-02
 
 - Adds configurable local hotkeys for current-token conversion, previous-token conversion, undo, and Pause/Resume.
