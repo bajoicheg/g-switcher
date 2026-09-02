@@ -1,3 +1,5 @@
+mod secure_input;
+mod selection;
 mod settings;
 mod tray_status;
 mod ui;
@@ -35,7 +37,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use crate::detector::{
     correction_with_context, infer_language, opposite_candidate_is_prefix_with_user_words,
-    DEFAULT_CONFIDENCE_THRESHOLD, MAX_CONTEXT_WORDS,
+    MAX_CONTEXT_WORDS,
 };
 use crate::layout::opposite_layout_text;
 use crate::model::Language;
@@ -44,6 +46,7 @@ use settings::AppMode;
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
 const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";
 const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
+const WM_RUNTIME_SELECTION: u32 = WM_APP + 0x62;
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
 static HOOK_THREAD_ID: OnceLock<u32> = OnceLock::new();
@@ -100,6 +103,16 @@ struct RuntimeUndo {
 }
 
 #[derive(Debug, Clone)]
+struct SelectionUndo {
+    focus: isize,
+    source_hkl: isize,
+    source_language: Language,
+    start: u32,
+    corrected_utf16_len: u32,
+    original: String,
+}
+
+#[derive(Debug, Clone)]
 struct PendingCorrection {
     focus: isize,
     thread_id: u32,
@@ -114,6 +127,11 @@ struct PendingCorrection {
     restore_delimiter_on_failure: bool,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct PendingSelection {
+    focus: isize,
+}
+
 #[derive(Default)]
 struct Engine {
     candidate: String,
@@ -122,7 +140,9 @@ struct Engine {
     previous: Option<PreviousToken>,
     context_tokens: Vec<String>,
     undo: Option<RuntimeUndo>,
+    selection_undo: Option<SelectionUndo>,
     pending_correction: Option<PendingCorrection>,
+    pending_selection: Option<PendingSelection>,
     process_id: u32,
     process_name: String,
 }
@@ -192,13 +212,20 @@ pub(crate) fn current_process_name() -> Option<String> {
 }
 
 fn handle_runtime_message(message: &MSG) -> bool {
-    if message.message != WM_RUNTIME_CORRECTION {
+    let Some(engine) = ENGINE.get() else {
         return false;
+    };
+    match message.message {
+        WM_RUNTIME_CORRECTION => {
+            engine.lock().execute_pending_correction();
+            true
+        }
+        WM_RUNTIME_SELECTION => {
+            engine.lock().execute_pending_selection();
+            true
+        }
+        _ => false,
     }
-    if let Some(engine) = ENGINE.get() {
-        engine.lock().execute_pending_correction();
-    }
-    true
 }
 
 struct SingleInstance {
@@ -325,6 +352,24 @@ impl Engine {
             return HookDecision::Pass;
         }
 
+        if secure_input::is_secure_input(target.hwnd, &self.process_name) {
+            self.reset_transient();
+            return HookDecision::Pass;
+        }
+
+        if runtime_settings.selected_text_hotkey.matches(
+            vk,
+            modifiers.ctrl,
+            modifiers.shift,
+            modifiers.alt,
+        ) {
+            return if self.queue_selected_conversion(target) {
+                HookDecision::Suppress
+            } else {
+                HookDecision::Pass
+            };
+        }
+
         if runtime_settings.manual_current_hotkey.matches(
             vk,
             modifiers.ctrl,
@@ -385,8 +430,9 @@ impl Engine {
             }
         }
 
-        if self.undo.is_some() {
+        if self.undo.is_some() || self.selection_undo.is_some() {
             self.undo = None;
+            self.selection_undo = None;
         }
 
         let allow_auto = app_mode == AppMode::Auto;
@@ -532,7 +578,7 @@ impl Engine {
         let Some(detection) = correction_with_context(
             &self.candidate,
             &runtime_settings.user_words,
-            DEFAULT_CONFIDENCE_THRESHOLD,
+            runtime_settings.sensitivity.confidence_threshold(),
             &self.context_tokens,
         ) else {
             return false;
@@ -553,6 +599,86 @@ impl Engine {
         )
     }
 
+    fn queue_selected_conversion(&mut self, target: FocusTarget) -> bool {
+        if self.pending_selection.is_some() || self.pending_correction.is_some() {
+            return false;
+        }
+        let Some(hook_thread_id) = HOOK_THREAD_ID.get().copied() else {
+            return false;
+        };
+        self.reset_candidate();
+        self.previous = None;
+        self.context_tokens.clear();
+        self.undo = None;
+        self.selection_undo = None;
+        self.pending_selection = Some(PendingSelection {
+            focus: target.hwnd as isize,
+        });
+        if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_SELECTION, 0, 0) } == 0 {
+            self.pending_selection = None;
+            return false;
+        }
+        true
+    }
+
+    fn execute_pending_selection(&mut self) {
+        let Some(pending) = self.pending_selection.take() else {
+            return;
+        };
+        if settings::paused() {
+            return;
+        }
+        let Some(target) = focused_target() else {
+            return;
+        };
+        if target.hwnd as isize != pending.focus {
+            return;
+        }
+        self.refresh_process_name(target.process_id);
+        let runtime_settings = settings::runtime_settings();
+        if runtime_settings.app_mode(&self.process_name) == AppMode::Disabled
+            || secure_input::is_secure_input(target.hwnd, &self.process_name)
+        {
+            return;
+        }
+
+        let Some(selected) = selection::read_selected_text(target.hwnd) else {
+            return;
+        };
+        let Some(source_language) = infer_language(&selected.text) else {
+            return;
+        };
+        let target_language = opposite_language(source_language);
+        let corrected = opposite_layout_text(&selected.text, source_language);
+        if corrected == selected.text {
+            return;
+        }
+        let Some(target_hkl) = select_layout(target_language) else {
+            return;
+        };
+        if !switch_layout(target.hwnd, target.thread_id, target_hkl) {
+            return;
+        }
+        if !selection::replace_range(target.hwnd, selected.start, selected.end, &corrected) {
+            let _ = switch_layout(target.hwnd, target.thread_id, target.hkl);
+            return;
+        }
+
+        self.selection_undo = Some(SelectionUndo {
+            focus: target.hwnd as isize,
+            source_hkl: target.hkl,
+            source_language: target.language,
+            start: selected.start,
+            corrected_utf16_len: selection::utf16_len(&corrected),
+            original: selected.text,
+        });
+        self.undo = None;
+        self.reset_candidate();
+        self.previous = None;
+        self.context_tokens.clear();
+        tray_status::note_correction(target_language);
+    }
+
     fn try_manual_convert(&mut self, source: FocusTarget, modifiers: Modifiers) -> bool {
         if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
         {
@@ -561,6 +687,7 @@ impl Engine {
         let target = opposite_language(source.language);
         let corrected = opposite_layout_text(&self.candidate, source.language);
         self.previous = None;
+        self.selection_undo = None;
         self.queue_correction_parts(
             source,
             target,
@@ -592,6 +719,7 @@ impl Engine {
             language: previous.source_language,
             ..target
         };
+        self.selection_undo = None;
         let queued = self.queue_correction_parts(
             source,
             opposite_language(previous.source_language),
@@ -678,6 +806,10 @@ impl Engine {
             return;
         }
 
+        if secure_input::is_secure_input(hwnd, &self.process_name) {
+            return;
+        }
+
         if !switch_layout(hwnd, pending.thread_id, pending.target_hkl) {
             self.restore_failed_correction(&pending);
             return;
@@ -707,6 +839,7 @@ impl Engine {
             corrected_len: pending.corrected.chars().count(),
             delimiter: pending.delimiter,
         });
+        self.selection_undo = None;
 
         if pending.delimiter.is_some() {
             self.push_context(pending.corrected.clone());
@@ -738,6 +871,25 @@ impl Engine {
     }
 
     fn try_undo(&mut self, target: FocusTarget, modifiers: Modifiers) -> bool {
+        if let Some(undo) = self.selection_undo.take() {
+            if undo.focus != target.hwnd as isize
+                || secure_input::is_secure_input(target.hwnd, &self.process_name)
+            {
+                return false;
+            }
+            if !switch_layout(target.hwnd, target.thread_id, undo.source_hkl) {
+                return false;
+            }
+            let end = undo.start.saturating_add(undo.corrected_utf16_len);
+            if selection::replace_range(target.hwnd, undo.start, end, &undo.original) {
+                self.context_tokens.clear();
+                self.previous = None;
+                tray_status::note_undo(undo.source_language);
+                return true;
+            }
+            return false;
+        }
+
         let Some(undo) = self.undo.take() else {
             return false;
         };
@@ -783,7 +935,9 @@ impl Engine {
         self.previous = None;
         self.context_tokens.clear();
         self.undo = None;
+        self.selection_undo = None;
         self.pending_correction = None;
+        self.pending_selection = None;
     }
 }
 
@@ -1206,6 +1360,16 @@ mod tests {
     fn manual_conversion_uses_opposite_layout_without_confidence_gate() {
         assert_eq!(opposite_layout_text("ghbdtn", Language::English), "привет");
         assert_eq!(opposite_language(Language::English), Language::Russian);
+    }
+
+    #[test]
+    fn selected_text_conversion_accepts_multiword_layout_text() {
+        let selected = "ghbdtn rfr ltkf";
+        assert_eq!(infer_language(selected), Some(Language::English));
+        assert_eq!(
+            opposite_layout_text(selected, Language::English),
+            "привет как дела"
+        );
     }
 
     #[test]
