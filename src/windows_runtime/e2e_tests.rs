@@ -62,6 +62,17 @@ fn real_windows_hook_to_edit_e2e() {
     *engine.lock() = Engine::default();
     let hook = KeyboardHook::install().expect("failed to install WH_KEYBOARD_LL test hook");
 
+    let russian_hkl = select_layout(Language::Russian).expect("Russian HKL is unavailable");
+    for ch in ['б', 'ю', ',', '.'] {
+        let encoded = unsafe { VkKeyScanExW(ch as u16, russian_hkl as *mut core::ffi::c_void) };
+        eprintln!(
+            "G-switcher E2E RU keymap: char={ch:?} hkl=0x{russian_hkl:x} encoded=0x{:04x} vk=0x{:02x} shift=0x{:02x}",
+            encoded as u16,
+            (encoded as u16) & 0xff,
+            ((encoded as u16) >> 8) & 0xff
+        );
+    }
+
     run_case(
         window,
         edit,
