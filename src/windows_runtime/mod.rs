@@ -5,6 +5,9 @@ use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut};
 use std::sync::OnceLock;
 
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use windows_sys::Win32::Foundation::{
@@ -32,6 +35,9 @@ const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
 const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.6";
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
+
+#[cfg(test)]
+static TEST_ACCEPT_INJECTED_INPUT: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy)]
 struct FocusTarget {
@@ -170,7 +176,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     }
 
     let event = &*(lparam as *const KBDLLHOOKSTRUCT);
-    if event.dwExtraInfo == MAGIC_EXTRA_INFO || event.flags & LLKHF_INJECTED != 0 {
+    if should_ignore_hook_event(event) {
         return CallNextHookEx(null_mut(), code, wparam, lparam);
     }
 
@@ -185,6 +191,22 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     }
 }
 
+fn should_ignore_hook_event(event: &KBDLLHOOKSTRUCT) -> bool {
+    if event.dwExtraInfo == MAGIC_EXTRA_INFO {
+        return true;
+    }
+    if event.flags & LLKHF_INJECTED == 0 {
+        return false;
+    }
+
+    #[cfg(test)]
+    if TEST_ACCEPT_INJECTED_INPUT.load(Ordering::SeqCst) {
+        return false;
+    }
+
+    true
+}
+
 impl Engine {
     fn on_key_down(&mut self, vk: u16) -> HookDecision {
         let Some(target) = focused_target() else {
@@ -192,6 +214,12 @@ impl Engine {
             self.undo = None;
             return HookDecision::Pass;
         };
+
+        // Modifier key-down events must not destroy the candidate or the transient undo record.
+        // The following non-modifier key decides whether a shortcut should invalidate state.
+        if is_modifier_vk(vk) {
+            return HookDecision::Pass;
+        }
 
         if is_control_down() && vk == VK_BACK {
             return if self.try_undo(target) {
@@ -232,7 +260,10 @@ impl Engine {
             VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE)),
             VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN)),
             VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB)),
-            VK_OEM_COMMA | VK_OEM_PERIOD | VK_OEM_2 => self.handle_punctuation(target, vk),
+            VK_OEM_2 => self.handle_punctuation(target, vk),
+            VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => {
+                self.handle_punctuation(target, vk)
+            }
             _ => {
                 if let Some(ch) = visible_char(vk, target.language) {
                     self.candidate.push(ch);
@@ -486,16 +517,39 @@ fn visible_char(vk: u16, language: Language) -> Option<char> {
         (Language::English, VK_OEM_PERIOD, false) => Some('.'),
         (Language::English, VK_OEM_2, false) => Some('/'),
         (Language::Russian, VK_OEM_3, false) => Some('ё'),
+        (Language::Russian, VK_OEM_3, true) => Some('Ё'),
         (Language::Russian, VK_OEM_4, false) => Some('х'),
+        (Language::Russian, VK_OEM_4, true) => Some('Х'),
         (Language::Russian, VK_OEM_6, false) => Some('ъ'),
+        (Language::Russian, VK_OEM_6, true) => Some('Ъ'),
         (Language::Russian, VK_OEM_1, false) => Some('ж'),
+        (Language::Russian, VK_OEM_1, true) => Some('Ж'),
         (Language::Russian, VK_OEM_7, false) => Some('э'),
+        (Language::Russian, VK_OEM_7, true) => Some('Э'),
         (Language::Russian, VK_OEM_COMMA, false) => Some('б'),
+        (Language::Russian, VK_OEM_COMMA, true) => Some('Б'),
         (Language::Russian, VK_OEM_PERIOD, false) => Some('ю'),
+        (Language::Russian, VK_OEM_PERIOD, true) => Some('Ю'),
         (Language::Russian, VK_OEM_2, false) => Some('.'),
         (Language::Russian, VK_OEM_2, true) => Some(','),
         _ => None,
     }
+}
+
+fn is_modifier_vk(vk: u16) -> bool {
+    matches!(
+        vk,
+        0x10 // VK_SHIFT
+            | 0x11 // VK_CONTROL
+            | 0x12 // VK_MENU
+            | 0x14 // VK_CAPITAL
+            | 0xA0 // VK_LSHIFT
+            | 0xA1 // VK_RSHIFT
+            | 0xA2 // VK_LCONTROL
+            | 0xA3 // VK_RCONTROL
+            | 0xA4 // VK_LMENU
+            | 0xA5 // VK_RMENU
+    )
 }
 
 fn is_shift_down() -> bool {
@@ -585,6 +639,9 @@ fn wide(value: &str) -> Vec<u16> {
 }
 
 #[cfg(test)]
+mod e2e_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -600,5 +657,13 @@ mod tests {
     fn input_struct_matches_win64_abi_on_64_bit_windows() {
         #[cfg(target_pointer_width = "64")]
         assert_eq!(size_of::<INPUT>(), 40);
+    }
+
+    #[test]
+    fn modifier_keys_do_not_count_as_candidate_characters() {
+        for vk in [0x10, 0x11, 0x12, 0x14, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5] {
+            assert!(is_modifier_vk(vk));
+        }
+        assert!(!is_modifier_vk(b'A' as u16));
     }
 }
