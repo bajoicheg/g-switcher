@@ -4,25 +4,26 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use std::sync::OnceLock;
 
 use anyhow::{anyhow, Result};
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetDlgItem, GetSystemMetrics,
-    GetWindowTextLengthW, GetWindowTextW, IsWindow, LoadCursorW, MessageBoxW, PeekMessageW,
-    RegisterClassW, SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage, BM_GETCHECK,
-    BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE,
-    IDC_ARROW, MB_ICONWARNING, MB_OK, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE,
-    WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION,
-    WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE, WS_VSCROLL,
+    AdjustWindowRectEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
+    GetDlgItem, GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, IsWindow, LoadCursorW,
+    MessageBoxW, PeekMessageW, RegisterClassW, SendMessageW, SetWindowTextW, ShowWindow,
+    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, BS_GROUPBOX,
+    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, IDC_ARROW, MB_ICONWARNING, MB_OK, MSG,
+    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC,
+    WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED,
+    WS_SYSMENU, WS_VISIBLE, WS_VSCROLL,
 };
 
 use crate::windows_runtime::settings;
 
-const CLASS_NAME: &str = "GSwitcher.Settings.0.8";
+const CLASS_NAME: &str = "GSwitcher.Settings.0.8.2";
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
 const ID_DISABLED_APPS: i32 = 3103;
@@ -39,14 +40,29 @@ const COLOR_3DFACE_INDEX: i32 = 15;
 const TRANSPARENT_BK_MODE: i32 = 1;
 
 static CLASS_REGISTERED: OnceLock<()> = OnceLock::new();
-static SETTINGS_FONT: AtomicIsize = AtomicIsize::new(0);
+static TITLE_FONT: AtomicIsize = AtomicIsize::new(0);
+static SECTION_FONT: AtomicIsize = AtomicIsize::new(0);
+static BODY_FONT: AtomicIsize = AtomicIsize::new(0);
+static HINT_FONT: AtomicIsize = AtomicIsize::new(0);
 
 pub fn show() -> Result<()> {
     ensure_class()?;
     unsafe {
         let module = GetModuleHandleW(null());
-        let width = 840;
-        let height = 790;
+        let client_width = 900;
+        let client_height = 825;
+        let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: client_width,
+            bottom: client_height,
+        };
+        if AdjustWindowRectEx(&mut rect, style, 0, 0) == 0 {
+            return Err(anyhow!("AdjustWindowRectEx for settings failed"));
+        }
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
         let class = wide(CLASS_NAME);
@@ -55,7 +71,7 @@ pub fn show() -> Result<()> {
             0,
             class.as_ptr(),
             title.as_ptr(),
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+            style,
             x,
             y,
             width,
@@ -139,7 +155,7 @@ unsafe extern "system" fn settings_proc(
             0
         }
         WM_DESTROY => {
-            cleanup_font();
+            cleanup_fonts();
             0
         }
         _ => DefWindowProcW(hwnd, message, wparam, lparam),
@@ -207,38 +223,66 @@ unsafe fn create_controls(hwnd: HWND) {
     let edit_class = wide("EDIT");
     let runtime = settings::runtime_settings();
 
-    let mut controls = Vec::new();
-    controls.push(create_static(
+    let default_font = GetStockObject(DEFAULT_GUI_FONT);
+    let title_font = create_ui_font(-26, 600);
+    let section_font = create_ui_font(-17, 600);
+    let body_font = create_ui_font(-16, 400);
+    let hint_font = create_ui_font(-14, 400);
+    store_font(&TITLE_FONT, title_font);
+    store_font(&SECTION_FONT, section_font);
+    store_font(&BODY_FONT, body_font);
+    store_font(&HINT_FONT, hint_font);
+    let title_font = choose_font(title_font, default_font);
+    let section_font = choose_font(section_font, default_font);
+    let body_font = choose_font(body_font, default_font);
+    let hint_font = choose_font(hint_font, body_font);
+
+    let title = create_static(
         hwnd,
         module,
         &static_class,
-        "Настройки G-switcher 0.8",
+        "Настройки G-switcher 0.8.2",
         28,
-        20,
-        760,
-        30,
-    ));
-    controls.push(create_static(
+        18,
+        840,
+        34,
+    );
+    set_font(title, title_font);
+
+    let privacy = create_static(
         hwnd,
         module,
         &static_class,
-        "Настройки хранятся локально в профиле пользователя. Набираемый текст и последний токен на диск не записываются.",
+        "Все параметры хранятся локально. Набираемый текст и предыдущие слова на диск не записываются.",
         28,
-        54,
-        770,
-        38,
-    ));
+        58,
+        840,
+        36,
+    );
+    set_font(privacy, hint_font);
+
+    let general_group = create_group_box(
+        hwnd,
+        module,
+        &button_class,
+        "Основное",
+        24,
+        104,
+        852,
+        72,
+    );
+    set_font(general_group, section_font);
 
     let auto_correct = create_checkbox(
         hwnd,
         module,
         &button_class,
-        "Включить автоматическую коррекцию",
+        "Автоматически исправлять неверную раскладку",
         ID_AUTO_CORRECT,
+        44,
+        134,
+        390,
         28,
-        96,
-        360,
-        26,
     );
     SendMessageW(
         auto_correct,
@@ -246,7 +290,7 @@ unsafe fn create_controls(hwnd: HWND) {
         usize::from(runtime.auto_correct) * BST_CHECKED_VALUE as usize,
         0,
     );
-    controls.push(auto_correct);
+    set_font(auto_correct, body_font);
 
     let autostart = create_checkbox(
         hwnd,
@@ -254,10 +298,10 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Запускать G-switcher при входе в Windows",
         ID_AUTOSTART,
-        420,
-        96,
-        390,
-        26,
+        466,
+        134,
+        380,
+        28,
     );
     SendMessageW(
         autostart,
@@ -265,241 +309,294 @@ unsafe fn create_controls(hwnd: HWND) {
         usize::from(settings::autostart_enabled()) * BST_CHECKED_VALUE as usize,
         0,
     );
-    controls.push(autostart);
+    set_font(autostart, body_font);
 
-    controls.push(create_static(
+    let apps_group = create_group_box(
         hwnd,
         module,
-        &static_class,
+        &button_class,
         "Режимы приложений",
-        28,
-        140,
-        300,
         24,
-    ));
-    controls.push(create_static(
+        190,
+        852,
+        204,
+    );
+    set_font(apps_group, section_font);
+
+    let disabled_label = create_static(
         hwnd,
         module,
         &static_class,
-        "Disabled — без анализа и hotkey",
-        28,
-        168,
-        360,
-        22,
-    ));
-    controls.push(create_static(
+        "Отключено",
+        44,
+        222,
+        386,
+        24,
+    );
+    set_font(disabled_label, section_font);
+    let disabled_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Manual only — только ручная конвертация",
-        420,
-        168,
-        390,
-        22,
-    ));
+        "G-switcher полностью игнорирует эти процессы, включая ручные hotkey.",
+        44,
+        248,
+        386,
+        38,
+    );
+    set_font(disabled_hint, hint_font);
     let disabled = create_multiline_edit(
         hwnd,
         module,
         &edit_class,
         ID_DISABLED_APPS,
-        28,
-        194,
-        360,
-        96,
+        44,
+        292,
+        386,
+        82,
     );
     set_control_text(disabled, &runtime.disabled_apps_text());
-    controls.push(disabled);
+    set_font(disabled, body_font);
+
+    let manual_label = create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Только вручную",
+        470,
+        222,
+        386,
+        24,
+    );
+    set_font(manual_label, section_font);
+    let manual_hint = create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Автозамена выключена, но ручная конвертация остаётся доступной.",
+        470,
+        248,
+        386,
+        38,
+    );
+    set_font(manual_hint, hint_font);
     let manual_only = create_multiline_edit(
         hwnd,
         module,
         &edit_class,
         ID_MANUAL_ONLY_APPS,
-        420,
-        194,
-        390,
-        96,
+        470,
+        292,
+        386,
+        82,
     );
     set_control_text(manual_only, &runtime.manual_only_apps_text());
-    controls.push(manual_only);
+    set_font(manual_only, body_font);
 
-    controls.push(create_static(
+    let dictionary_group = create_group_box(
+        hwnd,
+        module,
+        &button_class,
+        "Пользовательский словарь",
+        24,
+        408,
+        852,
+        148,
+    );
+    set_font(dictionary_group, section_font);
+    let dictionary_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Пользовательский словарь — одно слово на строку",
-        28,
-        310,
-        620,
-        24,
-    ));
-    let dictionary =
-        create_multiline_edit(hwnd, module, &edit_class, ID_USER_WORDS, 28, 338, 782, 86);
+        "Одно слово на строку. Добавленные слова считаются допустимыми и помогают избежать ложных исправлений.",
+        44,
+        438,
+        812,
+        38,
+    );
+    set_font(dictionary_hint, hint_font);
+    let dictionary = create_multiline_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_USER_WORDS,
+        44,
+        482,
+        812,
+        54,
+    );
     set_control_text(dictionary, &runtime.user_words_text());
-    controls.push(dictionary);
+    set_font(dictionary, body_font);
 
-    controls.push(create_static(
+    let hotkeys_group = create_group_box(
         hwnd,
         module,
-        &static_class,
+        &button_class,
         "Горячие клавиши",
-        28,
-        444,
-        300,
         24,
-    ));
-    controls.push(create_static(
+        570,
+        852,
+        174,
+    );
+    set_font(hotkeys_group, section_font);
+    let hotkey_hint = create_static(
         hwnd,
         module,
         &static_class,
         "Формат: Ctrl/Shift/Alt + F1–F12, буква, цифра, Space или Backspace.",
-        28,
-        470,
-        760,
-        22,
-    ));
+        44,
+        600,
+        812,
+        24,
+    );
+    set_font(hotkey_hint, hint_font);
 
-    controls.push(create_static(
+    let current_label = create_static(
         hwnd,
         module,
         &static_class,
         "Текущее слово",
-        28,
-        508,
-        150,
+        44,
+        638,
+        140,
         24,
-    ));
+    );
+    set_font(current_label, body_font);
     let current_hotkey = create_single_edit(
         hwnd,
         module,
         &edit_class,
         ID_HOTKEY_CURRENT,
-        180,
-        503,
-        205,
+        190,
+        633,
+        190,
         30,
     );
     set_control_text(current_hotkey, &runtime.manual_current_hotkey.to_text());
-    controls.push(current_hotkey);
+    set_font(current_hotkey, body_font);
 
-    controls.push(create_static(
+    let previous_label = create_static(
         hwnd,
         module,
         &static_class,
         "Предыдущее слово",
-        420,
-        508,
-        170,
+        462,
+        638,
+        156,
         24,
-    ));
+    );
+    set_font(previous_label, body_font);
     let previous_hotkey = create_single_edit(
         hwnd,
         module,
         &edit_class,
         ID_HOTKEY_PREVIOUS,
-        590,
-        503,
-        220,
+        626,
+        633,
+        230,
         30,
     );
     set_control_text(previous_hotkey, &runtime.previous_word_hotkey.to_text());
-    controls.push(previous_hotkey);
+    set_font(previous_hotkey, body_font);
 
-    controls.push(create_static(
+    let undo_label = create_static(
         hwnd,
         module,
         &static_class,
         "Отмена замены",
-        28,
-        552,
-        150,
+        44,
+        681,
+        140,
         24,
-    ));
-    let undo_hotkey =
-        create_single_edit(hwnd, module, &edit_class, ID_HOTKEY_UNDO, 180, 547, 205, 30);
+    );
+    set_font(undo_label, body_font);
+    let undo_hotkey = create_single_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_HOTKEY_UNDO,
+        190,
+        676,
+        190,
+        30,
+    );
     set_control_text(undo_hotkey, &runtime.undo_hotkey.to_text());
-    controls.push(undo_hotkey);
+    set_font(undo_hotkey, body_font);
 
-    controls.push(create_static(
+    let pause_label = create_static(
         hwnd,
         module,
         &static_class,
         "Pause / Resume",
-        420,
-        552,
-        170,
+        462,
+        681,
+        156,
         24,
-    ));
+    );
+    set_font(pause_label, body_font);
     let pause_hotkey = create_single_edit(
         hwnd,
         module,
         &edit_class,
         ID_HOTKEY_PAUSE,
-        590,
-        547,
-        220,
+        626,
+        676,
+        230,
         30,
     );
     set_control_text(pause_hotkey, &runtime.pause_hotkey.to_text());
-    controls.push(pause_hotkey);
+    set_font(pause_hotkey, body_font);
 
-    controls.push(create_static(
+    let pause_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "По умолчанию: Current Ctrl+Shift+F12 • Previous Ctrl+Shift+F10 • Undo Ctrl+Backspace • Pause Ctrl+Shift+F11",
-        28,
-        598,
-        782,
-        38,
-    ));
-    controls.push(create_static(
+        "Pause действует только до выхода из G-switcher и не сохраняется между запусками.",
+        44,
+        714,
+        812,
+        22,
+    );
+    set_font(pause_hint, hint_font);
+
+    let footer_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Pause действует только до завершения текущего запуска G-switcher и не сохраняется в реестр.",
+        "Изменения применяются сразу после сохранения.",
         28,
-        642,
-        720,
+        770,
+        500,
         24,
-    ));
+    );
+    set_font(footer_hint, hint_font);
 
-    controls.push(create_button(
+    let save = create_button(
         hwnd,
         module,
         &button_class,
         "Сохранить",
         ID_SAVE,
-        586,
-        704,
-        105,
-        34,
+        644,
+        762,
+        104,
+        36,
         true,
-    ));
-    controls.push(create_button(
+    );
+    set_font(save, body_font);
+    let cancel = create_button(
         hwnd,
         module,
         &button_class,
         "Отмена",
         ID_CANCEL,
-        705,
-        704,
-        105,
-        34,
+        762,
+        762,
+        104,
+        36,
         false,
-    ));
-
-    let font = create_ui_font(-17, 400);
-    if !font.is_null() {
-        SETTINGS_FONT.store(font as isize, Ordering::SeqCst);
-    }
-    let body_font = if font.is_null() {
-        GetStockObject(DEFAULT_GUI_FONT)
-    } else {
-        font
-    };
-    for control in controls {
-        SendMessageW(control, WM_SETFONT, body_font as usize, 1);
-    }
+    );
+    set_font(cancel, body_font);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -519,6 +616,34 @@ unsafe fn create_static(
         class.as_ptr(),
         text.as_ptr(),
         WS_CHILD | WS_VISIBLE,
+        x,
+        y,
+        width,
+        height,
+        parent,
+        null_mut(),
+        module,
+        null(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn create_group_box(
+    parent: HWND,
+    module: *mut core::ffi::c_void,
+    class: &[u16],
+    text: &str,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) -> HWND {
+    let text = wide(text);
+    CreateWindowExW(
+        0,
+        class.as_ptr(),
+        text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | BS_GROUPBOX as u32,
         x,
         y,
         width,
@@ -670,6 +795,21 @@ unsafe fn set_control_text(hwnd: HWND, value: &str) {
     SetWindowTextW(hwnd, value.as_ptr());
 }
 
+unsafe fn set_font(hwnd: HWND, font: *mut core::ffi::c_void) {
+    SendMessageW(hwnd, WM_SETFONT, font as usize, 1);
+}
+
+fn choose_font(
+    font: *mut core::ffi::c_void,
+    fallback: *mut core::ffi::c_void,
+) -> *mut core::ffi::c_void {
+    if font.is_null() {
+        fallback
+    } else {
+        font
+    }
+}
+
 unsafe fn create_ui_font(height: i32, weight: i32) -> *mut core::ffi::c_void {
     let face = wide("Segoe UI");
     CreateFontW(
@@ -690,10 +830,18 @@ unsafe fn create_ui_font(height: i32, weight: i32) -> *mut core::ffi::c_void {
     )
 }
 
-unsafe fn cleanup_font() {
-    let font = SETTINGS_FONT.swap(0, Ordering::SeqCst);
-    if font != 0 {
-        DeleteObject(font as *mut core::ffi::c_void);
+fn store_font(slot: &AtomicIsize, font: *mut core::ffi::c_void) {
+    if !font.is_null() {
+        slot.store(font as isize, Ordering::SeqCst);
+    }
+}
+
+unsafe fn cleanup_fonts() {
+    for slot in [&TITLE_FONT, &SECTION_FONT, &BODY_FONT, &HINT_FONT] {
+        let font = slot.swap(0, Ordering::SeqCst);
+        if font != 0 {
+            DeleteObject(font as *mut core::ffi::c_void);
+        }
     }
 }
 
