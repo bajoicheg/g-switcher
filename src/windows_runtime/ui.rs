@@ -1,5 +1,5 @@
 use std::mem::{size_of, zeroed};
-use std::ptr::{null, null_mut};
+use std::ptr::{null, null_mut, without_provenance};
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use anyhow::{anyhow, Result};
@@ -362,7 +362,7 @@ unsafe fn show_tray_menu(hwnd: HWND) {
 
 unsafe fn load_app_icon() -> *mut core::ffi::c_void {
     let module = GetModuleHandleW(null());
-    let icon = LoadIconW(module, 1usize as *const u16);
+    let icon = LoadIconW(module, without_provenance::<u16>(1));
     if icon.is_null() {
         LoadIconW(
             null_mut(),
