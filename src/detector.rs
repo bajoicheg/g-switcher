@@ -8,6 +8,16 @@ use crate::{
     model::{Decision, Language},
 };
 
+pub const DEFAULT_CONFIDENCE_THRESHOLD: u8 = 72;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Detection {
+    pub source: Language,
+    pub target: Language,
+    pub corrected: String,
+    pub confidence: u8,
+}
+
 static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
         "привет",
@@ -72,55 +82,93 @@ pub fn infer_language(token: &str) -> Option<Language> {
 }
 
 pub fn decide(token: &str) -> Decision {
-    if is_code_safe_token(token) {
-        return Decision::Keep;
-    }
+    decide_with_user_words(token, &[], DEFAULT_CONFIDENCE_THRESHOLD)
+}
 
-    let Some(source) = infer_language(token) else {
+pub fn decide_with_user_words(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+) -> Decision {
+    let Some(detection) = detect(token, user_words) else {
         return Decision::Keep;
     };
+    if detection.confidence >= confidence_threshold {
+        Decision::CorrectTo(detection.target)
+    } else {
+        Decision::Keep
+    }
+}
+
+pub fn detect(token: &str, user_words: &[String]) -> Option<Detection> {
+    if is_code_safe_token(token) {
+        return None;
+    }
+
+    let source = infer_language(token)?;
     let normalized = normalize(token, source);
-    if source_dictionary(source).contains(normalized.as_str()) {
-        return Decision::Keep;
+    if dictionary_contains(source, &normalized, user_words) {
+        return None;
     }
 
     let target = opposite(source);
     let mapped = opposite_layout_text(token, source);
     let mapped_normalized = normalize(&mapped, target);
-
     if !candidate_shape_is_valid(&mapped, target) {
-        return Decision::Keep;
+        return None;
     }
 
-    if source_dictionary(target).contains(mapped_normalized.as_str()) {
-        return Decision::CorrectTo(target);
+    let target_exact = dictionary_contains(target, &mapped_normalized, user_words);
+    if target_exact {
+        return Some(Detection {
+            source,
+            target,
+            corrected: mapped,
+            confidence: 100,
+        });
     }
 
     // A physical punctuation key can be a letter in the opposite layout.
-    // Do not let statistical scoring convert a partial prefix before that
-    // key has a chance to extend the candidate (for example rjhj,rf -> коробка).
-    if is_target_word_prefix(&mapped_normalized, target) {
-        return Decision::Keep;
+    // Keep partial prefixes intact so OEM keys can extend the token first.
+    if is_target_word_prefix(&mapped_normalized, target, user_words) {
+        return None;
     }
 
-    if language_score(&mapped_normalized, target) >= 8
-        && language_score(&mapped_normalized, target) >= language_score(&normalized, source) + 5
-    {
-        return Decision::CorrectTo(target);
+    let source_score = language_score(&normalized, source);
+    let target_score = language_score(&mapped_normalized, target);
+    let margin = target_score - source_score;
+    if target_score < 7 || margin < 3 {
+        return None;
     }
 
-    Decision::Keep
+    let confidence = confidence_from_scores(target_score, margin);
+    Some(Detection {
+        source,
+        target,
+        corrected: mapped,
+        confidence,
+    })
 }
 
 pub fn correction(token: &str) -> Option<(Language, Language, String)> {
-    let source = infer_language(token)?;
-    match decide(token) {
-        Decision::CorrectTo(target) => Some((source, target, opposite_layout_text(token, source))),
-        Decision::Keep => None,
-    }
+    correction_with_user_words(token, &[], DEFAULT_CONFIDENCE_THRESHOLD)
+        .map(|detection| (detection.source, detection.target, detection.corrected))
+}
+
+pub fn correction_with_user_words(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+) -> Option<Detection> {
+    let detection = detect(token, user_words)?;
+    (detection.confidence >= confidence_threshold).then_some(detection)
 }
 
 pub fn opposite_candidate_is_prefix(token: &str) -> bool {
+    opposite_candidate_is_prefix_with_user_words(token, &[])
+}
+
+pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[String]) -> bool {
     let Some(source) = infer_language(token) else {
         return false;
     };
@@ -130,13 +178,35 @@ pub fn opposite_candidate_is_prefix(token: &str) -> bool {
         return false;
     }
     let mapped = normalize(&mapped, target);
-    is_target_word_prefix(&mapped, target)
+    is_target_word_prefix(&mapped, target, user_words)
 }
 
-fn is_target_word_prefix(token: &str, language: Language) -> bool {
+fn confidence_from_scores(target_score: i32, margin: i32) -> u8 {
+    let raw = 50 + margin * 5 + target_score.max(0) / 2;
+    raw.clamp(0, 95) as u8
+}
+
+fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
     source_dictionary(language)
         .iter()
         .any(|word| word.starts_with(token) && word.len() > token.len())
+        || user_words.iter().any(|word| {
+            let normalized = normalize(word.trim(), language);
+            !normalized.is_empty()
+                && infer_language(&normalized) == Some(language)
+                && normalized.starts_with(token)
+                && normalized.len() > token.len()
+        })
+}
+
+fn dictionary_contains(language: Language, token: &str, user_words: &[String]) -> bool {
+    source_dictionary(language).contains(token)
+        || user_words.iter().any(|word| {
+            let word = word.trim();
+            !word.is_empty()
+                && infer_language(word) == Some(language)
+                && normalize(word, language) == token
+        })
 }
 
 fn source_dictionary(language: Language) -> &'static HashSet<&'static str> {
@@ -185,6 +255,11 @@ fn score_english(token: &str) -> i32 {
         "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne", "ea", "ra", "ce", "li", "ch", "ll",
         "be", "ma", "si", "om", "ur",
     ];
+    const COMMON_TRIGRAMS: &[&str] = &[
+        "the", "and", "ing", "ion", "ent", "her", "for", "tha", "nth", "int", "ere", "ter",
+        "est", "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith",
+    ];
+    const SUFFIXES: &[&str] = &["ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous"];
     const RARE: &[&str] = &["qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg"];
 
     let mut score = 0;
@@ -207,6 +282,16 @@ fn score_english(token: &str) -> i32 {
             }
         }
     }
+    for triple in token.as_bytes().windows(3) {
+        if let Ok(triple) = std::str::from_utf8(triple) {
+            if COMMON_TRIGRAMS.contains(&triple) {
+                score += 3;
+            }
+        }
+    }
+    if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
+        score += 3;
+    }
     score
 }
 
@@ -216,6 +301,13 @@ fn score_russian(token: &str) -> i32 {
         "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло", "ва", "ит", "те", "ет",
         "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис", "ол", "ле", "ся", "ин", "тр", "ом",
         "ма", "ме", "до", "че", "об", "бо",
+    ];
+    const COMMON_TRIGRAMS: &[&str] = &[
+        "про", "ост", "ени", "ова", "ние", "ств", "ого", "ать", "это", "тор", "ско", "ной",
+        "ова", "ель", "ени", "при", "раз", "как", "под", "без",
+    ];
+    const SUFFIXES: &[&str] = &[
+        "ость", "ение", "ание", "ого", "ему", "ами", "ями", "ый", "ий", "ая", "ое", "ть", "ться",
     ];
     const RARE: &[&str] = &["жы", "шы", "чя", "щя", "йй", "ъъ", "ьы"];
 
@@ -245,6 +337,15 @@ fn score_russian(token: &str) -> i32 {
             score -= 3;
         }
     }
+    for triple in chars.windows(3) {
+        let triple: String = triple.iter().collect();
+        if COMMON_TRIGRAMS.contains(&triple.as_str()) {
+            score += 3;
+        }
+    }
+    if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
+        score += 3;
+    }
     score
 }
 
@@ -263,6 +364,31 @@ mod tests {
         assert_eq!(decide("rjhj,rf"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("cdj,jle"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
+    }
+
+    #[test]
+    fn exact_dictionary_match_has_maximum_confidence() {
+        let detection = detect("ghbdtn", &[]).expect("expected correction");
+        assert_eq!(detection.corrected, "привет");
+        assert_eq!(detection.confidence, 100);
+    }
+
+    #[test]
+    fn user_dictionary_protects_source_word() {
+        let words = vec!["ghbdtn".to_owned()];
+        assert_eq!(
+            decide_with_user_words("ghbdtn", &words, DEFAULT_CONFIDENCE_THRESHOLD),
+            Decision::Keep
+        );
+    }
+
+    #[test]
+    fn user_dictionary_can_confirm_target_word() {
+        let words = vec!["тестслово".to_owned()];
+        let wrong = opposite_layout_text("тестслово", Language::Russian);
+        let detection = detect(&wrong, &words).expect("custom target should be recognized");
+        assert_eq!(detection.corrected, "тестслово");
+        assert_eq!(detection.confidence, 100);
     }
 
     #[test]
