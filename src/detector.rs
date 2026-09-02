@@ -12,6 +12,13 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
         "привет",
         "коробка",
+        "свобода",
+        "свободу",
+        "свободы",
+        "свободе",
+        "свободой",
+        "свободный",
+        "свободно",
         "беру",
         "берут",
         "ещё",
@@ -254,7 +261,16 @@ mod tests {
         assert_eq!(decide("ghbdtn"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("руддщ"), Decision::CorrectTo(Language::English));
         assert_eq!(decide("rjhj,rf"), Decision::CorrectTo(Language::Russian));
+        assert_eq!(decide("cdj,jle"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
+    }
+
+    #[test]
+    fn corrects_freedom_with_internal_oem_letter() {
+        assert_eq!(
+            correction("cdj,jle"),
+            Some((Language::English, Language::Russian, "свободу".to_owned()))
+        );
     }
 
     #[test]

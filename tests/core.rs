@@ -20,6 +20,10 @@ fn known_layout_corrections_are_symmetric() {
         correction("rjhj,rf"),
         Some((Language::English, Language::Russian, "коробка".to_owned()))
     );
+    assert_eq!(
+        correction("cdj,jle"),
+        Some((Language::English, Language::Russian, "свободу".to_owned()))
+    );
 }
 
 #[test]
