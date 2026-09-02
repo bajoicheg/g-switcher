@@ -14,11 +14,11 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
     DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow, LoadCursorW, LoadIconW,
     PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow,
-    TrackPopupMenu, TranslateMessage, UpdateWindow, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX,
-    BS_DEFPUSHBUTTON, BST_CHECKED, COLOR_WINDOW, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
+    TrackPopupMenu, TranslateMessage, UpdateWindow, BM_GETCHECK, BM_SETCHECK, BST_CHECKED,
+    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, COLOR_WINDOW, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
     PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SS_ICON, SS_LEFT, STM_SETICON, SW_SHOW, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW,
-    WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION,
+    WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::settings;
@@ -362,7 +362,10 @@ unsafe fn load_app_icon() -> *mut core::ffi::c_void {
     let module = GetModuleHandleW(null());
     let icon = LoadIconW(module, 1usize as *const u16);
     if icon.is_null() {
-        LoadIconW(null_mut(), windows_sys::Win32::UI::WindowsAndMessaging::IDI_APPLICATION)
+        LoadIconW(
+            null_mut(),
+            windows_sys::Win32::UI::WindowsAndMessaging::IDI_APPLICATION,
+        )
     } else {
         icon
     }
