@@ -7,6 +7,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - `ghbdtn ` → `привет `
 - `руддщ ` → `hello `
 - `руддщ ghbdtn ` → `hello привет `
+- `cdj,jle ` → `свободу `
 - the same cases using Enter instead of Space
 - `ghbdtn` + Tab → `привет` + Tab
 
@@ -16,6 +17,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - `ghbdtn,` → `привет,`
 - `ghbdtn.` → `привет.`
 - `rjhj,rf ` → `коробка `
+- `cdj,jle ` → `свободу `; the internal physical comma key is the Russian letter `б`, not a boundary
 - `руддщ.` → `hello.`
 - punctuation is never lost when correction fails
 
@@ -70,8 +72,18 @@ The following classes are not automatically rewritten unless explicitly configur
 ## Undo
 
 - after `ghbdtn ` becomes `привет `, immediate Ctrl+Backspace restores `ghbdtn ` and the original input locale
+- the first-run window explicitly tells the user that immediate `Ctrl+Backspace` undoes the last automatic replacement and restores the previous layout
 - Undo is rejected after focus moves to another control
 - Undo is rejected after unrelated text is typed
+
+## First-run UX
+
+- the G-on-shield artwork is prominent and substantially larger than the tray icon
+- the whole client area, including text/icon areas, uses one consistent neutral gray system background
+- the dialog uses Windows-native Segoe UI typography with a clear visual hierarchy
+- the dialog includes short `ghbdtn → привет` and `руддщ → hello` examples
+- autostart is checked by default
+- the dialog stays centered on the primary display and requires only one `OK` action
 
 ## Layout matrix
 
