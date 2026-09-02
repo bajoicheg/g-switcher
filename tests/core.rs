@@ -10,25 +10,51 @@ use g_switcher::{
 fn known_layout_corrections_are_symmetric() {
     assert_eq!(
         correction("ghbdtn"),
-        Some((Language::English, Language::Russian, "привет".to_owned()))
+        Some((
+            Language::English,
+            Language::Russian,
+            "привет".to_owned()
+        ))
     );
     assert_eq!(
         correction("руддщ"),
-        Some((Language::Russian, Language::English, "hello".to_owned()))
+        Some((
+            Language::Russian,
+            Language::English,
+            "hello".to_owned()
+        ))
     );
     assert_eq!(
         correction("rjhj,rf"),
-        Some((Language::English, Language::Russian, "коробка".to_owned()))
+        Some((
+            Language::English,
+            Language::Russian,
+            "коробка".to_owned()
+        ))
     );
 }
 
 #[test]
 fn false_positive_regressions_are_preserved() {
     for word in [
-        "беру", "берут", "ещё", "еще", "ёлка", "всё", "моё", "объект", "подъезд",
-        "hello", "the", "then",
+        "беру",
+        "берут",
+        "ещё",
+        "еще",
+        "ёлка",
+        "всё",
+        "моё",
+        "объект",
+        "подъезд",
+        "hello",
+        "the",
+        "then",
     ] {
-        assert_eq!(decide(word), Decision::Keep, "unexpected correction: {word}");
+        assert_eq!(
+            decide(word),
+            Decision::Keep,
+            "unexpected correction: {word}"
+        );
     }
 }
 
