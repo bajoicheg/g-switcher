@@ -15,7 +15,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
     GetWindowTextLengthW, GetWindowTextW, PeekMessageW, PostMessageW, PostQuitMessage,
     RegisterClassW, SetFocus, SetForegroundWindow, SetWindowTextW, ShowWindow, TranslateMessage,
-    WNDCLASSW, PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WS_CAPTION, WS_CHILD,
+    PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
@@ -140,7 +140,18 @@ fn real_windows_hook_to_edit_e2e() {
         ui_thread_id,
         Language::Russian,
         &keys(&[
-            b'H', b'E', b'L', b'L', b'O', VK_SPACE as u8, b'G', b'H', b'B', b'D', b'T', b'N',
+            b'H',
+            b'E',
+            b'L',
+            b'L',
+            b'O',
+            VK_SPACE as u8,
+            b'G',
+            b'H',
+            b'B',
+            b'D',
+            b'T',
+            b'N',
             VK_SPACE as u8,
         ]),
         "hello привет ",
@@ -164,9 +175,7 @@ fn real_windows_hook_to_edit_e2e() {
     );
 
     prepare_case(window, edit, ui_thread_id, Language::English);
-    inject_strokes(&keys(&[
-        b'G', b'H', b'B', b'D', b'T', b'N', VK_OEM_2 as u8,
-    ]));
+    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_OEM_2 as u8]));
     await_text(edit, "привет/");
     inject_strokes(&[key(VK_BACK as u8), key(VK_SPACE as u8)]);
     await_text(edit, "привет ");
@@ -209,9 +218,7 @@ fn real_windows_hook_to_edit_e2e() {
     unsafe {
         PostMessageW(window, WM_CLOSE, 0, 0);
     }
-    ui_thread
-        .join()
-        .expect("test Win32 UI thread panicked");
+    ui_thread.join().expect("test Win32 UI thread panicked");
 }
 
 fn run_case(
@@ -228,13 +235,15 @@ fn run_case(
 }
 
 fn prepare_case(window: HWND, edit: HWND, ui_thread_id: u32, language: Language) {
-    *ENGINE
-        .get_or_init(|| Mutex::new(Engine::default()))
-        .lock() = Engine::default();
+    *ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock() = Engine::default();
 
     let empty = wide("");
     unsafe {
-        assert_ne!(SetWindowTextW(edit, empty.as_ptr()), 0, "failed to clear EDIT text");
+        assert_ne!(
+            SetWindowTextW(edit, empty.as_ptr()),
+            0,
+            "failed to clear EDIT text"
+        );
     }
 
     let hkl = select_layout(language).expect("required RU/EN keyboard layout is unavailable");
@@ -308,10 +317,16 @@ fn inject_raw(events: &[(u16, u32)]) {
     loop {
         pump_hook_thread();
         if let Ok((sent, expected)) = done_rx.try_recv() {
-            assert_eq!(sent, expected, "SendInput did not inject the complete user sequence");
+            assert_eq!(
+                sent, expected,
+                "SendInput did not inject the complete user sequence"
+            );
             break;
         }
-        assert!(Instant::now() < deadline, "SendInput/hook processing timed out");
+        assert!(
+            Instant::now() < deadline,
+            "SendInput/hook processing timed out"
+        );
         thread::sleep(Duration::from_millis(2));
     }
 }
@@ -395,7 +410,11 @@ fn run_test_window(ready_tx: mpsc::SyncSender<(isize, isize)>) {
             lpszMenuName: null(),
             lpszClassName: class_name.as_ptr(),
         };
-        assert_ne!(RegisterClassW(&window_class), 0, "failed to register E2E window class");
+        assert_ne!(
+            RegisterClassW(&window_class),
+            0,
+            "failed to register E2E window class"
+        );
 
         let title = wide("G-switcher E2E");
         let window = CreateWindowExW(
