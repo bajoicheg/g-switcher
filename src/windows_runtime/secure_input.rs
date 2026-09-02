@@ -1,5 +1,3 @@
-use std::ptr::null_mut;
-
 use windows_sys::Win32::Foundation::HWND;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageW, GWL_STYLE,
