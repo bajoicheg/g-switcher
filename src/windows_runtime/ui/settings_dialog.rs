@@ -12,23 +12,28 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetDlgItem, GetSystemMetrics,
-    GetWindowTextLengthW, GetWindowTextW, IsWindow, LoadCursorW, PeekMessageW, RegisterClassW,
-    SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
-    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, ES_AUTOVSCROLL, ES_MULTILINE, IDC_ARROW, MSG, PM_REMOVE,
-    SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY,
-    WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
-    WS_VSCROLL,
+    GetWindowTextLengthW, GetWindowTextW, IsWindow, LoadCursorW, MessageBoxW, PeekMessageW,
+    RegisterClassW, SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage, BM_GETCHECK,
+    BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE,
+    IDC_ARROW, MB_ICONWARNING, MB_OK, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE,
+    WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION,
+    WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE, WS_VSCROLL,
 };
 
 use crate::windows_runtime::settings;
 
-const CLASS_NAME: &str = "GSwitcher.Settings.0.7";
+const CLASS_NAME: &str = "GSwitcher.Settings.0.8";
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
-const ID_EXCLUSIONS: i32 = 3103;
-const ID_USER_WORDS: i32 = 3104;
-const ID_SAVE: i32 = 3105;
-const ID_CANCEL: i32 = 3106;
+const ID_DISABLED_APPS: i32 = 3103;
+const ID_MANUAL_ONLY_APPS: i32 = 3104;
+const ID_USER_WORDS: i32 = 3105;
+const ID_HOTKEY_CURRENT: i32 = 3106;
+const ID_HOTKEY_PREVIOUS: i32 = 3107;
+const ID_HOTKEY_UNDO: i32 = 3108;
+const ID_HOTKEY_PAUSE: i32 = 3109;
+const ID_SAVE: i32 = 3110;
+const ID_CANCEL: i32 = 3111;
 const BST_CHECKED_VALUE: u32 = 1;
 const COLOR_3DFACE_INDEX: i32 = 15;
 const TRANSPARENT_BK_MODE: i32 = 1;
@@ -40,8 +45,8 @@ pub fn show() -> Result<()> {
     ensure_class()?;
     unsafe {
         let module = GetModuleHandleW(null());
-        let width = 760;
-        let height = 650;
+        let width = 840;
+        let height = 790;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
         let class = wide(CLASS_NAME);
@@ -117,19 +122,7 @@ unsafe extern "system" fn settings_proc(
         }
         WM_COMMAND => {
             match (wparam & 0xffff) as i32 {
-                ID_SAVE => {
-                    let auto_correct = is_checked(hwnd, ID_AUTO_CORRECT);
-                    let autostart = is_checked(hwnd, ID_AUTOSTART);
-                    let exclusions = control_text(GetDlgItem(hwnd, ID_EXCLUSIONS));
-                    let user_words = control_text(GetDlgItem(hwnd, ID_USER_WORDS));
-                    let runtime =
-                        settings::settings_from_text(auto_correct, &exclusions, &user_words);
-                    if settings::save_runtime_settings(runtime).is_ok()
-                        && settings::set_autostart(autostart).is_ok()
-                    {
-                        DestroyWindow(hwnd);
-                    }
-                }
+                ID_SAVE => save_and_close(hwnd),
                 ID_CANCEL => {
                     DestroyWindow(hwnd);
                 }
@@ -153,6 +146,60 @@ unsafe extern "system" fn settings_proc(
     }
 }
 
+unsafe fn save_and_close(hwnd: HWND) {
+    let auto_correct = is_checked(hwnd, ID_AUTO_CORRECT);
+    let autostart = is_checked(hwnd, ID_AUTOSTART);
+    let disabled_apps = control_text(GetDlgItem(hwnd, ID_DISABLED_APPS));
+    let manual_only_apps = control_text(GetDlgItem(hwnd, ID_MANUAL_ONLY_APPS));
+    let user_words = control_text(GetDlgItem(hwnd, ID_USER_WORDS));
+    let current_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_CURRENT));
+    let previous_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_PREVIOUS));
+    let undo_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_UNDO));
+    let pause_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_PAUSE));
+
+    let hotkeys = [
+        ("текущего слова", current_hotkey.as_str()),
+        ("предыдущего слова", previous_hotkey.as_str()),
+        ("отмены", undo_hotkey.as_str()),
+        ("Pause/Resume", pause_hotkey.as_str()),
+    ];
+    for (name, value) in hotkeys {
+        if settings::parse_hotkey(value).is_none() {
+            show_warning(
+                hwnd,
+                &format!(
+                    "Некорректная горячая клавиша для {name}: {value}\r\n\r\nИспользуйте Ctrl/Shift/Alt + F1–F12, букву, цифру, Space или Backspace."
+                ),
+            );
+            return;
+        }
+    }
+
+    let runtime = settings::settings_from_text(
+        auto_correct,
+        &disabled_apps,
+        &manual_only_apps,
+        &user_words,
+        &current_hotkey,
+        &previous_hotkey,
+        &undo_hotkey,
+        &pause_hotkey,
+    );
+    if settings::save_runtime_settings(runtime).is_ok()
+        && settings::set_autostart(autostart).is_ok()
+    {
+        DestroyWindow(hwnd);
+    } else {
+        show_warning(hwnd, "Не удалось сохранить настройки G-switcher.");
+    }
+}
+
+unsafe fn show_warning(hwnd: HWND, text: &str) {
+    let text = wide(text);
+    let title = wide("G-switcher");
+    MessageBoxW(hwnd, text.as_ptr(), title.as_ptr(), MB_OK | MB_ICONWARNING);
+}
+
 unsafe fn create_controls(hwnd: HWND) {
     let module = GetModuleHandleW(null());
     let static_class = wide("STATIC");
@@ -160,26 +207,27 @@ unsafe fn create_controls(hwnd: HWND) {
     let edit_class = wide("EDIT");
     let runtime = settings::runtime_settings();
 
-    let title = create_static(
+    let mut controls = Vec::new();
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Настройки G-switcher 0.7",
+        "Настройки G-switcher 0.8",
         28,
-        22,
-        680,
+        20,
+        760,
         30,
-    );
-    let intro = create_static(
+    ));
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Все параметры хранятся только в профиле текущего пользователя. История набранного текста не сохраняется.",
+        "Настройки хранятся локально в профиле пользователя. Набираемый текст и последний токен на диск не записываются.",
         28,
-        58,
-        690,
-        42,
-    );
+        54,
+        770,
+        38,
+    ));
 
     let auto_correct = create_checkbox(
         hwnd,
@@ -188,7 +236,7 @@ unsafe fn create_controls(hwnd: HWND) {
         "Включить автоматическую коррекцию",
         ID_AUTO_CORRECT,
         28,
-        108,
+        96,
         360,
         26,
     );
@@ -198,6 +246,7 @@ unsafe fn create_controls(hwnd: HWND) {
         usize::from(runtime.auto_correct) * BST_CHECKED_VALUE as usize,
         0,
     );
+    controls.push(auto_correct);
 
     let autostart = create_checkbox(
         hwnd,
@@ -205,8 +254,8 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Запускать G-switcher при входе в Windows",
         ID_AUTOSTART,
-        28,
-        140,
+        420,
+        96,
         390,
         26,
     );
@@ -216,88 +265,228 @@ unsafe fn create_controls(hwnd: HWND) {
         usize::from(settings::autostart_enabled()) * BST_CHECKED_VALUE as usize,
         0,
     );
+    controls.push(autostart);
 
-    let exclusions_label = create_static(
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Исключения по приложениям (одно имя .exe на строку)",
+        "Режимы приложений",
         28,
-        186,
-        520,
+        140,
+        300,
         24,
-    );
-    let exclusions_hint = create_static(
+    ));
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Пример: powershell.exe, code.exe. В исключённых приложениях G-switcher не анализирует ввод и не выполняет замену.",
+        "Disabled — без анализа и hotkey",
         28,
-        212,
-        690,
-        40,
+        168,
+        360,
+        22,
+    ));
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Manual only — только ручная конвертация",
+        420,
+        168,
+        390,
+        22,
+    ));
+    let disabled = create_multiline_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_DISABLED_APPS,
+        28,
+        194,
+        360,
+        96,
     );
-    let exclusions = create_edit(hwnd, module, &edit_class, ID_EXCLUSIONS, 28, 255, 690, 105);
-    set_control_text(exclusions, &runtime.excluded_apps_text());
+    set_control_text(disabled, &runtime.disabled_apps_text());
+    controls.push(disabled);
+    let manual_only = create_multiline_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_MANUAL_ONLY_APPS,
+        420,
+        194,
+        390,
+        96,
+    );
+    set_control_text(manual_only, &runtime.manual_only_apps_text());
+    controls.push(manual_only);
 
-    let dictionary_label = create_static(
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Пользовательский словарь (одно слово на строку)",
+        "Пользовательский словарь — одно слово на строку",
         28,
-        378,
-        520,
+        310,
+        620,
         24,
-    );
-    let dictionary_hint = create_static(
-        hwnd,
-        module,
-        &static_class,
-        "Слово в своей раскладке защищается от автозамены; если неверная раскладка отображается в это слово, словарь повышает confidence до 100%.",
-        28,
-        404,
-        690,
-        40,
-    );
-    let dictionary = create_edit(hwnd, module, &edit_class, ID_USER_WORDS, 28, 447, 690, 105);
+    ));
+    let dictionary =
+        create_multiline_edit(hwnd, module, &edit_class, ID_USER_WORDS, 28, 338, 782, 86);
     set_control_text(dictionary, &runtime.user_words_text());
+    controls.push(dictionary);
 
-    let hotkey = create_static(
+    controls.push(create_static(
         hwnd,
         module,
         &static_class,
-        "Ручная конвертация текущего слова: Ctrl+Shift+F12    •    Отмена последней замены: Ctrl+Backspace",
+        "Горячие клавиши",
         28,
-        566,
-        690,
+        444,
+        300,
         24,
-    );
+    ));
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Формат: Ctrl/Shift/Alt + F1–F12, буква, цифра, Space или Backspace.",
+        28,
+        470,
+        760,
+        22,
+    ));
 
-    let save = create_button(
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Текущее слово",
+        28,
+        508,
+        150,
+        24,
+    ));
+    let current_hotkey = create_single_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_HOTKEY_CURRENT,
+        180,
+        503,
+        205,
+        30,
+    );
+    set_control_text(current_hotkey, &runtime.manual_current_hotkey.to_text());
+    controls.push(current_hotkey);
+
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Предыдущее слово",
+        420,
+        508,
+        170,
+        24,
+    ));
+    let previous_hotkey = create_single_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_HOTKEY_PREVIOUS,
+        590,
+        503,
+        220,
+        30,
+    );
+    set_control_text(previous_hotkey, &runtime.previous_word_hotkey.to_text());
+    controls.push(previous_hotkey);
+
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Отмена замены",
+        28,
+        552,
+        150,
+        24,
+    ));
+    let undo_hotkey =
+        create_single_edit(hwnd, module, &edit_class, ID_HOTKEY_UNDO, 180, 547, 205, 30);
+    set_control_text(undo_hotkey, &runtime.undo_hotkey.to_text());
+    controls.push(undo_hotkey);
+
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Pause / Resume",
+        420,
+        552,
+        170,
+        24,
+    ));
+    let pause_hotkey = create_single_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_HOTKEY_PAUSE,
+        590,
+        547,
+        220,
+        30,
+    );
+    set_control_text(pause_hotkey, &runtime.pause_hotkey.to_text());
+    controls.push(pause_hotkey);
+
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "По умолчанию: Current Ctrl+Shift+F12 • Previous Ctrl+Shift+F10 • Undo Ctrl+Backspace • Pause Ctrl+Shift+F11",
+        28,
+        598,
+        782,
+        38,
+    ));
+    controls.push(create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Pause действует только до завершения текущего запуска G-switcher и не сохраняется в реестр.",
+        28,
+        642,
+        720,
+        24,
+    ));
+
+    controls.push(create_button(
         hwnd,
         module,
         &button_class,
         "Сохранить",
         ID_SAVE,
-        500,
-        596,
+        586,
+        704,
         105,
         34,
         true,
-    );
-    let cancel = create_button(
+    ));
+    controls.push(create_button(
         hwnd,
         module,
         &button_class,
         "Отмена",
         ID_CANCEL,
-        613,
-        596,
+        705,
+        704,
         105,
         34,
         false,
-    );
+    ));
 
     let font = create_ui_font(-17, 400);
     if !font.is_null() {
@@ -308,21 +497,7 @@ unsafe fn create_controls(hwnd: HWND) {
     } else {
         font
     };
-    for control in [
-        title,
-        intro,
-        auto_correct,
-        autostart,
-        exclusions_label,
-        exclusions_hint,
-        exclusions,
-        dictionary_label,
-        dictionary_hint,
-        dictionary,
-        hotkey,
-        save,
-        cancel,
-    ] {
+    for control in controls {
         SendMessageW(control, WM_SETFONT, body_font as usize, 1);
     }
 }
@@ -385,7 +560,7 @@ unsafe fn create_checkbox(
 }
 
 #[allow(clippy::too_many_arguments)]
-unsafe fn create_edit(
+unsafe fn create_multiline_edit(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
@@ -406,6 +581,34 @@ unsafe fn create_edit(
             | WS_VSCROLL
             | ES_MULTILINE as u32
             | ES_AUTOVSCROLL as u32,
+        x,
+        y,
+        width,
+        height,
+        parent,
+        id as usize as *mut core::ffi::c_void,
+        module,
+        null(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn create_single_edit(
+    parent: HWND,
+    module: *mut core::ffi::c_void,
+    class: &[u16],
+    id: i32,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) -> HWND {
+    let empty = wide("");
+    CreateWindowExW(
+        0,
+        class.as_ptr(),
+        empty.as_ptr(),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL as u32,
         x,
         y,
         width,
