@@ -183,7 +183,8 @@ unsafe fn save_and_close(hwnd: HWND) {
         &undo_hotkey,
         &pause_hotkey,
     );
-    if settings::save_runtime_settings(runtime).is_ok() && settings::set_autostart(autostart).is_ok()
+    if settings::save_runtime_settings(runtime).is_ok()
+        && settings::set_autostart(autostart).is_ok()
     {
         DestroyWindow(hwnd);
     } else {
@@ -194,12 +195,7 @@ unsafe fn save_and_close(hwnd: HWND) {
 unsafe fn show_warning(hwnd: HWND, text: &str) {
     let text = wide(text);
     let title = wide("G-switcher");
-    MessageBoxW(
-        hwnd,
-        text.as_ptr(),
-        title.as_ptr(),
-        MB_OK | MB_ICONWARNING,
-    );
+    MessageBoxW(hwnd, text.as_ptr(), title.as_ptr(), MB_OK | MB_ICONWARNING);
 }
 
 unsafe fn create_controls(hwnd: HWND) {
@@ -334,16 +330,8 @@ unsafe fn create_controls(hwnd: HWND) {
         620,
         24,
     ));
-    let dictionary = create_multiline_edit(
-        hwnd,
-        module,
-        &edit_class,
-        ID_USER_WORDS,
-        28,
-        338,
-        782,
-        86,
-    );
+    let dictionary =
+        create_multiline_edit(hwnd, module, &edit_class, ID_USER_WORDS, 28, 338, 782, 86);
     set_control_text(dictionary, &runtime.user_words_text());
     controls.push(dictionary);
 
@@ -424,16 +412,8 @@ unsafe fn create_controls(hwnd: HWND) {
         150,
         24,
     ));
-    let undo_hotkey = create_single_edit(
-        hwnd,
-        module,
-        &edit_class,
-        ID_HOTKEY_UNDO,
-        180,
-        547,
-        205,
-        30,
-    );
+    let undo_hotkey =
+        create_single_edit(hwnd, module, &edit_class, ID_HOTKEY_UNDO, 180, 547, 205, 30);
     set_control_text(undo_hotkey, &runtime.undo_hotkey.to_text());
     controls.push(undo_hotkey);
 
