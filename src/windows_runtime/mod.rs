@@ -14,7 +14,7 @@ use windows_sys::Win32::Foundation::{
     CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::System::Threading::{CreateMutexW, Sleep};
+use windows_sys::Win32::System::Threading::{CreateMutexW, GetCurrentThreadId, Sleep};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     ActivateKeyboardLayout, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
     LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
@@ -24,9 +24,9 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
-    GetWindowThreadProcessId, PostMessageW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL,
-    WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
+    GetWindowThreadProcessId, PostMessageW, PostThreadMessageW, SetWindowsHookExW,
+    TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
+    WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
 use crate::detector::{correction, opposite_candidate_is_prefix};
@@ -34,8 +34,10 @@ use crate::model::Language;
 
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
 const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.6";
+const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
+static HOOK_THREAD_ID: OnceLock<u32> = OnceLock::new();
 
 #[cfg(test)]
 static TEST_ACCEPT_INJECTED_INPUT: AtomicBool = AtomicBool::new(false);
@@ -70,12 +72,26 @@ struct RuntimeUndo {
     delimiter: Delimiter,
 }
 
+#[derive(Debug, Clone)]
+struct PendingCorrection {
+    focus: isize,
+    thread_id: u32,
+    source_hkl: isize,
+    source_language: Language,
+    target_hkl: isize,
+    corrected: String,
+    erase_len: usize,
+    original_strokes: Vec<Stroke>,
+    delimiter: Delimiter,
+}
+
 #[derive(Default)]
 struct Engine {
     candidate: String,
     strokes: Vec<Stroke>,
     candidate_focus: isize,
     undo: Option<RuntimeUndo>,
+    pending_correction: Option<PendingCorrection>,
 }
 
 enum HookDecision {
@@ -107,6 +123,9 @@ pub fn run() -> Result<()> {
         if result <= 0 {
             break;
         }
+        if handle_runtime_message(&message) {
+            continue;
+        }
         unsafe {
             TranslateMessage(&message);
             DispatchMessageW(&message);
@@ -117,6 +136,16 @@ pub fn run() -> Result<()> {
     drop(tray);
     drop(mutex);
     Ok(())
+}
+
+fn handle_runtime_message(message: &MSG) -> bool {
+    if message.message != WM_RUNTIME_CORRECTION {
+        return false;
+    }
+    if let Some(engine) = ENGINE.get() {
+        engine.lock().execute_pending_correction();
+    }
+    true
 }
 
 struct SingleInstance {
@@ -152,6 +181,8 @@ struct KeyboardHook {
 
 impl KeyboardHook {
     fn install() -> Result<Self> {
+        let thread_id = unsafe { GetCurrentThreadId() };
+        let _ = HOOK_THREAD_ID.set(thread_id);
         let module = unsafe { GetModuleHandleW(null()) } as HINSTANCE;
         let handle = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), module, 0) };
         if handle.is_null() {
@@ -314,7 +345,7 @@ impl Engine {
     }
 
     fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
-        if self.candidate.is_empty() || self.strokes.is_empty() {
+        if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some() {
             return false;
         }
 
@@ -329,37 +360,107 @@ impl Engine {
         let Some(target_hkl) = select_layout(target_language) else {
             return false;
         };
+
+        // Preflight the target text before suppressing the user's delimiter.
+        let mut preflight = Vec::new();
+        append_backspaces(&mut preflight, self.candidate.chars().count());
+        if !append_text_for_layout(&mut preflight, &corrected, target_hkl)
+            || !append_delimiter(&mut preflight, delimiter, target_hkl)
+        {
+            return false;
+        }
+
         if !switch_layout(source.hwnd, source.thread_id, target_hkl) {
             return false;
         }
 
-        let mut inputs = Vec::new();
-        append_backspaces(&mut inputs, self.candidate.chars().count());
-        if !append_text_for_layout(&mut inputs, &corrected, target_hkl) {
+        let Some(hook_thread_id) = HOOK_THREAD_ID.get().copied() else {
             let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
             return false;
-        }
-        if !append_delimiter(&mut inputs, delimiter, target_hkl) {
+        };
+
+        self.pending_correction = Some(PendingCorrection {
+            focus: source.hwnd as isize,
+            thread_id: source.thread_id,
+            source_hkl: source.hkl,
+            source_language: source.language,
+            target_hkl,
+            corrected,
+            erase_len: self.candidate.chars().count(),
+            original_strokes: self.strokes.clone(),
+            delimiter,
+        });
+
+        if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_CORRECTION, 0, 0) } == 0 {
+            self.pending_correction = None;
             let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
             return false;
         }
 
-        if !send_inputs_in_layout(&inputs, target_hkl) {
-            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
-            self.reset_candidate();
-            return false;
+        self.reset_candidate();
+        true
+    }
+
+    fn execute_pending_correction(&mut self) {
+        let Some(pending) = self.pending_correction.take() else {
+            return;
+        };
+        let hwnd = pending.focus as HWND;
+
+        let same_focus = focused_target()
+            .map(|target| target.hwnd as isize == pending.focus)
+            .unwrap_or(false);
+        if !same_focus {
+            let _ = switch_layout(hwnd, pending.thread_id, pending.source_hkl);
+            return;
+        }
+
+        if !switch_layout(hwnd, pending.thread_id, pending.target_hkl) {
+            self.restore_failed_correction(&pending);
+            return;
+        }
+
+        let mut inputs = Vec::new();
+        append_backspaces(&mut inputs, pending.erase_len);
+        if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
+            || !append_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
+        {
+            self.restore_failed_correction(&pending);
+            return;
+        }
+
+        if !send_inputs_in_layout(&inputs, pending.target_hkl) {
+            self.restore_failed_correction(&pending);
+            return;
         }
 
         self.undo = Some(RuntimeUndo {
-            focus: source.hwnd as isize,
-            source_hkl: source.hkl,
-            source_language: source.language,
-            original_strokes: self.strokes.clone(),
-            corrected_len: corrected.chars().count(),
-            delimiter,
+            focus: pending.focus,
+            source_hkl: pending.source_hkl,
+            source_language: pending.source_language,
+            original_strokes: pending.original_strokes,
+            corrected_len: pending.corrected.chars().count(),
+            delimiter: pending.delimiter,
         });
-        self.reset_candidate();
-        true
+    }
+
+    fn restore_failed_correction(&mut self, pending: &PendingCorrection) {
+        let hwnd = pending.focus as HWND;
+        if !switch_layout(hwnd, pending.thread_id, pending.source_hkl) {
+            return;
+        }
+
+        let same_focus = focused_target()
+            .map(|target| target.hwnd as isize == pending.focus)
+            .unwrap_or(false);
+        if !same_focus {
+            return;
+        }
+
+        let mut delimiter = Vec::new();
+        if append_delimiter(&mut delimiter, pending.delimiter, pending.source_hkl) {
+            let _ = send_inputs_in_layout(&delimiter, pending.source_hkl);
+        }
     }
 
     fn try_undo(&mut self, target: FocusTarget) -> bool {
@@ -557,7 +658,6 @@ fn is_modifier_vk(vk: u16) -> bool {
 fn is_shift_down() -> bool {
     unsafe { GetKeyState(VK_SHIFT as i32) < 0 }
 }
-
 fn is_control_down() -> bool {
     unsafe { GetKeyState(VK_CONTROL as i32) < 0 }
 }
