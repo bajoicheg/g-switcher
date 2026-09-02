@@ -17,12 +17,12 @@ use windows_sys::Win32::UI::Shell::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow,
-    LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW,
-    SetForegroundWindow, ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
-    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE,
-    SM_CXSCREEN, SM_CYSCREEN, STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP,
-    WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW,
-    WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW,
+    SendMessageW, SetForegroundWindow, ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK,
+    BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
+    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT,
+    WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -378,9 +378,8 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         null(),
     );
 
-    let undo_text = wide(
-        "Ctrl+Backspace сразу после замены вернёт исходное слово и прежнюю раскладку.",
-    );
+    let undo_text =
+        wide("Ctrl+Backspace сразу после замены вернёт исходное слово и прежнюю раскладку.");
     let undo = CreateWindowExW(
         0,
         static_class.as_ptr(),
