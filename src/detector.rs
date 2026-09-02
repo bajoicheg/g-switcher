@@ -1,7 +1,3 @@
-use std::collections::HashSet;
-
-use once_cell::sync::Lazy;
-
 use crate::{
     code_safe::is_code_safe_token,
     frequency_model,
@@ -15,6 +11,9 @@ pub const AGGRESSIVE_CONFIDENCE_THRESHOLD: u8 = 62;
 pub const DEFAULT_CONFIDENCE_THRESHOLD: u8 = NORMAL_CONFIDENCE_THRESHOLD;
 pub const MAX_CONTEXT_WORDS: usize = 2;
 
+const RU_EXACT: &str = "а без безопасность беру берут был была были быть в вам вас весь вот все всё вы где да для до его ее ещё еще если есть же за здесь и из или как кабель когда коробка кто ли мне можно моё мой мы на надо нас не него нее нет но ну объект окно он она они от под подъезд пользователь потом проверка привет при про работа работает работаю раз с свобода свободе свободно свободой свободный свободу свободы себя сейчас сервер система сказать собака так там тебя теперь то только тоже тут ты у уже хлеб хорошо что чтобы это этого этот я ёлка";
+const EN_EXACT: &str = "a about after all also and any api are as at be because been before box but by can check code data do docker edr for from good had has have he hello her here him his how http i if in into is it its json just linux more my no not now object of on one only or other our out root security server she so soc sql system than that the their them then there these they this to up user very vpn was we were what when which who will window windows with work would you your";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Detection {
     pub source: Language,
@@ -22,135 +21,6 @@ pub struct Detection {
     pub corrected: String,
     pub confidence: u8,
 }
-
-static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    [
-        "а",
-        "без",
-        "безопасность",
-        "беру",
-        "берут",
-        "был",
-        "была",
-        "были",
-        "быть",
-        "в",
-        "вам",
-        "вас",
-        "весь",
-        "вот",
-        "все",
-        "всё",
-        "вы",
-        "где",
-        "да",
-        "для",
-        "до",
-        "его",
-        "ее",
-        "ещё",
-        "еще",
-        "если",
-        "есть",
-        "же",
-        "за",
-        "здесь",
-        "и",
-        "из",
-        "или",
-        "как",
-        "кабель",
-        "когда",
-        "коробка",
-        "кто",
-        "ли",
-        "мир",
-        "мне",
-        "можно",
-        "моё",
-        "мой",
-        "мы",
-        "на",
-        "надо",
-        "нас",
-        "не",
-        "него",
-        "нее",
-        "нет",
-        "но",
-        "ну",
-        "объект",
-        "окно",
-        "он",
-        "она",
-        "они",
-        "от",
-        "под",
-        "подъезд",
-        "пользователь",
-        "потом",
-        "проверка",
-        "привет",
-        "при",
-        "про",
-        "работа",
-        "работает",
-        "работаю",
-        "раз",
-        "с",
-        "свобода",
-        "свободе",
-        "свободно",
-        "свободой",
-        "свободный",
-        "свободу",
-        "свободы",
-        "себя",
-        "сейчас",
-        "сервер",
-        "система",
-        "сказать",
-        "собака",
-        "так",
-        "там",
-        "тебя",
-        "теперь",
-        "то",
-        "только",
-        "тоже",
-        "тут",
-        "ты",
-        "у",
-        "уже",
-        "хлеб",
-        "хорошо",
-        "что",
-        "чтобы",
-        "это",
-        "этого",
-        "этот",
-        "я",
-        "ёлка",
-    ]
-    .into_iter()
-    .collect()
-});
-
-static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    [
-        "a", "about", "after", "all", "also", "and", "any", "api", "are", "as", "at", "be",
-        "because", "been", "before", "box", "but", "by", "can", "check", "code", "data", "do",
-        "docker", "edr", "for", "from", "good", "had", "has", "have", "he", "hello", "her", "here",
-        "him", "his", "how", "http", "i", "if", "in", "into", "is", "it", "its", "json", "just",
-        "linux", "more", "my", "no", "not", "now", "object", "of", "on", "one", "only", "or",
-        "other", "our", "out", "root", "security", "server", "she", "so", "soc", "sql", "system",
-        "than", "that", "the", "their", "them", "then", "there", "these", "they", "this", "to",
-        "up", "user", "very", "vpn", "was", "we", "were", "what", "when", "which", "who", "will",
-        "window", "windows", "with", "work", "would", "you", "your",
-    ]
-    .into_iter()
-    .collect()
-});
 
 pub fn infer_language(token: &str) -> Option<Language> {
     let mut ru = false;
@@ -232,6 +102,8 @@ pub fn detect_with_context(
         });
     }
 
+    // OEM punctuation can map to a letter in the opposite layout. Keep a known
+    // target prefix intact until the remaining physical keys arrive.
     if is_target_word_prefix(&mapped_normalized, target, user_words) {
         return None;
     }
@@ -239,14 +111,13 @@ pub fn detect_with_context(
     let source_frequency = frequency_model::word_score(source, &normalized);
     let target_frequency = frequency_model::word_score(target, &mapped_normalized);
 
-    // Detector v3 treats a frequent source-language word as strong preservation evidence.
-    // This protects common real words even when their opposite-layout shape looks plausible.
+    // A frequent real source-language word is strong preservation evidence.
     if source_frequency >= 15 && target_frequency == 0 {
         return None;
     }
 
-    let source_score = language_score(&normalized, source)
-        + frequency_model::lexical_score(source, &normalized);
+    let source_score =
+        language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
     let target_score = language_score(&mapped_normalized, target)
         + frequency_model::lexical_score(target, &mapped_normalized);
     let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
@@ -257,21 +128,23 @@ pub fn detect_with_context(
         return None;
     }
 
+    // Unknown short words are especially ambiguous. Exact target matches have
+    // already returned above; all other 3-letter candidates need context or a
+    // frequency prior.
     if token.chars().count() == 3 && context_bonus < 10 && target_frequency == 0 {
         return None;
     }
 
-    let confidence = confidence_from_scores(
-        effective_target,
-        effective_margin,
-        target_frequency,
-        source_frequency,
-    );
     Some(Detection {
         source,
         target,
         corrected: mapped,
-        confidence,
+        confidence: confidence_from_scores(
+            effective_target,
+            effective_margin,
+            target_frequency,
+            source_frequency,
+        ),
     })
 }
 
@@ -311,8 +184,7 @@ pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[S
     if !candidate_shape_is_valid(&mapped, target) {
         return false;
     }
-    let mapped = normalize(&mapped, target);
-    is_target_word_prefix(&mapped, target, user_words)
+    is_target_word_prefix(&normalize(&mapped, target), target, user_words)
 }
 
 fn confidence_from_scores(
@@ -353,8 +225,7 @@ fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) 
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
-    source_dictionary(language)
-        .iter()
+    exact_words(language)
         .any(|word| word.starts_with(token) && word.len() > token.len())
         || user_words.iter().any(|word| {
             let normalized = normalize(word.trim(), language);
@@ -366,7 +237,7 @@ fn is_target_word_prefix(token: &str, language: Language, user_words: &[String])
 }
 
 fn dictionary_contains(language: Language, token: &str, user_words: &[String]) -> bool {
-    source_dictionary(language).contains(token)
+    exact_words(language).any(|word| word == token)
         || user_words.iter().any(|word| {
             let word = word.trim();
             !word.is_empty()
@@ -375,11 +246,12 @@ fn dictionary_contains(language: Language, token: &str, user_words: &[String]) -
         })
 }
 
-fn source_dictionary(language: Language) -> &'static HashSet<&'static str> {
+fn exact_words(language: Language) -> impl Iterator<Item = &'static str> {
     match language {
-        Language::Russian => &RU_COMMON,
-        Language::English => &EN_COMMON,
+        Language::Russian => RU_EXACT,
+        Language::English => EN_EXACT,
     }
+    .split_whitespace()
 }
 
 fn opposite(language: Language) -> Language {
@@ -409,10 +281,7 @@ fn language_score(token: &str, language: Language) -> i32 {
         return 0;
     }
     let chars: Vec<char> = token.chars().collect();
-    let vowel_count = chars
-        .iter()
-        .filter(|ch| is_vowel(**ch, language))
-        .count();
+    let vowel_count = chars.iter().filter(|ch| is_vowel(**ch, language)).count();
     let mut score = if vowel_count == 0 {
         -8
     } else {
@@ -618,7 +487,10 @@ mod tests {
 
     #[test]
     fn infer_language_accepts_multiword_selected_text() {
-        assert_eq!(infer_language("ghbdtn rfr ltkf"), Some(Language::English));
+        assert_eq!(
+            infer_language("ghbdtn rfr ltkf"),
+            Some(Language::English)
+        );
         assert_eq!(infer_language("руддщ цщкдв"), Some(Language::Russian));
         assert_eq!(infer_language("hello мир"), None);
     }
