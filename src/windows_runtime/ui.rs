@@ -1,10 +1,12 @@
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut, without_provenance};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicIsize, Ordering};
 
 use anyhow::{anyhow, Result};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
-use windows_sys::Win32::Graphics::Gdi::{GetStockObject, DEFAULT_GUI_FONT};
+use windows_sys::Win32::Graphics::Gdi::{
+    CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
+};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
 use windows_sys::Win32::UI::Shell::{
@@ -13,11 +15,12 @@ use windows_sys::Win32::UI::Shell::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
     DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow, LoadCursorW, LoadIconW,
-    PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow,
-    TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
-    IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, STM_SETICON,
-    SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_RBUTTONUP,
-    WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow,
+    ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX,
+    BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN,
+    STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND,
+    WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD,
+    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::settings;
@@ -31,11 +34,18 @@ const ID_EXIT: usize = 1002;
 const ID_CHECKBOX: i32 = 2001;
 const ID_OK: i32 = 2002;
 const BST_CHECKED_VALUE: u32 = 1;
-const COLOR_WINDOW_INDEX: usize = 5;
+const COLOR_3DFACE_INDEX: i32 = 15;
 const SS_LEFT_STYLE: u32 = 0;
 const SS_ICON_STYLE: u32 = 0x0000_0003;
+const SS_ETCHEDHORZ_STYLE: u32 = 0x0000_0010;
+const IMAGE_ICON_VALUE: u32 = 1;
+const LR_SHARED_VALUE: u32 = 0x0000_8000;
+const TRANSPARENT_BK_MODE: i32 = 1;
 
 static FIRST_RUN_RESULT: AtomicI32 = AtomicI32::new(-1);
+static TITLE_FONT: AtomicIsize = AtomicIsize::new(0);
+static EMPHASIS_FONT: AtomicIsize = AtomicIsize::new(0);
+static BODY_FONT: AtomicIsize = AtomicIsize::new(0);
 
 pub struct TrayGuard {
     hwnd: HWND,
@@ -124,7 +134,7 @@ pub fn show_first_run() -> Result<bool> {
             hInstance: module,
             hIcon: load_app_icon(),
             hCursor: LoadCursorW(null_mut(), IDC_ARROW),
-            hbrBackground: (COLOR_WINDOW_INDEX + 1) as *mut core::ffi::c_void,
+            hbrBackground: GetSysColorBrush(COLOR_3DFACE_INDEX),
             lpszMenuName: null(),
             lpszClassName: class.as_ptr(),
         };
@@ -132,8 +142,8 @@ pub fn show_first_run() -> Result<bool> {
             return Err(anyhow!("RegisterClassW for first-run window failed"));
         }
 
-        let width = 480;
-        let height = 245;
+        let width = 680;
+        let height = 500;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
         let title = wide("G-switcher — первый запуск");
@@ -192,9 +202,17 @@ unsafe extern "system" fn first_run_proc(
             }
             DefWindowProcW(hwnd, message, wparam, lparam)
         }
+        WM_CTLCOLORSTATIC => {
+            SetBkMode(wparam as *mut core::ffi::c_void, TRANSPARENT_BK_MODE);
+            GetSysColorBrush(COLOR_3DFACE_INDEX) as LRESULT
+        }
         WM_CLOSE => {
             FIRST_RUN_RESULT.store(0, Ordering::SeqCst);
             DestroyWindow(hwnd);
+            0
+        }
+        WM_DESTROY => {
+            cleanup_first_run_fonts();
             0
         }
         _ => DefWindowProcW(hwnd, message, wparam, lparam),
@@ -212,29 +230,147 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ICON_STYLE,
-        25,
-        25,
-        72,
-        72,
+        30,
+        34,
+        132,
+        132,
         hwnd,
         null_mut(),
         module,
         null(),
     );
-    SendMessageW(icon_control, STM_SETICON, load_app_icon() as usize, 0);
+    SendMessageW(
+        icon_control,
+        STM_SETICON,
+        load_app_icon_sized(128, 128) as usize,
+        0,
+    );
 
-    let text = wide(
-        "G-switcher автоматически исправляет текст, набранный в неверной русской/английской раскладке.\r\nРаботает локально, без сети и телеметрии.",
+    let title_text = wide("G-switcher");
+    let title = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        title_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        190,
+        38,
+        420,
+        42,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let description_text = wide(
+        "Автоматически исправляет слова, набранные в неверной русской или английской раскладке.\r\nРаботает локально — без сети, облака и телеметрии.",
     );
     let description = CreateWindowExW(
         0,
         static_class.as_ptr(),
-        text.as_ptr(),
+        description_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        115,
-        25,
-        330,
-        70,
+        190,
+        88,
+        430,
+        64,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let privacy_text = wide("Набираемый текст не сохраняется на диск.");
+    let privacy = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        privacy_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        190,
+        154,
+        430,
+        24,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let separator = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        empty.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
+        30,
+        195,
+        600,
+        2,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let examples_header_text = wide("Примеры");
+    let examples_header = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        examples_header_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        30,
+        216,
+        160,
+        26,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let examples_text = wide("ghbdtn  →  привет          руддщ  →  hello");
+    let examples = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        examples_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        30,
+        246,
+        590,
+        28,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let undo_header_text = wide("Если замена оказалась неверной");
+    let undo_header = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        undo_header_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        30,
+        292,
+        360,
+        26,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let undo_text = wide(
+        "Нажмите Ctrl+Backspace сразу после автозамены — G-switcher восстановит исходное слово и прежнюю раскладку.",
+    );
+    let undo = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        undo_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        30,
+        322,
+        590,
+        46,
         hwnd,
         null_mut(),
         module,
@@ -247,9 +383,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         button_class.as_ptr(),
         checkbox_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-        115,
-        105,
-        320,
+        30,
+        386,
+        380,
         28,
         hwnd,
         ID_CHECKBOX as usize as *mut core::ffi::c_void,
@@ -264,10 +400,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         footer_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        25,
-        175,
-        260,
-        25,
+        30,
+        434,
+        290,
+        24,
         hwnd,
         null_mut(),
         module,
@@ -280,19 +416,91 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         button_class.as_ptr(),
         ok_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
-        350,
-        165,
-        95,
-        32,
+        520,
+        422,
+        110,
+        36,
         hwnd,
         ID_OK as usize as *mut core::ffi::c_void,
         module,
         null(),
     );
 
-    let font = GetStockObject(DEFAULT_GUI_FONT);
-    for control in [description, checkbox, footer, ok] {
-        SendMessageW(control, WM_SETFONT, font as usize, 1);
+    let default_font = GetStockObject(DEFAULT_GUI_FONT);
+    let body_font = create_ui_font(-17, 400);
+    let emphasis_font = create_ui_font(-18, 600);
+    let title_font = create_ui_font(-30, 600);
+
+    store_font(&BODY_FONT, body_font);
+    store_font(&EMPHASIS_FONT, emphasis_font);
+    store_font(&TITLE_FONT, title_font);
+
+    let body_font = if body_font.is_null() {
+        default_font
+    } else {
+        body_font
+    };
+    let emphasis_font = if emphasis_font.is_null() {
+        body_font
+    } else {
+        emphasis_font
+    };
+    let title_font = if title_font.is_null() {
+        emphasis_font
+    } else {
+        title_font
+    };
+
+    SendMessageW(title, WM_SETFONT, title_font as usize, 1);
+    for control in [examples_header, undo_header] {
+        SendMessageW(control, WM_SETFONT, emphasis_font as usize, 1);
+    }
+    for control in [
+        description,
+        privacy,
+        examples,
+        undo,
+        checkbox,
+        footer,
+        ok,
+        separator,
+    ] {
+        SendMessageW(control, WM_SETFONT, body_font as usize, 1);
+    }
+}
+
+unsafe fn create_ui_font(height: i32, weight: i32) -> *mut core::ffi::c_void {
+    let face = wide("Segoe UI");
+    CreateFontW(
+        height,
+        0,
+        0,
+        0,
+        weight,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        5,
+        0,
+        face.as_ptr(),
+    )
+}
+
+fn store_font(slot: &AtomicIsize, font: *mut core::ffi::c_void) {
+    if !font.is_null() {
+        slot.store(font as isize, Ordering::SeqCst);
+    }
+}
+
+unsafe fn cleanup_first_run_fonts() {
+    for slot in [&TITLE_FONT, &EMPHASIS_FONT, &BODY_FONT] {
+        let font = slot.swap(0, Ordering::SeqCst);
+        if font != 0 {
+            DeleteObject(font as *mut core::ffi::c_void);
+        }
     }
 }
 
@@ -357,6 +565,23 @@ unsafe fn show_tray_menu(hwnd: HWND) {
 
     if command != 0 {
         SendMessageW(hwnd, WM_COMMAND, command as usize, 0);
+    }
+}
+
+unsafe fn load_app_icon_sized(width: i32, height: i32) -> *mut core::ffi::c_void {
+    let module = GetModuleHandleW(null());
+    let icon = LoadImageW(
+        module,
+        without_provenance::<u16>(1),
+        IMAGE_ICON_VALUE,
+        width,
+        height,
+        LR_SHARED_VALUE,
+    );
+    if icon.is_null() {
+        load_app_icon()
+    } else {
+        icon
     }
 }
 
