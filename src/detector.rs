@@ -256,10 +256,12 @@ fn score_english(token: &str) -> i32 {
         "be", "ma", "si", "om", "ur",
     ];
     const COMMON_TRIGRAMS: &[&str] = &[
-        "the", "and", "ing", "ion", "ent", "her", "for", "tha", "nth", "int", "ere", "ter",
-        "est", "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith",
+        "the", "and", "ing", "ion", "ent", "her", "for", "tha", "nth", "int", "ere", "ter", "est",
+        "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith",
     ];
-    const SUFFIXES: &[&str] = &["ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous"];
+    const SUFFIXES: &[&str] = &[
+        "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous",
+    ];
     const RARE: &[&str] = &["qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg"];
 
     let mut score = 0;
@@ -303,8 +305,8 @@ fn score_russian(token: &str) -> i32 {
         "ма", "ме", "до", "че", "об", "бо",
     ];
     const COMMON_TRIGRAMS: &[&str] = &[
-        "про", "ост", "ени", "ова", "ние", "ств", "ого", "ать", "это", "тор", "ско", "ной",
-        "ова", "ель", "ени", "при", "раз", "как", "под", "без",
+        "про", "ост", "ени", "ова", "ние", "ств", "ого", "ать", "это", "тор", "ско", "ной", "ова",
+        "ель", "ени", "при", "раз", "как", "под", "без",
     ];
     const SUFFIXES: &[&str] = &[
         "ость", "ение", "ание", "ого", "ему", "ами", "ями", "ый", "ий", "ая", "ое", "ть", "ться",
