@@ -1,3 +1,6 @@
+mod settings;
+mod ui;
+
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut};
 use std::sync::OnceLock;
@@ -79,6 +82,15 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
 
+    if !settings::first_run_completed() {
+        let enable_autostart = ui::show_first_run()?;
+        if enable_autostart {
+            settings::set_autostart(true)?;
+        }
+        settings::mark_first_run_completed()?;
+    }
+
+    let tray = ui::TrayGuard::install()?;
     ENGINE.get_or_init(|| Mutex::new(Engine::default()));
     let hook = KeyboardHook::install()?;
 
@@ -95,6 +107,7 @@ pub fn run() -> Result<()> {
     }
 
     drop(hook);
+    drop(tray);
     drop(mutex);
     Ok(())
 }
