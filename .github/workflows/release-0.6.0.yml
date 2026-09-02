@@ -1,0 +1,61 @@
+name: Release G-switcher 0.6.0
+
+on:
+  workflow_run:
+    workflows: ["Windows Rust CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if release already exists
+        id: existing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.6.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download checked Windows artifact
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g-switcher-0.6.0-windows-x64
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify artifact hash
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        working-directory: release
+        run: sha256sum -c g-switcher.exe.sha256
+
+      - name: Create v0.6.0 release
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create v0.6.0 \
+            release/g-switcher.exe \
+            release/g-switcher.exe.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --title "G-switcher 0.6.0" \
+            --notes "Fresh-root Rust release for Windows. Includes local RU/EN automatic layout correction, focused-control HKL switching, code-safe protection, Backspace recovery, Ctrl+Backspace undo, single-instance runtime, tray/first-run/autostart UI, and a real Win32 hook-to-EDIT E2E release gate. The EXE is not Authenticode-signed. Verify the attached SHA-256 before use."
