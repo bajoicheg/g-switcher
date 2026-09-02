@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI32, AtomicIsize, Ordering};
 use anyhow::{anyhow, Result};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateFontW, DeleteObject, GetStockObject, SetBkMode, DEFAULT_GUI_FONT,
+    CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
@@ -14,13 +14,13 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
-    DispatchMessageW, GetCursorPos, GetDlgItem, GetSysColorBrush, GetSystemMetrics, IsWindow,
-    LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW,
-    SendMessageW, SetForegroundWindow, ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK,
-    BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
-    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-    WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT,
-    WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow, LoadCursorW, LoadIconW,
+    LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow,
+    ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX,
+    BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN,
+    STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND,
+    WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD,
+    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::settings;
