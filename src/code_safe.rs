@@ -20,9 +20,7 @@ fn looks_like_url_or_email(t: &str) -> bool {
 fn looks_like_path(t: &str) -> bool {
     t.starts_with('/')
         || t.starts_with("\\\\")
-        || (t.len() >= 3
-            && t.as_bytes()[1] == b':'
-            && matches!(t.as_bytes()[2], b'\\' | b'/'))
+        || (t.len() >= 3 && t.as_bytes()[1] == b':' && matches!(t.as_bytes()[2], b'\\' | b'/'))
 }
 
 fn looks_like_ip_or_cidr(t: &str) -> bool {
@@ -32,7 +30,9 @@ fn looks_like_ip_or_cidr(t: &str) -> bool {
     };
     let parts: Vec<_> = ip.split('.').collect();
     parts.len() == 4
-        && parts.iter().all(|p| !p.is_empty() && p.parse::<u8>().is_ok())
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.parse::<u8>().is_ok())
         && (!prefix || t.rsplit('/').next().is_some())
 }
 
