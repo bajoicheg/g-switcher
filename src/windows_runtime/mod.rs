@@ -5,24 +5,28 @@ use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut};
 use std::sync::OnceLock;
 
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use windows_sys::Win32::Foundation::{
     CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::System::Threading::{CreateMutexW, Sleep};
+use windows_sys::Win32::System::Threading::{CreateMutexW, GetCurrentThreadId, Sleep};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList, LoadKeyboardLayoutW, SendInput,
-    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CAPITAL,
-    VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA,
-    VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
+    ActivateKeyboardLayout, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
+    LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2,
+    VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT,
+    VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
-    GetWindowThreadProcessId, PostMessageW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL,
-    WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
+    GetWindowThreadProcessId, PostMessageW, PostThreadMessageW, SetWindowsHookExW,
+    TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
+    WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
 use crate::detector::{correction, opposite_candidate_is_prefix};
@@ -30,8 +34,13 @@ use crate::model::Language;
 
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
 const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.6";
+const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
+static HOOK_THREAD_ID: OnceLock<u32> = OnceLock::new();
+
+#[cfg(test)]
+static TEST_ACCEPT_INJECTED_INPUT: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy)]
 struct FocusTarget {
@@ -63,12 +72,26 @@ struct RuntimeUndo {
     delimiter: Delimiter,
 }
 
+#[derive(Debug, Clone)]
+struct PendingCorrection {
+    focus: isize,
+    thread_id: u32,
+    source_hkl: isize,
+    source_language: Language,
+    target_hkl: isize,
+    corrected: String,
+    erase_len: usize,
+    original_strokes: Vec<Stroke>,
+    delimiter: Delimiter,
+}
+
 #[derive(Default)]
 struct Engine {
     candidate: String,
     strokes: Vec<Stroke>,
     candidate_focus: isize,
     undo: Option<RuntimeUndo>,
+    pending_correction: Option<PendingCorrection>,
 }
 
 enum HookDecision {
@@ -100,6 +123,9 @@ pub fn run() -> Result<()> {
         if result <= 0 {
             break;
         }
+        if handle_runtime_message(&message) {
+            continue;
+        }
         unsafe {
             TranslateMessage(&message);
             DispatchMessageW(&message);
@@ -110,6 +136,16 @@ pub fn run() -> Result<()> {
     drop(tray);
     drop(mutex);
     Ok(())
+}
+
+fn handle_runtime_message(message: &MSG) -> bool {
+    if message.message != WM_RUNTIME_CORRECTION {
+        return false;
+    }
+    if let Some(engine) = ENGINE.get() {
+        engine.lock().execute_pending_correction();
+    }
+    true
 }
 
 struct SingleInstance {
@@ -145,6 +181,8 @@ struct KeyboardHook {
 
 impl KeyboardHook {
     fn install() -> Result<Self> {
+        let thread_id = unsafe { GetCurrentThreadId() };
+        let _ = HOOK_THREAD_ID.set(thread_id);
         let module = unsafe { GetModuleHandleW(null()) } as HINSTANCE;
         let handle = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), module, 0) };
         if handle.is_null() {
@@ -170,7 +208,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     }
 
     let event = &*(lparam as *const KBDLLHOOKSTRUCT);
-    if event.dwExtraInfo == MAGIC_EXTRA_INFO || event.flags & LLKHF_INJECTED != 0 {
+    if should_ignore_hook_event(event) {
         return CallNextHookEx(null_mut(), code, wparam, lparam);
     }
 
@@ -185,6 +223,22 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     }
 }
 
+fn should_ignore_hook_event(event: &KBDLLHOOKSTRUCT) -> bool {
+    if event.dwExtraInfo == MAGIC_EXTRA_INFO {
+        return true;
+    }
+    if event.flags & LLKHF_INJECTED == 0 {
+        return false;
+    }
+
+    #[cfg(test)]
+    if TEST_ACCEPT_INJECTED_INPUT.load(Ordering::SeqCst) {
+        return false;
+    }
+
+    true
+}
+
 impl Engine {
     fn on_key_down(&mut self, vk: u16) -> HookDecision {
         let Some(target) = focused_target() else {
@@ -192,6 +246,10 @@ impl Engine {
             self.undo = None;
             return HookDecision::Pass;
         };
+
+        if is_modifier_vk(vk) {
+            return HookDecision::Pass;
+        }
 
         if is_control_down() && vk == VK_BACK {
             return if self.try_undo(target) {
@@ -232,7 +290,10 @@ impl Engine {
             VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE)),
             VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN)),
             VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB)),
-            VK_OEM_COMMA | VK_OEM_PERIOD | VK_OEM_2 => self.handle_punctuation(target, vk),
+            VK_OEM_2 => self.handle_punctuation(target, vk),
+            VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => {
+                self.handle_punctuation(target, vk)
+            }
             _ => {
                 if let Some(ch) = visible_char(vk, target.language) {
                     self.candidate.push(ch);
@@ -282,7 +343,8 @@ impl Engine {
     }
 
     fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
-        if self.candidate.is_empty() || self.strokes.is_empty() {
+        if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
+        {
             return false;
         }
 
@@ -297,36 +359,99 @@ impl Engine {
         let Some(target_hkl) = select_layout(target_language) else {
             return false;
         };
-        if !switch_layout(source.hwnd, source.thread_id, target_hkl) {
+
+        let mut preflight = Vec::new();
+        append_backspaces(&mut preflight, self.candidate.chars().count());
+        if !append_text_for_layout(&mut preflight, &corrected, target_hkl)
+            || !append_delimiter(&mut preflight, delimiter, target_hkl)
+        {
             return false;
+        }
+
+        let Some(hook_thread_id) = HOOK_THREAD_ID.get().copied() else {
+            return false;
+        };
+
+        self.pending_correction = Some(PendingCorrection {
+            focus: source.hwnd as isize,
+            thread_id: source.thread_id,
+            source_hkl: source.hkl,
+            source_language: source.language,
+            target_hkl,
+            corrected,
+            erase_len: self.candidate.chars().count(),
+            original_strokes: self.strokes.clone(),
+            delimiter,
+        });
+
+        if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_CORRECTION, 0, 0) } == 0 {
+            self.pending_correction = None;
+            return false;
+        }
+
+        self.reset_candidate();
+        true
+    }
+
+    fn execute_pending_correction(&mut self) {
+        let Some(pending) = self.pending_correction.take() else {
+            return;
+        };
+        let hwnd = pending.focus as HWND;
+
+        let same_focus = focused_target()
+            .map(|target| target.hwnd as isize == pending.focus)
+            .unwrap_or(false);
+        if !same_focus {
+            return;
+        }
+
+        if !switch_layout(hwnd, pending.thread_id, pending.target_hkl) {
+            self.restore_failed_correction(&pending);
+            return;
         }
 
         let mut inputs = Vec::new();
-        append_backspaces(&mut inputs, self.candidate.chars().count());
-        for stroke in &self.strokes {
-            append_stroke(&mut inputs, *stroke);
-        }
-        if !append_delimiter(&mut inputs, delimiter, target_hkl) {
-            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
-            return false;
+        append_backspaces(&mut inputs, pending.erase_len);
+        if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
+            || !append_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
+        {
+            self.restore_failed_correction(&pending);
+            return;
         }
 
-        if !send_inputs(&inputs) {
-            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
-            self.reset_candidate();
-            return false;
+        if !send_inputs_in_layout(&inputs, pending.target_hkl) {
+            self.restore_failed_correction(&pending);
+            return;
         }
 
         self.undo = Some(RuntimeUndo {
-            focus: source.hwnd as isize,
-            source_hkl: source.hkl,
-            source_language: source.language,
-            original_strokes: self.strokes.clone(),
-            corrected_len: corrected.chars().count(),
-            delimiter,
+            focus: pending.focus,
+            source_hkl: pending.source_hkl,
+            source_language: pending.source_language,
+            original_strokes: pending.original_strokes,
+            corrected_len: pending.corrected.chars().count(),
+            delimiter: pending.delimiter,
         });
-        self.reset_candidate();
-        true
+    }
+
+    fn restore_failed_correction(&mut self, pending: &PendingCorrection) {
+        let hwnd = pending.focus as HWND;
+        if !switch_layout(hwnd, pending.thread_id, pending.source_hkl) {
+            return;
+        }
+
+        let same_focus = focused_target()
+            .map(|target| target.hwnd as isize == pending.focus)
+            .unwrap_or(false);
+        if !same_focus {
+            return;
+        }
+
+        let mut delimiter = Vec::new();
+        if append_delimiter(&mut delimiter, pending.delimiter, pending.source_hkl) {
+            let _ = send_inputs_in_layout(&delimiter, pending.source_hkl);
+        }
     }
 
     fn try_undo(&mut self, target: FocusTarget) -> bool {
@@ -341,6 +466,7 @@ impl Engine {
         }
 
         let mut inputs = Vec::new();
+        inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
         append_backspaces(&mut inputs, undo.corrected_len + 1);
         for stroke in &undo.original_strokes {
             append_stroke(&mut inputs, *stroke);
@@ -348,8 +474,9 @@ impl Engine {
         if !append_delimiter(&mut inputs, undo.delimiter, undo.source_hkl) {
             return false;
         }
+        inputs.push(key_input(VK_CONTROL, 0));
 
-        let result = send_inputs(&inputs);
+        let result = send_inputs_in_layout(&inputs, undo.source_hkl);
         if result {
             self.candidate_focus = target.hwnd as isize;
         }
@@ -486,16 +613,30 @@ fn visible_char(vk: u16, language: Language) -> Option<char> {
         (Language::English, VK_OEM_PERIOD, false) => Some('.'),
         (Language::English, VK_OEM_2, false) => Some('/'),
         (Language::Russian, VK_OEM_3, false) => Some('ё'),
+        (Language::Russian, VK_OEM_3, true) => Some('Ё'),
         (Language::Russian, VK_OEM_4, false) => Some('х'),
+        (Language::Russian, VK_OEM_4, true) => Some('Х'),
         (Language::Russian, VK_OEM_6, false) => Some('ъ'),
+        (Language::Russian, VK_OEM_6, true) => Some('Ъ'),
         (Language::Russian, VK_OEM_1, false) => Some('ж'),
+        (Language::Russian, VK_OEM_1, true) => Some('Ж'),
         (Language::Russian, VK_OEM_7, false) => Some('э'),
+        (Language::Russian, VK_OEM_7, true) => Some('Э'),
         (Language::Russian, VK_OEM_COMMA, false) => Some('б'),
+        (Language::Russian, VK_OEM_COMMA, true) => Some('Б'),
         (Language::Russian, VK_OEM_PERIOD, false) => Some('ю'),
+        (Language::Russian, VK_OEM_PERIOD, true) => Some('Ю'),
         (Language::Russian, VK_OEM_2, false) => Some('.'),
         (Language::Russian, VK_OEM_2, true) => Some(','),
         _ => None,
     }
+}
+
+fn is_modifier_vk(vk: u16) -> bool {
+    matches!(
+        vk,
+        0x10 | 0x11 | 0x12 | 0x14 | 0xA0 | 0xA1 | 0xA2 | 0xA3 | 0xA4 | 0xA5
+    )
 }
 
 fn is_shift_down() -> bool {
@@ -522,6 +663,29 @@ fn append_backspaces(inputs: &mut Vec<INPUT>, count: usize) {
     }
 }
 
+fn append_text_for_layout(inputs: &mut Vec<INPUT>, text: &str, hkl: isize) -> bool {
+    for ch in text.chars() {
+        let encoded = unsafe { VkKeyScanExW(ch as u16, hkl as *mut core::ffi::c_void) };
+        if encoded == -1 {
+            return false;
+        }
+        let encoded = encoded as u16;
+        let vk = encoded & 0xff;
+        let modifiers = (encoded >> 8) & 0xff;
+        if modifiers & !1 != 0 {
+            return false;
+        }
+        append_stroke(
+            inputs,
+            Stroke {
+                vk,
+                shift: modifiers & 1 != 0,
+            },
+        );
+    }
+    true
+}
+
 fn append_delimiter(inputs: &mut Vec<INPUT>, delimiter: Delimiter, hkl: isize) -> bool {
     match delimiter {
         Delimiter::VirtualKey(vk) => {
@@ -545,10 +709,31 @@ fn append_stroke(inputs: &mut Vec<INPUT>, stroke: Stroke) {
     if stroke.shift {
         inputs.push(key_input(VK_SHIFT, 0));
     }
-    inputs.push(key_input(stroke.vk, 0));
-    inputs.push(key_input(stroke.vk, KEYEVENTF_KEYUP));
+
+    if let Some(scan) = physical_oem_scan_code(stroke.vk) {
+        inputs.push(scan_input(scan, 0));
+        inputs.push(scan_input(scan, KEYEVENTF_KEYUP));
+    } else {
+        inputs.push(key_input(stroke.vk, 0));
+        inputs.push(key_input(stroke.vk, KEYEVENTF_KEYUP));
+    }
+
     if stroke.shift {
         inputs.push(key_input(VK_SHIFT, KEYEVENTF_KEYUP));
+    }
+}
+
+fn physical_oem_scan_code(vk: u16) -> Option<u16> {
+    match vk {
+        VK_OEM_4 => Some(0x1A),
+        VK_OEM_6 => Some(0x1B),
+        VK_OEM_1 => Some(0x27),
+        VK_OEM_7 => Some(0x28),
+        VK_OEM_3 => Some(0x29),
+        VK_OEM_COMMA => Some(0x33),
+        VK_OEM_PERIOD => Some(0x34),
+        VK_OEM_2 => Some(0x35),
+        _ => None,
     }
 }
 
@@ -565,6 +750,30 @@ fn key_input(vk: u16, flags: u32) -> INPUT {
             },
         },
     }
+}
+
+fn scan_input(scan: u16, flags: u32) -> INPUT {
+    INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: 0,
+                wScan: scan,
+                dwFlags: flags | KEYEVENTF_SCANCODE,
+                time: 0,
+                dwExtraInfo: MAGIC_EXTRA_INFO,
+            },
+        },
+    }
+}
+
+fn send_inputs_in_layout(inputs: &[INPUT], hkl: isize) -> bool {
+    unsafe {
+        if ActivateKeyboardLayout(hkl as *mut core::ffi::c_void, 0).is_null() {
+            return false;
+        }
+    }
+    send_inputs(inputs)
 }
 
 fn send_inputs(inputs: &[INPUT]) -> bool {
@@ -585,6 +794,9 @@ fn wide(value: &str) -> Vec<u16> {
 }
 
 #[cfg(test)]
+mod e2e_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -600,5 +812,21 @@ mod tests {
     fn input_struct_matches_win64_abi_on_64_bit_windows() {
         #[cfg(target_pointer_width = "64")]
         assert_eq!(size_of::<INPUT>(), 40);
+    }
+
+    #[test]
+    fn modifier_keys_do_not_count_as_candidate_characters() {
+        for vk in [0x10, 0x11, 0x12, 0x14, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5] {
+            assert!(is_modifier_vk(vk));
+        }
+        assert!(!is_modifier_vk(b'A' as u16));
+    }
+
+    #[test]
+    fn oem_virtual_keys_replay_as_physical_scan_codes() {
+        assert_eq!(physical_oem_scan_code(VK_OEM_COMMA), Some(0x33));
+        assert_eq!(physical_oem_scan_code(VK_OEM_PERIOD), Some(0x34));
+        assert_eq!(physical_oem_scan_code(VK_OEM_2), Some(0x35));
+        assert_eq!(physical_oem_scan_code(b'A' as u16), None);
     }
 }
