@@ -14,9 +14,9 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
     GetWindowTextLengthW, GetWindowTextW, PeekMessageW, PostMessageW, PostQuitMessage,
-    RegisterClassW, SendMessageW, SetForegroundWindow, SetWindowTextW, ShowWindow, TranslateMessage,
-    PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION, WS_CHILD,
-    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    RegisterClassW, SendMessageW, SetForegroundWindow, SetWindowTextW, ShowWindow,
+    TranslateMessage, PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION,
+    WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::*;
@@ -302,7 +302,9 @@ fn real_windows_hook_to_edit_e2e() {
     inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
     eprintln!(
         "G-switcher E2E manual-only resolved process: {:?}",
-        ENGINE.get().map(|engine| engine.lock().process_name.clone())
+        ENGINE
+            .get()
+            .map(|engine| engine.lock().process_name.clone())
     );
     await_text(edit, "ghbdtn ");
     inject_ctrl_shift_hotkey(VK_F10_VALUE);
