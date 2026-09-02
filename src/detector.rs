@@ -4,11 +4,15 @@ use once_cell::sync::Lazy;
 
 use crate::{
     code_safe::is_code_safe_token,
+    frequency_model,
     layout::opposite_layout_text,
     model::{Decision, Language},
 };
 
-pub const DEFAULT_CONFIDENCE_THRESHOLD: u8 = 72;
+pub const CONSERVATIVE_CONFIDENCE_THRESHOLD: u8 = 84;
+pub const NORMAL_CONFIDENCE_THRESHOLD: u8 = 72;
+pub const AGGRESSIVE_CONFIDENCE_THRESHOLD: u8 = 62;
+pub const DEFAULT_CONFIDENCE_THRESHOLD: u8 = NORMAL_CONFIDENCE_THRESHOLD;
 pub const MAX_CONTEXT_WORDS: usize = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +27,7 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
         "а",
         "без",
+        "безопасность",
         "беру",
         "берут",
         "был",
@@ -59,6 +64,7 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
         "коробка",
         "кто",
         "ли",
+        "мир",
         "мне",
         "можно",
         "моё",
@@ -104,6 +110,7 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
         "сервер",
         "система",
         "сказать",
+        "собака",
         "так",
         "там",
         "тебя",
@@ -124,8 +131,6 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
         "этот",
         "я",
         "ёлка",
-        "безопасность",
-        "собака",
     ]
     .into_iter()
     .collect()
@@ -227,30 +232,41 @@ pub fn detect_with_context(
         });
     }
 
-    // A physical punctuation key can be a letter in the opposite layout.
-    // Keep partial prefixes intact so OEM keys can extend the token first.
     if is_target_word_prefix(&mapped_normalized, target, user_words) {
         return None;
     }
 
-    let source_score = language_score(&normalized, source);
-    let target_score = language_score(&mapped_normalized, target);
+    let source_frequency = frequency_model::word_score(source, &normalized);
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+
+    // Detector v3 treats a frequent source-language word as strong preservation evidence.
+    // This protects common real words even when their opposite-layout shape looks plausible.
+    if source_frequency >= 15 && target_frequency == 0 {
+        return None;
+    }
+
+    let source_score = language_score(&normalized, source)
+        + frequency_model::lexical_score(source, &normalized);
+    let target_score = language_score(&mapped_normalized, target)
+        + frequency_model::lexical_score(target, &mapped_normalized);
     let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
     let effective_target = target_score + context_bonus;
     let effective_margin = target_score - source_score + context_bonus;
 
-    if effective_target < 8 || effective_margin < 4 {
+    if effective_target < 10 || effective_margin < 5 {
         return None;
     }
 
-    // Unknown three-letter words are intrinsically ambiguous. Exact target dictionary
-    // matches were handled above; all remaining three-letter candidates require a
-    // strong contextual signal before automatic correction.
-    if token.chars().count() == 3 && context_bonus < 10 {
+    if token.chars().count() == 3 && context_bonus < 10 && target_frequency == 0 {
         return None;
     }
 
-    let confidence = confidence_from_scores(effective_target, effective_margin);
+    let confidence = confidence_from_scores(
+        effective_target,
+        effective_margin,
+        target_frequency,
+        source_frequency,
+    );
     Some(Detection {
         source,
         target,
@@ -299,9 +315,15 @@ pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[S
     is_target_word_prefix(&mapped, target, user_words)
 }
 
-fn confidence_from_scores(target_score: i32, margin: i32) -> u8 {
-    let raw = 46 + margin * 4 + target_score.max(0) / 2;
-    raw.clamp(0, 95) as u8
+fn confidence_from_scores(
+    target_score: i32,
+    margin: i32,
+    target_frequency: i32,
+    source_frequency: i32,
+) -> u8 {
+    let frequency_margin = target_frequency - source_frequency;
+    let raw = 43 + margin * 3 + target_score.max(0) / 2 + frequency_margin.max(0) / 2;
+    raw.clamp(0, 96) as u8
 }
 
 fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
@@ -323,38 +345,11 @@ fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) 
     if let Some(last) = recent.first() {
         if infer_language(last) == Some(target) {
             let last = normalize(last, target);
-            if common_phrase_pair(target, &last, candidate) {
-                bonus += 6;
-            }
+            bonus += frequency_model::transition_score(target, &last, candidate);
         }
     }
 
-    bonus.clamp(-6, 18)
-}
-
-fn common_phrase_pair(language: Language, previous: &str, current: &str) -> bool {
-    const RU_PAIRS: &[(&str, &str)] = &[
-        ("в", "мир"),
-        ("в", "системе"),
-        ("как", "дела"),
-        ("добрый", "день"),
-        ("на", "работу"),
-        ("это", "важно"),
-    ];
-    const EN_PAIRS: &[(&str, &str)] = &[
-        ("good", "morning"),
-        ("hello", "world"),
-        ("in", "the"),
-        ("thank", "you"),
-        ("the", "system"),
-        ("to", "the"),
-    ];
-
-    match language {
-        Language::Russian => RU_PAIRS,
-        Language::English => EN_PAIRS,
-    }
-    .contains(&(previous, current))
+    bonus.clamp(-6, 20)
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
@@ -413,174 +408,51 @@ fn language_score(token: &str, language: Language) -> i32 {
     if token.chars().count() < 3 {
         return 0;
     }
-    match language {
-        Language::English => score_english(token),
-        Language::Russian => score_russian(token),
-    }
-}
-
-fn score_english(token: &str) -> i32 {
-    const COMMON: &[&str] = &[
-        "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd", "ti", "es", "or", "te", "of",
-        "ed", "is", "it", "al", "ar", "st", "to", "nt", "ng", "se", "ha", "as", "ou", "io", "le",
-        "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne", "ea", "ra", "ce", "li", "ch", "ll",
-        "be", "ma", "si", "om", "ur", "ca", "el", "la", "ns", "di", "fo", "ho", "pe", "ec", "pr",
-    ];
-    const COMMON_TRIGRAMS: &[&str] = &[
-        "the", "and", "ing", "ion", "ent", "her", "for", "tha", "nth", "int", "ere", "ter", "est",
-        "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith", "not", "you",
-        "our", "rea", "com", "pro", "con", "sta",
-    ];
-    const COMMON_FOUR: &[&str] = &[
-        "tion", "ther", "that", "with", "ment", "ions", "this", "here", "ould", "ight", "have",
-        "from",
-    ];
-    const SUFFIXES: &[&str] = &[
-        "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous", "ive", "ize", "ise",
-    ];
-    const RARE: &[&str] = &[
-        "qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg", "zx", "xj", "vv", "wwq",
-    ];
-
-    let mut score = 0;
     let chars: Vec<char> = token.chars().collect();
-    let vowels = chars
+    let vowel_count = chars
         .iter()
-        .filter(|ch| matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'))
+        .filter(|ch| is_vowel(**ch, language))
         .count();
-    if vowels == 0 {
-        score -= 8;
+    let mut score = if vowel_count == 0 {
+        -8
     } else {
-        let ratio = vowels * 100 / chars.len();
-        score += if (20..=70).contains(&ratio) { 4 } else { 1 };
-    }
+        let ratio = vowel_count * 100 / chars.len();
+        if (20..=70).contains(&ratio) {
+            4
+        } else {
+            1
+        }
+    };
 
-    for pair in token.as_bytes().windows(2) {
-        if let Ok(pair) = std::str::from_utf8(pair) {
-            if COMMON.contains(&pair) {
-                score += 2;
-            }
-            if RARE.contains(&pair) {
-                score -= 4;
-            }
-        }
-    }
-    for triple in token.as_bytes().windows(3) {
-        if let Ok(triple) = std::str::from_utf8(triple) {
-            if COMMON_TRIGRAMS.contains(&triple) {
-                score += 4;
-            }
-            if RARE.contains(&triple) {
-                score -= 5;
-            }
-        }
-    }
-    for four in token.as_bytes().windows(4) {
-        if let Ok(four) = std::str::from_utf8(four) {
-            if COMMON_FOUR.contains(&four) {
-                score += 5;
-            }
-        }
-    }
-    if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
+    if has_common_suffix(token, language) {
         score += 4;
     }
-    score -= consonant_run_penalty(&chars, Language::English);
+    score -= consonant_run_penalty(&chars, language);
     score -= repeated_letter_penalty(&chars);
     score
 }
 
-fn score_russian(token: &str) -> i32 {
-    const COMMON: &[&str] = &[
-        "ст", "но", "то", "на", "ен", "ов", "ни", "ра", "во", "ко", "ро", "по", "пр", "ер", "ос",
-        "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло", "ва", "ит", "те", "ет",
-        "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис", "ол", "ле", "ся", "ин", "тр", "ом",
-        "ма", "ме", "до", "че", "об", "бо", "ми", "ир", "си", "ем", "ты", "бы", "за", "ск", "од",
+fn has_common_suffix(token: &str, language: Language) -> bool {
+    const EN_SUFFIXES: &[&str] = &[
+        "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous", "ive", "ize", "ise",
     ];
-    const COMMON_TRIGRAMS: &[&str] = &[
-        "про", "ост", "ени", "ова", "ние", "ств", "ого", "ать", "это", "тор", "ско", "ной", "ова",
-        "ель", "ени", "при", "раз", "как", "под", "без", "ист", "раб", "сер", "пол", "ние", "ова",
-    ];
-    const COMMON_FOUR: &[&str] = &[
-        "ение",
-        "ость",
-        "ного",
-        "овой",
-        "ство",
-        "тель",
-        "ного",
-        "ться",
-        "ской",
-        "работ",
-        "сист",
-    ];
-    const SUFFIXES: &[&str] = &[
+    const RU_SUFFIXES: &[&str] = &[
         "ость", "ение", "ание", "ого", "ему", "ами", "ями", "ый", "ий", "ая", "ое", "ть", "ться",
         "ный", "ная", "ные", "ов", "ев",
     ];
-    const RARE: &[&str] = &[
-        "жы", "шы", "чя", "щя", "йй", "ъъ", "ьы", "ыы", "эы", "йь", "ъь",
-    ];
-
-    let mut score = 0;
-    let chars: Vec<char> = token.chars().collect();
-    let vowels = chars
-        .iter()
-        .filter(|ch| {
-            matches!(
-                ch,
-                'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
-            )
-        })
-        .count();
-    if vowels == 0 {
-        score -= 8;
-    } else {
-        let ratio = vowels * 100 / chars.len();
-        score += if (20..=70).contains(&ratio) { 4 } else { 1 };
+    match language {
+        Language::English => EN_SUFFIXES,
+        Language::Russian => RU_SUFFIXES,
     }
-
-    for pair in chars.windows(2) {
-        let pair: String = pair.iter().collect();
-        if COMMON.contains(&pair.as_str()) {
-            score += 2;
-        }
-        if RARE.contains(&pair.as_str()) {
-            score -= 4;
-        }
-    }
-    for triple in chars.windows(3) {
-        let triple: String = triple.iter().collect();
-        if COMMON_TRIGRAMS.contains(&triple.as_str()) {
-            score += 4;
-        }
-    }
-    for four in chars.windows(4) {
-        let four: String = four.iter().collect();
-        if COMMON_FOUR.contains(&four.as_str()) {
-            score += 5;
-        }
-    }
-    if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
-        score += 4;
-    }
-    score -= consonant_run_penalty(&chars, Language::Russian);
-    score -= repeated_letter_penalty(&chars);
-    score
+    .iter()
+    .any(|suffix| token.ends_with(suffix))
 }
 
 fn consonant_run_penalty(chars: &[char], language: Language) -> i32 {
     let mut longest = 0usize;
     let mut current = 0usize;
     for ch in chars {
-        let vowel = match language {
-            Language::Russian => matches!(
-                ch,
-                'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
-            ),
-            Language::English => matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'),
-        };
-        if vowel {
+        if is_vowel(*ch, language) {
             current = 0;
         } else {
             current += 1;
@@ -603,6 +475,16 @@ fn repeated_letter_penalty(chars: &[char]) -> i32 {
         5
     } else {
         0
+    }
+}
+
+fn is_vowel(ch: char, language: Language) -> bool {
+    match language {
+        Language::Russian => matches!(
+            ch,
+            'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
+        ),
+        Language::English => matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'),
     }
 }
 
@@ -678,6 +560,8 @@ mod tests {
             "vpn",
             "edr",
             "soc",
+            "security",
+            "system",
         ] {
             assert_eq!(decide(word), Decision::Keep, "changed {word}");
         }
@@ -703,6 +587,19 @@ mod tests {
     }
 
     #[test]
+    fn sensitivity_thresholds_are_strictly_ordered() {
+        assert!(CONSERVATIVE_CONFIDENCE_THRESHOLD > NORMAL_CONFIDENCE_THRESHOLD);
+        assert!(NORMAL_CONFIDENCE_THRESHOLD > AGGRESSIVE_CONFIDENCE_THRESHOLD);
+    }
+
+    #[test]
+    fn frequency_model_protects_frequent_source_words() {
+        for word in ["system", "security", "работа", "система"] {
+            assert_eq!(decide(word), Decision::Keep, "changed frequent word {word}");
+        }
+    }
+
+    #[test]
     fn punctuation_in_opposite_candidate_is_not_silently_dropped() {
         assert_eq!(decide("беру"), Decision::Keep);
     }
@@ -717,5 +614,12 @@ mod tests {
     fn recognizes_ambiguous_oem_prefix() {
         assert!(opposite_candidate_is_prefix("rjhj"));
         assert!(!opposite_candidate_is_prefix("hello"));
+    }
+
+    #[test]
+    fn infer_language_accepts_multiword_selected_text() {
+        assert_eq!(infer_language("ghbdtn rfr ltkf"), Some(Language::English));
+        assert_eq!(infer_language("руддщ цщкдв"), Some(Language::Russian));
+        assert_eq!(infer_language("hello мир"), None);
     }
 }
