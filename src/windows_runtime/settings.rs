@@ -3,9 +3,8 @@ use std::ptr::{null, null_mut};
 
 use anyhow::{anyhow, Result};
 use windows_sys::Win32::System::Registry::{
-    RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW,
-    RegSetValueExW, HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE, REG_DWORD,
-    REG_OPTION_NON_VOLATILE, REG_SZ,
+    RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
+    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE, REG_DWORD, REG_OPTION_NON_VOLATILE, REG_SZ,
 };
 
 const SETTINGS_KEY: &str = "Software\\GSwitcher";
@@ -139,13 +138,7 @@ fn delete_value(path: &str, name: &str) -> Result<()> {
     unsafe {
         let mut key: HKEY = null_mut();
         let path = wide(path);
-        let status = RegOpenKeyExW(
-            HKEY_CURRENT_USER,
-            path.as_ptr(),
-            0,
-            KEY_SET_VALUE,
-            &mut key,
-        );
+        let status = RegOpenKeyExW(HKEY_CURRENT_USER, path.as_ptr(), 0, KEY_SET_VALUE, &mut key);
         if status != 0 {
             return Ok(());
         }

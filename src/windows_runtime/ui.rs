@@ -1,5 +1,5 @@
 use std::mem::{size_of, zeroed};
-use std::ptr::{null, null_mut};
+use std::ptr::{null, null_mut, without_provenance};
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use anyhow::{anyhow, Result};
@@ -14,11 +14,10 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
     DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow, LoadCursorW, LoadIconW,
     PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow,
-    TrackPopupMenu, TranslateMessage, UpdateWindow, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX,
-    BS_DEFPUSHBUTTON, BST_CHECKED, COLOR_WINDOW, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
-    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SS_ICON, SS_LEFT, STM_SETICON, SW_SHOW, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW,
-    WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
+    IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, STM_SETICON,
+    SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_RBUTTONUP,
+    WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::settings;
@@ -31,6 +30,10 @@ const ID_AUTOSTART: usize = 1001;
 const ID_EXIT: usize = 1002;
 const ID_CHECKBOX: i32 = 2001;
 const ID_OK: i32 = 2002;
+const BST_CHECKED_VALUE: u32 = 1;
+const COLOR_WINDOW_INDEX: usize = 5;
+const SS_LEFT_STYLE: u32 = 0;
+const SS_ICON_STYLE: u32 = 0x0000_0003;
 
 static FIRST_RUN_RESULT: AtomicI32 = AtomicI32::new(-1);
 
@@ -121,7 +124,7 @@ pub fn show_first_run() -> Result<bool> {
             hInstance: module,
             hIcon: load_app_icon(),
             hCursor: LoadCursorW(null_mut(), IDC_ARROW),
-            hbrBackground: (COLOR_WINDOW as usize + 1) as *mut core::ffi::c_void,
+            hbrBackground: (COLOR_WINDOW_INDEX + 1) as *mut core::ffi::c_void,
             lpszMenuName: null(),
             lpszClassName: class.as_ptr(),
         };
@@ -153,7 +156,6 @@ pub fn show_first_run() -> Result<bool> {
         }
 
         ShowWindow(hwnd, SW_SHOW);
-        UpdateWindow(hwnd);
 
         let mut message: MSG = zeroed();
         while IsWindow(hwnd) != 0 {
@@ -183,7 +185,7 @@ unsafe extern "system" fn first_run_proc(
             let command = (wparam & 0xffff) as i32;
             if command == ID_OK {
                 let checkbox = GetDlgItem(hwnd, ID_CHECKBOX);
-                let checked = SendMessageW(checkbox, BM_GETCHECK, 0, 0) as u32 == BST_CHECKED;
+                let checked = SendMessageW(checkbox, BM_GETCHECK, 0, 0) as u32 == BST_CHECKED_VALUE;
                 FIRST_RUN_RESULT.store(i32::from(checked), Ordering::SeqCst);
                 DestroyWindow(hwnd);
                 return 0;
@@ -209,7 +211,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
         static_class.as_ptr(),
         empty.as_ptr(),
-        WS_CHILD | WS_VISIBLE | SS_ICON,
+        WS_CHILD | WS_VISIBLE | SS_ICON_STYLE,
         25,
         25,
         72,
@@ -228,7 +230,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
         static_class.as_ptr(),
         text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
         115,
         25,
         330,
@@ -244,7 +246,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
         button_class.as_ptr(),
         checkbox_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
         115,
         105,
         320,
@@ -254,14 +256,14 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         module,
         null(),
     );
-    SendMessageW(checkbox, BM_SETCHECK, BST_CHECKED as usize, 0);
+    SendMessageW(checkbox, BM_SETCHECK, BST_CHECKED_VALUE as usize, 0);
 
     let footer_text = wide("G-switcher © V. Vasilev 2026");
     let footer = CreateWindowExW(
         0,
         static_class.as_ptr(),
         footer_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
         25,
         175,
         260,
@@ -277,7 +279,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
         button_class.as_ptr(),
         ok_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
+        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
         350,
         165,
         95,
@@ -360,9 +362,12 @@ unsafe fn show_tray_menu(hwnd: HWND) {
 
 unsafe fn load_app_icon() -> *mut core::ffi::c_void {
     let module = GetModuleHandleW(null());
-    let icon = LoadIconW(module, 1usize as *const u16);
+    let icon = LoadIconW(module, without_provenance::<u16>(1));
     if icon.is_null() {
-        LoadIconW(null_mut(), windows_sys::Win32::UI::WindowsAndMessaging::IDI_APPLICATION)
+        LoadIconW(
+            null_mut(),
+            windows_sys::Win32::UI::WindowsAndMessaging::IDI_APPLICATION,
+        )
     } else {
         icon
     }
