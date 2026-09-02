@@ -29,7 +29,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use crate::windows_runtime::{current_process_name, settings};
 
-const CLASS_NAME: &str = "GSwitcher.Settings.0.9";
+const CLASS_NAME: &str = "GSwitcher.Settings.1.0";
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
 const ID_DISABLED_APPS: i32 = 3103;
@@ -45,6 +45,8 @@ const ID_PROCESS_PICKER: i32 = 3112;
 const ID_MODE_AUTO: i32 = 3113;
 const ID_MODE_MANUAL: i32 = 3114;
 const ID_MODE_DISABLED: i32 = 3115;
+const ID_SENSITIVITY: i32 = 3116;
+const ID_HOTKEY_SELECTED: i32 = 3117;
 const BST_CHECKED_VALUE: u32 = 1;
 const COLOR_3DFACE_INDEX: i32 = 15;
 const TRANSPARENT_BK_MODE: i32 = 1;
@@ -200,15 +202,19 @@ unsafe extern "system" fn settings_proc(
 unsafe fn save_and_close(hwnd: HWND) {
     let auto_correct = is_checked(hwnd, ID_AUTO_CORRECT);
     let autostart = is_checked(hwnd, ID_AUTOSTART);
+    let sensitivity = selected_combo_text(GetDlgItem(hwnd, ID_SENSITIVITY))
+        .unwrap_or_else(|| "Нормальный".to_owned());
     let disabled_apps = control_text(GetDlgItem(hwnd, ID_DISABLED_APPS));
     let manual_only_apps = control_text(GetDlgItem(hwnd, ID_MANUAL_ONLY_APPS));
     let user_words = control_text(GetDlgItem(hwnd, ID_USER_WORDS));
+    let selected_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_SELECTED));
     let current_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_CURRENT));
     let previous_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_PREVIOUS));
     let undo_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_UNDO));
     let pause_hotkey = control_text(GetDlgItem(hwnd, ID_HOTKEY_PAUSE));
 
     let hotkeys = [
+        ("выделенного текста", selected_hotkey.as_str()),
         ("текущего слова", current_hotkey.as_str()),
         ("предыдущего слова", previous_hotkey.as_str()),
         ("отмены", undo_hotkey.as_str()),
@@ -228,9 +234,11 @@ unsafe fn save_and_close(hwnd: HWND) {
 
     let runtime = settings::settings_from_text(
         auto_correct,
+        &sensitivity,
         &disabled_apps,
         &manual_only_apps,
         &user_words,
+        &selected_hotkey,
         &current_hotkey,
         &previous_hotkey,
         &undo_hotkey,
@@ -304,7 +312,7 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Настройки G-switcher 0.9.0",
+        "Настройки G-switcher 1.0.0",
         UiRect::new(28, 18, 840, 32),
     );
     set_font(title, title_font);
@@ -313,7 +321,7 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Все параметры хранятся локально. Контекст detector хранит не более двух слов только в памяти процесса.",
+        "Detector v3 работает локально; контекст — максимум два слова в RAM. Password/PIN/OTP поля всегда защищены.",
         UiRect::new(28, 54, 840, 22),
     );
     set_font(privacy, hint_font);
@@ -323,7 +331,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Основное",
-        UiRect::new(24, 86, 852, 70),
+        UiRect::new(24, 82, 852, 100),
     );
     set_font(general_group, section_font);
 
@@ -333,7 +341,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Автоматически исправлять неверную раскладку",
         ID_AUTO_CORRECT,
-        UiRect::new(44, 116, 390, 28),
+        UiRect::new(44, 108, 390, 28),
     );
     SendMessageW(
         auto_correct,
@@ -349,7 +357,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Запускать G-switcher при входе в Windows",
         ID_AUTOSTART,
-        UiRect::new(466, 116, 380, 28),
+        UiRect::new(466, 108, 380, 28),
     );
     SendMessageW(
         autostart,
@@ -359,12 +367,38 @@ unsafe fn create_controls(hwnd: HWND) {
     );
     set_font(autostart, body_font);
 
+    let sensitivity_label = create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Чувствительность",
+        UiRect::new(44, 145, 142, 24),
+    );
+    set_font(sensitivity_label, body_font);
+    let sensitivity = create_combo_box(
+        hwnd,
+        module,
+        &combo_class,
+        ID_SENSITIVITY,
+        UiRect::new(190, 140, 210, 120),
+    );
+    populate_sensitivity(sensitivity, runtime.sensitivity);
+    set_font(sensitivity, body_font);
+    let sensitivity_hint = create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Консервативный = меньше ложных замен; Агрессивный = больше автокоррекций.",
+        UiRect::new(420, 145, 426, 22),
+    );
+    set_font(sensitivity_hint, hint_font);
+
     let apps_group = create_group_box(
         hwnd,
         module,
         &button_class,
         "Режимы приложений",
-        UiRect::new(24, 170, 852, 226),
+        UiRect::new(24, 194, 852, 190),
     );
     set_font(apps_group, section_font);
 
@@ -373,16 +407,15 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Приложение",
-        UiRect::new(44, 201, 94, 24),
+        UiRect::new(44, 222, 94, 24),
     );
     set_font(picker_label, body_font);
-
     let process_picker = create_combo_box(
         hwnd,
         module,
         &combo_class,
         ID_PROCESS_PICKER,
-        UiRect::new(140, 196, 360, 240),
+        UiRect::new(140, 217, 360, 220),
     );
     populate_process_picker(process_picker, &runtime);
     set_font(process_picker, body_font);
@@ -393,7 +426,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Auto",
         ID_MODE_AUTO,
-        UiRect::new(516, 195, 88, 31),
+        UiRect::new(516, 216, 88, 31),
         false,
     );
     set_font(auto_button, body_font);
@@ -403,7 +436,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Только вручную",
         ID_MODE_MANUAL,
-        UiRect::new(612, 195, 134, 31),
+        UiRect::new(612, 216, 134, 31),
         false,
     );
     set_font(manual_button, body_font);
@@ -413,7 +446,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Отключить",
         ID_MODE_DISABLED,
-        UiRect::new(754, 195, 102, 31),
+        UiRect::new(754, 216, 102, 31),
         false,
     );
     set_font(disabled_button, body_font);
@@ -422,8 +455,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Список включает запущенные и уже настроенные процессы. Auto удаляет индивидуальное исключение.",
-        UiRect::new(44, 231, 812, 22),
+        "Выберите запущенный процесс и назначьте режим. Auto удаляет индивидуальное исключение.",
+        UiRect::new(44, 252, 812, 20),
     );
     set_font(picker_hint, hint_font);
 
@@ -432,7 +465,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Отключено — без анализа и hotkey",
-        UiRect::new(44, 261, 386, 22),
+        UiRect::new(44, 281, 386, 22),
     );
     set_font(disabled_label, section_font);
     let disabled = create_multiline_edit(
@@ -440,7 +473,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_DISABLED_APPS,
-        UiRect::new(44, 287, 386, 88),
+        UiRect::new(44, 307, 386, 56),
         true,
     );
     set_control_text(disabled, &runtime.disabled_apps_text());
@@ -451,7 +484,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Только вручную — без автозамены",
-        UiRect::new(470, 261, 386, 22),
+        UiRect::new(470, 281, 386, 22),
     );
     set_font(manual_label, section_font);
     let manual_only = create_multiline_edit(
@@ -459,7 +492,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_MANUAL_ONLY_APPS,
-        UiRect::new(470, 287, 386, 88),
+        UiRect::new(470, 307, 386, 56),
         true,
     );
     set_control_text(manual_only, &runtime.manual_only_apps_text());
@@ -470,7 +503,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Пользовательский словарь",
-        UiRect::new(24, 410, 852, 112),
+        UiRect::new(24, 396, 852, 98),
     );
     set_font(dictionary_group, section_font);
     let dictionary_hint = create_static(
@@ -478,7 +511,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Одно слово на строку. Словарь защищает допустимые слова от ложных исправлений.",
-        UiRect::new(44, 440, 812, 22),
+        UiRect::new(44, 423, 812, 20),
     );
     set_font(dictionary_hint, hint_font);
     let dictionary = create_multiline_edit(
@@ -486,7 +519,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_USER_WORDS,
-        UiRect::new(44, 466, 812, 40),
+        UiRect::new(44, 447, 812, 32),
         false,
     );
     set_control_text(dictionary, &runtime.user_words_text());
@@ -497,24 +530,42 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Горячие клавиши",
-        UiRect::new(24, 536, 852, 160),
+        UiRect::new(24, 506, 852, 190),
     );
     set_font(hotkeys_group, section_font);
     let hotkey_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Формат: Ctrl/Shift/Alt + F1–F12, буква, цифра, Space или Backspace.",
-        UiRect::new(44, 566, 812, 22),
+        "Выделенный текст работает в native Edit/RichEdit без использования clipboard.",
+        UiRect::new(44, 533, 812, 20),
     );
     set_font(hotkey_hint, hint_font);
+
+    let selected_label = create_static(
+        hwnd,
+        module,
+        &static_class,
+        "Выделенный текст",
+        UiRect::new(44, 566, 140, 24),
+    );
+    set_font(selected_label, body_font);
+    let selected_hotkey = create_single_edit(
+        hwnd,
+        module,
+        &edit_class,
+        ID_HOTKEY_SELECTED,
+        UiRect::new(190, 561, 190, 30),
+    );
+    set_control_text(selected_hotkey, &runtime.selected_text_hotkey.to_text());
+    set_font(selected_hotkey, body_font);
 
     let current_label = create_static(
         hwnd,
         module,
         &static_class,
         "Текущее слово",
-        UiRect::new(44, 600, 140, 24),
+        UiRect::new(462, 566, 156, 24),
     );
     set_font(current_label, body_font);
     let current_hotkey = create_single_edit(
@@ -522,7 +573,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_CURRENT,
-        UiRect::new(190, 595, 190, 30),
+        UiRect::new(626, 561, 230, 30),
     );
     set_control_text(current_hotkey, &runtime.manual_current_hotkey.to_text());
     set_font(current_hotkey, body_font);
@@ -532,7 +583,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Предыдущее слово",
-        UiRect::new(462, 600, 156, 24),
+        UiRect::new(44, 609, 140, 24),
     );
     set_font(previous_label, body_font);
     let previous_hotkey = create_single_edit(
@@ -540,7 +591,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_PREVIOUS,
-        UiRect::new(626, 595, 230, 30),
+        UiRect::new(190, 604, 190, 30),
     );
     set_control_text(previous_hotkey, &runtime.previous_word_hotkey.to_text());
     set_font(previous_hotkey, body_font);
@@ -550,7 +601,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Отмена замены",
-        UiRect::new(44, 643, 140, 24),
+        UiRect::new(462, 609, 156, 24),
     );
     set_font(undo_label, body_font);
     let undo_hotkey = create_single_edit(
@@ -558,7 +609,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_UNDO,
-        UiRect::new(190, 638, 190, 30),
+        UiRect::new(626, 604, 230, 30),
     );
     set_control_text(undo_hotkey, &runtime.undo_hotkey.to_text());
     set_font(undo_hotkey, body_font);
@@ -568,7 +619,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Pause / Resume",
-        UiRect::new(462, 643, 156, 24),
+        UiRect::new(44, 652, 140, 24),
     );
     set_font(pause_label, body_font);
     let pause_hotkey = create_single_edit(
@@ -576,7 +627,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_PAUSE,
-        UiRect::new(626, 638, 230, 30),
+        UiRect::new(190, 647, 190, 30),
     );
     set_control_text(pause_hotkey, &runtime.pause_hotkey.to_text());
     set_font(pause_hotkey, body_font);
@@ -585,8 +636,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Pause действует только до выхода из G-switcher и не сохраняется между запусками.",
-        UiRect::new(44, 670, 812, 18),
+        "Pause временный. Secure-поля блокируют auto и все conversion hotkeys независимо от режима приложения.",
+        UiRect::new(420, 652, 436, 24),
     );
     set_font(pause_hint, hint_font);
 
@@ -595,7 +646,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Изменения применяются сразу после сохранения.",
-        UiRect::new(28, 724, 500, 22),
+        UiRect::new(28, 716, 500, 22),
     );
     set_font(footer_hint, hint_font);
 
@@ -605,7 +656,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Сохранить",
         ID_SAVE,
-        UiRect::new(644, 714, 104, 34),
+        UiRect::new(644, 706, 104, 34),
         true,
     );
     set_font(save, body_font);
@@ -615,10 +666,24 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Отмена",
         ID_CANCEL,
-        UiRect::new(762, 714, 104, 34),
+        UiRect::new(762, 706, 104, 34),
         false,
     );
     set_font(cancel, body_font);
+}
+
+unsafe fn populate_sensitivity(combo: HWND, current: settings::SensitivityProfile) {
+    let labels = ["Консервативный", "Нормальный", "Агрессивный"];
+    for label in labels {
+        let label = wide(label);
+        SendMessageW(combo, CB_ADDSTRING, 0, label.as_ptr() as LPARAM);
+    }
+    let index = match current {
+        settings::SensitivityProfile::Conservative => 0,
+        settings::SensitivityProfile::Normal => 1,
+        settings::SensitivityProfile::Aggressive => 2,
+    };
+    SendMessageW(combo, CB_SETCURSEL, index, 0);
 }
 
 unsafe fn populate_process_picker(combo: HWND, runtime: &settings::RuntimeSettings) {

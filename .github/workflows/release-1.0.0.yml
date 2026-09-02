@@ -1,4 +1,4 @@
-name: Release G-switcher 0.9.0
+name: Release G-switcher 1.0.0
 
 on:
   workflow_run:
@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v0.9.0 --repo $env:GITHUB_REPOSITORY *> $null
+          gh release view v1.0.0 --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
@@ -35,7 +35,7 @@ jobs:
         if: steps.existing.outputs.exists != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: g-switcher-0.9.0-windows-x64
+          name: g-switcher-1.0.0-windows-x64
           path: release
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -52,17 +52,17 @@ jobs:
           }
           Write-Host "SHA-256 verified: $actual"
 
-      - name: Create v0.9.0 release
+      - name: Create v1.0.0 release
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          gh release create v0.9.0 `
+          gh release create v1.0.0 `
             release/g-switcher.exe `
             release/g-switcher.exe.sha256 `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:TARGET_SHA `
-            --title "G-switcher 0.9.0" `
-            --notes "Feature release: detector v2 with stronger RU/EN scoring and false-positive protection, a volatile two-word context model, process-picker based per-application mode management without manual EXE entry, and a live tray tooltip showing Auto/Manual/Disabled or Paused state, current process/layout and the latest correction/undo. Typed context remains RAM-only and is cleared on context changes. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
+            --title "G-switcher 1.0.0" `
+            --notes "G-switcher 1.0.0 adds native selected-text conversion with Ctrl+Shift+F9 and one-shot Ctrl+Backspace Undo, hard protection for password/PIN/OTP/credential input, Detector v3 with a baked-in local RU/EN frequency and n-gram model, and Conservative/Normal/Aggressive sensitivity profiles. Typed context remains RAM-only and is never persisted or transmitted. The Windows gate verifies format, unit tests, a real Win32 hook-to-EDIT E2E including selected-text and secure-input scenarios, Clippy, release branding/version metadata, and SHA-256. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."

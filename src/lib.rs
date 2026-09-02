@@ -1,9 +1,10 @@
-//! G-switcher core interfaces for the 0.9 implementation line.
+//! G-switcher core interfaces for the 1.0 implementation line.
 //! Runtime modules are developed against the functional specification and
 //! acceptance matrix in `docs/`.
 
 pub mod code_safe;
 pub mod detector;
+pub mod frequency_model;
 pub mod layout;
 pub mod model;
 pub mod state;
@@ -13,4 +14,4 @@ pub mod undo;
 pub mod windows_runtime;
 
 pub const PRODUCT_NAME: &str = "G-switcher";
-pub const PRODUCT_VERSION: &str = "0.9.0";
+pub const PRODUCT_VERSION: &str = "1.0.0";

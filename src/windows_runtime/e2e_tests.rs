@@ -14,9 +14,9 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
     GetWindowTextLengthW, GetWindowTextW, PeekMessageW, PostMessageW, PostQuitMessage,
-    RegisterClassW, SetForegroundWindow, SetWindowTextW, ShowWindow, TranslateMessage, PM_REMOVE,
-    SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED,
-    WS_SYSMENU, WS_VISIBLE,
+    RegisterClassW, SendMessageW, SetForegroundWindow, SetWindowTextW, ShowWindow,
+    TranslateMessage, PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION,
+    WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::*;
@@ -25,8 +25,11 @@ const WM_TEST_SET_LAYOUT_AND_FOCUS: u32 = WM_APP + 0x51;
 const TEST_USER_EXTRA_INFO: usize = 0x4753_4554_4553_5431;
 const WS_BORDER_STYLE: u32 = 0x0080_0000;
 const ES_MULTILINE_STYLE: u32 = 0x0004;
+const ES_PASSWORD_STYLE: u32 = 0x0020;
 const ES_AUTOHSCROLL_STYLE: u32 = 0x0080;
 const ES_WANTRETURN_STYLE: u32 = 0x1000;
+const EM_SETSEL_VALUE: u32 = 0x00B1;
+const VK_F9_VALUE: u16 = 0x78;
 const VK_F10_VALUE: u16 = 0x79;
 const VK_F11_VALUE: u16 = 0x7A;
 const VK_F12_VALUE: u16 = 0x7B;
@@ -56,11 +59,12 @@ fn real_windows_hook_to_edit_e2e() {
     let (ready_tx, ready_rx) = mpsc::sync_channel(1);
 
     let ui_thread = thread::spawn(move || run_test_window(ready_tx));
-    let (window_value, edit_value) = ready_rx
+    let (window_value, edit_value, password_value) = ready_rx
         .recv_timeout(Duration::from_secs(5))
         .expect("test Win32 window did not start");
     let window = window_value as HWND;
     let edit = edit_value as HWND;
+    let password_edit = password_value as HWND;
     let ui_thread_id = unsafe { GetWindowThreadProcessId(edit, null_mut()) };
     assert_ne!(ui_thread_id, 0, "failed to resolve test EDIT thread");
 
@@ -89,7 +93,6 @@ fn real_windows_hook_to_edit_e2e() {
     assert!(send_inputs_in_layout(&direct_target_inputs, russian_hkl));
     await_text(edit, "бю,.");
 
-    // Isolate the production WM_INPUTLANGCHANGEREQUEST path from the detector/hook correction.
     prepare_case(window, edit, ui_thread_id, Language::English);
     assert!(
         switch_layout(edit, ui_thread_id, russian_hkl),
@@ -171,7 +174,6 @@ fn real_windows_hook_to_edit_e2e() {
         "windows ",
     );
 
-    // Regression: Russian physical comma is the letter 'б', not a word boundary.
     run_case(
         window,
         edit,
@@ -200,7 +202,6 @@ fn real_windows_hook_to_edit_e2e() {
         "ещё ",
     );
 
-    // A correction can switch the target layout and the next word can switch it back.
     run_case(
         window,
         edit,
@@ -264,16 +265,11 @@ fn real_windows_hook_to_edit_e2e() {
         "привет\r\n",
     );
 
-    // Undo must survive the Ctrl key-down and restore both text and source layout.
+    eprintln!("G-switcher E2E checkpoint: automatic undo");
     prepare_case(window, edit, ui_thread_id, Language::English);
     inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
     await_text(edit, "привет ");
-    inject_raw(&[
-        (VK_CONTROL, 0),
-        (VK_BACK, 0),
-        (VK_BACK, KEYEVENTF_KEYUP),
-        (VK_CONTROL, KEYEVENTF_KEYUP),
-    ]);
+    inject_undo_hotkey();
     await_text(edit, "ghbdtn ");
     assert_eq!(
         language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
@@ -281,7 +277,7 @@ fn real_windows_hook_to_edit_e2e() {
         "undo did not restore the source keyboard layout"
     );
 
-    // 0.8: Pause/Resume must pass original input and must not deadlock the hook thread.
+    eprintln!("G-switcher E2E checkpoint: pause");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
     settings::set_paused(false);
     prepare_case(window, edit, ui_thread_id, Language::English);
@@ -293,13 +289,23 @@ fn real_windows_hook_to_edit_e2e() {
     assert!(!settings::paused(), "pause hotkey did not resume runtime");
     await_text(edit, "ghbdtn ");
 
-    // 0.8: Manual-only mode retains the last completed word for explicit conversion.
+    eprintln!("G-switcher E2E checkpoint: manual-only");
     let process_name = process_name_for_pid(std::process::id()).expect("test process name missing");
     let mut manual_only = settings::RuntimeSettings::default();
     manual_only.manual_only_apps.push(process_name.clone());
     settings::replace_runtime_settings_for_test(manual_only);
+    assert_eq!(
+        settings::runtime_settings().app_mode(&process_name),
+        AppMode::ManualOnly
+    );
     prepare_case(window, edit, ui_thread_id, Language::English);
     inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
+    eprintln!(
+        "G-switcher E2E manual-only resolved process: {:?}",
+        ENGINE
+            .get()
+            .map(|engine| engine.lock().process_name.clone())
+    );
     await_text(edit, "ghbdtn ");
     inject_ctrl_shift_hotkey(VK_F10_VALUE);
     await_text(edit, "привет ");
@@ -308,12 +314,7 @@ fn real_windows_hook_to_edit_e2e() {
         Some(Language::Russian),
         "previous-word conversion did not switch to Russian"
     );
-    inject_raw(&[
-        (VK_CONTROL, 0),
-        (VK_BACK, 0),
-        (VK_BACK, KEYEVENTF_KEYUP),
-        (VK_CONTROL, KEYEVENTF_KEYUP),
-    ]);
+    inject_undo_hotkey();
     await_text(edit, "ghbdtn ");
     assert_eq!(
         language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
@@ -321,7 +322,7 @@ fn real_windows_hook_to_edit_e2e() {
         "undo after previous-word conversion did not restore English"
     );
 
-    // 0.8: Disabled mode suppresses both automatic and manual conversion.
+    eprintln!("G-switcher E2E checkpoint: disabled mode");
     let mut disabled = settings::RuntimeSettings::default();
     disabled.disabled_apps.push(process_name);
     settings::replace_runtime_settings_for_test(disabled);
@@ -332,6 +333,40 @@ fn real_windows_hook_to_edit_e2e() {
     await_text(edit, "ghbdtn");
     inject_strokes(&[key(VK_SPACE as u8)]);
     await_text(edit, "ghbdtn ");
+
+    eprintln!("G-switcher E2E checkpoint: selected text 1.0");
+    settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
+    prepare_case(window, edit, ui_thread_id, Language::English);
+    set_text(edit, "ghbdtn rfr ltkf");
+    unsafe {
+        SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
+    }
+    inject_ctrl_shift_hotkey(VK_F9_VALUE);
+    await_text(edit, "привет как дела");
+    assert_eq!(
+        language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
+        Some(Language::Russian),
+        "selected-text conversion did not switch to Russian"
+    );
+    inject_undo_hotkey();
+    await_text(edit, "ghbdtn rfr ltkf");
+    assert_eq!(
+        language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
+        Some(Language::English),
+        "selected-text undo did not restore English"
+    );
+
+    eprintln!("G-switcher E2E checkpoint: password protection 1.0");
+    prepare_case(window, password_edit, ui_thread_id, Language::English);
+    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
+    await_text(password_edit, "ghbdtn ");
+    unsafe {
+        SendMessageW(password_edit, EM_SETSEL_VALUE, 0, -1);
+    }
+    inject_ctrl_shift_hotkey(VK_F9_VALUE);
+    await_text(password_edit, "ghbdtn ");
+    inject_ctrl_shift_hotkey(VK_F12_VALUE);
+    await_text(password_edit, "ghbdtn ");
 
     settings::replace_runtime_settings_for_test(original_runtime);
     settings::set_paused(false);
@@ -357,15 +392,7 @@ fn run_case(
 
 fn prepare_case(window: HWND, edit: HWND, ui_thread_id: u32, language: Language) {
     *ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock() = Engine::default();
-
-    let empty = wide("");
-    unsafe {
-        assert_ne!(
-            SetWindowTextW(edit, empty.as_ptr()),
-            0,
-            "failed to clear EDIT text"
-        );
-    }
+    set_text(edit, "");
 
     let hkl = select_layout(language).expect("required RU/EN keyboard layout is unavailable");
     unsafe {
@@ -424,6 +451,15 @@ fn inject_ctrl_shift_hotkey(vk: u16) {
         (vk, 0),
         (vk, KEYEVENTF_KEYUP),
         (VK_SHIFT, KEYEVENTF_KEYUP),
+        (VK_CONTROL, KEYEVENTF_KEYUP),
+    ]);
+}
+
+fn inject_undo_hotkey() {
+    inject_raw(&[
+        (VK_CONTROL, 0),
+        (VK_BACK, 0),
+        (VK_BACK, KEYEVENTF_KEYUP),
         (VK_CONTROL, KEYEVENTF_KEYUP),
     ]);
 }
@@ -496,6 +532,17 @@ fn pump_hook_thread() {
     }
 }
 
+fn set_text(edit: HWND, value: &str) {
+    let value = wide(value);
+    unsafe {
+        assert_ne!(
+            SetWindowTextW(edit, value.as_ptr()),
+            0,
+            "failed to set EDIT text"
+        );
+    }
+}
+
 fn read_text(edit: HWND) -> String {
     unsafe {
         let length = GetWindowTextLengthW(edit);
@@ -531,7 +578,7 @@ fn keys(values: &[u8]) -> Vec<Stroke> {
     values.iter().copied().map(key).collect()
 }
 
-fn run_test_window(ready_tx: mpsc::SyncSender<(isize, isize)>) {
+fn run_test_window(ready_tx: mpsc::SyncSender<(isize, isize, isize)>) {
     unsafe {
         let module = GetModuleHandleW(null());
         let class_name = wide("GSwitcher.E2E.Window");
@@ -562,7 +609,7 @@ fn run_test_window(ready_tx: mpsc::SyncSender<(isize, isize)>) {
             40,
             40,
             660,
-            180,
+            250,
             null_mut(),
             null_mut(),
             module,
@@ -593,11 +640,30 @@ fn run_test_window(ready_tx: mpsc::SyncSender<(isize, isize)>) {
         );
         assert!(!edit.is_null(), "failed to create E2E EDIT control");
 
+        let password_edit = CreateWindowExW(
+            0,
+            edit_class.as_ptr(),
+            empty.as_ptr(),
+            WS_CHILD | WS_VISIBLE | WS_BORDER_STYLE | ES_AUTOHSCROLL_STYLE | ES_PASSWORD_STYLE,
+            20,
+            145,
+            600,
+            30,
+            window,
+            null_mut(),
+            module,
+            null(),
+        );
+        assert!(
+            !password_edit.is_null(),
+            "failed to create E2E password EDIT control"
+        );
+
         ShowWindow(window, SW_SHOW);
         SetForegroundWindow(window);
         SetFocus(edit);
         ready_tx
-            .send((window as isize, edit as isize))
+            .send((window as isize, edit as isize, password_edit as isize))
             .expect("failed to publish E2E window handles");
 
         let mut message = zeroed();
