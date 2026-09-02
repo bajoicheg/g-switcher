@@ -17,7 +17,7 @@ concurrency:
 jobs:
   rust-gate:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -40,6 +40,10 @@ jobs:
       - name: Unit tests
         shell: pwsh
         run: cargo test --all-targets
+
+      - name: Windows E2E
+        shell: pwsh
+        run: cargo test --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
 
       - name: Clippy
         shell: pwsh
