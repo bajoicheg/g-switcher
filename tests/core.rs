@@ -10,27 +10,15 @@ use g_switcher::{
 fn known_layout_corrections_are_symmetric() {
     assert_eq!(
         correction("ghbdtn"),
-        Some((
-            Language::English,
-            Language::Russian,
-            "привет".to_owned()
-        ))
+        Some((Language::English, Language::Russian, "привет".to_owned()))
     );
     assert_eq!(
         correction("руддщ"),
-        Some((
-            Language::Russian,
-            Language::English,
-            "hello".to_owned()
-        ))
+        Some((Language::Russian, Language::English, "hello".to_owned()))
     );
     assert_eq!(
         correction("rjhj,rf"),
-        Some((
-            Language::English,
-            Language::Russian,
-            "коробка".to_owned()
-        ))
+        Some((Language::English, Language::Russian, "коробка".to_owned()))
     );
 }
 
