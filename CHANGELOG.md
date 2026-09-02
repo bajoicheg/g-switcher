@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0 — 2026-09-02
+
+- Introduces Detector v2 with broader RU/EN word protection, richer bigram/trigram/4-gram scoring, suffix/shape signals, vowel-ratio checks, rare-sequence penalties, consonant-run penalties and repeated-letter penalties.
+- Makes unknown three-letter automatic corrections context-dependent while preserving immediate 100% confidence for exact opposite-layout dictionary matches.
+- Adds a volatile contextual detector using at most two immediately previous completed words; context can strengthen an already plausible candidate but cannot override an exact source dictionary or user-dictionary match.
+- Clears contextual words on focus/process changes, Pause, control-key context changes and Undo; contextual text is never persisted or transmitted.
+- Replaces manual EXE entry for per-application modes with a native process picker that combines running processes and previously configured applications.
+- Adds direct `Auto`, `Только вручную`, and `Отключить` controls; resulting Disabled and Manual-only lists are displayed read-only.
+- Adds a live tray tooltip for `Auto`, `Manual`, `Disabled` and `Пауза` states with current process/layout and the latest correction/undo where applicable.
+- Preserves existing current-word/previous-word conversion, configurable hotkeys, user dictionary, code-safe behavior, fail-open input and real Win32 E2E coverage.
+- Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 0.9.0.
+
 ## 0.8.2 — 2026-09-02
 
 - Redesigns the Settings window after real Windows testing exposed overlapping labels and cramped controls.
