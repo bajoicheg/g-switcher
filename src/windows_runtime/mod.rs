@@ -815,8 +815,13 @@ impl Engine {
             return;
         }
 
+        let active_modifiers = Modifiers {
+            ctrl: pending.held_modifiers.ctrl && is_control_down(),
+            shift: pending.held_modifiers.shift && is_shift_down(),
+            alt: pending.held_modifiers.alt && is_alt_down(),
+        };
         let mut inputs = Vec::new();
-        append_modifier_releases(&mut inputs, pending.held_modifiers);
+        append_modifier_releases(&mut inputs, active_modifiers);
         append_backspaces(&mut inputs, pending.erase_len);
         if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
             || !append_optional_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
@@ -824,7 +829,7 @@ impl Engine {
             self.restore_failed_correction(&pending);
             return;
         }
-        append_modifier_presses(&mut inputs, pending.held_modifiers);
+        append_modifier_presses(&mut inputs, active_modifiers);
 
         if !send_inputs_in_layout(&inputs, pending.target_hkl) {
             self.restore_failed_correction(&pending);
