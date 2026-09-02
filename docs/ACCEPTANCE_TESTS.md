@@ -11,6 +11,52 @@ The Windows release gate must test the full path from keyboard hook through focu
 - the same cases using Enter instead of Space
 - `ghbdtn` + Tab → `привет` + Tab
 
+## Confidence scoring
+
+- an exact known opposite-layout word has confidence 100
+- a valid source-language dictionary word remains unchanged regardless of a plausible opposite mapping
+- lower-confidence heuristic candidates remain unchanged below the default threshold
+- a user-dictionary target exact match receives confidence 100
+- a user-dictionary source exact match is protected from automatic correction
+- code-safe tokens do not enter confidence-based automatic correction
+
+## Manual conversion
+
+- with an in-progress `ghbdtn` token in English layout, `Ctrl+Shift+F12` converts it to `привет` without inserting a delimiter
+- manual conversion operates even when the automatic detector would keep an ambiguous token
+- manual conversion switches the focused control to the target layout
+- immediate `Ctrl+Backspace` after manual conversion restores the original token and source layout
+- manual conversion is suppressed in an excluded application
+
+## Per-application exclusions
+
+- executable matching is case-insensitive
+- an excluded executable receives the original keystrokes unchanged
+- no automatic correction occurs in an excluded executable
+- `Ctrl+Shift+F12` does not convert text in an excluded executable
+- entering an excluded application clears stale candidate and undo state
+- removing the executable from Settings re-enables normal behavior without restarting G-switcher
+
+## User dictionary
+
+- explicitly entered words survive restart as per-user configuration
+- duplicate entries are normalized without creating duplicate records
+- normal typing never adds words to the persistent dictionary
+- a correct dictionary word is protected from automatic rewriting
+- an opposite-layout candidate mapping exactly to a dictionary word receives maximum confidence
+
+## Settings UI
+
+- Settings is reachable from the tray menu
+- automatic correction can be enabled or disabled
+- autostart can be enabled or disabled
+- excluded executable names can be edited as one entry per line
+- user-dictionary words can be edited as one entry per line
+- Save updates the running process without requiring restart or elevation
+- Cancel/close does not persist edits
+- the UI explicitly shows `Ctrl+Shift+F12` manual conversion and `Ctrl+Backspace` undo
+- the UI states that typed history is not stored
+
 ## Punctuation
 
 - `ghbdtn/` → `привет/`
@@ -54,7 +100,7 @@ These examples must remain unchanged when typed correctly:
 
 ## Code-safe
 
-The following classes are not automatically rewritten unless explicitly configured by the user:
+The following classes are not automatically rewritten:
 
 - `HOST-SRV-01`
 - `10.20.30.40`
@@ -103,3 +149,4 @@ The following classes are not automatically rewritten unless explicitly configur
 - tray exit removes the hook
 - first-run state is per-user
 - per-user autostart does not require local administrator rights
+- typed candidate text is not persisted; only explicit Settings values are stored
