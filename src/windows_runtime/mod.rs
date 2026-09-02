@@ -21,7 +21,7 @@ use windows_sys::Win32::System::Threading::{
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     ActivateKeyboardLayout, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
     LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
-    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_F12, VK_OEM_1,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_MENU, VK_OEM_1,
     VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN,
     VK_SHIFT, VK_SPACE, VK_TAB,
 };
@@ -38,9 +38,10 @@ use crate::detector::{
 };
 use crate::layout::opposite_layout_text;
 use crate::model::Language;
+use settings::AppMode;
 
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
-const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.6";
+const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";
 const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
@@ -70,6 +71,23 @@ enum Delimiter {
     Character(char),
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct Modifiers {
+    ctrl: bool,
+    shift: bool,
+    alt: bool,
+}
+
+#[derive(Debug, Clone)]
+struct PreviousToken {
+    focus: isize,
+    source_hkl: isize,
+    source_language: Language,
+    text: String,
+    strokes: Vec<Stroke>,
+    delimiter: Delimiter,
+}
+
 #[derive(Debug, Clone)]
 struct RuntimeUndo {
     focus: isize,
@@ -91,7 +109,8 @@ struct PendingCorrection {
     erase_len: usize,
     original_strokes: Vec<Stroke>,
     delimiter: Option<Delimiter>,
-    release_modifiers: bool,
+    held_modifiers: Modifiers,
+    restore_delimiter_on_failure: bool,
 }
 
 #[derive(Default)]
@@ -99,6 +118,7 @@ struct Engine {
     candidate: String,
     strokes: Vec<Stroke>,
     candidate_focus: isize,
+    previous: Option<PreviousToken>,
     undo: Option<RuntimeUndo>,
     pending_correction: Option<PendingCorrection>,
     process_id: u32,
@@ -116,6 +136,7 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
 
+    settings::set_paused(false);
     if !settings::first_run_completed() {
         let enable_autostart = ui::show_first_run()?;
         if enable_autostart {
@@ -147,6 +168,18 @@ pub fn run() -> Result<()> {
     drop(tray);
     drop(mutex);
     Ok(())
+}
+
+pub(crate) fn paused() -> bool {
+    settings::paused()
+}
+
+pub(crate) fn toggle_pause() -> bool {
+    let value = settings::toggle_paused();
+    if let Some(engine) = ENGINE.get() {
+        engine.lock().reset_transient();
+    }
+    value
 }
 
 fn handle_runtime_message(message: &MSG) -> bool {
@@ -252,34 +285,66 @@ fn should_ignore_hook_event(event: &KBDLLHOOKSTRUCT) -> bool {
 
 impl Engine {
     fn on_key_down(&mut self, vk: u16) -> HookDecision {
+        let runtime_settings = settings::runtime_settings();
+        let modifiers = current_modifiers();
+
+        if runtime_settings
+            .pause_hotkey
+            .matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt)
+        {
+            settings::toggle_paused();
+            self.reset_transient();
+            return HookDecision::Suppress;
+        }
+
+        if settings::paused() {
+            self.reset_transient();
+            return HookDecision::Pass;
+        }
+
         let Some(target) = focused_target() else {
-            self.reset_candidate();
-            self.undo = None;
+            self.reset_transient();
             return HookDecision::Pass;
         };
 
         self.refresh_process_name(target.process_id);
-        let runtime_settings = settings::runtime_settings();
-        if runtime_settings.is_process_excluded(&self.process_name) {
-            self.reset_candidate();
-            self.undo = None;
+        let app_mode = runtime_settings.app_mode(&self.process_name);
+        if app_mode == AppMode::Disabled {
+            self.reset_transient();
             return HookDecision::Pass;
         }
 
-        if is_modifier_vk(vk) {
-            return HookDecision::Pass;
-        }
-
-        if is_control_down() && is_shift_down() && vk == VK_F12 {
-            return if self.try_manual_convert(target) {
+        if runtime_settings.manual_current_hotkey.matches(
+            vk,
+            modifiers.ctrl,
+            modifiers.shift,
+            modifiers.alt,
+        ) {
+            return if self.try_manual_convert(target, modifiers) {
                 HookDecision::Suppress
             } else {
                 HookDecision::Pass
             };
         }
 
-        if is_control_down() && vk == VK_BACK {
-            return if self.try_undo(target) {
+        if runtime_settings.previous_word_hotkey.matches(
+            vk,
+            modifiers.ctrl,
+            modifiers.shift,
+            modifiers.alt,
+        ) {
+            return if self.try_convert_previous(target, modifiers) {
+                HookDecision::Suppress
+            } else {
+                HookDecision::Pass
+            };
+        }
+
+        if runtime_settings
+            .undo_hotkey
+            .matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt)
+        {
+            return if self.try_undo(target, modifiers) {
                 HookDecision::Suppress
             } else {
                 self.reset_candidate();
@@ -287,26 +352,36 @@ impl Engine {
             };
         }
 
-        if is_control_down() {
-            self.reset_candidate();
-            self.undo = None;
+        if is_modifier_vk(vk) {
+            return HookDecision::Pass;
+        }
+
+        if modifiers.ctrl || modifiers.alt {
+            self.reset_transient();
             return HookDecision::Pass;
         }
 
         let target_id = target.hwnd as isize;
         if self.candidate_focus != 0 && self.candidate_focus != target_id {
-            self.reset_candidate();
+            self.reset_transient();
         }
         if self.candidate_focus == 0 {
             self.candidate_focus = target_id;
+        }
+        if let Some(previous) = &self.previous {
+            if previous.focus != target_id {
+                self.previous = None;
+            }
         }
 
         if self.undo.is_some() {
             self.undo = None;
         }
 
+        let allow_auto = app_mode == AppMode::Auto;
         match vk {
             VK_BACK => {
+                self.previous = None;
                 self.candidate.pop();
                 self.strokes.pop();
                 if self.candidate.is_empty() {
@@ -314,19 +389,20 @@ impl Engine {
                 }
                 HookDecision::Pass
             }
-            VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE)),
-            VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN)),
-            VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB)),
-            VK_OEM_2 => self.handle_punctuation(target, vk),
+            VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE), allow_auto),
+            VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN), allow_auto),
+            VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB), allow_auto),
+            VK_OEM_2 => self.handle_punctuation(target, vk, allow_auto),
             VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => {
-                self.handle_punctuation(target, vk)
+                self.handle_punctuation(target, vk, allow_auto)
             }
             _ => {
+                self.previous = None;
                 if let Some(ch) = visible_char(vk, target.language) {
                     self.candidate.push(ch);
                     self.strokes.push(Stroke {
                         vk,
-                        shift: is_shift_down(),
+                        shift: modifiers.shift,
                     });
                 } else {
                     self.reset_candidate();
@@ -340,26 +416,41 @@ impl Engine {
         if self.process_id == process_id {
             return;
         }
+        self.reset_transient();
         self.process_id = process_id;
         self.process_name = process_name_for_pid(process_id).unwrap_or_default();
     }
 
-    fn handle_boundary(&mut self, target: FocusTarget, delimiter: Delimiter) -> HookDecision {
-        if self.try_correct(target, delimiter) {
+    fn handle_boundary(
+        &mut self,
+        target: FocusTarget,
+        delimiter: Delimiter,
+        allow_auto: bool,
+    ) -> HookDecision {
+        if allow_auto && self.try_correct(target, delimiter) {
+            self.previous = None;
             HookDecision::Suppress
         } else {
+            self.remember_previous(target, delimiter);
             self.reset_candidate();
             HookDecision::Pass
         }
     }
 
-    fn handle_punctuation(&mut self, target: FocusTarget, vk: u16) -> HookDecision {
+    fn handle_punctuation(
+        &mut self,
+        target: FocusTarget,
+        vk: u16,
+        allow_auto: bool,
+    ) -> HookDecision {
         let Some(ch) = visible_char(vk, target.language) else {
-            self.reset_candidate();
+            self.reset_transient();
             return HookDecision::Pass;
         };
+        let delimiter = Delimiter::Character(ch);
 
-        if self.try_correct(target, Delimiter::Character(ch)) {
+        if allow_auto && self.try_correct(target, delimiter) {
+            self.previous = None;
             return HookDecision::Suppress;
         }
 
@@ -370,15 +461,32 @@ impl Engine {
                 &runtime_settings.user_words,
             )
         {
+            self.previous = None;
             self.candidate.push(ch);
             self.strokes.push(Stroke {
                 vk,
                 shift: is_shift_down(),
             });
         } else {
+            self.remember_previous(target, delimiter);
             self.reset_candidate();
         }
         HookDecision::Pass
+    }
+
+    fn remember_previous(&mut self, target: FocusTarget, delimiter: Delimiter) {
+        if self.candidate.is_empty() || self.strokes.is_empty() {
+            self.previous = None;
+            return;
+        }
+        self.previous = Some(PreviousToken {
+            focus: target.hwnd as isize,
+            source_hkl: target.hkl,
+            source_language: target.language,
+            text: self.candidate.clone(),
+            strokes: self.strokes.clone(),
+            delimiter,
+        });
     }
 
     fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
@@ -402,39 +510,90 @@ impl Engine {
             return false;
         }
 
-        self.queue_correction(
+        self.queue_correction_parts(
             source,
             detection.target,
             detection.corrected,
+            self.candidate.chars().count(),
+            self.strokes.clone(),
             Some(delimiter),
-            false,
+            Modifiers::default(),
+            true,
         )
     }
 
-    fn try_manual_convert(&mut self, source: FocusTarget) -> bool {
+    fn try_manual_convert(&mut self, source: FocusTarget, modifiers: Modifiers) -> bool {
         if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
         {
             return false;
         }
         let target = opposite_language(source.language);
         let corrected = opposite_layout_text(&self.candidate, source.language);
-        self.queue_correction(source, target, corrected, None, true)
+        self.previous = None;
+        self.queue_correction_parts(
+            source,
+            target,
+            corrected,
+            self.candidate.chars().count(),
+            self.strokes.clone(),
+            None,
+            modifiers,
+            false,
+        )
     }
 
-    fn queue_correction(
+    fn try_convert_previous(&mut self, target: FocusTarget, modifiers: Modifiers) -> bool {
+        if self.pending_correction.is_some() || !self.candidate.is_empty() {
+            return false;
+        }
+        let Some(previous) = self.previous.clone() else {
+            return false;
+        };
+        if previous.focus != target.hwnd as isize {
+            self.previous = None;
+            return false;
+        }
+
+        let corrected = opposite_layout_text(&previous.text, previous.source_language);
+        let source = FocusTarget {
+            hkl: previous.source_hkl,
+            language: previous.source_language,
+            ..target
+        };
+        let queued = self.queue_correction_parts(
+            source,
+            opposite_language(previous.source_language),
+            corrected,
+            previous.text.chars().count() + 1,
+            previous.strokes,
+            Some(previous.delimiter),
+            modifiers,
+            false,
+        );
+        if queued {
+            self.previous = None;
+        }
+        queued
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn queue_correction_parts(
         &mut self,
         source: FocusTarget,
         target_language: Language,
         corrected: String,
+        erase_len: usize,
+        original_strokes: Vec<Stroke>,
         delimiter: Option<Delimiter>,
-        release_modifiers: bool,
+        held_modifiers: Modifiers,
+        restore_delimiter_on_failure: bool,
     ) -> bool {
         let Some(target_hkl) = select_layout(target_language) else {
             return false;
         };
 
         let mut preflight = Vec::new();
-        append_backspaces(&mut preflight, self.candidate.chars().count());
+        append_backspaces(&mut preflight, erase_len);
         if !append_text_for_layout(&mut preflight, &corrected, target_hkl)
             || !append_optional_delimiter(&mut preflight, delimiter, target_hkl)
         {
@@ -452,10 +611,11 @@ impl Engine {
             source_language: source.language,
             target_hkl,
             corrected,
-            erase_len: self.candidate.chars().count(),
-            original_strokes: self.strokes.clone(),
+            erase_len,
+            original_strokes,
             delimiter,
-            release_modifiers,
+            held_modifiers,
+            restore_delimiter_on_failure,
         });
 
         if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_CORRECTION, 0, 0) } == 0 {
@@ -471,6 +631,9 @@ impl Engine {
         let Some(pending) = self.pending_correction.take() else {
             return;
         };
+        if settings::paused() {
+            return;
+        }
         let hwnd = pending.focus as HWND;
 
         let same_focus = focused_target()
@@ -486,10 +649,7 @@ impl Engine {
         }
 
         let mut inputs = Vec::new();
-        if pending.release_modifiers {
-            inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
-            inputs.push(key_input(VK_SHIFT, KEYEVENTF_KEYUP));
-        }
+        append_modifier_releases(&mut inputs, pending.held_modifiers);
         append_backspaces(&mut inputs, pending.erase_len);
         if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
             || !append_optional_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
@@ -497,6 +657,7 @@ impl Engine {
             self.restore_failed_correction(&pending);
             return;
         }
+        append_modifier_presses(&mut inputs, pending.held_modifiers);
 
         if !send_inputs_in_layout(&inputs, pending.target_hkl) {
             self.restore_failed_correction(&pending);
@@ -526,15 +687,17 @@ impl Engine {
             return;
         }
 
-        if let Some(delimiter) = pending.delimiter {
-            let mut delimiter_inputs = Vec::new();
-            if append_delimiter(&mut delimiter_inputs, delimiter, pending.source_hkl) {
-                let _ = send_inputs_in_layout(&delimiter_inputs, pending.source_hkl);
+        if pending.restore_delimiter_on_failure {
+            if let Some(delimiter) = pending.delimiter {
+                let mut delimiter_inputs = Vec::new();
+                if append_delimiter(&mut delimiter_inputs, delimiter, pending.source_hkl) {
+                    let _ = send_inputs_in_layout(&delimiter_inputs, pending.source_hkl);
+                }
             }
         }
     }
 
-    fn try_undo(&mut self, target: FocusTarget) -> bool {
+    fn try_undo(&mut self, target: FocusTarget, modifiers: Modifiers) -> bool {
         let Some(undo) = self.undo.take() else {
             return false;
         };
@@ -546,7 +709,7 @@ impl Engine {
         }
 
         let mut inputs = Vec::new();
-        inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
+        append_modifier_releases(&mut inputs, modifiers);
         append_backspaces(
             &mut inputs,
             undo.corrected_len + usize::from(undo.delimiter.is_some()),
@@ -557,11 +720,12 @@ impl Engine {
         if !append_optional_delimiter(&mut inputs, undo.delimiter, undo.source_hkl) {
             return false;
         }
-        inputs.push(key_input(VK_CONTROL, 0));
+        append_modifier_presses(&mut inputs, modifiers);
 
         let result = send_inputs_in_layout(&inputs, undo.source_hkl);
         if result {
             self.candidate_focus = target.hwnd as isize;
+            self.previous = None;
         }
         let _ = undo.source_language;
         result
@@ -571,6 +735,13 @@ impl Engine {
         self.candidate.clear();
         self.strokes.clear();
         self.candidate_focus = 0;
+    }
+
+    fn reset_transient(&mut self) {
+        self.reset_candidate();
+        self.previous = None;
+        self.undo = None;
+        self.pending_correction = None;
     }
 }
 
@@ -745,6 +916,14 @@ fn visible_char(vk: u16, language: Language) -> Option<char> {
     }
 }
 
+fn current_modifiers() -> Modifiers {
+    Modifiers {
+        ctrl: is_control_down(),
+        shift: is_shift_down(),
+        alt: is_alt_down(),
+    }
+}
+
 fn is_modifier_vk(vk: u16) -> bool {
     matches!(
         vk,
@@ -760,8 +939,36 @@ fn is_control_down() -> bool {
     unsafe { GetKeyState(VK_CONTROL as i32) < 0 }
 }
 
+fn is_alt_down() -> bool {
+    unsafe { GetKeyState(VK_MENU as i32) < 0 }
+}
+
 fn is_caps_lock_on() -> bool {
     unsafe { GetKeyState(VK_CAPITAL as i32) & 1 != 0 }
+}
+
+fn append_modifier_releases(inputs: &mut Vec<INPUT>, modifiers: Modifiers) {
+    if modifiers.ctrl {
+        inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
+    }
+    if modifiers.shift {
+        inputs.push(key_input(VK_SHIFT, KEYEVENTF_KEYUP));
+    }
+    if modifiers.alt {
+        inputs.push(key_input(VK_MENU, KEYEVENTF_KEYUP));
+    }
+}
+
+fn append_modifier_presses(inputs: &mut Vec<INPUT>, modifiers: Modifiers) {
+    if modifiers.alt {
+        inputs.push(key_input(VK_MENU, 0));
+    }
+    if modifiers.shift {
+        inputs.push(key_input(VK_SHIFT, 0));
+    }
+    if modifiers.ctrl {
+        inputs.push(key_input(VK_CONTROL, 0));
+    }
 }
 
 fn append_backspaces(inputs: &mut Vec<INPUT>, count: usize) {
@@ -957,5 +1164,28 @@ mod tests {
     fn manual_conversion_uses_opposite_layout_without_confidence_gate() {
         assert_eq!(opposite_layout_text("ghbdtn", Language::English), "привет");
         assert_eq!(opposite_language(Language::English), Language::Russian);
+    }
+
+    #[test]
+    fn configured_hotkey_requires_exact_modifiers() {
+        let hotkey = settings::parse_hotkey("Ctrl+Alt+Q").unwrap();
+        assert!(hotkey.matches(b'Q' as u16, true, false, true));
+        assert!(!hotkey.matches(b'Q' as u16, true, true, true));
+    }
+
+    #[test]
+    fn previous_token_keeps_only_one_volatile_word() {
+        let previous = PreviousToken {
+            focus: 42,
+            source_hkl: 0x409,
+            source_language: Language::English,
+            text: "ghbdtn".to_owned(),
+            strokes: Vec::new(),
+            delimiter: Delimiter::VirtualKey(VK_SPACE),
+        };
+        assert_eq!(
+            opposite_layout_text(&previous.text, previous.source_language),
+            "привет"
+        );
     }
 }
