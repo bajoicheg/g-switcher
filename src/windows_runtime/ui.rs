@@ -5,7 +5,7 @@ use std::ptr::{null, null_mut, without_provenance};
 use std::sync::atomic::{AtomicI32, AtomicIsize, Ordering};
 
 use anyhow::{anyhow, Result};
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
 };
@@ -15,14 +15,14 @@ use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
-    DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow, LoadCursorW, LoadIconW,
-    LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow,
-    ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX,
-    BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN,
-    STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND,
-    WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD,
-    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
+    DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow,
+    LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW,
+    SetForegroundWindow, ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
+    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE,
+    SM_CXSCREEN, SM_CYSCREEN, STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP,
+    WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT, WNDCLASSW,
+    WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -146,8 +146,23 @@ pub fn show_first_run() -> Result<bool> {
             return Err(anyhow!("RegisterClassW for first-run window failed"));
         }
 
-        let width = 680;
-        let height = 500;
+        // CreateWindowExW expects the outer window dimensions, while all child controls use
+        // client coordinates. Reserve the client area explicitly so title-bar/DPI metrics can
+        // never squeeze the bottom row as happened in 0.8.0.
+        let client_width = 680;
+        let client_height = 500;
+        let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+        let mut window_rect = RECT {
+            left: 0,
+            top: 0,
+            right: client_width,
+            bottom: client_height,
+        };
+        if AdjustWindowRectEx(&mut window_rect, style, 0, 0) == 0 {
+            return Err(anyhow!("AdjustWindowRectEx for first-run window failed"));
+        }
+        let width = window_rect.right - window_rect.left;
+        let height = window_rect.bottom - window_rect.top;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
         let title = wide("G-switcher — первый запуск");
@@ -155,7 +170,7 @@ pub fn show_first_run() -> Result<bool> {
             0,
             class.as_ptr(),
             title.as_ptr(),
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+            style,
             x,
             y,
             width,
@@ -234,10 +249,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ICON_STYLE,
+        36,
         30,
-        34,
-        132,
-        132,
+        116,
+        116,
         hwnd,
         null_mut(),
         module,
@@ -246,7 +261,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     SendMessageW(
         icon_control,
         STM_SETICON,
-        load_app_icon_sized(128, 128) as usize,
+        load_app_icon_sized(112, 112) as usize,
         0,
     );
 
@@ -256,10 +271,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         title_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        190,
-        38,
-        420,
-        42,
+        176,
+        34,
+        448,
+        40,
         hwnd,
         null_mut(),
         module,
@@ -267,17 +282,17 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let description_text = wide(
-        "Автоматически исправляет слова, набранные в неверной русской или английской раскладке.\r\nРаботает локально — без сети, облака и телеметрии.",
+        "Исправляет слова, набранные в неверной русской или английской раскладке.\r\nРаботает полностью локально — без сети, облака и телеметрии.",
     );
     let description = CreateWindowExW(
         0,
         static_class.as_ptr(),
         description_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        190,
-        88,
-        430,
-        64,
+        176,
+        82,
+        448,
+        58,
         hwnd,
         null_mut(),
         module,
@@ -290,9 +305,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         privacy_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        190,
-        154,
-        430,
+        176,
+        146,
+        448,
         24,
         hwnd,
         null_mut(),
@@ -305,9 +320,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
-        30,
-        195,
-        600,
+        36,
+        184,
+        608,
         2,
         hwnd,
         null_mut(),
@@ -321,42 +336,42 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         examples_header_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        30,
-        216,
+        36,
+        207,
         160,
-        26,
+        24,
         hwnd,
         null_mut(),
         module,
         null(),
     );
 
-    let examples_text = wide("ghbdtn  →  привет          руддщ  →  hello");
+    let examples_text = wide("ghbdtn  →  привет            руддщ  →  hello");
     let examples = CreateWindowExW(
         0,
         static_class.as_ptr(),
         examples_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        30,
-        246,
-        590,
-        28,
+        36,
+        237,
+        608,
+        26,
         hwnd,
         null_mut(),
         module,
         null(),
     );
 
-    let undo_header_text = wide("Если замена оказалась неверной");
+    let undo_header_text = wide("Быстрая отмена");
     let undo_header = CreateWindowExW(
         0,
         static_class.as_ptr(),
         undo_header_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        30,
-        292,
-        360,
-        26,
+        36,
+        282,
+        260,
+        24,
         hwnd,
         null_mut(),
         module,
@@ -364,17 +379,50 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let undo_text = wide(
-        "Нажмите Ctrl+Backspace сразу после автозамены — G-switcher восстановит исходное слово и прежнюю раскладку. Hotkey можно изменить в настройках.",
+        "Ctrl+Backspace сразу после замены вернёт исходное слово и прежнюю раскладку.",
     );
     let undo = CreateWindowExW(
         0,
         static_class.as_ptr(),
         undo_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        30,
-        322,
-        590,
-        46,
+        36,
+        312,
+        608,
+        42,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let settings_hint_text = wide(
+        "Горячие клавиши и режимы приложений можно изменить через значок G-switcher в трее → Настройки.",
+    );
+    let settings_hint = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        settings_hint_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        36,
+        358,
+        608,
+        36,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let footer_separator = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        empty.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
+        36,
+        401,
+        608,
+        2,
         hwnd,
         null_mut(),
         module,
@@ -387,9 +435,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         button_class.as_ptr(),
         checkbox_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-        30,
-        386,
-        380,
+        36,
+        418,
+        390,
         28,
         hwnd,
         ID_CHECKBOX as usize as *mut core::ffi::c_void,
@@ -404,10 +452,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         footer_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        30,
-        434,
-        290,
-        24,
+        36,
+        467,
+        300,
+        20,
         hwnd,
         null_mut(),
         module,
@@ -420,9 +468,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         button_class.as_ptr(),
         ok_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
-        520,
-        422,
-        110,
+        532,
+        413,
+        112,
         36,
         hwnd,
         ID_OK as usize as *mut core::ffi::c_void,
@@ -431,9 +479,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let default_font = GetStockObject(DEFAULT_GUI_FONT);
-    let body_font = create_ui_font(-17, 400);
-    let emphasis_font = create_ui_font(-18, 600);
-    let title_font = create_ui_font(-30, 600);
+    let body_font = create_ui_font(-16, 400);
+    let emphasis_font = create_ui_font(-17, 600);
+    let title_font = create_ui_font(-28, 600);
 
     store_font(&BODY_FONT, body_font);
     store_font(&EMPHASIS_FONT, emphasis_font);
@@ -464,10 +512,12 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         privacy,
         examples,
         undo,
+        settings_hint,
         checkbox,
         footer,
         ok,
         separator,
+        footer_separator,
     ] {
         SendMessageW(control, WM_SETFONT, body_font as usize, 1);
     }
