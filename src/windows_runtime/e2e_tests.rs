@@ -326,7 +326,7 @@ fn real_windows_hook_to_edit_e2e() {
     disabled.disabled_apps.push(process_name);
     settings::replace_runtime_settings_for_test(disabled);
     prepare_case(window, edit, ui_thread_id, Language::English);
-    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N']));
+    inject_strokes(&keys(b"GHBDTN"));
     await_text(edit, "ghbdtn");
     inject_ctrl_shift_hotkey(VK_F12_VALUE);
     await_text(edit, "ghbdtn");
