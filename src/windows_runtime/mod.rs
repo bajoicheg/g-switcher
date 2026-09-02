@@ -247,8 +247,6 @@ impl Engine {
             return HookDecision::Pass;
         };
 
-        // Modifier key-down events must not destroy the candidate or the transient undo record.
-        // The following non-modifier key decides whether a shortcut should invalidate state.
         if is_modifier_vk(vk) {
             return HookDecision::Pass;
         }
@@ -362,7 +360,6 @@ impl Engine {
             return false;
         };
 
-        // Preflight the target text before suppressing the user's delimiter.
         let mut preflight = Vec::new();
         append_backspaces(&mut preflight, self.candidate.chars().count());
         if !append_text_for_layout(&mut preflight, &corrected, target_hkl)
@@ -371,12 +368,7 @@ impl Engine {
             return false;
         }
 
-        if !switch_layout(source.hwnd, source.thread_id, target_hkl) {
-            return false;
-        }
-
         let Some(hook_thread_id) = HOOK_THREAD_ID.get().copied() else {
-            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
             return false;
         };
 
@@ -394,7 +386,6 @@ impl Engine {
 
         if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_CORRECTION, 0, 0) } == 0 {
             self.pending_correction = None;
-            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
             return false;
         }
 
@@ -412,7 +403,6 @@ impl Engine {
             .map(|target| target.hwnd as isize == pending.focus)
             .unwrap_or(false);
         if !same_focus {
-            let _ = switch_layout(hwnd, pending.thread_id, pending.source_hkl);
             return;
         }
 
@@ -643,22 +633,14 @@ fn visible_char(vk: u16, language: Language) -> Option<char> {
 fn is_modifier_vk(vk: u16) -> bool {
     matches!(
         vk,
-        0x10 // VK_SHIFT
-            | 0x11 // VK_CONTROL
-            | 0x12 // VK_MENU
-            | 0x14 // VK_CAPITAL
-            | 0xA0 // VK_LSHIFT
-            | 0xA1 // VK_RSHIFT
-            | 0xA2 // VK_LCONTROL
-            | 0xA3 // VK_RCONTROL
-            | 0xA4 // VK_LMENU
-            | 0xA5 // VK_RMENU
+        0x10 | 0x11 | 0x12 | 0x14 | 0xA0 | 0xA1 | 0xA2 | 0xA3 | 0xA4 | 0xA5
     )
 }
 
 fn is_shift_down() -> bool {
     unsafe { GetKeyState(VK_SHIFT as i32) < 0 }
 }
+
 fn is_control_down() -> bool {
     unsafe { GetKeyState(VK_CONTROL as i32) < 0 }
 }
