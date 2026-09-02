@@ -1,0 +1,50 @@
+name: Windows Rust CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-rust-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-gate:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt --component clippy
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Format
+        shell: pwsh
+        run: cargo fmt --all -- --check
+
+      - name: Unit tests
+        shell: pwsh
+        run: cargo test --all-targets
+
+      - name: Clippy
+        shell: pwsh
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Release build
+        shell: pwsh
+        run: cargo build --release --bin g-switcher
