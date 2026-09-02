@@ -5,12 +5,15 @@ const EN_COMMON: &str = "hello world system server user security window windows 
 const RU_TOP: &str = "и в не на я быть он с что а по это она этот к но они мы как из у который то за свой весь год от так о для ты же все тот мочь вы человек такой его сказать только или ещё бы себя один уже до время если сам когда другой вот говорить наш мой знать стать при чтобы дело жизнь кто первый очень два день ее новый рука даже во со раз где там под можно ну какой после их работа без самый потом надо хотеть ли слово идти большой";
 const RU_COMMON: &str = "привет система сервер пользователь безопасность окно данные код проверка объект сеть служба файл приложение процесс ввод клавиатура раскладка настройки ручной автоматический текущий предыдущий выделенный текст слово тест релиз сборка обновление локальный приватность пароль защита коробка свобода свободу свободный хорошо работает работаю";
 
-const EN_BIGRAM_HIGH: &str = "th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le";
+const EN_BIGRAM_HIGH: &str =
+    "th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le";
 const EN_TRIGRAM_HIGH: &str = "the and ing ion ent her for tha nth int ere ter est ers ati hat ate all eth hes ver his not you our rea";
 const EN_RARE: &str = "qj qz jx zq xq wj jq zx xj wwq";
 
-const RU_BIGRAM_HIGH: &str = "ст но то на ен ов ни ра во ко ро по пр ер ос ал го ли от ре та ть ан ор ка ло ва ит те ет";
-const RU_TRIGRAM_HIGH: &str = "про ост ени ова ние ств ого ать это тор ско ной ель при раз как под без ист раб сер пол";
+const RU_BIGRAM_HIGH: &str =
+    "ст но то на ен ов ни ра во ко ро по пр ер ос ал го ли от ре та ть ан ор ка ло ва ит те ет";
+const RU_TRIGRAM_HIGH: &str =
+    "про ост ени ова ние ств ого ать это тор ско ной ель при раз как под без ист раб сер пол";
 const RU_RARE: &str = "жы шы чя щя йй ъъ ьы ыы эы йь ъь";
 
 const EN_PAIRS: &[(&str, &str, i32)] = &[
@@ -142,8 +145,7 @@ mod tests {
             lexical_score(Language::English, "system") > lexical_score(Language::English, "qzxj")
         );
         assert!(
-            lexical_score(Language::Russian, "система")
-                > lexical_score(Language::Russian, "щжыы")
+            lexical_score(Language::Russian, "система") > lexical_score(Language::Russian, "щжыы")
         );
     }
 
