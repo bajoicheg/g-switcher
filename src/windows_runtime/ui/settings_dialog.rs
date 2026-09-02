@@ -15,10 +15,10 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetDlgItem, GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, IsWindow, LoadCursorW,
     MessageBoxW, PeekMessageW, RegisterClassW, SendMessageW, SetWindowTextW, ShowWindow,
     TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, BS_GROUPBOX,
-    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, IDC_ARROW, MB_ICONWARNING, MB_OK, MSG,
-    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC,
-    WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED,
-    WS_SYSMENU, WS_VISIBLE, WS_VSCROLL,
+    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, IDC_ARROW, MB_ICONWARNING, MB_OK, MSG, PM_REMOVE,
+    SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY,
+    WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    WS_VSCROLL,
 };
 
 use crate::windows_runtime::settings;
@@ -45,12 +45,31 @@ static SECTION_FONT: AtomicIsize = AtomicIsize::new(0);
 static BODY_FONT: AtomicIsize = AtomicIsize::new(0);
 static HINT_FONT: AtomicIsize = AtomicIsize::new(0);
 
+#[derive(Clone, Copy)]
+struct UiRect {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+impl UiRect {
+    const fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+}
+
 pub fn show() -> Result<()> {
     ensure_class()?;
     unsafe {
         let module = GetModuleHandleW(null());
         let client_width = 900;
-        let client_height = 825;
+        let client_height = 740;
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
         let mut rect = RECT {
             left: 0,
@@ -61,6 +80,7 @@ pub fn show() -> Result<()> {
         if AdjustWindowRectEx(&mut rect, style, 0, 0) == 0 {
             return Err(anyhow!("AdjustWindowRectEx for settings failed"));
         }
+
         let width = rect.right - rect.left;
         let height = rect.bottom - rect.top;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
@@ -102,6 +122,7 @@ fn ensure_class() -> Result<()> {
     if CLASS_REGISTERED.get().is_some() {
         return Ok(());
     }
+
     unsafe {
         let module = GetModuleHandleW(null());
         let class = wide(CLASS_NAME);
@@ -121,6 +142,7 @@ fn ensure_class() -> Result<()> {
             return Err(anyhow!("RegisterClassW for settings failed"));
         }
     }
+
     let _ = CLASS_REGISTERED.set(());
     Ok(())
 }
@@ -224,10 +246,10 @@ unsafe fn create_controls(hwnd: HWND) {
     let runtime = settings::runtime_settings();
 
     let default_font = GetStockObject(DEFAULT_GUI_FONT);
-    let title_font = create_ui_font(-26, 600);
-    let section_font = create_ui_font(-17, 600);
+    let title_font = create_ui_font(-25, 600);
+    let section_font = create_ui_font(-16, 600);
     let body_font = create_ui_font(-16, 400);
-    let hint_font = create_ui_font(-14, 400);
+    let hint_font = create_ui_font(-13, 400);
     store_font(&TITLE_FONT, title_font);
     store_font(&SECTION_FONT, section_font);
     store_font(&BODY_FONT, body_font);
@@ -242,10 +264,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Настройки G-switcher 0.8.2",
-        28,
-        18,
-        840,
-        34,
+        UiRect::new(28, 18, 840, 32),
     );
     set_font(title, title_font);
 
@@ -254,10 +273,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Все параметры хранятся локально. Набираемый текст и предыдущие слова на диск не записываются.",
-        28,
-        58,
-        840,
-        36,
+        UiRect::new(28, 54, 840, 22),
     );
     set_font(privacy, hint_font);
 
@@ -266,10 +282,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Основное",
-        24,
-        104,
-        852,
-        72,
+        UiRect::new(24, 86, 852, 70),
     );
     set_font(general_group, section_font);
 
@@ -279,10 +292,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Автоматически исправлять неверную раскладку",
         ID_AUTO_CORRECT,
-        44,
-        134,
-        390,
-        28,
+        UiRect::new(44, 116, 390, 28),
     );
     SendMessageW(
         auto_correct,
@@ -298,10 +308,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Запускать G-switcher при входе в Windows",
         ID_AUTOSTART,
-        466,
-        134,
-        380,
-        28,
+        UiRect::new(466, 116, 380, 28),
     );
     SendMessageW(
         autostart,
@@ -316,10 +323,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Режимы приложений",
-        24,
-        190,
-        852,
-        204,
+        UiRect::new(24, 170, 852, 190),
     );
     set_font(apps_group, section_font);
 
@@ -328,21 +332,15 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Отключено",
-        44,
-        222,
-        386,
-        24,
+        UiRect::new(44, 200, 386, 22),
     );
     set_font(disabled_label, section_font);
     let disabled_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "G-switcher полностью игнорирует эти процессы, включая ручные hotkey.",
-        44,
-        248,
-        386,
-        38,
+        "Без анализа, автозамены и ручных hotkey для указанных процессов.",
+        UiRect::new(44, 225, 386, 32),
     );
     set_font(disabled_hint, hint_font);
     let disabled = create_multiline_edit(
@@ -350,10 +348,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_DISABLED_APPS,
-        44,
-        292,
-        386,
-        82,
+        UiRect::new(44, 262, 386, 78),
     );
     set_control_text(disabled, &runtime.disabled_apps_text());
     set_font(disabled, body_font);
@@ -363,21 +358,15 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Только вручную",
-        470,
-        222,
-        386,
-        24,
+        UiRect::new(470, 200, 386, 22),
     );
     set_font(manual_label, section_font);
     let manual_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Автозамена выключена, но ручная конвертация остаётся доступной.",
-        470,
-        248,
-        386,
-        38,
+        "Автозамена выключена, ручная конвертация остаётся доступной.",
+        UiRect::new(470, 225, 386, 32),
     );
     set_font(manual_hint, hint_font);
     let manual_only = create_multiline_edit(
@@ -385,10 +374,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_MANUAL_ONLY_APPS,
-        470,
-        292,
-        386,
-        82,
+        UiRect::new(470, 262, 386, 78),
     );
     set_control_text(manual_only, &runtime.manual_only_apps_text());
     set_font(manual_only, body_font);
@@ -398,21 +384,15 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Пользовательский словарь",
-        24,
-        408,
-        852,
-        148,
+        UiRect::new(24, 374, 852, 128),
     );
     set_font(dictionary_group, section_font);
     let dictionary_hint = create_static(
         hwnd,
         module,
         &static_class,
-        "Одно слово на строку. Добавленные слова считаются допустимыми и помогают избежать ложных исправлений.",
-        44,
-        438,
-        812,
-        38,
+        "Одно слово на строку. Словарь помогает не исправлять ваши допустимые слова.",
+        UiRect::new(44, 404, 812, 28),
     );
     set_font(dictionary_hint, hint_font);
     let dictionary = create_multiline_edit(
@@ -420,10 +400,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_USER_WORDS,
-        44,
-        482,
-        812,
-        54,
+        UiRect::new(44, 438, 812, 46),
     );
     set_control_text(dictionary, &runtime.user_words_text());
     set_font(dictionary, body_font);
@@ -433,10 +410,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Горячие клавиши",
-        24,
-        570,
-        852,
-        174,
+        UiRect::new(24, 516, 852, 160),
     );
     set_font(hotkeys_group, section_font);
     let hotkey_hint = create_static(
@@ -444,10 +418,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Формат: Ctrl/Shift/Alt + F1–F12, буква, цифра, Space или Backspace.",
-        44,
-        600,
-        812,
-        24,
+        UiRect::new(44, 546, 812, 22),
     );
     set_font(hotkey_hint, hint_font);
 
@@ -456,10 +427,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Текущее слово",
-        44,
-        638,
-        140,
-        24,
+        UiRect::new(44, 580, 140, 24),
     );
     set_font(current_label, body_font);
     let current_hotkey = create_single_edit(
@@ -467,10 +435,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_CURRENT,
-        190,
-        633,
-        190,
-        30,
+        UiRect::new(190, 575, 190, 30),
     );
     set_control_text(current_hotkey, &runtime.manual_current_hotkey.to_text());
     set_font(current_hotkey, body_font);
@@ -480,10 +445,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Предыдущее слово",
-        462,
-        638,
-        156,
-        24,
+        UiRect::new(462, 580, 156, 24),
     );
     set_font(previous_label, body_font);
     let previous_hotkey = create_single_edit(
@@ -491,10 +453,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_PREVIOUS,
-        626,
-        633,
-        230,
-        30,
+        UiRect::new(626, 575, 230, 30),
     );
     set_control_text(previous_hotkey, &runtime.previous_word_hotkey.to_text());
     set_font(previous_hotkey, body_font);
@@ -504,10 +463,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Отмена замены",
-        44,
-        681,
-        140,
-        24,
+        UiRect::new(44, 623, 140, 24),
     );
     set_font(undo_label, body_font);
     let undo_hotkey = create_single_edit(
@@ -515,10 +471,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_UNDO,
-        190,
-        676,
-        190,
-        30,
+        UiRect::new(190, 618, 190, 30),
     );
     set_control_text(undo_hotkey, &runtime.undo_hotkey.to_text());
     set_font(undo_hotkey, body_font);
@@ -528,10 +481,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Pause / Resume",
-        462,
-        681,
-        156,
-        24,
+        UiRect::new(462, 623, 156, 24),
     );
     set_font(pause_label, body_font);
     let pause_hotkey = create_single_edit(
@@ -539,10 +489,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &edit_class,
         ID_HOTKEY_PAUSE,
-        626,
-        676,
-        230,
-        30,
+        UiRect::new(626, 618, 230, 30),
     );
     set_control_text(pause_hotkey, &runtime.pause_hotkey.to_text());
     set_font(pause_hotkey, body_font);
@@ -552,10 +499,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Pause действует только до выхода из G-switcher и не сохраняется между запусками.",
-        44,
-        714,
-        812,
-        22,
+        UiRect::new(44, 650, 812, 18),
     );
     set_font(pause_hint, hint_font);
 
@@ -564,10 +508,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Изменения применяются сразу после сохранения.",
-        28,
-        770,
-        500,
-        24,
+        UiRect::new(28, 704, 500, 22),
     );
     set_font(footer_hint, hint_font);
 
@@ -577,10 +518,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Сохранить",
         ID_SAVE,
-        644,
-        762,
-        104,
-        36,
+        UiRect::new(644, 694, 104, 34),
         true,
     );
     set_font(save, body_font);
@@ -590,25 +528,18 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Отмена",
         ID_CANCEL,
-        762,
-        762,
-        104,
-        36,
+        UiRect::new(762, 694, 104, 34),
         false,
     );
     set_font(cancel, body_font);
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_static(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     text: &str,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
 ) -> HWND {
     let text = wide(text);
     CreateWindowExW(
@@ -616,10 +547,10 @@ unsafe fn create_static(
         class.as_ptr(),
         text.as_ptr(),
         WS_CHILD | WS_VISIBLE,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         null_mut(),
         module,
@@ -627,16 +558,12 @@ unsafe fn create_static(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_group_box(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     text: &str,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
 ) -> HWND {
     let text = wide(text);
     CreateWindowExW(
@@ -644,10 +571,10 @@ unsafe fn create_group_box(
         class.as_ptr(),
         text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_GROUPBOX as u32,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         null_mut(),
         module,
@@ -655,17 +582,13 @@ unsafe fn create_group_box(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_checkbox(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     text: &str,
     id: i32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
 ) -> HWND {
     let text = wide(text);
     CreateWindowExW(
@@ -673,10 +596,10 @@ unsafe fn create_checkbox(
         class.as_ptr(),
         text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         id as usize as *mut core::ffi::c_void,
         module,
@@ -684,16 +607,12 @@ unsafe fn create_checkbox(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_multiline_edit(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     id: i32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
 ) -> HWND {
     let empty = wide("");
     CreateWindowExW(
@@ -706,10 +625,10 @@ unsafe fn create_multiline_edit(
             | WS_VSCROLL
             | ES_MULTILINE as u32
             | ES_AUTOVSCROLL as u32,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         id as usize as *mut core::ffi::c_void,
         module,
@@ -717,16 +636,12 @@ unsafe fn create_multiline_edit(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_single_edit(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     id: i32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
 ) -> HWND {
     let empty = wide("");
     CreateWindowExW(
@@ -734,10 +649,10 @@ unsafe fn create_single_edit(
         class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL as u32,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         id as usize as *mut core::ffi::c_void,
         module,
@@ -745,17 +660,13 @@ unsafe fn create_single_edit(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 unsafe fn create_button(
     parent: HWND,
     module: *mut core::ffi::c_void,
     class: &[u16],
     text: &str,
     id: i32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    rect: UiRect,
     default: bool,
 ) -> HWND {
     let text = wide(text);
@@ -765,10 +676,10 @@ unsafe fn create_button(
         class.as_ptr(),
         text.as_ptr(),
         WS_CHILD | WS_VISIBLE | style as u32,
-        x,
-        y,
-        width,
-        height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
         parent,
         id as usize as *mut core::ffi::c_void,
         module,
@@ -800,13 +711,19 @@ unsafe fn set_font(hwnd: HWND, font: *mut core::ffi::c_void) {
 }
 
 fn choose_font(
-    font: *mut core::ffi::c_void,
+    preferred: *mut core::ffi::c_void,
     fallback: *mut core::ffi::c_void,
 ) -> *mut core::ffi::c_void {
-    if font.is_null() {
+    if preferred.is_null() {
         fallback
     } else {
-        font
+        preferred
+    }
+}
+
+fn store_font(slot: &AtomicIsize, font: *mut core::ffi::c_void) {
+    if !font.is_null() {
+        slot.store(font as isize, Ordering::SeqCst);
     }
 }
 
@@ -828,12 +745,6 @@ unsafe fn create_ui_font(height: i32, weight: i32) -> *mut core::ffi::c_void {
         0,
         face.as_ptr(),
     )
-}
-
-fn store_font(slot: &AtomicIsize, font: *mut core::ffi::c_void) {
-    if !font.is_null() {
-        slot.store(font as isize, Ordering::SeqCst);
-    }
 }
 
 unsafe fn cleanup_fonts() {
