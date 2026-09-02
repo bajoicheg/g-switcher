@@ -1,3 +1,5 @@
+mod settings_dialog;
+
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut, without_provenance};
 use std::sync::atomic::{AtomicI32, AtomicIsize, Ordering};
@@ -29,6 +31,7 @@ const FIRST_RUN_CLASS: &str = "GSwitcher.FirstRun";
 const TRAY_CLASS: &str = "GSwitcher.Tray";
 const TRAY_ID: u32 = 1;
 const WM_TRAY: u32 = WM_APP + 7;
+const ID_SETTINGS: usize = 1000;
 const ID_AUTOSTART: usize = 1001;
 const ID_EXIT: usize = 1002;
 const ID_CHECKBOX: i32 = 2001;
@@ -519,6 +522,9 @@ unsafe extern "system" fn tray_proc(
         }
         WM_COMMAND => {
             match wparam & 0xffff {
+                ID_SETTINGS => {
+                    let _ = settings_dialog::show();
+                }
                 ID_AUTOSTART => {
                     let enabled = settings::autostart_enabled();
                     let _ = settings::set_autostart(!enabled);
@@ -538,6 +544,7 @@ unsafe fn show_tray_menu(hwnd: HWND) {
         return;
     }
 
+    let settings_label = wide("Настройки…");
     let autostart_label = if settings::autostart_enabled() {
         "Убрать из автозапуска"
     } else {
@@ -545,6 +552,8 @@ unsafe fn show_tray_menu(hwnd: HWND) {
     };
     let autostart_label = wide(autostart_label);
     let exit_label = wide("Выход");
+    AppendMenuW(menu, MF_STRING, ID_SETTINGS, settings_label.as_ptr());
+    AppendMenuW(menu, MF_SEPARATOR, 0, null());
     AppendMenuW(menu, MF_STRING, ID_AUTOSTART, autostart_label.as_ptr());
     AppendMenuW(menu, MF_SEPARATOR, 0, null());
     AppendMenuW(menu, MF_STRING, ID_EXIT, exit_label.as_ptr());
