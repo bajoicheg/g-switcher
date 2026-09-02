@@ -32,6 +32,7 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
         "система",
         "сервер",
         "пользователь",
+        "окно",
     ]
     .into_iter()
     .collect()
@@ -40,7 +41,7 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
         "hello", "the", "then", "to", "work", "system", "server", "user", "check", "security",
-        "object", "box",
+        "object", "box", "window", "windows",
     ]
     .into_iter()
     .collect()
@@ -88,6 +89,12 @@ pub fn decide(token: &str) -> Decision {
         return Decision::CorrectTo(target);
     }
 
+    if language_score(&mapped_normalized, target) >= 8
+        && language_score(&mapped_normalized, target) >= language_score(&normalized, source) + 5
+    {
+        return Decision::CorrectTo(target);
+    }
+
     Decision::Keep
 }
 
@@ -97,6 +104,21 @@ pub fn correction(token: &str) -> Option<(Language, Language, String)> {
         Decision::CorrectTo(target) => Some((source, target, opposite_layout_text(token, source))),
         Decision::Keep => None,
     }
+}
+
+pub fn opposite_candidate_is_prefix(token: &str) -> bool {
+    let Some(source) = infer_language(token) else {
+        return false;
+    };
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return false;
+    }
+    let mapped = normalize(&mapped, target);
+    source_dictionary(target)
+        .iter()
+        .any(|word| word.starts_with(mapped.as_str()) && word.len() > mapped.len())
 }
 
 fn source_dictionary(language: Language) -> &'static HashSet<&'static str> {
@@ -128,6 +150,86 @@ fn candidate_shape_is_valid(candidate: &str, language: Language) -> bool {
     })
 }
 
+fn language_score(token: &str, language: Language) -> i32 {
+    if token.chars().count() < 3 {
+        return 0;
+    }
+    match language {
+        Language::English => score_english(token),
+        Language::Russian => score_russian(token),
+    }
+}
+
+fn score_english(token: &str) -> i32 {
+    const COMMON: &[&str] = &[
+        "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd", "ti", "es", "or", "te", "of",
+        "ed", "is", "it", "al", "ar", "st", "to", "nt", "ng", "se", "ha", "as", "ou", "io", "le",
+        "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne", "ea", "ra", "ce", "li", "ch", "ll",
+        "be", "ma", "si", "om", "ur",
+    ];
+    const RARE: &[&str] = &["qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg"];
+
+    let mut score = 0;
+    let vowels = token
+        .chars()
+        .filter(|ch| matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'))
+        .count();
+    if vowels > 0 {
+        score += 3;
+    } else {
+        score -= 6;
+    }
+    for pair in token.as_bytes().windows(2) {
+        if let Ok(pair) = std::str::from_utf8(pair) {
+            if COMMON.contains(&pair) {
+                score += 2;
+            }
+            if RARE.contains(&pair) {
+                score -= 3;
+            }
+        }
+    }
+    score
+}
+
+fn score_russian(token: &str) -> i32 {
+    const COMMON: &[&str] = &[
+        "ст", "но", "то", "на", "ен", "ов", "ни", "ра", "во", "ко", "ро", "по", "пр", "ер", "ос",
+        "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло", "ва", "ит", "те", "ет",
+        "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис", "ол", "ле", "ся", "ин", "тр", "ом",
+        "ма", "ме", "до", "че", "об", "бо",
+    ];
+    const RARE: &[&str] = &["жы", "шы", "чя", "щя", "йй", "ъъ", "ьы"];
+
+    let mut score = 0;
+    let vowels = token
+        .chars()
+        .filter(|ch| {
+            matches!(
+                ch,
+                'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
+            )
+        })
+        .count();
+    if vowels > 0 {
+        score += 3;
+    } else {
+        score -= 6;
+    }
+
+    let chars: Vec<char> = token.chars().collect();
+    for pair in chars.windows(2) {
+        let pair: String = pair.iter().collect();
+        if COMMON.contains(&pair.as_str()) {
+            score += 2;
+        }
+        if RARE.contains(&pair.as_str()) {
+            score -= 3;
+        }
+    }
+    score
+}
+
 fn is_ru_letter(ch: char) -> bool {
     matches!(ch, 'а'..='я' | 'А'..='Я' | 'ё' | 'Ё')
 }
@@ -141,6 +243,7 @@ mod tests {
         assert_eq!(decide("ghbdtn"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("руддщ"), Decision::CorrectTo(Language::English));
         assert_eq!(decide("rjhj,rf"), Decision::CorrectTo(Language::Russian));
+        assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
     }
 
     #[test]
@@ -166,5 +269,11 @@ mod tests {
     #[test]
     fn punctuation_in_opposite_candidate_is_not_silently_dropped() {
         assert_eq!(decide("беру"), Decision::Keep);
+    }
+
+    #[test]
+    fn recognizes_ambiguous_oem_prefix() {
+        assert!(opposite_candidate_is_prefix("rjhj"));
+        assert!(!opposite_candidate_is_prefix("hello"));
     }
 }
