@@ -9,6 +9,8 @@ fn main() {
         resource.set("LegalCopyright", "Copyright (c) V. Vasilev 2026");
         resource.set("FileVersion", "0.6.0.0");
         resource.set("ProductVersion", "0.6.0");
-        resource.compile().expect("failed to compile Windows resources");
+        resource
+            .compile()
+            .expect("failed to compile Windows resources");
     }
 }
