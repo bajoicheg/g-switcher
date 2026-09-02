@@ -456,8 +456,10 @@ mod tests {
 
     #[test]
     fn sensitivity_thresholds_are_strictly_ordered() {
-        assert!(CONSERVATIVE_CONFIDENCE_THRESHOLD > NORMAL_CONFIDENCE_THRESHOLD);
-        assert!(NORMAL_CONFIDENCE_THRESHOLD > AGGRESSIVE_CONFIDENCE_THRESHOLD);
+        const {
+            assert!(CONSERVATIVE_CONFIDENCE_THRESHOLD > NORMAL_CONFIDENCE_THRESHOLD);
+            assert!(NORMAL_CONFIDENCE_THRESHOLD > AGGRESSIVE_CONFIDENCE_THRESHOLD);
+        }
     }
 
     #[test]
