@@ -327,6 +327,7 @@ unsafe fn create_controls(hwnd: HWND) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn create_static(
     parent: HWND,
     module: *mut core::ffi::c_void,
@@ -354,6 +355,7 @@ unsafe fn create_static(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn create_checkbox(
     parent: HWND,
     module: *mut core::ffi::c_void,
@@ -382,6 +384,7 @@ unsafe fn create_checkbox(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 unsafe fn create_edit(
     parent: HWND,
     module: *mut core::ffi::c_void,
