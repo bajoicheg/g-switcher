@@ -1,45 +1,73 @@
-# G-switcher acceptance tests
+# G-switcher 1.0.0 acceptance tests
 
-The Windows release gate must test the full path from keyboard hook through focused-control layout selection and input injection into a real Win32 edit control.
+The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
 
 ## Core correction
 
 - `ghbdtn ` → `привет `
 - `руддщ ` → `hello `
 - `руддщ ghbdtn ` → `hello привет `
+- `rjhj,rf ` → `коробка `
 - `cdj,jle ` → `свободу `
-- the same cases using Enter instead of Space
-- `ghbdtn` + Tab → `привет` + Tab
+- Space, Enter and Tab delimiters are preserved
+- immediate Undo restores original text and source layout
 
-## Detector v2 and confidence scoring
+## Detector v3
 
-- an exact known opposite-layout word has confidence 100
-- a valid source-language system/user-dictionary word remains unchanged regardless of a plausible opposite mapping or context
-- lower-confidence heuristic candidates remain unchanged below the default threshold
-- a user-dictionary target exact match receives confidence 100
-- a user-dictionary source exact match is protected from automatic correction
+- exact known opposite-layout words receive maximum confidence
+- exact valid source-language system/user-dictionary words remain unchanged
+- baked-in RU/EN frequency scoring favors common language text over keyboard-layout noise
+- common n-grams improve plausibility without overriding exact source protection
 - code-safe tokens do not enter confidence-based automatic correction
-- richer n-gram/suffix/shape scoring does not regress known RU/EN corrections
-- common technical English words such as `json`, `http`, `docker`, `linux`, `vpn`, `edr` and `soc` remain unchanged
-- unknown three-letter candidates remain unchanged without a strong context signal
+- typed context never exceeds two completed words and is never persisted
+- opposite-language context alone cannot force a correction
+- known false-positive regressions remain protected
 
-## Volatile contextual detector
+## Sensitivity profiles
 
-- at most two immediately previous completed words participate in automatic detector context
-- same-language recent context can raise an otherwise sub-threshold plausible opposite-layout candidate above the correction threshold
-- an opposite-language context does not force that correction
-- exact source system/user-dictionary matches are never overridden by context
-- successful completed corrections can become context for the following word
-- process/focus changes clear contextual words
-- entering Pause clears contextual words
-- unrelated Ctrl/Alt command context clears contextual words
-- Undo clears contextual words conservatively
-- contextual words are never written to persistent Settings or transmitted
+- `Conservative`, `Normal` and `Aggressive` are available in Settings
+- `Normal` is the default for new and upgraded configuration without an explicit profile
+- Conservative threshold is strictly higher than Normal
+- Normal threshold is strictly higher than Aggressive
+- changing sensitivity takes effect after Save without restart
+- sensitivity never disables secure-input protection or code-safe protection
+
+## Selected-text conversion
+
+Default action: `Ctrl+Shift+F9`.
+
+On a supported focused native Edit/RichEdit control:
+
+- selecting `ghbdtn rfr ltkf` and invoking the action produces `привет как дела`
+- the target keyboard layout becomes Russian
+- selecting opposite-layout Russian text converts symmetrically to English
+- only the selected range is replaced
+- the clipboard is unchanged
+- no selection means no destructive modification
+- unsupported/custom controls fail open without modifying text
+- immediate `Ctrl+Backspace` restores the original selected text and source layout
+- selected-text Undo is one-shot
+- typing/focus changes invalidate stale selected-text Undo state conservatively
+
+## Secure input protection
+
+For a native `EDIT` control with password state and for recognized credential/PIN/OTP/secure targets:
+
+- `ghbdtn ` remains exactly `ghbdtn `
+- no automatic correction occurs
+- current-word manual conversion does nothing
+- previous-word manual conversion does nothing
+- selected-text conversion does nothing
+- Undo-related text replacement does not operate on the secure field
+- transient candidate/context/previous/Undo state is cleared on entry
+- original user input is passed through unchanged
+- protection applies in Auto and Manual-only modes and for all sensitivity profiles
 
 ## Configurable hotkeys
 
 Default actions are:
 
+- selected text: `Ctrl+Shift+F9`
 - current word: `Ctrl+Shift+F12`
 - previous word: `Ctrl+Shift+F10`
 - undo: `Ctrl+Backspace`
@@ -47,11 +75,12 @@ Default actions are:
 
 Acceptance requirements:
 
-- each action can be reassigned in Settings to another supported modifier/key combination
-- the changed combination takes effect without restarting G-switcher
-- a malformed combination is rejected by Settings and is not persisted
-- action matching requires the configured modifier set rather than a prefix/superset match
-- ordinary unrelated Ctrl/Alt shortcuts still invalidate stale transient text state
+- each action can be reassigned to another supported modifier/key combination
+- changes take effect without restart
+- malformed combinations are rejected by Settings
+- matching requires the configured modifier set rather than a prefix/superset match
+- queued manual correction must not synthetically re-press Ctrl/Shift/Alt after the user has already released those modifiers
+- immediate Undo after previous-word manual conversion must work even when the queued correction executes after hotkey key-up events
 
 ## Current-word manual conversion
 
@@ -59,15 +88,14 @@ Acceptance requirements:
 - manual conversion operates even when the automatic detector would keep an ambiguous token
 - manual conversion switches the focused control to the target layout
 - immediate configured Undo restores the original token and source layout
-- current-word conversion is available in `Auto` and `Manual only`, but not `Disabled`
+- current-word conversion is available in `Auto` and `Manual only`, but not `Disabled`, Pause or secure input
 
 ## Previous-word manual conversion
 
 With automatic correction disabled or an intentionally uncorrected token:
 
 - type `ghbdtn `, then invoke the configured previous-word action → `привет `
-- Space is restored after conversion
-- Enter, Tab and supported punctuation are restored after conversion
+- delimiter is restored after conversion
 - immediate configured Undo restores the original token, delimiter and source layout
 - only the immediately previous completed token is eligible
 - typing the next visible token invalidates the previous-token record
@@ -78,46 +106,28 @@ With automatic correction disabled or an intentionally uncorrected token:
 
 - executable matching is case-insensitive
 - an unlisted executable operates in `Auto`
-- `Manual only` tracks tokens and permits current/previous manual conversion but performs no automatic replacement
-- `Disabled` receives original keystrokes unchanged and permits neither automatic nor manual conversion
-- entering `Disabled` clears stale candidate, previous-token, context and undo state
+- `Manual only` tracks tokens and permits explicit conversion but performs no automatic replacement
+- `Disabled` receives original keystrokes unchanged and permits no text conversion
+- entering `Disabled` clears stale candidate, previous-token, context and Undo state
 - if an executable appears in both lists, `Disabled` wins
-- a 0.7 `ExcludedApps` entry loads as `Disabled` after upgrade
-- Settings process picker includes currently running process basenames
-- previously configured Disabled/Manual-only processes remain selectable even when they are not currently running
-- the last process observed by the runtime is preferred in the picker when available
-- selecting `Auto` removes the process from both explicit mode lists
-- selecting `Только вручную` moves the process to Manual-only and removes it from Disabled
-- selecting `Отключить` moves the process to Disabled and removes it from Manual-only
-- Disabled and Manual-only lists are read-only resulting-state views; normal mode management requires no manual EXE typing
-- saving a changed application mode takes effect without restarting G-switcher
-
-## Tray state indicator
-
-- active automatic mode is represented as `Auto` in the tray tooltip
-- Manual-only mode is represented as `Manual`
-- Disabled mode is represented as `Disabled`
-- Pause is represented prominently as `Пауза`
-- when active, tooltip may include current process basename and RU/EN layout
-- a successful correction updates the latest-operation hint to the target language
-- successful Undo updates the latest-operation hint to the restored source language
-- changing process clears stale latest-operation text
-- tray status is process-local and is not persisted
+- Settings process picker includes running and previously configured process basenames
+- selecting `Auto`, `Только вручную` or `Отключить` updates the resulting policy state without manual EXE typing
+- saving a changed application mode takes effect without restart
 
 ## Pause / Resume
 
-- tray contains a Pause action while active and a Resume action while paused
-- the configured pause hotkey toggles the same process-local state
-- while paused, `ghbdtn ` remains `ghbdtn ` and no manual action changes it
-- entering Pause clears current candidate, previous-token, context, undo and pending-correction state
-- resuming does not resurrect pre-pause transient state
-- restarting G-switcher always starts active; Pause is not persisted
+- tray contains Pause while active and Resume while paused
+- configured pause hotkey toggles the same process-local state
+- while paused, `ghbdtn ` remains unchanged and no explicit conversion action modifies text
+- entering Pause clears candidate, previous-token, context, Undo and pending correction/selection state
+- resuming does not resurrect pre-pause state
+- restarting G-switcher always starts active
 
 ## User dictionary
 
 - explicitly entered words survive restart as per-user configuration
-- duplicate entries are normalized without creating duplicate records
-- normal typing never adds words to the persistent dictionary
+- duplicate entries are normalized
+- normal typing never learns persistent dictionary words
 - a correct dictionary word is protected from automatic rewriting
 - an opposite-layout candidate mapping exactly to a dictionary word receives maximum confidence
 
@@ -125,36 +135,31 @@ With automatic correction disabled or an intentionally uncorrected token:
 
 - Settings is reachable from the tray menu
 - automatic correction can be enabled or disabled
+- sensitivity profile can be selected
 - autostart can be enabled or disabled
-- application mode is managed through a process picker and direct Auto/Manual-only/Disabled actions
-- Disabled and Manual-only executable lists are shown read-only
+- application mode is managed through the process picker
 - user-dictionary words can be edited as one entry per line
-- all four action hotkeys can be edited
-- Save updates the running process without requiring restart or elevation
+- all five action hotkeys can be edited
+- Save updates the running process without elevation
 - Cancel/close does not persist edits
-- the UI states that contextual detector words are kept only in volatile memory
-- the UI states that Pause is temporary and not persisted
+- UI states that detector context is volatile
+- UI states that password/PIN/OTP/secure input is not processed
 
-## Punctuation
+## Punctuation and editing
 
 - `ghbdtn/` → `привет/`
 - `ghbdtn,` → `привет,`
 - `ghbdtn.` → `привет.`
 - `rjhj,rf ` → `коробка `
 - `cdj,jle ` → `свободу `; the internal physical comma key is the Russian letter `б`, not a boundary
-- `руддщ.` → `hello.`
 - punctuation is never lost when correction fails
-
-## Editing
-
-- type `ghbdtn/`, Backspace, Space → `привет `
-- multiple Backspace operations reconstruct the remaining candidate correctly
+- Backspace reconstructs the remaining candidate correctly
 - deleting the entire candidate leaves an empty candidate
 - caret movement invalidates stale correction state
 
 ## False-positive protection
 
-These examples must remain unchanged when typed correctly:
+These examples remain unchanged when typed correctly:
 
 - `беру`
 - `берут`
@@ -176,14 +181,12 @@ These examples must remain unchanged when typed correctly:
 - `edr`
 - `soc`
 
-## Case
+## Case and code-safe behavior
 
 - `Ghbdtn ` → `Привет `
 - `GHBDTN ` → `ПРИВЕТ `
 - `Руддщ ` → `Hello `
 - `РУДДЩ ` → `HELLO `
-
-## Code-safe
 
 The following classes are not automatically rewritten:
 
@@ -200,44 +203,17 @@ The following classes are not automatically rewritten:
 - `some_variable`
 - `--background`
 
-An explicit manual conversion may operate on non-Disabled text because it is user initiated; automatic code-safe protection remains conservative.
+## Release gate
 
-## Undo
+A releasable `v1.0.0` requires one successful Windows CI run on merged `main` containing:
 
-- after `ghbdtn ` becomes `привет `, immediate configured Undo restores `ghbdtn ` and the original input locale
-- current-word and previous-word manual conversion produce the same one-shot undo capability
-- Undo is rejected after focus moves to another control
-- Undo is rejected after unrelated text is typed
+- `cargo fmt --all -- --check`
+- all unit/integration tests
+- ignored real Win32 hook-to-EDIT E2E with automatic correction, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
+- `cargo clippy --all-targets -- -D warnings`
+- optimized `g-switcher.exe` build
+- Windows GUI subsystem and `1.0.0` branding/version checks
+- generated SHA-256 sidecar
+- uploaded artifact named `g-switcher-1.0.0-windows-x64`
 
-## First-run UX
-
-- the G-on-shield artwork is prominent and substantially larger than the tray icon
-- the whole client area, including text/icon areas, uses one consistent neutral gray system background
-- the dialog uses Windows-native Segoe UI typography with a clear visual hierarchy
-- the dialog includes short `ghbdtn → привет` and `руддщ → hello` examples
-- autostart is checked by default
-- the dialog stays centered on the primary display and requires only one `OK` action
-
-## Layout matrix
-
-- Russian + US English
-- Russian + UK English
-- Russian + English plus a third installed layout
-- manual Windows layout shortcut set to Win+Space, Ctrl+Shift, Alt+Shift or another supported configuration: G-switcher behavior remains identical
-
-## Privilege boundary
-
-- normal target at the same integrity level: correction works
-- elevated target from standard-user G-switcher: original input is preserved without unsafe partial replacement where possible
-
-## Process and privacy behavior
-
-- second instance does not install a second keyboard hook
-- tray exit removes the hook
-- first-run state is per-user
-- per-user autostart does not require local administrator rights
-- current candidate, the single previous-token record and at most two context words are volatile-only
-- process enumeration for Settings is local and is not persisted as history
-- tray runtime status is volatile-only
-- Pause state is volatile-only
-- persistent Settings contain only explicit user configuration, not typed history
+Only that successful `main` push artifact may be used by the `v1.0.0` release workflow.
