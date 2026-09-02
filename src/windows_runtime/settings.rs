@@ -59,7 +59,11 @@ pub fn runtime_settings() -> RuntimeSettings {
 
 pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
     let value = normalize_runtime_settings(value);
-    write_dword(SETTINGS_KEY, AUTO_CORRECT_VALUE, u32::from(value.auto_correct))?;
+    write_dword(
+        SETTINGS_KEY,
+        AUTO_CORRECT_VALUE,
+        u32::from(value.auto_correct),
+    )?;
     write_string(
         SETTINGS_KEY,
         EXCLUDED_APPS_VALUE,
@@ -70,7 +74,11 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
     Ok(())
 }
 
-pub fn settings_from_text(auto_correct: bool, excluded_apps: &str, user_words: &str) -> RuntimeSettings {
+pub fn settings_from_text(
+    auto_correct: bool,
+    excluded_apps: &str,
+    user_words: &str,
+) -> RuntimeSettings {
     normalize_runtime_settings(RuntimeSettings {
         auto_correct,
         excluded_apps: parse_entries(excluded_apps, true),
