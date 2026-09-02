@@ -40,20 +40,8 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 
 static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "hello",
-        "the",
-        "then",
-        "to",
-        "work",
-        "system",
-        "server",
-        "user",
-        "check",
-        "security",
-        "object",
-        "box",
-        "window",
-        "windows",
+        "hello", "the", "then", "to", "work", "system", "server", "user", "check", "security",
+        "object", "box", "window", "windows",
     ]
     .into_iter()
     .collect()
@@ -174,10 +162,10 @@ fn language_score(token: &str, language: Language) -> i32 {
 
 fn score_english(token: &str) -> i32 {
     const COMMON: &[&str] = &[
-        "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd", "ti", "es", "or",
-        "te", "of", "ed", "is", "it", "al", "ar", "st", "to", "nt", "ng", "se", "ha",
-        "as", "ou", "io", "le", "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne",
-        "ea", "ra", "ce", "li", "ch", "ll", "be", "ma", "si", "om", "ur",
+        "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd", "ti", "es", "or", "te", "of",
+        "ed", "is", "it", "al", "ar", "st", "to", "nt", "ng", "se", "ha", "as", "ou", "io", "le",
+        "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne", "ea", "ra", "ce", "li", "ch", "ll",
+        "be", "ma", "si", "om", "ur",
     ];
     const RARE: &[&str] = &["qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg"];
 
@@ -206,17 +194,22 @@ fn score_english(token: &str) -> i32 {
 
 fn score_russian(token: &str) -> i32 {
     const COMMON: &[&str] = &[
-        "ст", "но", "то", "на", "ен", "ов", "ни", "ра", "во", "ко", "ро", "по", "пр",
-        "ер", "ос", "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло",
-        "ва", "ит", "те", "ет", "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис",
-        "ол", "ле", "ся", "ин", "тр", "ом", "ма", "ме", "до", "че", "об", "бо",
+        "ст", "но", "то", "на", "ен", "ов", "ни", "ра", "во", "ко", "ро", "по", "пр", "ер", "ос",
+        "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло", "ва", "ит", "те", "ет",
+        "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис", "ол", "ле", "ся", "ин", "тр", "ом",
+        "ма", "ме", "до", "че", "об", "бо",
     ];
     const RARE: &[&str] = &["жы", "шы", "чя", "щя", "йй", "ъъ", "ьы"];
 
     let mut score = 0;
     let vowels = token
         .chars()
-        .filter(|ch| matches!(ch, 'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'))
+        .filter(|ch| {
+            matches!(
+                ch,
+                'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
+            )
+        })
         .count();
     if vowels > 0 {
         score += 3;
