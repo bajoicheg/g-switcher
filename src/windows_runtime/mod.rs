@@ -16,10 +16,11 @@ use windows_sys::Win32::Foundation::{
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::{CreateMutexW, Sleep};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList, LoadKeyboardLayoutW, SendInput,
-    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE,
-    VK_BACK, VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7,
-    VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
+    ActivateKeyboardLayout, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
+    LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2,
+    VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT,
+    VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
@@ -342,7 +343,7 @@ impl Engine {
             return false;
         }
 
-        if !send_inputs(&inputs) {
+        if !send_inputs_in_layout(&inputs, target_hkl) {
             let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
             self.reset_candidate();
             return false;
@@ -380,7 +381,7 @@ impl Engine {
             return false;
         }
 
-        let result = send_inputs(&inputs);
+        let result = send_inputs_in_layout(&inputs, undo.source_hkl);
         if result {
             self.candidate_focus = target.hwnd as isize;
         }
@@ -654,6 +655,18 @@ fn scan_input(scan: u16, flags: u32) -> INPUT {
                 dwExtraInfo: MAGIC_EXTRA_INFO,
             },
         },
+    }
+}
+
+fn send_inputs_in_layout(inputs: &[INPUT], hkl: isize) -> bool {
+    unsafe {
+        let previous = ActivateKeyboardLayout(hkl as *mut core::ffi::c_void, 0);
+        if previous.is_null() {
+            return false;
+        }
+        let result = send_inputs(inputs);
+        let _ = ActivateKeyboardLayout(previous, 0);
+        result
     }
 }
 
