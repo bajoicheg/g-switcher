@@ -24,9 +24,10 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
-    GetWindowThreadProcessId, PostMessageW, PostThreadMessageW, SetWindowsHookExW,
+    GetWindowThreadProcessId, PostThreadMessageW, SendMessageTimeoutW, SetWindowsHookExW,
     TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
-    WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
+    SMTO_ABORTIFHUNG, WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN,
+    WM_SYSKEYDOWN,
 };
 
 use crate::detector::{correction, opposite_candidate_is_prefix};
@@ -565,14 +566,26 @@ fn switch_layout(hwnd: HWND, thread_id: u32, hkl: isize) -> bool {
         if GetKeyboardLayout(thread_id) as isize == hkl {
             return true;
         }
-        if PostMessageW(hwnd, WM_INPUTLANGCHANGEREQUEST, 0, hkl) == 0 {
+
+        let mut message_result = 0usize;
+        if SendMessageTimeoutW(
+            hwnd,
+            WM_INPUTLANGCHANGEREQUEST,
+            0,
+            hkl,
+            SMTO_ABORTIFHUNG,
+            200,
+            &mut message_result,
+        ) == 0
+        {
             return false;
         }
+
         for _ in 0..40 {
-            Sleep(5);
             if GetKeyboardLayout(thread_id) as isize == hkl {
                 return true;
             }
+            Sleep(5);
         }
         false
     }
