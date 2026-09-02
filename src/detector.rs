@@ -10,9 +10,28 @@ use crate::{
 
 static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "привет", "коробка", "беру", "берут", "ещё", "еще", "ёлка", "всё", "моё",
-        "объект", "подъезд", "хлеб", "кабель", "собака", "безопасность", "работа",
-        "работаю", "работает", "проверка", "система", "сервер", "пользователь",
+        "привет",
+        "коробка",
+        "беру",
+        "берут",
+        "ещё",
+        "еще",
+        "ёлка",
+        "всё",
+        "моё",
+        "объект",
+        "подъезд",
+        "хлеб",
+        "кабель",
+        "собака",
+        "безопасность",
+        "работа",
+        "работаю",
+        "работает",
+        "проверка",
+        "система",
+        "сервер",
+        "пользователь",
     ]
     .into_iter()
     .collect()
@@ -20,8 +39,8 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 
 static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "hello", "the", "then", "to", "work", "system", "server", "user", "check",
-        "security", "object", "box",
+        "hello", "the", "then", "to", "work", "system", "server", "user", "check", "security",
+        "object", "box",
     ]
     .into_iter()
     .collect()
@@ -127,8 +146,18 @@ mod tests {
     #[test]
     fn protects_known_false_positive_cases() {
         for word in [
-            "беру", "берут", "ещё", "еще", "ёлка", "всё", "моё", "объект", "подъезд",
-            "hello", "the", "then",
+            "беру",
+            "берут",
+            "ещё",
+            "еще",
+            "ёлка",
+            "всё",
+            "моё",
+            "объект",
+            "подъезд",
+            "hello",
+            "the",
+            "then",
         ] {
             assert_eq!(decide(word), Decision::Keep, "changed {word}");
         }
