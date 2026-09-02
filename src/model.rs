@@ -20,6 +20,11 @@ pub struct CorrectionRecord {
 
 impl CorrectionRecord {
     pub fn new(original: String, corrected: String, source: Language, target: Language) -> Self {
-        Self { original, corrected, source, target }
+        Self {
+            original,
+            corrected,
+            source,
+            target,
+        }
     }
 }
