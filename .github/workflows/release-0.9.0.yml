@@ -1,4 +1,4 @@
-name: Release G-switcher 0.8.2
+name: Release G-switcher 0.9.0
 
 on:
   workflow_run:
@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v0.8.2 --repo $env:GITHUB_REPOSITORY *> $null
+          gh release view v0.9.0 --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
@@ -35,7 +35,7 @@ jobs:
         if: steps.existing.outputs.exists != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: g-switcher-0.8.2-windows-x64
+          name: g-switcher-0.9.0-windows-x64
           path: release
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -52,17 +52,17 @@ jobs:
           }
           Write-Host "SHA-256 verified: $actual"
 
-      - name: Create v0.8.2 release
+      - name: Create v0.9.0 release
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          gh release create v0.8.2 `
+          gh release create v0.9.0 `
             release/g-switcher.exe `
             release/g-switcher.exe.sha256 `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:TARGET_SHA `
-            --title "G-switcher 0.8.2" `
-            --notes "Settings UI patch release. Redesigns the native Settings window with DPI-safe sizing, clear General/Application modes/User dictionary/Hotkeys sections, balanced application-mode columns, a 2x2 hotkey grid, shorter non-overlapping hints, and a dedicated Save/Cancel footer. Runtime correction behavior and the local-only privacy model are unchanged. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
+            --title "G-switcher 0.9.0" `
+            --notes "Feature release: detector v2 with stronger RU/EN scoring and false-positive protection, a volatile two-word context model, process-picker based per-application mode management without manual EXE entry, and a live tray tooltip showing Auto/Manual/Disabled or Paused state, current process/layout and the latest correction/undo. Typed context remains RAM-only and is cleared on context changes. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
