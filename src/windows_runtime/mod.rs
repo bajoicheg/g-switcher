@@ -14,13 +14,16 @@ use windows_sys::Win32::Foundation::{
     CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::System::Threading::{CreateMutexW, GetCurrentThreadId, Sleep};
+use windows_sys::Win32::System::Threading::{
+    CreateMutexW, GetCurrentThreadId, OpenProcess, QueryFullProcessImageNameW, Sleep,
+    PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     ActivateKeyboardLayout, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
     LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
-    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2,
-    VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT,
-    VK_SPACE, VK_TAB,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_F12, VK_OEM_1,
+    VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN,
+    VK_SHIFT, VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
@@ -29,7 +32,11 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
-use crate::detector::{correction, opposite_candidate_is_prefix};
+use crate::detector::{
+    correction_with_user_words, opposite_candidate_is_prefix_with_user_words,
+    DEFAULT_CONFIDENCE_THRESHOLD,
+};
+use crate::layout::opposite_layout_text;
 use crate::model::Language;
 
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
@@ -46,6 +53,7 @@ static TEST_ACCEPT_INJECTED_INPUT: AtomicBool = AtomicBool::new(false);
 struct FocusTarget {
     hwnd: HWND,
     thread_id: u32,
+    process_id: u32,
     hkl: isize,
     language: Language,
 }
@@ -69,7 +77,7 @@ struct RuntimeUndo {
     source_language: Language,
     original_strokes: Vec<Stroke>,
     corrected_len: usize,
-    delimiter: Delimiter,
+    delimiter: Option<Delimiter>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,7 +90,8 @@ struct PendingCorrection {
     corrected: String,
     erase_len: usize,
     original_strokes: Vec<Stroke>,
-    delimiter: Delimiter,
+    delimiter: Option<Delimiter>,
+    release_modifiers: bool,
 }
 
 #[derive(Default)]
@@ -92,6 +101,8 @@ struct Engine {
     candidate_focus: isize,
     undo: Option<RuntimeUndo>,
     pending_correction: Option<PendingCorrection>,
+    process_id: u32,
+    process_name: String,
 }
 
 enum HookDecision {
@@ -247,8 +258,24 @@ impl Engine {
             return HookDecision::Pass;
         };
 
+        self.refresh_process_name(target.process_id);
+        let runtime_settings = settings::runtime_settings();
+        if runtime_settings.is_process_excluded(&self.process_name) {
+            self.reset_candidate();
+            self.undo = None;
+            return HookDecision::Pass;
+        }
+
         if is_modifier_vk(vk) {
             return HookDecision::Pass;
+        }
+
+        if is_control_down() && is_shift_down() && vk == VK_F12 {
+            return if self.try_manual_convert(target) {
+                HookDecision::Suppress
+            } else {
+                HookDecision::Pass
+            };
         }
 
         if is_control_down() && vk == VK_BACK {
@@ -309,6 +336,14 @@ impl Engine {
         }
     }
 
+    fn refresh_process_name(&mut self, process_id: u32) {
+        if self.process_id == process_id {
+            return;
+        }
+        self.process_id = process_id;
+        self.process_name = process_name_for_pid(process_id).unwrap_or_default();
+    }
+
     fn handle_boundary(&mut self, target: FocusTarget, delimiter: Delimiter) -> HookDecision {
         if self.try_correct(target, delimiter) {
             HookDecision::Suppress
@@ -328,8 +363,12 @@ impl Engine {
             return HookDecision::Suppress;
         }
 
+        let runtime_settings = settings::runtime_settings();
         if punctuation_can_extend_candidate(vk, target.language)
-            && opposite_candidate_is_prefix(&self.candidate)
+            && opposite_candidate_is_prefix_with_user_words(
+                &self.candidate,
+                &runtime_settings.user_words,
+            )
         {
             self.candidate.push(ch);
             self.strokes.push(Stroke {
@@ -348,14 +387,48 @@ impl Engine {
             return false;
         }
 
-        let Some((detected_source, target_language, corrected)) = correction(&self.candidate)
-        else {
+        let runtime_settings = settings::runtime_settings();
+        if !runtime_settings.auto_correct {
+            return false;
+        }
+        let Some(detection) = correction_with_user_words(
+            &self.candidate,
+            &runtime_settings.user_words,
+            DEFAULT_CONFIDENCE_THRESHOLD,
+        ) else {
             return false;
         };
-        if detected_source != source.language {
+        if detection.source != source.language {
             return false;
         }
 
+        self.queue_correction(
+            source,
+            detection.target,
+            detection.corrected,
+            Some(delimiter),
+            false,
+        )
+    }
+
+    fn try_manual_convert(&mut self, source: FocusTarget) -> bool {
+        if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
+        {
+            return false;
+        }
+        let target = opposite_language(source.language);
+        let corrected = opposite_layout_text(&self.candidate, source.language);
+        self.queue_correction(source, target, corrected, None, true)
+    }
+
+    fn queue_correction(
+        &mut self,
+        source: FocusTarget,
+        target_language: Language,
+        corrected: String,
+        delimiter: Option<Delimiter>,
+        release_modifiers: bool,
+    ) -> bool {
         let Some(target_hkl) = select_layout(target_language) else {
             return false;
         };
@@ -363,7 +436,7 @@ impl Engine {
         let mut preflight = Vec::new();
         append_backspaces(&mut preflight, self.candidate.chars().count());
         if !append_text_for_layout(&mut preflight, &corrected, target_hkl)
-            || !append_delimiter(&mut preflight, delimiter, target_hkl)
+            || !append_optional_delimiter(&mut preflight, delimiter, target_hkl)
         {
             return false;
         }
@@ -382,6 +455,7 @@ impl Engine {
             erase_len: self.candidate.chars().count(),
             original_strokes: self.strokes.clone(),
             delimiter,
+            release_modifiers,
         });
 
         if unsafe { PostThreadMessageW(hook_thread_id, WM_RUNTIME_CORRECTION, 0, 0) } == 0 {
@@ -412,9 +486,13 @@ impl Engine {
         }
 
         let mut inputs = Vec::new();
+        if pending.release_modifiers {
+            inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
+            inputs.push(key_input(VK_SHIFT, KEYEVENTF_KEYUP));
+        }
         append_backspaces(&mut inputs, pending.erase_len);
         if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
-            || !append_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
+            || !append_optional_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
         {
             self.restore_failed_correction(&pending);
             return;
@@ -448,9 +526,11 @@ impl Engine {
             return;
         }
 
-        let mut delimiter = Vec::new();
-        if append_delimiter(&mut delimiter, pending.delimiter, pending.source_hkl) {
-            let _ = send_inputs_in_layout(&delimiter, pending.source_hkl);
+        if let Some(delimiter) = pending.delimiter {
+            let mut delimiter_inputs = Vec::new();
+            if append_delimiter(&mut delimiter_inputs, delimiter, pending.source_hkl) {
+                let _ = send_inputs_in_layout(&delimiter_inputs, pending.source_hkl);
+            }
         }
     }
 
@@ -467,11 +547,14 @@ impl Engine {
 
         let mut inputs = Vec::new();
         inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
-        append_backspaces(&mut inputs, undo.corrected_len + 1);
+        append_backspaces(
+            &mut inputs,
+            undo.corrected_len + usize::from(undo.delimiter.is_some()),
+        );
         for stroke in &undo.original_strokes {
             append_stroke(&mut inputs, *stroke);
         }
-        if !append_delimiter(&mut inputs, undo.delimiter, undo.source_hkl) {
+        if !append_optional_delimiter(&mut inputs, undo.delimiter, undo.source_hkl) {
             return false;
         }
         inputs.push(key_input(VK_CONTROL, 0));
@@ -510,8 +593,9 @@ fn focused_target() -> Option<FocusTarget> {
             } else {
                 foreground
             };
-        let thread_id = GetWindowThreadProcessId(hwnd, null_mut());
-        if thread_id == 0 {
+        let mut process_id = 0u32;
+        let thread_id = GetWindowThreadProcessId(hwnd, &mut process_id);
+        if thread_id == 0 || process_id == 0 {
             return None;
         }
         let hkl = GetKeyboardLayout(thread_id) as isize;
@@ -519,9 +603,31 @@ fn focused_target() -> Option<FocusTarget> {
         Some(FocusTarget {
             hwnd,
             thread_id,
+            process_id,
             hkl,
             language,
         })
+    }
+}
+
+fn process_name_for_pid(process_id: u32) -> Option<String> {
+    unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, process_id);
+        if process.is_null() {
+            return None;
+        }
+        let mut buffer = vec![0u16; 32_768];
+        let mut length = buffer.len() as u32;
+        let result = QueryFullProcessImageNameW(process, 0, buffer.as_mut_ptr(), &mut length);
+        CloseHandle(process);
+        if result == 0 || length == 0 {
+            return None;
+        }
+        let path = String::from_utf16_lossy(&buffer[..length as usize]);
+        path.rsplit(['\\', '/'])
+            .next()
+            .filter(|name| !name.is_empty())
+            .map(|name| name.to_ascii_lowercase())
     }
 }
 
@@ -531,6 +637,13 @@ fn language_from_hkl(hkl: isize) -> Option<Language> {
         0x09 => Some(Language::English),
         0x19 => Some(Language::Russian),
         _ => None,
+    }
+}
+
+fn opposite_language(language: Language) -> Language {
+    match language {
+        Language::Russian => Language::English,
+        Language::English => Language::Russian,
     }
 }
 
@@ -686,6 +799,16 @@ fn append_text_for_layout(inputs: &mut Vec<INPUT>, text: &str, hkl: isize) -> bo
     true
 }
 
+fn append_optional_delimiter(
+    inputs: &mut Vec<INPUT>,
+    delimiter: Option<Delimiter>,
+    hkl: isize,
+) -> bool {
+    delimiter
+        .map(|delimiter| append_delimiter(inputs, delimiter, hkl))
+        .unwrap_or(true)
+}
+
 fn append_delimiter(inputs: &mut Vec<INPUT>, delimiter: Delimiter, hkl: isize) -> bool {
     match delimiter {
         Delimiter::VirtualKey(vk) => {
@@ -828,5 +951,11 @@ mod tests {
         assert_eq!(physical_oem_scan_code(VK_OEM_PERIOD), Some(0x34));
         assert_eq!(physical_oem_scan_code(VK_OEM_2), Some(0x35));
         assert_eq!(physical_oem_scan_code(b'A' as u16), None);
+    }
+
+    #[test]
+    fn manual_conversion_uses_opposite_layout_without_confidence_gate() {
+        assert_eq!(opposite_layout_text("ghbdtn", Language::English), "привет");
+        assert_eq!(opposite_language(Language::English), Language::Russian);
     }
 }
