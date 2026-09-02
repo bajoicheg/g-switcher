@@ -3,9 +3,7 @@ use std::ptr::null;
 use std::sync::OnceLock;
 
 use parking_lot::Mutex;
-use windows_sys::Win32::UI::Shell::{
-    Shell_NotifyIconW, NIF_TIP, NIM_MODIFY, NOTIFYICONDATAW,
-};
+use windows_sys::Win32::UI::Shell::{Shell_NotifyIconW, NIF_TIP, NIM_MODIFY, NOTIFYICONDATAW};
 use windows_sys::Win32::UI::WindowsAndMessaging::FindWindowW;
 
 use crate::model::Language;
@@ -41,10 +39,8 @@ static STATUS: OnceLock<Mutex<StatusState>> = OnceLock::new();
 pub fn update_context(mode: AppMode, process_name: &str, language: Language) {
     let mut state = status().lock();
     let process_changed = !state.process_name.eq_ignore_ascii_case(process_name);
-    let changed = state.paused
-        || state.mode != mode
-        || process_changed
-        || state.language != Some(language);
+    let changed =
+        state.paused || state.mode != mode || process_changed || state.language != Some(language);
     if !changed {
         return;
     }
