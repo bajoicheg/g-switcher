@@ -243,9 +243,10 @@ pub fn detect_with_context(
         return None;
     }
 
-    // Three-letter words are intrinsically ambiguous. Let them pass only when the
-    // surrounding two-word context supplies a strong signal.
-    if token.chars().count() == 3 && target_score < 8 && context_bonus < 10 {
+    // Unknown three-letter words are intrinsically ambiguous. Exact target dictionary
+    // matches were handled above; all remaining three-letter candidates require a
+    // strong contextual signal before automatic correction.
+    if token.chars().count() == 3 && context_bonus < 10 {
         return None;
     }
 
