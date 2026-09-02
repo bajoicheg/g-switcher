@@ -52,7 +52,7 @@ enum Delimiter {
 
 #[derive(Debug, Clone)]
 struct RuntimeUndo {
-    focus: HWND,
+    focus: isize,
     source_hkl: isize,
     source_language: Language,
     original_strokes: Vec<Stroke>,
@@ -64,7 +64,7 @@ struct RuntimeUndo {
 struct Engine {
     candidate: String,
     strokes: Vec<Stroke>,
-    candidate_focus: HWND,
+    candidate_focus: isize,
     undo: Option<RuntimeUndo>,
 }
 
@@ -195,11 +195,12 @@ impl Engine {
             return HookDecision::Pass;
         }
 
-        if self.candidate_focus != null_mut() && self.candidate_focus != target.hwnd {
+        let target_id = target.hwnd as isize;
+        if self.candidate_focus != 0 && self.candidate_focus != target_id {
             self.reset_candidate();
         }
-        if self.candidate_focus == null_mut() {
-            self.candidate_focus = target.hwnd;
+        if self.candidate_focus == 0 {
+            self.candidate_focus = target_id;
         }
 
         if self.undo.is_some() {
@@ -304,7 +305,7 @@ impl Engine {
         }
 
         self.undo = Some(RuntimeUndo {
-            focus: source.hwnd,
+            focus: source.hwnd as isize,
             source_hkl: source.hkl,
             source_language: source.language,
             original_strokes: self.strokes.clone(),
@@ -319,7 +320,7 @@ impl Engine {
         let Some(undo) = self.undo.take() else {
             return false;
         };
-        if undo.focus != target.hwnd {
+        if undo.focus != target.hwnd as isize {
             return false;
         }
         if !switch_layout(target.hwnd, target.thread_id, undo.source_hkl) {
@@ -337,7 +338,7 @@ impl Engine {
 
         let result = send_inputs(&inputs);
         if result {
-            self.candidate_focus = target.hwnd;
+            self.candidate_focus = target.hwnd as isize;
         }
         let _ = undo.source_language;
         result
@@ -346,7 +347,7 @@ impl Engine {
     fn reset_candidate(&mut self) {
         self.candidate.clear();
         self.strokes.clear();
-        self.candidate_focus = null_mut();
+        self.candidate_focus = 0;
     }
 }
 
