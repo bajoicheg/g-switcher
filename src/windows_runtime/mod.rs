@@ -11,15 +11,15 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::{CreateMutexW, Sleep};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList, LoadKeyboardLayoutW, SendInput,
-    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK,
-    VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7,
-    VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
+    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CAPITAL,
+    VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA,
+    VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
     GetWindowThreadProcessId, PostMessageW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
-    WH_KEYBOARD_LL, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
+    UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL,
+    WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
 use crate::detector::{correction, opposite_candidate_is_prefix};
@@ -218,9 +218,7 @@ impl Engine {
             VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE)),
             VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN)),
             VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB)),
-            VK_OEM_COMMA | VK_OEM_PERIOD | VK_OEM_2 => {
-                self.handle_punctuation(target, vk)
-            }
+            VK_OEM_COMMA | VK_OEM_PERIOD | VK_OEM_2 => self.handle_punctuation(target, vk),
             _ => {
                 if let Some(ch) = visible_char(vk, target.language) {
                     self.candidate.push(ch);
@@ -274,7 +272,8 @@ impl Engine {
             return false;
         }
 
-        let Some((detected_source, target_language, corrected)) = correction(&self.candidate) else {
+        let Some((detected_source, target_language, corrected)) = correction(&self.candidate)
+        else {
             return false;
         };
         if detected_source != source.language {
@@ -364,13 +363,12 @@ fn focused_target() -> Option<FocusTarget> {
 
         let mut info: GUITHREADINFO = zeroed();
         info.cbSize = size_of::<GUITHREADINFO>() as u32;
-        let hwnd = if GetGUIThreadInfo(foreground_thread, &mut info) != 0
-            && !info.hwndFocus.is_null()
-        {
-            info.hwndFocus
-        } else {
-            foreground
-        };
+        let hwnd =
+            if GetGUIThreadInfo(foreground_thread, &mut info) != 0 && !info.hwndFocus.is_null() {
+                info.hwndFocus
+            } else {
+                foreground
+            };
         let thread_id = GetWindowThreadProcessId(hwnd, null_mut());
         if thread_id == 0 {
             return None;
