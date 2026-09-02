@@ -185,8 +185,7 @@ unsafe extern "system" fn first_run_proc(
             let command = (wparam & 0xffff) as i32;
             if command == ID_OK {
                 let checkbox = GetDlgItem(hwnd, ID_CHECKBOX);
-                let checked =
-                    SendMessageW(checkbox, BM_GETCHECK, 0, 0) as u32 == BST_CHECKED_VALUE;
+                let checked = SendMessageW(checkbox, BM_GETCHECK, 0, 0) as u32 == BST_CHECKED_VALUE;
                 FIRST_RUN_RESULT.store(i32::from(checked), Ordering::SeqCst);
                 DestroyWindow(hwnd);
                 return 0;
