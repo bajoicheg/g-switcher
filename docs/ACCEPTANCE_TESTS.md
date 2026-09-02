@@ -11,14 +11,30 @@ The Windows release gate must test the full path from keyboard hook through focu
 - the same cases using Enter instead of Space
 - `ghbdtn` + Tab → `привет` + Tab
 
-## Confidence scoring
+## Detector v2 and confidence scoring
 
 - an exact known opposite-layout word has confidence 100
-- a valid source-language dictionary word remains unchanged regardless of a plausible opposite mapping
+- a valid source-language system/user-dictionary word remains unchanged regardless of a plausible opposite mapping or context
 - lower-confidence heuristic candidates remain unchanged below the default threshold
 - a user-dictionary target exact match receives confidence 100
 - a user-dictionary source exact match is protected from automatic correction
 - code-safe tokens do not enter confidence-based automatic correction
+- richer n-gram/suffix/shape scoring does not regress known RU/EN corrections
+- common technical English words such as `json`, `http`, `docker`, `linux`, `vpn`, `edr` and `soc` remain unchanged
+- unknown three-letter candidates remain unchanged without a strong context signal
+
+## Volatile contextual detector
+
+- at most two immediately previous completed words participate in automatic detector context
+- same-language recent context can raise an otherwise sub-threshold plausible opposite-layout candidate above the correction threshold
+- an opposite-language context does not force that correction
+- exact source system/user-dictionary matches are never overridden by context
+- successful completed corrections can become context for the following word
+- process/focus changes clear contextual words
+- entering Pause clears contextual words
+- unrelated Ctrl/Alt command context clears contextual words
+- Undo clears contextual words conservatively
+- contextual words are never written to persistent Settings or transmitted
 
 ## Configurable hotkeys
 
@@ -58,23 +74,42 @@ With automatic correction disabled or an intentionally uncorrected token:
 - changing focus/process context invalidates the previous-token record
 - the previous token is never written to persistent configuration
 
-## Per-application modes
+## Per-application modes and process picker
 
 - executable matching is case-insensitive
 - an unlisted executable operates in `Auto`
 - `Manual only` tracks tokens and permits current/previous manual conversion but performs no automatic replacement
 - `Disabled` receives original keystrokes unchanged and permits neither automatic nor manual conversion
-- entering `Disabled` clears stale candidate, previous-token and undo state
+- entering `Disabled` clears stale candidate, previous-token, context and undo state
 - if an executable appears in both lists, `Disabled` wins
 - a 0.7 `ExcludedApps` entry loads as `Disabled` after upgrade
-- removing/changing an application mode in Settings takes effect without restarting G-switcher
+- Settings process picker includes currently running process basenames
+- previously configured Disabled/Manual-only processes remain selectable even when they are not currently running
+- the last process observed by the runtime is preferred in the picker when available
+- selecting `Auto` removes the process from both explicit mode lists
+- selecting `Только вручную` moves the process to Manual-only and removes it from Disabled
+- selecting `Отключить` moves the process to Disabled and removes it from Manual-only
+- Disabled and Manual-only lists are read-only resulting-state views; normal mode management requires no manual EXE typing
+- saving a changed application mode takes effect without restarting G-switcher
+
+## Tray state indicator
+
+- active automatic mode is represented as `Auto` in the tray tooltip
+- Manual-only mode is represented as `Manual`
+- Disabled mode is represented as `Disabled`
+- Pause is represented prominently as `Пауза`
+- when active, tooltip may include current process basename and RU/EN layout
+- a successful correction updates the latest-operation hint to the target language
+- successful Undo updates the latest-operation hint to the restored source language
+- changing process clears stale latest-operation text
+- tray status is process-local and is not persisted
 
 ## Pause / Resume
 
 - tray contains a Pause action while active and a Resume action while paused
 - the configured pause hotkey toggles the same process-local state
 - while paused, `ghbdtn ` remains `ghbdtn ` and no manual action changes it
-- entering Pause clears current candidate, previous-token, undo and pending-correction state
+- entering Pause clears current candidate, previous-token, context, undo and pending-correction state
 - resuming does not resurrect pre-pause transient state
 - restarting G-switcher always starts active; Pause is not persisted
 
@@ -91,12 +126,13 @@ With automatic correction disabled or an intentionally uncorrected token:
 - Settings is reachable from the tray menu
 - automatic correction can be enabled or disabled
 - autostart can be enabled or disabled
-- Disabled and Manual-only executable names can be edited independently, one entry per line
+- application mode is managed through a process picker and direct Auto/Manual-only/Disabled actions
+- Disabled and Manual-only executable lists are shown read-only
 - user-dictionary words can be edited as one entry per line
 - all four action hotkeys can be edited
 - Save updates the running process without requiring restart or elevation
 - Cancel/close does not persist edits
-- the UI states that typed candidate/previous-token text is not stored
+- the UI states that contextual detector words are kept only in volatile memory
 - the UI states that Pause is temporary and not persisted
 
 ## Punctuation
@@ -132,6 +168,13 @@ These examples must remain unchanged when typed correctly:
 - `hello`
 - `the`
 - `then`
+- `json`
+- `http`
+- `docker`
+- `linux`
+- `vpn`
+- `edr`
+- `soc`
 
 ## Case
 
@@ -193,6 +236,8 @@ An explicit manual conversion may operate on non-Disabled text because it is use
 - tray exit removes the hook
 - first-run state is per-user
 - per-user autostart does not require local administrator rights
-- current candidate and the single previous-token record are volatile-only
+- current candidate, the single previous-token record and at most two context words are volatile-only
+- process enumeration for Settings is local and is not persisted as history
+- tray runtime status is volatile-only
 - Pause state is volatile-only
 - persistent Settings contain only explicit user configuration, not typed history

@@ -1,4 +1,5 @@
 mod settings;
+mod tray_status;
 mod ui;
 
 use std::mem::{size_of, zeroed};
@@ -33,8 +34,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::detector::{
-    correction_with_user_words, opposite_candidate_is_prefix_with_user_words,
-    DEFAULT_CONFIDENCE_THRESHOLD,
+    correction_with_context, infer_language, opposite_candidate_is_prefix_with_user_words,
+    DEFAULT_CONFIDENCE_THRESHOLD, MAX_CONTEXT_WORDS,
 };
 use crate::layout::opposite_layout_text;
 use crate::model::Language;
@@ -119,6 +120,7 @@ struct Engine {
     strokes: Vec<Stroke>,
     candidate_focus: isize,
     previous: Option<PreviousToken>,
+    context_tokens: Vec<String>,
     undo: Option<RuntimeUndo>,
     pending_correction: Option<PendingCorrection>,
     process_id: u32,
@@ -179,7 +181,14 @@ pub(crate) fn toggle_pause() -> bool {
     if let Some(engine) = ENGINE.get() {
         engine.lock().reset_transient();
     }
+    tray_status::set_paused(value);
     value
+}
+
+pub(crate) fn current_process_name() -> Option<String> {
+    let engine = ENGINE.get()?;
+    let process_name = engine.lock().process_name.clone();
+    (!process_name.is_empty()).then_some(process_name)
 }
 
 fn handle_runtime_message(message: &MSG) -> bool {
@@ -292,8 +301,9 @@ impl Engine {
             .pause_hotkey
             .matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt)
         {
-            settings::toggle_paused();
+            let value = settings::toggle_paused();
             self.reset_transient();
+            tray_status::set_paused(value);
             return HookDecision::Suppress;
         }
 
@@ -309,6 +319,7 @@ impl Engine {
 
         self.refresh_process_name(target.process_id);
         let app_mode = runtime_settings.app_mode(&self.process_name);
+        tray_status::update_context(app_mode, &self.process_name, target.language);
         if app_mode == AppMode::Disabled {
             self.reset_transient();
             return HookDecision::Pass;
@@ -432,6 +443,7 @@ impl Engine {
             HookDecision::Suppress
         } else {
             self.remember_previous(target, delimiter);
+            self.remember_context_candidate();
             self.reset_candidate();
             HookDecision::Pass
         }
@@ -469,6 +481,7 @@ impl Engine {
             });
         } else {
             self.remember_previous(target, delimiter);
+            self.remember_context_candidate();
             self.reset_candidate();
         }
         HookDecision::Pass
@@ -489,6 +502,23 @@ impl Engine {
         });
     }
 
+    fn remember_context_candidate(&mut self) {
+        if self.candidate.is_empty() || infer_language(&self.candidate).is_none() {
+            return;
+        }
+        self.push_context(self.candidate.clone());
+    }
+
+    fn push_context(&mut self, token: String) {
+        if infer_language(&token).is_none() {
+            return;
+        }
+        if self.context_tokens.len() >= MAX_CONTEXT_WORDS {
+            self.context_tokens.remove(0);
+        }
+        self.context_tokens.push(token);
+    }
+
     fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
         if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
         {
@@ -499,10 +529,11 @@ impl Engine {
         if !runtime_settings.auto_correct {
             return false;
         }
-        let Some(detection) = correction_with_user_words(
+        let Some(detection) = correction_with_context(
             &self.candidate,
             &runtime_settings.user_words,
             DEFAULT_CONFIDENCE_THRESHOLD,
+            &self.context_tokens,
         ) else {
             return false;
         };
@@ -554,6 +585,7 @@ impl Engine {
             return false;
         }
 
+        let previous_text = previous.text.clone();
         let corrected = opposite_layout_text(&previous.text, previous.source_language);
         let source = FocusTarget {
             hkl: previous.source_hkl,
@@ -572,6 +604,9 @@ impl Engine {
         );
         if queued {
             self.previous = None;
+            if self.context_tokens.last() == Some(&previous_text) {
+                self.context_tokens.pop();
+            }
         }
         queued
     }
@@ -672,6 +707,11 @@ impl Engine {
             corrected_len: pending.corrected.chars().count(),
             delimiter: pending.delimiter,
         });
+
+        if pending.delimiter.is_some() {
+            self.push_context(pending.corrected.clone());
+        }
+        tray_status::note_correction(opposite_language(pending.source_language));
     }
 
     fn restore_failed_correction(&mut self, pending: &PendingCorrection) {
@@ -726,8 +766,9 @@ impl Engine {
         if result {
             self.candidate_focus = target.hwnd as isize;
             self.previous = None;
+            self.context_tokens.clear();
+            tray_status::note_undo(undo.source_language);
         }
-        let _ = undo.source_language;
         result
     }
 
@@ -740,6 +781,7 @@ impl Engine {
     fn reset_transient(&mut self) {
         self.reset_candidate();
         self.previous = None;
+        self.context_tokens.clear();
         self.undo = None;
         self.pending_correction = None;
     }
@@ -1187,5 +1229,16 @@ mod tests {
             opposite_layout_text(&previous.text, previous.source_language),
             "привет"
         );
+    }
+
+    #[test]
+    fn context_keeps_at_most_two_volatile_words() {
+        let mut engine = Engine::default();
+        engine.push_context("это".to_owned());
+        engine.push_context("в".to_owned());
+        engine.push_context("системе".to_owned());
+        assert_eq!(engine.context_tokens, vec!["в", "системе"]);
+        engine.reset_transient();
+        assert!(engine.context_tokens.is_empty());
     }
 }

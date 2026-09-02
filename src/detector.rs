@@ -9,6 +9,7 @@ use crate::{
 };
 
 pub const DEFAULT_CONFIDENCE_THRESHOLD: u8 = 72;
+pub const MAX_CONTEXT_WORDS: usize = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Detection {
@@ -20,36 +21,111 @@ pub struct Detection {
 
 static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "привет",
-        "коробка",
-        "свобода",
-        "свободу",
-        "свободы",
-        "свободе",
-        "свободой",
-        "свободный",
-        "свободно",
+        "а",
+        "без",
         "беру",
         "берут",
+        "был",
+        "была",
+        "были",
+        "быть",
+        "в",
+        "вам",
+        "вас",
+        "весь",
+        "вот",
+        "все",
+        "всё",
+        "вы",
+        "где",
+        "да",
+        "для",
+        "до",
+        "его",
+        "ее",
         "ещё",
         "еще",
-        "ёлка",
-        "всё",
-        "моё",
-        "объект",
-        "подъезд",
-        "хлеб",
+        "если",
+        "есть",
+        "же",
+        "за",
+        "здесь",
+        "и",
+        "из",
+        "или",
+        "как",
         "кабель",
-        "собака",
-        "безопасность",
-        "работа",
-        "работаю",
-        "работает",
-        "проверка",
-        "система",
-        "сервер",
-        "пользователь",
+        "когда",
+        "коробка",
+        "кто",
+        "ли",
+        "мне",
+        "можно",
+        "моё",
+        "мой",
+        "мы",
+        "на",
+        "надо",
+        "нас",
+        "не",
+        "него",
+        "нее",
+        "нет",
+        "но",
+        "ну",
+        "объект",
         "окно",
+        "он",
+        "она",
+        "они",
+        "от",
+        "под",
+        "подъезд",
+        "пользователь",
+        "потом",
+        "проверка",
+        "привет",
+        "при",
+        "про",
+        "работа",
+        "работает",
+        "работаю",
+        "раз",
+        "с",
+        "свобода",
+        "свободе",
+        "свободно",
+        "свободой",
+        "свободный",
+        "свободу",
+        "свободы",
+        "себя",
+        "сейчас",
+        "сервер",
+        "система",
+        "сказать",
+        "так",
+        "там",
+        "тебя",
+        "теперь",
+        "то",
+        "только",
+        "тоже",
+        "тут",
+        "ты",
+        "у",
+        "уже",
+        "хлеб",
+        "хорошо",
+        "что",
+        "чтобы",
+        "это",
+        "этого",
+        "этот",
+        "я",
+        "ёлка",
+        "безопасность",
+        "собака",
     ]
     .into_iter()
     .collect()
@@ -57,8 +133,15 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 
 static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "hello", "the", "then", "to", "work", "system", "server", "user", "check", "security",
-        "object", "box", "window", "windows",
+        "a", "about", "after", "all", "also", "and", "any", "api", "are", "as", "at", "be",
+        "because", "been", "before", "box", "but", "by", "can", "check", "code", "data", "do",
+        "docker", "edr", "for", "from", "good", "had", "has", "have", "he", "hello", "her", "here",
+        "him", "his", "how", "http", "i", "if", "in", "into", "is", "it", "its", "json", "just",
+        "linux", "more", "my", "no", "not", "now", "object", "of", "on", "one", "only", "or",
+        "other", "our", "out", "root", "security", "server", "she", "so", "soc", "sql", "system",
+        "than", "that", "the", "their", "them", "then", "there", "these", "they", "this", "to",
+        "up", "user", "very", "vpn", "was", "we", "were", "what", "when", "which", "who", "will",
+        "window", "windows", "with", "work", "would", "you", "your",
     ]
     .into_iter()
     .collect()
@@ -90,7 +173,16 @@ pub fn decide_with_user_words(
     user_words: &[String],
     confidence_threshold: u8,
 ) -> Decision {
-    let Some(detection) = detect(token, user_words) else {
+    decide_with_context(token, user_words, confidence_threshold, &[])
+}
+
+pub fn decide_with_context(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+    previous_tokens: &[String],
+) -> Decision {
+    let Some(detection) = detect_with_context(token, user_words, previous_tokens) else {
         return Decision::Keep;
     };
     if detection.confidence >= confidence_threshold {
@@ -101,7 +193,15 @@ pub fn decide_with_user_words(
 }
 
 pub fn detect(token: &str, user_words: &[String]) -> Option<Detection> {
-    if is_code_safe_token(token) {
+    detect_with_context(token, user_words, &[])
+}
+
+pub fn detect_with_context(
+    token: &str,
+    user_words: &[String],
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    if is_code_safe_token(token) || token.chars().count() < 3 {
         return None;
     }
 
@@ -118,8 +218,7 @@ pub fn detect(token: &str, user_words: &[String]) -> Option<Detection> {
         return None;
     }
 
-    let target_exact = dictionary_contains(target, &mapped_normalized, user_words);
-    if target_exact {
+    if dictionary_contains(target, &mapped_normalized, user_words) {
         return Some(Detection {
             source,
             target,
@@ -136,12 +235,22 @@ pub fn detect(token: &str, user_words: &[String]) -> Option<Detection> {
 
     let source_score = language_score(&normalized, source);
     let target_score = language_score(&mapped_normalized, target);
-    let margin = target_score - source_score;
-    if target_score < 7 || margin < 3 {
+    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
+    let effective_target = target_score + context_bonus;
+    let effective_margin = target_score - source_score + context_bonus;
+
+    if effective_target < 8 || effective_margin < 4 {
         return None;
     }
 
-    let confidence = confidence_from_scores(target_score, margin);
+    // Unknown three-letter words are intrinsically ambiguous. Exact target dictionary
+    // matches were handled above; all remaining three-letter candidates require a
+    // strong contextual signal before automatic correction.
+    if token.chars().count() == 3 && context_bonus < 10 {
+        return None;
+    }
+
+    let confidence = confidence_from_scores(effective_target, effective_margin);
     Some(Detection {
         source,
         target,
@@ -160,7 +269,16 @@ pub fn correction_with_user_words(
     user_words: &[String],
     confidence_threshold: u8,
 ) -> Option<Detection> {
-    let detection = detect(token, user_words)?;
+    correction_with_context(token, user_words, confidence_threshold, &[])
+}
+
+pub fn correction_with_context(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    let detection = detect_with_context(token, user_words, previous_tokens)?;
     (detection.confidence >= confidence_threshold).then_some(detection)
 }
 
@@ -182,8 +300,61 @@ pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[S
 }
 
 fn confidence_from_scores(target_score: i32, margin: i32) -> u8 {
-    let raw = 50 + margin * 5 + target_score.max(0) / 2;
+    let raw = 46 + margin * 4 + target_score.max(0) / 2;
     raw.clamp(0, 95) as u8
+}
+
+fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
+    let recent: Vec<&String> = previous_tokens
+        .iter()
+        .rev()
+        .take(MAX_CONTEXT_WORDS)
+        .collect();
+    let mut bonus = 0;
+
+    for (index, token) in recent.iter().enumerate() {
+        match infer_language(token) {
+            Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
+            Some(_) => bonus -= if index == 0 { 3 } else { 2 },
+            None => {}
+        }
+    }
+
+    if let Some(last) = recent.first() {
+        if infer_language(last) == Some(target) {
+            let last = normalize(last, target);
+            if common_phrase_pair(target, &last, candidate) {
+                bonus += 6;
+            }
+        }
+    }
+
+    bonus.clamp(-6, 18)
+}
+
+fn common_phrase_pair(language: Language, previous: &str, current: &str) -> bool {
+    const RU_PAIRS: &[(&str, &str)] = &[
+        ("в", "мир"),
+        ("в", "системе"),
+        ("как", "дела"),
+        ("добрый", "день"),
+        ("на", "работу"),
+        ("это", "важно"),
+    ];
+    const EN_PAIRS: &[(&str, &str)] = &[
+        ("good", "morning"),
+        ("hello", "world"),
+        ("in", "the"),
+        ("thank", "you"),
+        ("the", "system"),
+        ("to", "the"),
+    ];
+
+    match language {
+        Language::Russian => RU_PAIRS,
+        Language::English => EN_PAIRS,
+    }
+    .contains(&(previous, current))
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
@@ -253,47 +424,69 @@ fn score_english(token: &str) -> i32 {
         "th", "he", "in", "er", "an", "re", "on", "at", "en", "nd", "ti", "es", "or", "te", "of",
         "ed", "is", "it", "al", "ar", "st", "to", "nt", "ng", "se", "ha", "as", "ou", "io", "le",
         "ve", "co", "me", "de", "hi", "ri", "ro", "ic", "ne", "ea", "ra", "ce", "li", "ch", "ll",
-        "be", "ma", "si", "om", "ur",
+        "be", "ma", "si", "om", "ur", "ca", "el", "la", "ns", "di", "fo", "ho", "pe", "ec", "pr",
     ];
     const COMMON_TRIGRAMS: &[&str] = &[
         "the", "and", "ing", "ion", "ent", "her", "for", "tha", "nth", "int", "ere", "ter", "est",
-        "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith",
+        "ers", "ati", "hat", "ate", "all", "eth", "hes", "ver", "his", "oft", "ith", "not", "you",
+        "our", "rea", "com", "pro", "con", "sta",
+    ];
+    const COMMON_FOUR: &[&str] = &[
+        "tion", "ther", "that", "with", "ment", "ions", "this", "here", "ould", "ight", "have",
+        "from",
     ];
     const SUFFIXES: &[&str] = &[
-        "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous",
+        "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous", "ive", "ize", "ise",
     ];
-    const RARE: &[&str] = &["qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg"];
+    const RARE: &[&str] = &[
+        "qj", "qz", "jx", "zq", "xq", "wj", "jq", "vh", "hg", "zx", "xj", "vv", "wwq",
+    ];
 
     let mut score = 0;
-    let vowels = token
-        .chars()
+    let chars: Vec<char> = token.chars().collect();
+    let vowels = chars
+        .iter()
         .filter(|ch| matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'))
         .count();
-    if vowels > 0 {
-        score += 3;
+    if vowels == 0 {
+        score -= 8;
     } else {
-        score -= 6;
+        let ratio = vowels * 100 / chars.len();
+        score += if (20..=70).contains(&ratio) { 4 } else { 1 };
     }
+
     for pair in token.as_bytes().windows(2) {
         if let Ok(pair) = std::str::from_utf8(pair) {
             if COMMON.contains(&pair) {
                 score += 2;
             }
             if RARE.contains(&pair) {
-                score -= 3;
+                score -= 4;
             }
         }
     }
     for triple in token.as_bytes().windows(3) {
         if let Ok(triple) = std::str::from_utf8(triple) {
             if COMMON_TRIGRAMS.contains(&triple) {
-                score += 3;
+                score += 4;
+            }
+            if RARE.contains(&triple) {
+                score -= 5;
+            }
+        }
+    }
+    for four in token.as_bytes().windows(4) {
+        if let Ok(four) = std::str::from_utf8(four) {
+            if COMMON_FOUR.contains(&four) {
+                score += 5;
             }
         }
     }
     if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
-        score += 3;
+        score += 4;
     }
+    score -= consonant_run_penalty(&chars, Language::English);
+    score -= repeated_letter_penalty(&chars);
     score
 }
 
@@ -302,20 +495,37 @@ fn score_russian(token: &str) -> i32 {
         "ст", "но", "то", "на", "ен", "ов", "ни", "ра", "во", "ко", "ро", "по", "пр", "ер", "ос",
         "ал", "го", "ли", "от", "ре", "та", "ть", "ан", "ор", "ка", "ло", "ва", "ит", "те", "ет",
         "ел", "ри", "не", "де", "ам", "ла", "ве", "ие", "ис", "ол", "ле", "ся", "ин", "тр", "ом",
-        "ма", "ме", "до", "че", "об", "бо",
+        "ма", "ме", "до", "че", "об", "бо", "ми", "ир", "си", "ем", "ты", "бы", "за", "ск", "од",
     ];
     const COMMON_TRIGRAMS: &[&str] = &[
         "про", "ост", "ени", "ова", "ние", "ств", "ого", "ать", "это", "тор", "ско", "ной", "ова",
-        "ель", "ени", "при", "раз", "как", "под", "без",
+        "ель", "ени", "при", "раз", "как", "под", "без", "ист", "раб", "сер", "пол", "ние", "ова",
+    ];
+    const COMMON_FOUR: &[&str] = &[
+        "ение",
+        "ость",
+        "ного",
+        "овой",
+        "ство",
+        "тель",
+        "ного",
+        "ться",
+        "ской",
+        "работ",
+        "сист",
     ];
     const SUFFIXES: &[&str] = &[
         "ость", "ение", "ание", "ого", "ему", "ами", "ями", "ый", "ий", "ая", "ое", "ть", "ться",
+        "ный", "ная", "ные", "ов", "ев",
     ];
-    const RARE: &[&str] = &["жы", "шы", "чя", "щя", "йй", "ъъ", "ьы"];
+    const RARE: &[&str] = &[
+        "жы", "шы", "чя", "щя", "йй", "ъъ", "ьы", "ыы", "эы", "йь", "ъь",
+    ];
 
     let mut score = 0;
-    let vowels = token
-        .chars()
+    let chars: Vec<char> = token.chars().collect();
+    let vowels = chars
+        .iter()
         .filter(|ch| {
             matches!(
                 ch,
@@ -323,32 +533,77 @@ fn score_russian(token: &str) -> i32 {
             )
         })
         .count();
-    if vowels > 0 {
-        score += 3;
+    if vowels == 0 {
+        score -= 8;
     } else {
-        score -= 6;
+        let ratio = vowels * 100 / chars.len();
+        score += if (20..=70).contains(&ratio) { 4 } else { 1 };
     }
 
-    let chars: Vec<char> = token.chars().collect();
     for pair in chars.windows(2) {
         let pair: String = pair.iter().collect();
         if COMMON.contains(&pair.as_str()) {
             score += 2;
         }
         if RARE.contains(&pair.as_str()) {
-            score -= 3;
+            score -= 4;
         }
     }
     for triple in chars.windows(3) {
         let triple: String = triple.iter().collect();
         if COMMON_TRIGRAMS.contains(&triple.as_str()) {
-            score += 3;
+            score += 4;
+        }
+    }
+    for four in chars.windows(4) {
+        let four: String = four.iter().collect();
+        if COMMON_FOUR.contains(&four.as_str()) {
+            score += 5;
         }
     }
     if SUFFIXES.iter().any(|suffix| token.ends_with(suffix)) {
-        score += 3;
+        score += 4;
     }
+    score -= consonant_run_penalty(&chars, Language::Russian);
+    score -= repeated_letter_penalty(&chars);
     score
+}
+
+fn consonant_run_penalty(chars: &[char], language: Language) -> i32 {
+    let mut longest = 0usize;
+    let mut current = 0usize;
+    for ch in chars {
+        let vowel = match language {
+            Language::Russian => matches!(
+                ch,
+                'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я'
+            ),
+            Language::English => matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'),
+        };
+        if vowel {
+            current = 0;
+        } else {
+            current += 1;
+            longest = longest.max(current);
+        }
+    }
+    match longest {
+        0..=3 => 0,
+        4 => 2,
+        5 => 5,
+        _ => 8,
+    }
+}
+
+fn repeated_letter_penalty(chars: &[char]) -> i32 {
+    if chars
+        .windows(3)
+        .any(|window| window[0] == window[1] && window[1] == window[2])
+    {
+        5
+    } else {
+        0
+    }
 }
 
 fn is_ru_letter(ch: char) -> bool {
@@ -416,9 +671,35 @@ mod tests {
             "hello",
             "the",
             "then",
+            "json",
+            "http",
+            "docker",
+            "linux",
+            "vpn",
+            "edr",
+            "soc",
         ] {
             assert_eq!(decide(word), Decision::Keep, "changed {word}");
         }
+    }
+
+    #[test]
+    fn russian_context_can_resolve_short_ambiguous_word() {
+        let context = vec!["это".to_owned(), "в".to_owned()];
+        assert_eq!(decide("vbh"), Decision::Keep);
+        assert_eq!(
+            decide_with_context("vbh", &[], DEFAULT_CONFIDENCE_THRESHOLD, &context),
+            Decision::CorrectTo(Language::Russian)
+        );
+    }
+
+    #[test]
+    fn opposite_language_context_does_not_force_a_correction() {
+        let context = vec!["this".to_owned(), "is".to_owned()];
+        assert_eq!(
+            decide_with_context("vbh", &[], DEFAULT_CONFIDENCE_THRESHOLD, &context),
+            Decision::Keep
+        );
     }
 
     #[test]
