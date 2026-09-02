@@ -26,8 +26,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
     GetWindowThreadProcessId, PostThreadMessageW, SendMessageTimeoutW, SetWindowsHookExW,
     TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
-    SMTO_ABORTIFHUNG, WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN,
-    WM_SYSKEYDOWN,
+    SMTO_ABORTIFHUNG, WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
 use crate::detector::{correction, opposite_candidate_is_prefix};
