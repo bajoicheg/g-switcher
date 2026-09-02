@@ -8,15 +8,16 @@ Version 0.6 is a fresh-root Rust implementation built and tested on Windows CI.
 
 - Russian ↔ English automatic layout correction.
 - Preserves Space, Enter, Tab and supported punctuation.
-- Context-aware OEM punctuation so tokens such as `rjhj,rf` remain correctable.
+- Context-aware OEM punctuation so tokens such as `rjhj,rf` → `коробка` and `cdj,jle` → `свободу` remain correctable.
 - Editable input state with Backspace recovery.
 - Explicit target layout selection for the focused input control.
 - Code-safe mode for commands, URLs, paths, identifiers, hashes and similar technical text.
-- Ctrl+Backspace undo of the most recent automatic correction.
+- Ctrl+Backspace undo of the most recent automatic correction, including restoration of the previous layout.
 - Standard-user operation with fail-open input behavior.
 - Single-instance protection.
 - Local per-user settings and autostart.
-- First-run window and tray UI using the G-on-shield artwork.
+- First-run window with a large G-on-shield graphic, unified neutral gray background, examples and a visible undo hint.
+- Tray UI using the same G-on-shield artwork.
 - No network access in normal runtime operation.
 
 ## Release assurance
