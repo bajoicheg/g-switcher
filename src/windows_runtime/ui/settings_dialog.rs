@@ -123,7 +123,9 @@ unsafe extern "system" fn settings_proc(
         WM_COMMAND => {
             match (wparam & 0xffff) as i32 {
                 ID_SAVE => save_and_close(hwnd),
-                ID_CANCEL => DestroyWindow(hwnd),
+                ID_CANCEL => {
+                    DestroyWindow(hwnd);
+                }
                 _ => {}
             }
             0
