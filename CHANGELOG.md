@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.2 — 2026-09-02
+
+- Redesigns the Settings window after real Windows testing exposed overlapping labels and cramped controls.
+- Sizes Settings from an explicit 900×825 client area with `AdjustWindowRectEx`, keeping controls clear of the title bar/frame across display scaling configurations.
+- Introduces clear native sections for General, Application modes, User dictionary, and Hotkeys with stronger Segoe UI hierarchy and deliberate vertical spacing.
+- Reworks application modes into two balanced columns with explanatory hints and dedicated editors for Disabled and Manual-only processes.
+- Reworks hotkeys into a clean 2×2 grid and removes the long defaults line that previously competed with controls.
+- Moves Save/Cancel into a dedicated footer area and shortens privacy/status copy to prevent wrapping collisions.
+- Preserves all 0.8.1 runtime behavior, settings persistence, privacy guarantees, hotkey validation, per-app modes, and dictionary semantics.
+- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 0.8.2.
+
 ## 0.8.1 — 2026-09-02
 
 - Fixes the first-run window being visually clipped at the bottom on Windows display scaling/DPI configurations.
