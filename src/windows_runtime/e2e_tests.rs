@@ -7,16 +7,16 @@ use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    ActivateKeyboardLayout, GetKeyboardLayout, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD,
+    ActivateKeyboardLayout, GetKeyboardLayout, SendInput, SetFocus, INPUT, INPUT_0, INPUT_KEYBOARD,
     KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CONTROL, VK_OEM_2, VK_OEM_3, VK_OEM_COMMA,
     VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
     GetWindowTextLengthW, GetWindowTextW, PeekMessageW, PostMessageW, PostQuitMessage,
-    RegisterClassW, SetFocus, SetForegroundWindow, SetWindowTextW, ShowWindow, TranslateMessage,
-    PM_REMOVE, SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION, WS_CHILD,
-    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    RegisterClassW, SetForegroundWindow, SetWindowTextW, ShowWindow, TranslateMessage, PM_REMOVE,
+    SW_SHOW, WM_APP, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED,
+    WS_SYSMENU, WS_VISIBLE,
 };
 
 use super::*;
