@@ -11,8 +11,7 @@ use windows_sys::Win32::System::Registry::{
 };
 
 use crate::detector::{
-    AGGRESSIVE_CONFIDENCE_THRESHOLD, CONSERVATIVE_CONFIDENCE_THRESHOLD,
-    NORMAL_CONFIDENCE_THRESHOLD,
+    AGGRESSIVE_CONFIDENCE_THRESHOLD, CONSERVATIVE_CONFIDENCE_THRESHOLD, NORMAL_CONFIDENCE_THRESHOLD,
 };
 
 const SETTINGS_KEY: &str = "Software\\GSwitcher";
@@ -287,7 +286,7 @@ pub fn settings_from_text(
 }
 
 pub fn parse_sensitivity(value: &str) -> Option<SensitivityProfile> {
-    match value.trim().to_ascii_lowercase().as_str() {
+    match value.trim().to_lowercase().as_str() {
         "conservative" | "консервативный" => Some(SensitivityProfile::Conservative),
         "normal" | "нормальный" => Some(SensitivityProfile::Normal),
         "aggressive" | "агрессивный" => Some(SensitivityProfile::Aggressive),
@@ -680,9 +679,12 @@ mod tests {
             parse_sensitivity("Консервативный"),
             Some(SensitivityProfile::Conservative)
         );
-        assert_eq!(parse_sensitivity("Normal"), Some(SensitivityProfile::Normal));
         assert_eq!(
-            parse_sensitivity("aggressive"),
+            parse_sensitivity("Normal"),
+            Some(SensitivityProfile::Normal)
+        );
+        assert_eq!(
+            parse_sensitivity("агрессивный"),
             Some(SensitivityProfile::Aggressive)
         );
         assert!(
