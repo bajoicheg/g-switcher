@@ -345,7 +345,8 @@ impl Engine {
     }
 
     fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
-        if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some() {
+        if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
+        {
             return false;
         }
 
