@@ -11,8 +11,7 @@ use windows_sys::Win32::Graphics::Gdi::{
     CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
 };
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
-    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
-    TH32CS_SNAPPROCESS,
+    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
@@ -24,8 +23,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_GETLBTEXT, CB_GETLBTEXTLEN, CB_SETCURSEL,
     ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, ES_READONLY, IDC_ARROW, MB_ICONWARNING, MB_OK,
     MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC,
-    WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED,
-    WS_SYSMENU, WS_VISIBLE, WS_VSCROLL,
+    WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU,
+    WS_VISIBLE, WS_VSCROLL,
 };
 
 use crate::windows_runtime::{current_process_name, settings};
@@ -176,9 +175,7 @@ unsafe extern "system" fn settings_proc(
                     DestroyWindow(hwnd);
                 }
                 ID_MODE_AUTO => apply_selected_process_mode(hwnd, settings::AppMode::Auto),
-                ID_MODE_MANUAL => {
-                    apply_selected_process_mode(hwnd, settings::AppMode::ManualOnly)
-                }
+                ID_MODE_MANUAL => apply_selected_process_mode(hwnd, settings::AppMode::ManualOnly),
                 ID_MODE_DISABLED => apply_selected_process_mode(hwnd, settings::AppMode::Disabled),
                 _ => {}
             }
