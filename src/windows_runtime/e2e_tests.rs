@@ -144,16 +144,7 @@ fn real_windows_hook_to_edit_e2e() {
         edit,
         ui_thread_id,
         Language::Russian,
-        &keys(&[
-            b'W',
-            b'I',
-            b'N',
-            b'D',
-            b'O',
-            b'W',
-            b'S',
-            VK_SPACE as u8,
-        ]),
+        &keys(&[b'W', b'I', b'N', b'D', b'O', b'W', b'S', VK_SPACE as u8]),
         "windows ",
     );
 
