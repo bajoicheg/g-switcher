@@ -374,6 +374,9 @@ fn pump_hook_thread() {
     unsafe {
         let mut message = zeroed();
         while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
+            if handle_runtime_message(&message) {
+                continue;
+            }
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
