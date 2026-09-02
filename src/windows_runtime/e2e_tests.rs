@@ -73,6 +73,16 @@ fn real_windows_hook_to_edit_e2e() {
         );
     }
 
+    prepare_case(window, edit, ui_thread_id, Language::Russian);
+    let mut direct_target_inputs = Vec::new();
+    assert!(append_text_for_layout(
+        &mut direct_target_inputs,
+        "бю,.",
+        russian_hkl
+    ));
+    assert!(send_inputs_in_layout(&direct_target_inputs, russian_hkl));
+    await_text(edit, "бю,.");
+
     run_case(
         window,
         edit,
