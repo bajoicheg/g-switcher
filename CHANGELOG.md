@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0 — 2026-09-02
+
+- Adds configurable local hotkeys for current-token conversion, previous-token conversion, undo, and Pause/Resume.
+- Adds ephemeral Pause/Resume from the tray or hotkey; pause state is intentionally not persisted across application restarts.
+- Replaces the single exclusion list with per-application modes: `Auto`, `Manual only`, and `Disabled`; existing 0.7 exclusions migrate to `Disabled`.
+- Adds manual conversion of the immediately previous completed token after Space, Enter, Tab, or supported punctuation.
+- Keeps only one previous token in volatile process memory and clears it on context changes; no typed-history persistence is introduced.
+- Expands Settings UI for application modes and hotkey editing with validation.
+- Preserves user dictionary, confidence scoring, fail-open input behavior, and undo with source-layout restoration.
+- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 0.8.0.
+
 ## 0.7.0 — 2026-09-02
 
 - Adds per-application exclusions by executable name; excluded applications receive no automatic analysis or replacement.
