@@ -17,9 +17,10 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::{CreateMutexW, Sleep};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList, LoadKeyboardLayoutW, SendInput,
-    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CAPITAL,
-    VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA,
-    VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
+    VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
+    KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3,
+    VK_OEM_4, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE,
+    VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
@@ -599,10 +600,31 @@ fn append_stroke(inputs: &mut Vec<INPUT>, stroke: Stroke) {
     if stroke.shift {
         inputs.push(key_input(VK_SHIFT, 0));
     }
-    inputs.push(key_input(stroke.vk, 0));
-    inputs.push(key_input(stroke.vk, KEYEVENTF_KEYUP));
+
+    if let Some(scan) = physical_oem_scan_code(stroke.vk) {
+        inputs.push(scan_input(scan, 0));
+        inputs.push(scan_input(scan, KEYEVENTF_KEYUP));
+    } else {
+        inputs.push(key_input(stroke.vk, 0));
+        inputs.push(key_input(stroke.vk, KEYEVENTF_KEYUP));
+    }
+
     if stroke.shift {
         inputs.push(key_input(VK_SHIFT, KEYEVENTF_KEYUP));
+    }
+}
+
+fn physical_oem_scan_code(vk: u16) -> Option<u16> {
+    match vk {
+        VK_OEM_4 => Some(0x1A),
+        VK_OEM_6 => Some(0x1B),
+        VK_OEM_1 => Some(0x27),
+        VK_OEM_7 => Some(0x28),
+        VK_OEM_3 => Some(0x29),
+        VK_OEM_COMMA => Some(0x33),
+        VK_OEM_PERIOD => Some(0x34),
+        VK_OEM_2 => Some(0x35),
+        _ => None,
     }
 }
 
@@ -614,6 +636,21 @@ fn key_input(vk: u16, flags: u32) -> INPUT {
                 wVk: vk,
                 wScan: 0,
                 dwFlags: flags,
+                time: 0,
+                dwExtraInfo: MAGIC_EXTRA_INFO,
+            },
+        },
+    }
+}
+
+fn scan_input(scan: u16, flags: u32) -> INPUT {
+    INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: 0,
+                wScan: scan,
+                dwFlags: flags | KEYEVENTF_SCANCODE,
                 time: 0,
                 dwExtraInfo: MAGIC_EXTRA_INFO,
             },
@@ -665,5 +702,13 @@ mod tests {
             assert!(is_modifier_vk(vk));
         }
         assert!(!is_modifier_vk(b'A' as u16));
+    }
+
+    #[test]
+    fn oem_virtual_keys_replay_as_physical_scan_codes() {
+        assert_eq!(physical_oem_scan_code(VK_OEM_COMMA), Some(0x33));
+        assert_eq!(physical_oem_scan_code(VK_OEM_PERIOD), Some(0x34));
+        assert_eq!(physical_oem_scan_code(VK_OEM_2), Some(0x35));
+        assert_eq!(physical_oem_scan_code(b'A' as u16), None);
     }
 }
