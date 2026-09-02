@@ -146,6 +146,12 @@ pub fn runtime_settings() -> RuntimeSettings {
     runtime_settings_lock().read().clone()
 }
 
+#[cfg(test)]
+pub fn replace_runtime_settings_for_test(value: RuntimeSettings) -> RuntimeSettings {
+    let mut guard = runtime_settings_lock().write();
+    std::mem::replace(&mut *guard, normalize_runtime_settings(value))
+}
+
 pub fn paused() -> bool {
     PAUSED.load(Ordering::SeqCst)
 }
@@ -310,10 +316,7 @@ fn load_runtime_settings() -> RuntimeSettings {
             HOTKEY_MANUAL_CURRENT_VALUE,
             DEFAULT_MANUAL_CURRENT_HOTKEY,
         ),
-        previous_word_hotkey: read_hotkey(
-            HOTKEY_PREVIOUS_WORD_VALUE,
-            DEFAULT_PREVIOUS_WORD_HOTKEY,
-        ),
+        previous_word_hotkey: read_hotkey(HOTKEY_PREVIOUS_WORD_VALUE, DEFAULT_PREVIOUS_WORD_HOTKEY),
         undo_hotkey: read_hotkey(HOTKEY_UNDO_VALUE, DEFAULT_UNDO_HOTKEY),
         pause_hotkey: read_hotkey(HOTKEY_PAUSE_VALUE, DEFAULT_PAUSE_HOTKEY),
     })
@@ -400,8 +403,7 @@ fn key_name(vk: u16) -> String {
     if (VK_F1_VALUE..=VK_F12_VALUE).contains(&vk) {
         return format!("F{}", vk - VK_F1_VALUE + 1);
     }
-    if (b'A' as u16..=b'Z' as u16).contains(&vk) || (b'0' as u16..=b'9' as u16).contains(&vk)
-    {
+    if (b'A' as u16..=b'Z' as u16).contains(&vk) || (b'0' as u16..=b'9' as u16).contains(&vk) {
         return char::from_u32(vk as u32).unwrap_or('?').to_string();
     }
     format!("VK{vk:02X}")
