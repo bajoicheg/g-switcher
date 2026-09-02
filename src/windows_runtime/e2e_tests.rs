@@ -316,8 +316,8 @@ fn prepare_case(window: HWND, edit: HWND, ui_thread_id: u32, language: Language)
 }
 
 fn inject_strokes(strokes: &[Stroke]) {
-    let mut raw = Vec::new();
     for stroke in strokes {
+        let mut raw = Vec::with_capacity(4);
         if stroke.shift {
             raw.push((VK_SHIFT, 0));
         }
@@ -326,8 +326,10 @@ fn inject_strokes(strokes: &[Stroke]) {
         if stroke.shift {
             raw.push((VK_SHIFT, KEYEVENTF_KEYUP));
         }
+        inject_raw(&raw);
+        pump_hook_thread();
+        thread::sleep(Duration::from_millis(2));
     }
-    inject_raw(&raw);
 }
 
 fn inject_raw(events: &[(u16, u32)]) {
