@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1 — 2026-09-02
+
+- Fixes `cdj,jle` → `свободу` and adds regressions for the internal OEM-comma key used as Russian `б`.
+- Expands common `свобод-*` Russian word forms while preserving the conservative no-change bias for ambiguous tokens.
+- Redesigns the first-run window with a larger G-on-shield image, unified neutral gray background, Segoe UI hierarchy and cleaner spacing.
+- Adds visible examples for wrong-layout correction and an explicit `Ctrl+Backspace` instruction for reverting the latest automatic replacement and restoring the prior layout.
+- Keeps per-user autostart enabled by default on first run.
+
 ## 0.6.0 — 2026-09-02
 
 - Delivers the fresh-root Rust implementation of G-switcher for Windows.
