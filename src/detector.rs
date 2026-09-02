@@ -225,8 +225,7 @@ fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) 
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
-    exact_words(language)
-        .any(|word| word.starts_with(token) && word.len() > token.len())
+    exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
         || user_words.iter().any(|word| {
             let normalized = normalize(word.trim(), language);
             !normalized.is_empty()
@@ -487,10 +486,7 @@ mod tests {
 
     #[test]
     fn infer_language_accepts_multiword_selected_text() {
-        assert_eq!(
-            infer_language("ghbdtn rfr ltkf"),
-            Some(Language::English)
-        );
+        assert_eq!(infer_language("ghbdtn rfr ltkf"), Some(Language::English));
         assert_eq!(infer_language("руддщ цщкдв"), Some(Language::Russian));
         assert_eq!(infer_language("hello мир"), None);
     }
