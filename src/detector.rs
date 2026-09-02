@@ -89,6 +89,13 @@ pub fn decide(token: &str) -> Decision {
         return Decision::CorrectTo(target);
     }
 
+    // A physical punctuation key can be a letter in the opposite layout.
+    // Do not let statistical scoring convert a partial prefix before that
+    // key has a chance to extend the candidate (for example rjhj,rf -> коробка).
+    if is_target_word_prefix(&mapped_normalized, target) {
+        return Decision::Keep;
+    }
+
     if language_score(&mapped_normalized, target) >= 8
         && language_score(&mapped_normalized, target) >= language_score(&normalized, source) + 5
     {
@@ -116,9 +123,13 @@ pub fn opposite_candidate_is_prefix(token: &str) -> bool {
         return false;
     }
     let mapped = normalize(&mapped, target);
-    source_dictionary(target)
+    is_target_word_prefix(&mapped, target)
+}
+
+fn is_target_word_prefix(token: &str, language: Language) -> bool {
+    source_dictionary(language)
         .iter()
-        .any(|word| word.starts_with(mapped.as_str()) && word.len() > mapped.len())
+        .any(|word| word.starts_with(token) && word.len() > token.len())
 }
 
 fn source_dictionary(language: Language) -> &'static HashSet<&'static str> {
@@ -269,6 +280,12 @@ mod tests {
     #[test]
     fn punctuation_in_opposite_candidate_is_not_silently_dropped() {
         assert_eq!(decide("беру"), Decision::Keep);
+    }
+
+    #[test]
+    fn known_opposite_prefix_is_not_corrected_early() {
+        assert_eq!(decide("rjhj"), Decision::Keep);
+        assert!(opposite_candidate_is_prefix("rjhj"));
     }
 
     #[test]
