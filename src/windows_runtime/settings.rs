@@ -10,13 +10,20 @@ use windows_sys::Win32::System::Registry::{
     HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE, REG_DWORD, REG_OPTION_NON_VOLATILE, REG_SZ,
 };
 
+use crate::detector::{
+    AGGRESSIVE_CONFIDENCE_THRESHOLD, CONSERVATIVE_CONFIDENCE_THRESHOLD,
+    NORMAL_CONFIDENCE_THRESHOLD,
+};
+
 const SETTINGS_KEY: &str = "Software\\GSwitcher";
 const FIRST_RUN_VALUE: &str = "FirstRunCompleted";
 const AUTO_CORRECT_VALUE: &str = "AutoCorrectEnabled";
+const SENSITIVITY_VALUE: &str = "SensitivityProfile";
 const DISABLED_APPS_VALUE: &str = "DisabledApps";
 const MANUAL_ONLY_APPS_VALUE: &str = "ManualOnlyApps";
 const LEGACY_EXCLUDED_APPS_VALUE: &str = "ExcludedApps";
 const USER_WORDS_VALUE: &str = "UserDictionary";
+const HOTKEY_SELECTED_TEXT_VALUE: &str = "HotkeySelectedText";
 const HOTKEY_MANUAL_CURRENT_VALUE: &str = "HotkeyManualCurrent";
 const HOTKEY_PREVIOUS_WORD_VALUE: &str = "HotkeyPreviousWord";
 const HOTKEY_UNDO_VALUE: &str = "HotkeyUndo";
@@ -37,6 +44,31 @@ pub enum AppMode {
     Auto,
     ManualOnly,
     Disabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SensitivityProfile {
+    Conservative,
+    Normal,
+    Aggressive,
+}
+
+impl SensitivityProfile {
+    pub const fn confidence_threshold(self) -> u8 {
+        match self {
+            Self::Conservative => CONSERVATIVE_CONFIDENCE_THRESHOLD,
+            Self::Normal => NORMAL_CONFIDENCE_THRESHOLD,
+            Self::Aggressive => AGGRESSIVE_CONFIDENCE_THRESHOLD,
+        }
+    }
+
+    pub const fn as_text(self) -> &'static str {
+        match self {
+            Self::Conservative => "Conservative",
+            Self::Normal => "Normal",
+            Self::Aggressive => "Aggressive",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +109,7 @@ impl Hotkey {
     }
 }
 
+pub const DEFAULT_SELECTED_TEXT_HOTKEY: Hotkey = Hotkey::new(true, true, false, 0x78); // F9
 pub const DEFAULT_MANUAL_CURRENT_HOTKEY: Hotkey = Hotkey::new(true, true, false, 0x7B); // F12
 pub const DEFAULT_PREVIOUS_WORD_HOTKEY: Hotkey = Hotkey::new(true, true, false, 0x79); // F10
 pub const DEFAULT_UNDO_HOTKEY: Hotkey = Hotkey::new(true, false, false, VK_BACK_VALUE);
@@ -85,9 +118,11 @@ pub const DEFAULT_PAUSE_HOTKEY: Hotkey = Hotkey::new(true, true, false, 0x7A); /
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeSettings {
     pub auto_correct: bool,
+    pub sensitivity: SensitivityProfile,
     pub disabled_apps: Vec<String>,
     pub manual_only_apps: Vec<String>,
     pub user_words: Vec<String>,
+    pub selected_text_hotkey: Hotkey,
     pub manual_current_hotkey: Hotkey,
     pub previous_word_hotkey: Hotkey,
     pub undo_hotkey: Hotkey,
@@ -98,9 +133,11 @@ impl Default for RuntimeSettings {
     fn default() -> Self {
         Self {
             auto_correct: true,
+            sensitivity: SensitivityProfile::Normal,
             disabled_apps: Vec::new(),
             manual_only_apps: Vec::new(),
             user_words: Vec::new(),
+            selected_text_hotkey: DEFAULT_SELECTED_TEXT_HOTKEY,
             manual_current_hotkey: DEFAULT_MANUAL_CURRENT_HOTKEY,
             previous_word_hotkey: DEFAULT_PREVIOUS_WORD_HOTKEY,
             undo_hotkey: DEFAULT_UNDO_HOTKEY,
@@ -173,12 +210,12 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
         AUTO_CORRECT_VALUE,
         u32::from(value.auto_correct),
     )?;
+    write_string(SETTINGS_KEY, SENSITIVITY_VALUE, value.sensitivity.as_text())?;
     write_string(
         SETTINGS_KEY,
         DISABLED_APPS_VALUE,
         &value.disabled_apps.join("\n"),
     )?;
-    // Keep the 0.7 value synchronized for downgrade compatibility.
     write_string(
         SETTINGS_KEY,
         LEGACY_EXCLUDED_APPS_VALUE,
@@ -190,6 +227,11 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
         &value.manual_only_apps.join("\n"),
     )?;
     write_string(SETTINGS_KEY, USER_WORDS_VALUE, &value.user_words.join("\n"))?;
+    write_string(
+        SETTINGS_KEY,
+        HOTKEY_SELECTED_TEXT_VALUE,
+        &value.selected_text_hotkey.to_text(),
+    )?;
     write_string(
         SETTINGS_KEY,
         HOTKEY_MANUAL_CURRENT_VALUE,
@@ -217,9 +259,11 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 pub fn settings_from_text(
     auto_correct: bool,
+    sensitivity: &str,
     disabled_apps: &str,
     manual_only_apps: &str,
     user_words: &str,
+    selected_text_hotkey: &str,
     manual_current_hotkey: &str,
     previous_word_hotkey: &str,
     undo_hotkey: &str,
@@ -227,9 +271,12 @@ pub fn settings_from_text(
 ) -> RuntimeSettings {
     normalize_runtime_settings(RuntimeSettings {
         auto_correct,
+        sensitivity: parse_sensitivity(sensitivity).unwrap_or(SensitivityProfile::Normal),
         disabled_apps: parse_entries(disabled_apps, true),
         manual_only_apps: parse_entries(manual_only_apps, true),
         user_words: parse_entries(user_words, false),
+        selected_text_hotkey: parse_hotkey(selected_text_hotkey)
+            .unwrap_or(DEFAULT_SELECTED_TEXT_HOTKEY),
         manual_current_hotkey: parse_hotkey(manual_current_hotkey)
             .unwrap_or(DEFAULT_MANUAL_CURRENT_HOTKEY),
         previous_word_hotkey: parse_hotkey(previous_word_hotkey)
@@ -237,6 +284,15 @@ pub fn settings_from_text(
         undo_hotkey: parse_hotkey(undo_hotkey).unwrap_or(DEFAULT_UNDO_HOTKEY),
         pause_hotkey: parse_hotkey(pause_hotkey).unwrap_or(DEFAULT_PAUSE_HOTKEY),
     })
+}
+
+pub fn parse_sensitivity(value: &str) -> Option<SensitivityProfile> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "conservative" | "консервативный" => Some(SensitivityProfile::Conservative),
+        "normal" | "нормальный" => Some(SensitivityProfile::Normal),
+        "aggressive" | "агрессивный" => Some(SensitivityProfile::Aggressive),
+        _ => None,
+    }
 }
 
 pub fn parse_hotkey(value: &str) -> Option<Hotkey> {
@@ -305,6 +361,9 @@ fn load_runtime_settings() -> RuntimeSettings {
 
     normalize_runtime_settings(RuntimeSettings {
         auto_correct: read_dword(SETTINGS_KEY, AUTO_CORRECT_VALUE).unwrap_or(1) != 0,
+        sensitivity: read_string(SETTINGS_KEY, SENSITIVITY_VALUE)
+            .and_then(|value| parse_sensitivity(&value))
+            .unwrap_or(SensitivityProfile::Normal),
         disabled_apps,
         manual_only_apps: read_string(SETTINGS_KEY, MANUAL_ONLY_APPS_VALUE)
             .map(|value| parse_entries(&value, true))
@@ -312,6 +371,7 @@ fn load_runtime_settings() -> RuntimeSettings {
         user_words: read_string(SETTINGS_KEY, USER_WORDS_VALUE)
             .map(|value| parse_entries(&value, false))
             .unwrap_or_default(),
+        selected_text_hotkey: read_hotkey(HOTKEY_SELECTED_TEXT_VALUE, DEFAULT_SELECTED_TEXT_HOTKEY),
         manual_current_hotkey: read_hotkey(
             HOTKEY_MANUAL_CURRENT_VALUE,
             DEFAULT_MANUAL_CURRENT_HOTKEY,
@@ -580,9 +640,11 @@ mod tests {
     fn parses_and_normalizes_application_modes() {
         let settings = settings_from_text(
             true,
+            "Normal",
             "Code.EXE\r\npowershell.exe; code.exe",
             "terminal.exe\nCODE.EXE",
             "",
+            "Ctrl+Shift+F9",
             "Ctrl+Shift+F12",
             "Ctrl+Shift+F10",
             "Ctrl+Backspace",
@@ -599,9 +661,11 @@ mod tests {
     fn parses_user_dictionary_without_recording_history() {
         let settings = settings_from_text(
             true,
+            "Normal",
             "",
             "",
             "Градиент\nGradient\nГрадиент",
+            "Ctrl+Shift+F9",
             "Ctrl+Shift+F12",
             "Ctrl+Shift+F10",
             "Ctrl+Backspace",
@@ -611,10 +675,35 @@ mod tests {
     }
 
     #[test]
+    fn sensitivity_profiles_map_to_ordered_thresholds() {
+        assert_eq!(
+            parse_sensitivity("Консервативный"),
+            Some(SensitivityProfile::Conservative)
+        );
+        assert_eq!(parse_sensitivity("Normal"), Some(SensitivityProfile::Normal));
+        assert_eq!(
+            parse_sensitivity("aggressive"),
+            Some(SensitivityProfile::Aggressive)
+        );
+        assert!(
+            SensitivityProfile::Conservative.confidence_threshold()
+                > SensitivityProfile::Normal.confidence_threshold()
+        );
+        assert!(
+            SensitivityProfile::Normal.confidence_threshold()
+                > SensitivityProfile::Aggressive.confidence_threshold()
+        );
+    }
+
+    #[test]
     fn parses_and_formats_supported_hotkeys() {
         assert_eq!(
             parse_hotkey("ctrl + shift + f12"),
             Some(DEFAULT_MANUAL_CURRENT_HOTKEY)
+        );
+        assert_eq!(
+            parse_hotkey("Ctrl+Shift+F9"),
+            Some(DEFAULT_SELECTED_TEXT_HOTKEY)
         );
         assert_eq!(parse_hotkey("Ctrl+Backspace"), Some(DEFAULT_UNDO_HOTKEY));
         assert_eq!(parse_hotkey("Alt+Q").unwrap().to_text(), "Alt+Q");
