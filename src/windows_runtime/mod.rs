@@ -288,13 +288,12 @@ impl Engine {
         let runtime_settings = settings::runtime_settings();
         let modifiers = current_modifiers();
 
-        if runtime_settings.pause_hotkey.matches(
-            vk,
-            modifiers.ctrl,
-            modifiers.shift,
-            modifiers.alt,
-        ) {
-            toggle_pause();
+        if runtime_settings
+            .pause_hotkey
+            .matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt)
+        {
+            settings::toggle_paused();
+            self.reset_transient();
             return HookDecision::Suppress;
         }
 
@@ -341,12 +340,10 @@ impl Engine {
             };
         }
 
-        if runtime_settings.undo_hotkey.matches(
-            vk,
-            modifiers.ctrl,
-            modifiers.shift,
-            modifiers.alt,
-        ) {
+        if runtime_settings
+            .undo_hotkey
+            .matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt)
+        {
             return if self.try_undo(target, modifiers) {
                 HookDecision::Suppress
             } else {
@@ -392,16 +389,8 @@ impl Engine {
                 }
                 HookDecision::Pass
             }
-            VK_SPACE => self.handle_boundary(
-                target,
-                Delimiter::VirtualKey(VK_SPACE),
-                allow_auto,
-            ),
-            VK_RETURN => self.handle_boundary(
-                target,
-                Delimiter::VirtualKey(VK_RETURN),
-                allow_auto,
-            ),
+            VK_SPACE => self.handle_boundary(target, Delimiter::VirtualKey(VK_SPACE), allow_auto),
+            VK_RETURN => self.handle_boundary(target, Delimiter::VirtualKey(VK_RETURN), allow_auto),
             VK_TAB => self.handle_boundary(target, Delimiter::VirtualKey(VK_TAB), allow_auto),
             VK_OEM_2 => self.handle_punctuation(target, vk, allow_auto),
             VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => {
