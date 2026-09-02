@@ -335,8 +335,9 @@ impl Engine {
 
         let mut inputs = Vec::new();
         append_backspaces(&mut inputs, self.candidate.chars().count());
-        for stroke in &self.strokes {
-            append_stroke(&mut inputs, *stroke);
+        if !append_text_for_layout(&mut inputs, &corrected, target_hkl) {
+            let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
+            return false;
         }
         if !append_delimiter(&mut inputs, delimiter, target_hkl) {
             let _ = switch_layout(source.hwnd, source.thread_id, source.hkl);
@@ -575,6 +576,29 @@ fn append_backspaces(inputs: &mut Vec<INPUT>, count: usize) {
             },
         );
     }
+}
+
+fn append_text_for_layout(inputs: &mut Vec<INPUT>, text: &str, hkl: isize) -> bool {
+    for ch in text.chars() {
+        let encoded = unsafe { VkKeyScanExW(ch as u16, hkl as *mut core::ffi::c_void) };
+        if encoded == -1 {
+            return false;
+        }
+        let encoded = encoded as u16;
+        let vk = encoded & 0xff;
+        let modifiers = (encoded >> 8) & 0xff;
+        if modifiers & !1 != 0 {
+            return false;
+        }
+        append_stroke(
+            inputs,
+            Stroke {
+                vk,
+                shift: modifiers & 1 != 0,
+            },
+        );
+    }
+    true
 }
 
 fn append_delimiter(inputs: &mut Vec<INPUT>, delimiter: Delimiter, hkl: isize) -> bool {
