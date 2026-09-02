@@ -137,6 +137,23 @@ fn real_windows_hook_to_edit_e2e() {
         ui_thread_id,
         Language::Russian,
         &keys(&[b'W', b'I', b'N', b'D', b'O', b'W', VK_SPACE as u8]),
+        "window ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::Russian,
+        &keys(&[
+            b'W',
+            b'I',
+            b'N',
+            b'D',
+            b'O',
+            b'W',
+            b'S',
+            VK_SPACE as u8,
+        ]),
         "windows ",
     );
 
