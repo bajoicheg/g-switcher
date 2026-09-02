@@ -133,107 +133,15 @@ static RU_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 
 static EN_COMMON: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "a",
-        "about",
-        "after",
-        "all",
-        "also",
-        "and",
-        "any",
-        "api",
-        "are",
-        "as",
-        "at",
-        "be",
-        "because",
-        "been",
-        "before",
-        "box",
-        "but",
-        "by",
-        "can",
-        "check",
-        "code",
-        "data",
-        "do",
-        "docker",
-        "edr",
-        "for",
-        "from",
-        "good",
-        "had",
-        "has",
-        "have",
-        "he",
-        "hello",
-        "her",
-        "here",
-        "him",
-        "his",
-        "how",
-        "http",
-        "i",
-        "if",
-        "in",
-        "into",
-        "is",
-        "it",
-        "its",
-        "json",
-        "just",
-        "linux",
-        "more",
-        "my",
-        "no",
-        "not",
-        "now",
-        "object",
-        "of",
-        "on",
-        "one",
-        "only",
-        "or",
-        "other",
-        "our",
-        "out",
-        "root",
-        "security",
-        "server",
-        "she",
-        "so",
-        "soc",
-        "sql",
-        "system",
-        "than",
-        "that",
-        "the",
-        "their",
-        "them",
-        "then",
-        "there",
-        "these",
-        "they",
-        "this",
-        "to",
-        "up",
-        "user",
-        "very",
-        "vpn",
-        "was",
-        "we",
-        "were",
-        "what",
-        "when",
-        "which",
-        "who",
-        "will",
-        "window",
-        "windows",
-        "with",
-        "work",
-        "would",
-        "you",
-        "your",
+        "a", "about", "after", "all", "also", "and", "any", "api", "are", "as", "at", "be",
+        "because", "been", "before", "box", "but", "by", "can", "check", "code", "data", "do",
+        "docker", "edr", "for", "from", "good", "had", "has", "have", "he", "hello", "her", "here",
+        "him", "his", "how", "http", "i", "if", "in", "into", "is", "it", "its", "json", "just",
+        "linux", "more", "my", "no", "not", "now", "object", "of", "on", "one", "only", "or",
+        "other", "our", "out", "root", "security", "server", "she", "so", "soc", "sql", "system",
+        "than", "that", "the", "their", "them", "then", "there", "these", "they", "this", "to",
+        "up", "user", "very", "vpn", "was", "we", "were", "what", "when", "which", "who", "will",
+        "window", "windows", "with", "work", "would", "you", "your",
     ]
     .into_iter()
     .collect()
@@ -396,7 +304,11 @@ fn confidence_from_scores(target_score: i32, margin: i32) -> u8 {
 }
 
 fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
-    let recent: Vec<&String> = previous_tokens.iter().rev().take(MAX_CONTEXT_WORDS).collect();
+    let recent: Vec<&String> = previous_tokens
+        .iter()
+        .rev()
+        .take(MAX_CONTEXT_WORDS)
+        .collect();
     let mut bonus = 0;
 
     for (index, token) in recent.iter().enumerate() {
@@ -519,7 +431,8 @@ fn score_english(token: &str) -> i32 {
         "our", "rea", "com", "pro", "con", "sta",
     ];
     const COMMON_FOUR: &[&str] = &[
-        "tion", "ther", "that", "with", "ment", "ions", "this", "here", "ould", "ight", "have", "from",
+        "tion", "ther", "that", "with", "ment", "ions", "this", "here", "ould", "ight", "have",
+        "from",
     ];
     const SUFFIXES: &[&str] = &[
         "ing", "ed", "er", "ly", "tion", "ment", "ness", "able", "ous", "ive", "ize", "ise",
@@ -588,7 +501,17 @@ fn score_russian(token: &str) -> i32 {
         "ель", "ени", "при", "раз", "как", "под", "без", "ист", "раб", "сер", "пол", "ние", "ова",
     ];
     const COMMON_FOUR: &[&str] = &[
-        "ение", "ость", "ного", "овой", "ство", "тель", "ного", "ться", "ской", "работ", "сист",
+        "ение",
+        "ость",
+        "ного",
+        "овой",
+        "ство",
+        "тель",
+        "ного",
+        "ться",
+        "ской",
+        "работ",
+        "сист",
     ];
     const SUFFIXES: &[&str] = &[
         "ость", "ение", "ание", "ого", "ему", "ами", "ями", "ый", "ий", "ая", "ое", "ть", "ться",
@@ -735,8 +658,25 @@ mod tests {
     #[test]
     fn protects_known_false_positive_cases() {
         for word in [
-            "беру", "берут", "ещё", "еще", "ёлка", "всё", "моё", "объект", "подъезд",
-            "hello", "the", "then", "json", "http", "docker", "linux", "vpn", "edr", "soc",
+            "беру",
+            "берут",
+            "ещё",
+            "еще",
+            "ёлка",
+            "всё",
+            "моё",
+            "объект",
+            "подъезд",
+            "hello",
+            "the",
+            "then",
+            "json",
+            "http",
+            "docker",
+            "linux",
+            "vpn",
+            "edr",
+            "soc",
         ] {
             assert_eq!(decide(word), Decision::Keep, "changed {word}");
         }
