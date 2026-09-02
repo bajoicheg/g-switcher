@@ -27,6 +27,9 @@ const WS_BORDER_STYLE: u32 = 0x0080_0000;
 const ES_MULTILINE_STYLE: u32 = 0x0004;
 const ES_AUTOHSCROLL_STYLE: u32 = 0x0080;
 const ES_WANTRETURN_STYLE: u32 = 0x1000;
+const VK_F10_VALUE: u16 = 0x79;
+const VK_F11_VALUE: u16 = 0x7A;
+const VK_F12_VALUE: u16 = 0x7B;
 
 struct InjectedInputGuard;
 
@@ -47,6 +50,9 @@ impl Drop for InjectedInputGuard {
 #[ignore = "real Win32 keyboard hook / SendInput end-to-end release gate"]
 fn real_windows_hook_to_edit_e2e() {
     let _injected_guard = InjectedInputGuard::enable();
+    let original_runtime =
+        settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
+    settings::set_paused(false);
     let (ready_tx, ready_rx) = mpsc::sync_channel(1);
 
     let ui_thread = thread::spawn(move || run_test_window(ready_tx));
@@ -275,6 +281,60 @@ fn real_windows_hook_to_edit_e2e() {
         "undo did not restore the source keyboard layout"
     );
 
+    // 0.8: Pause/Resume must pass original input and must not deadlock the hook thread.
+    settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
+    settings::set_paused(false);
+    prepare_case(window, edit, ui_thread_id, Language::English);
+    inject_ctrl_shift_hotkey(VK_F11_VALUE);
+    assert!(settings::paused(), "pause hotkey did not pause runtime");
+    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
+    await_text(edit, "ghbdtn ");
+    inject_ctrl_shift_hotkey(VK_F11_VALUE);
+    assert!(!settings::paused(), "pause hotkey did not resume runtime");
+    await_text(edit, "ghbdtn ");
+
+    // 0.8: Manual-only mode retains the last completed word for explicit conversion.
+    let process_name = process_name_for_pid(std::process::id()).expect("test process name missing");
+    let mut manual_only = settings::RuntimeSettings::default();
+    manual_only.manual_only_apps.push(process_name.clone());
+    settings::replace_runtime_settings_for_test(manual_only);
+    prepare_case(window, edit, ui_thread_id, Language::English);
+    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]));
+    await_text(edit, "ghbdtn ");
+    inject_ctrl_shift_hotkey(VK_F10_VALUE);
+    await_text(edit, "привет ");
+    assert_eq!(
+        language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
+        Some(Language::Russian),
+        "previous-word conversion did not switch to Russian"
+    );
+    inject_raw(&[
+        (VK_CONTROL, 0),
+        (VK_BACK, 0),
+        (VK_BACK, KEYEVENTF_KEYUP),
+        (VK_CONTROL, KEYEVENTF_KEYUP),
+    ]);
+    await_text(edit, "ghbdtn ");
+    assert_eq!(
+        language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
+        Some(Language::English),
+        "undo after previous-word conversion did not restore English"
+    );
+
+    // 0.8: Disabled mode suppresses both automatic and manual conversion.
+    let mut disabled = settings::RuntimeSettings::default();
+    disabled.disabled_apps.push(process_name);
+    settings::replace_runtime_settings_for_test(disabled);
+    prepare_case(window, edit, ui_thread_id, Language::English);
+    inject_strokes(&keys(&[b'G', b'H', b'B', b'D', b'T', b'N']));
+    await_text(edit, "ghbdtn");
+    inject_ctrl_shift_hotkey(VK_F12_VALUE);
+    await_text(edit, "ghbdtn");
+    inject_strokes(&[key(VK_SPACE as u8)]);
+    await_text(edit, "ghbdtn ");
+
+    settings::replace_runtime_settings_for_test(original_runtime);
+    settings::set_paused(false);
     drop(hook);
     unsafe {
         PostMessageW(window, WM_CLOSE, 0, 0);
@@ -355,6 +415,17 @@ fn inject_strokes(strokes: &[Stroke]) {
         pump_hook_thread();
         thread::sleep(Duration::from_millis(2));
     }
+}
+
+fn inject_ctrl_shift_hotkey(vk: u16) {
+    inject_raw(&[
+        (VK_CONTROL, 0),
+        (VK_SHIFT, 0),
+        (vk, 0),
+        (vk, KEYEVENTF_KEYUP),
+        (VK_SHIFT, KEYEVENTF_KEYUP),
+        (VK_CONTROL, KEYEVENTF_KEYUP),
+    ]);
 }
 
 fn inject_raw(events: &[(u16, u32)]) {
