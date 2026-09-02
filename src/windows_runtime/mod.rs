@@ -466,6 +466,7 @@ impl Engine {
         }
 
         let mut inputs = Vec::new();
+        inputs.push(key_input(VK_CONTROL, KEYEVENTF_KEYUP));
         append_backspaces(&mut inputs, undo.corrected_len + 1);
         for stroke in &undo.original_strokes {
             append_stroke(&mut inputs, *stroke);
@@ -473,6 +474,7 @@ impl Engine {
         if !append_delimiter(&mut inputs, undo.delimiter, undo.source_hkl) {
             return false;
         }
+        inputs.push(key_input(VK_CONTROL, 0));
 
         let result = send_inputs_in_layout(&inputs, undo.source_hkl);
         if result {
