@@ -20,7 +20,8 @@ $readme = Get-Content -LiteralPath 'README.md' -Raw -Encoding UTF8
 $readme = $readme.Replace('Version 1.0.2 is a focused UI hardening release. It fixes text clipping and overlapping labels observed on real Windows while preserving the Detector v3, expanded RU/EN lexicons and runtime behavior from 1.0.1.', 'Version 1.0.3 is a runtime reliability patch. It prevents destructive truncation when Windows accepts only part of a SendInput correction batch, and locks `rjhj,jxrf.` → `коробочка.` as a detector and real Win32 regression.')
 $readme = $readme.Replace('## 1.0.2 behavior', '## 1.0.3 behavior')
 $readme = $readme.Replace('- OEM-key candidate tracking supports words whose opposite-layout form begins with punctuation-looking keys, including `,kz` → `бля`, while retaining `rjhj,rf` → `коробка` and `cdj,jle` → `свободу` behavior.', '- OEM-key candidate tracking supports words whose opposite-layout form begins with punctuation-looking keys, including `,kz` → `бля`, `rjhj,rf` → `коробка`, `rjhj,jxrf.` → `коробочка.` and `cdj,jle` → `свободу`.')
-$readme = $readme.Replace('- Standard-user operation with fail-open input behavior.', '- Partial `SendInput` delivery resumes from the first unsent INPUT instead of abandoning a correction after already-delivered Backspace events; zero initial progress still fails open without modifying text.`r`n- Standard-user operation with fail-open input behavior.')
+$readmeDelivery = '- Partial `SendInput` delivery resumes from the first unsent INPUT instead of abandoning a correction after already-delivered Backspace events; zero initial progress still fails open without modifying text.' + [Environment]::NewLine + '- Standard-user operation with fail-open input behavior.'
+$readme = $readme.Replace('- Standard-user operation with fail-open input behavior.', $readmeDelivery)
 $readme = $readme.Replace('G-switcher 1.0.2 version metadata', 'G-switcher 1.0.3 version metadata')
 Set-Content -LiteralPath 'README.md' -Value $readme -Encoding UTF8 -NoNewline
 
@@ -28,15 +29,16 @@ $spec = Get-Content -LiteralPath 'docs/FUNCTIONAL_SPEC.md' -Raw -Encoding UTF8
 $spec = $spec.Replace('G-switcher 1.0.2 functional specification', 'G-switcher 1.0.3 functional specification')
 $spec = $spec.Replace('Version 1.0.2 stores explicit per-user hotkey definitions', 'Version 1.0.3 stores explicit per-user hotkey definitions')
 $spec = $spec.Replace('This is required for cases such as English-layout `,kz` → Russian `бля`, where the first physical key normally produces a comma in English but `б` in Russian.', 'This is required for cases such as English-layout `,kz` → Russian `бля` and `rjhj,jxrf.` → `коробочка.`, where OEM punctuation-looking keys participate in the opposite-layout word.')
-$spec = $spec.Replace('Backspace updates the current candidate state instead of discarding all prior context.', 'Correction injection is loss-aware: if Windows accepts only part of a `SendInput` batch, G-switcher resumes from the first unsent INPUT with bounded retries instead of abandoning the batch after already-delivered Backspace events. If the initial `SendInput` call makes zero progress, the correction fails open before any synthetic deletion is delivered.`r`n`r`nBackspace updates the current candidate state instead of discarding all prior context.')
+$deliverySpec = 'Correction injection is loss-aware: if Windows accepts only part of a `SendInput` batch, G-switcher resumes from the first unsent INPUT with bounded retries instead of abandoning the batch after already-delivered Backspace events. If the initial `SendInput` call makes zero progress, the correction fails open before any synthetic deletion is delivered.' + [Environment]::NewLine + [Environment]::NewLine + 'Backspace updates the current candidate state instead of discarding all prior context.'
+$spec = $spec.Replace('Backspace updates the current candidate state instead of discarding all prior context.', $deliverySpec)
 Set-Content -LiteralPath 'docs/FUNCTIONAL_SPEC.md' -Value $spec -Encoding UTF8 -NoNewline
 
 $accept = Get-Content -LiteralPath 'docs/ACCEPTANCE_TESTS.md' -Raw -Encoding UTF8
 $accept = $accept.Replace('# G-switcher 1.0.0 acceptance tests', '# G-switcher 1.0.3 acceptance tests')
-$accept = $accept.Replace('- `rjhj,rf ` → `коробка `', '- `rjhj,rf ` → `коробка `
-- `rjhj,jxrf.` → `коробочка.`')
-$accept = $accept.Replace('- immediate Undo restores original text and source layout', '- immediate Undo restores original text and source layout
-- simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress')
+$acceptCore = '- `rjhj,rf ` → `коробка `' + [Environment]::NewLine + '- `rjhj,jxrf.` → `коробочка.`'
+$accept = $accept.Replace('- `rjhj,rf ` → `коробка `', $acceptCore)
+$acceptUndo = '- immediate Undo restores original text and source layout' + [Environment]::NewLine + '- simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress'
+$accept = $accept.Replace('- immediate Undo restores original text and source layout', $acceptUndo)
 Set-Content -LiteralPath 'docs/ACCEPTANCE_TESTS.md' -Value $accept -Encoding UTF8 -NoNewline
 
 $security = Get-Content -LiteralPath 'docs/SECURITY_MODEL.md' -Raw -Encoding UTF8
@@ -63,6 +65,7 @@ $entry = @'
 - Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 1.0.2.
 
 '@
-if (-not $changelog.StartsWith("# Changelog`n`n")) { throw 'Unexpected CHANGELOG header' }
-$changelog = "# Changelog`n`n" + $entry + $changelog.Substring("# Changelog`n`n".Length)
+if (-not [regex]::IsMatch($changelog, '^# Changelog\r?\n\r?\n')) { throw 'Unexpected CHANGELOG header' }
+$rest = [regex]::Replace($changelog, '^# Changelog\r?\n\r?\n', '', 1)
+$changelog = '# Changelog' + [Environment]::NewLine + [Environment]::NewLine + $entry + $rest
 Set-Content -LiteralPath 'CHANGELOG.md' -Value $changelog -Encoding UTF8 -NoNewline
