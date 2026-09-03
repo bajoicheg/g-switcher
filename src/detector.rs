@@ -82,7 +82,8 @@ pub fn detect_with_context(
 
     let source = infer_language(token)?;
     let normalized = normalize(token, source);
-    if dictionary_contains(source, &normalized, user_words) {
+    let source_frequency = frequency_model::word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
         return None;
     }
 
@@ -93,7 +94,8 @@ pub fn detect_with_context(
         return None;
     }
 
-    if dictionary_contains(target, &mapped_normalized, user_words) {
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+    if dictionary_contains(target, &mapped_normalized, user_words) || target_frequency >= 15 {
         return Some(Detection {
             source,
             target,
@@ -105,14 +107,6 @@ pub fn detect_with_context(
     // OEM punctuation can map to a letter in the opposite layout. Keep a known
     // target prefix intact until the remaining physical keys arrive.
     if is_target_word_prefix(&mapped_normalized, target, user_words) {
-        return None;
-    }
-
-    let source_frequency = frequency_model::word_score(source, &normalized);
-    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
-
-    // A frequent real source-language word is strong preservation evidence.
-    if source_frequency >= 15 && target_frequency == 0 {
         return None;
     }
 
@@ -179,6 +173,14 @@ pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[S
     let Some(source) = infer_language(token) else {
         return false;
     };
+    opposite_candidate_is_prefix_for_language(token, source, user_words)
+}
+
+pub fn opposite_candidate_is_prefix_for_language(
+    token: &str,
+    source: Language,
+    user_words: &[String],
+) -> bool {
     let target = opposite(source);
     let mapped = opposite_layout_text(token, source);
     if !candidate_shape_is_valid(&mapped, target) {
@@ -225,7 +227,8 @@ fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) 
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
-    exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
+    frequency_model::has_word_prefix(language, token)
+        || exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
         || user_words.iter().any(|word| {
             let normalized = normalize(word.trim(), language);
             !normalized.is_empty()
@@ -462,6 +465,45 @@ mod tests {
         }
     }
 
+    #[test]
+    fn expanded_builtin_lexicon_protects_real_words() {
+        for word in [
+            "truth",
+            "information",
+            "company",
+            "fuck",
+            "shit",
+            "пизда",
+            "бля",
+            "блять",
+            "хуй",
+            "ебать",
+            "сука",
+            "правда",
+            "сегодня",
+        ] {
+            assert_eq!(decide(word), Decision::Keep, "changed valid word {word}");
+        }
+    }
+
+    #[test]
+    fn expanded_builtin_lexicon_corrects_wrong_layout_forms() {
+        for (word, language) in [
+            ("truth", Language::English),
+            ("fuck", Language::English),
+            ("пизда", Language::Russian),
+            ("бля", Language::Russian),
+            ("хуй", Language::Russian),
+            ("ебать", Language::Russian),
+        ] {
+            let wrong = opposite_layout_text(word, language);
+            assert_eq!(
+                decide(&wrong),
+                Decision::CorrectTo(language),
+                "did not restore {word} from {wrong}"
+            );
+        }
+    }
     #[test]
     fn frequency_model_protects_frequent_source_words() {
         for word in ["system", "security", "работа", "система"] {

@@ -36,7 +36,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::detector::{
-    correction_with_context, infer_language, opposite_candidate_is_prefix_with_user_words,
+    correction_with_context, infer_language, opposite_candidate_is_prefix_for_language,
     MAX_CONTEXT_WORDS,
 };
 use crate::layout::opposite_layout_text;
@@ -513,9 +513,12 @@ impl Engine {
         }
 
         let runtime_settings = settings::runtime_settings();
+        let mut prospective = self.candidate.clone();
+        prospective.push(ch);
         if punctuation_can_extend_candidate(vk, target.language)
-            && opposite_candidate_is_prefix_with_user_words(
-                &self.candidate,
+            && opposite_candidate_is_prefix_for_language(
+                &prospective,
+                target.language,
                 &runtime_settings.user_words,
             )
         {
