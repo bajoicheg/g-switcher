@@ -36,12 +36,13 @@ jobs:
         run: |
           $path = 'src/windows_runtime/mod.rs'
           $text = Get-Content -LiteralPath $path -Raw -Encoding UTF8
-          if ($text -notmatch '(?m)^mod corpus_e2e;$') {
-            $pattern = '(?m)^#\[cfg\(test\)\]\r?\nmod e2e_tests;$'
-            if ($text -notmatch $pattern) { throw 'Could not locate e2e_tests module declaration' }
+          $normalized = $text.Replace("`r`n", "`n")
+          if (-not $normalized.Contains("mod corpus_e2e;")) {
+            $needle = "#[cfg(test)]`nmod e2e_tests;"
+            if (-not $normalized.Contains($needle)) { throw 'Could not locate e2e_tests module declaration' }
             $replacement = "#[cfg(test)]`nmod corpus_e2e;`n`n#[cfg(test)]`nmod e2e_tests;"
-            $text = [regex]::Replace($text, $pattern, $replacement, 1)
-            Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+            $normalized = $normalized.Replace($needle, $replacement)
+            Set-Content -LiteralPath $path -Value $normalized -Encoding UTF8 -NoNewline
           }
           cargo fmt --all
 
