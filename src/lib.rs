@@ -4,6 +4,7 @@
 
 pub mod code_safe;
 pub mod detector;
+mod expanded_lexicon;
 pub mod frequency_model;
 pub mod layout;
 pub mod model;
