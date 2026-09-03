@@ -1,0 +1,34 @@
+name: Patch G-switcher 1.0.3 repro
+
+on:
+  push:
+    branches: ["fix/1.0.3-korobochka"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/1.0.3-korobochka
+          fetch-depth: 1
+      - name: Apply reproducer
+        shell: pwsh
+        run: ./scripts/patch-1.0.3-repro.ps1
+      - name: Format
+        shell: pwsh
+        run: cargo fmt --all
+      - name: Commit reproducer
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/detector.rs src/windows_runtime/e2e_tests.rs
+          if (git diff --cached --quiet) { exit 0 }
+          git commit -m "Lock 1.0.3 коробочка regression"
+          git push origin HEAD:fix/1.0.3-korobochka
