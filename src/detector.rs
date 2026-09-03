@@ -1,6 +1,6 @@
 use crate::{
     code_safe::is_code_safe_token,
-    frequency_model,
+    expanded_lexicon, frequency_model,
     layout::opposite_layout_text,
     model::{Decision, Language},
 };
@@ -76,11 +76,10 @@ pub fn detect_with_context(
     user_words: &[String],
     previous_tokens: &[String],
 ) -> Option<Detection> {
-    if is_code_safe_token(token) || token.chars().count() < 3 {
-        return None;
-    }
-
     let source = infer_language(token)?;
+    if token.chars().count() < 3 {
+        return detect_short_with_context(token, source, user_words, previous_tokens);
+    }
     let normalized = normalize(token, source);
     let source_frequency = frequency_model::word_score(source, &normalized);
     if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
@@ -102,6 +101,13 @@ pub fn detect_with_context(
             corrected: mapped,
             confidence: 100,
         });
+    }
+
+    // Known target words beat generic identifier/code protection. This is
+    // important for wrong-layout acronyms such as CIF -> США, while known
+    // source acronyms such as NIST remain protected above.
+    if is_code_safe_token(token) {
+        return None;
     }
 
     // OEM punctuation can map to a letter in the opposite layout. Keep a known
@@ -139,6 +145,46 @@ pub fn detect_with_context(
             target_frequency,
             source_frequency,
         ),
+    })
+}
+
+fn detect_short_with_context(
+    token: &str,
+    source: Language,
+    user_words: &[String],
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    if is_code_safe_token(token) {
+        return None;
+    }
+
+    let normalized = normalize(token, source);
+    if dictionary_contains(source, &normalized, user_words)
+        || frequency_model::word_score(source, &normalized) >= 15
+    {
+        return None;
+    }
+
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    let mapped_normalized = normalize(&mapped, target);
+    if !candidate_shape_is_valid(&mapped, target)
+        || !expanded_lexicon::is_short_target(target, &mapped_normalized)
+    {
+        return None;
+    }
+
+    // One/two-key sequences are too ambiguous on their own. Require both
+    // volatile context slots to agree with the target language (7 + 4 points).
+    if context_bonus(target, &mapped_normalized, previous_tokens) < 10 {
+        return None;
+    }
+
+    Some(Detection {
+        source,
+        target,
+        corrected: mapped,
+        confidence: 94,
     })
 }
 
@@ -228,6 +274,7 @@ fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) 
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
     frequency_model::has_word_prefix(language, token)
+        || expanded_lexicon::has_prefix(language, token)
         || exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
         || user_words.iter().any(|word| {
             let normalized = normalize(word.trim(), language);
@@ -239,7 +286,8 @@ fn is_target_word_prefix(token: &str, language: Language, user_words: &[String])
 }
 
 fn dictionary_contains(language: Language, token: &str, user_words: &[String]) -> bool {
-    exact_words(language).any(|word| word == token)
+    expanded_lexicon::contains(language, token)
+        || exact_words(language).any(|word| word == token)
         || user_words.iter().any(|word| {
             let word = word.trim();
             !word.is_empty()

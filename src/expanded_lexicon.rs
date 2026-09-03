@@ -8,8 +8,10 @@ const EN_SECURITY: &str = "accountability availability bombe capability cia cism
 
 // One- and two-letter tokens are intrinsically ambiguous. They are eligible for
 // correction only when the detector has strong same-language context.
-const RU_SHORT_TARGETS: &str = "и в с а к о у я не на по из от до за во со но то же бы мы вы он их ее её ну ли ты";
-const EN_SHORT_TARGETS: &str = "a i of to in it is be as at by or an my no up if me we he do so go us";
+const RU_SHORT_TARGETS: &str =
+    "и в с а к о у я не на по из от до за во со но то же бы мы вы он их ее её ну ли ты";
+const EN_SHORT_TARGETS: &str =
+    "a i of to in it is be as at by or an my no up if me we he do so go us";
 
 pub(crate) fn contains(language: Language, token: &str) -> bool {
     contains_word(long_table(language), token)
@@ -49,10 +51,18 @@ mod tests {
 
     #[test]
     fn security_corpus_terms_are_local_lexicon_words() {
-        for word in ["availability", "integrity", "unauthorized", "cissp", "nist", "gdpr"] {
+        for word in [
+            "availability",
+            "integrity",
+            "unauthorized",
+            "cissp",
+            "nist",
+            "gdpr",
+        ] {
             assert!(contains(Language::English, word), "missing EN term: {word}");
         }
-        for word in ["сша", "ссср", "гост", "исо", "ибп", "правил", "системы"] {
+        for word in ["сша", "ссср", "гост", "исо", "ибп", "правил", "системы"]
+        {
             assert!(contains(Language::Russian, word), "missing RU term: {word}");
         }
     }

@@ -124,8 +124,14 @@ mod tests {
 
     #[test]
     fn preserves_shifted_oem_letters_and_punctuation() {
-        assert_eq!(opposite_layout_text("<>~{}:\"?", Language::English), "БЮЁХЪЖЭ,");
-        assert_eq!(opposite_layout_text("БЮЁХЪЖЭ,.", Language::Russian), "<>~{}:\"?/");
+        assert_eq!(
+            opposite_layout_text("<>~{}:\"?", Language::English),
+            "БЮЁХЪЖЭ,"
+        );
+        assert_eq!(
+            opposite_layout_text("БЮЁХЪЖЭ,.", Language::Russian),
+            "<>~{}:\"?/"
+        );
         assert_eq!(
             opposite_layout_text("Безопасность", Language::Russian),
             "<tpjgfcyjcnm"
