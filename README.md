@@ -2,9 +2,9 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.1 is a corrective release for the 1.0 line. It fixes the first-run and Settings layouts observed on real Windows, substantially expands built-in Russian/English word protection, and fixes wrong-layout words whose Russian form begins on an OEM punctuation key.
+Version 1.0.2 is a corrective release for the 1.0 line. It fixes the first-run and Settings layouts observed on real Windows, substantially expands built-in Russian/English word protection, and fixes wrong-layout words whose Russian form begins on an OEM punctuation key.
 
-## 1.0.1 behavior
+## 1.0.2 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
@@ -45,7 +45,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, and the OEM-leading `,kz` → `бля` regression. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.1 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, and the OEM-leading `,kz` → `бля` regression. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.2 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
