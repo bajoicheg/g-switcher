@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.1 — 2026-09-03
+
+- Fixes clipping in the first-run Settings hint and restores deliberate spacing between the hint, separator, autostart row, action button, and copyright footer.
+- Expands the Settings client area and increases vertical space for application-mode state and the user dictionary.
+- Removes always-visible vertical scrollbars from read-only Disabled/Manual-only lists while keeping normal scrolling for the editable dictionary.
+- Replaces mixed English/Russian Settings copy with clearer Russian wording where practical.
+- Substantially expands built-in Russian and English common-word lexicons, including everyday, technical, colloquial, and common obscene vocabulary.
+- Treats a recognized built-in frequent source word as deterministic preservation evidence and a recognized opposite-layout target as maximum-confidence correction evidence.
+- Adds regressions for `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй`, `ебать`, and related vocabulary while preserving context-sensitive handling of intentionally ambiguous short words.
+- Fixes OEM-prefix tracking for wrong-layout words whose Russian form begins on a physical punctuation key; the real Win32 E2E now covers `,kz ` → `бля `.
+- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 1.0.1.
+
+## 1.0.0 — 2026-09-02
+
+- Adds native selected-text conversion for supported Win32 Edit/RichEdit controls without clipboard use, with one-shot Undo and source-layout restoration.
+- Adds secure-input protection for password/PIN/OTP/credential controls across automatic, manual, selected-text, and Undo-related processing.
+- Introduces Detector v3 with a baked-in local RU/EN frequency model and Conservative/Normal/Aggressive sensitivity profiles.
+- Extends the real Win32 hook-to-EDIT E2E to selected-text conversion, secure password EDIT behavior, application modes, Pause, and manual Undo.
+- Keeps typed candidates, selected text, previous-token state, and contextual words volatile-only and never persists or transmits them.
+- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 1.0.0.
+
 ## 0.9.0 — 2026-09-02
 
 - Introduces Detector v2 with broader RU/EN word protection, richer bigram/trigram/4-gram scoring, suffix/shape signals, vowel-ratio checks, rare-sequence penalties, consonant-run penalties and repeated-letter penalties.
