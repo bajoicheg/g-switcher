@@ -32,18 +32,14 @@ jobs:
           $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
           $page = $response.query.pages | Select-Object -First 1
           if (-not $page.extract) { throw 'Wikipedia API returned no extract' }
-          $text = $page.extract
+          $text = [string]$page.extract
           foreach ($heading in @("`n== См. также ==", "`n== Примечания ==", "`n== Литература ==", "`n== Ссылки ==")) {
             $i = $text.IndexOf($heading, [StringComparison]::Ordinal)
             if ($i -ge 0) { $text = $text.Substring(0, $i); break }
           }
-          $d = $text.Normalize([Text.NormalizationForm]::FormD)
-          $b = [Text.StringBuilder]::new()
-          foreach ($ch in $d.ToCharArray()) {
-            if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$b.Append($ch) }
-          }
+          $text = $text.Replace([string][char]0x0301, '').Replace([string][char]0x0300, '').Replace([char]0x00A0, ' ')
           New-Item -ItemType Directory -Force target | Out-Null
-          [IO.File]::WriteAllText((Join-Path $PWD 'target/wiki-article.txt'), $b.ToString().Normalize([Text.NormalizationForm]::FormC).Replace([char]0x00A0, ' '), [Text.UTF8Encoding]::new($false))
+          [IO.File]::WriteAllText((Join-Path $PWD 'target/wiki-article.txt'), $text, [Text.UTF8Encoding]::new($false))
           "G_SWITCHER_CORPUS_PATH=$(Join-Path $PWD 'target/wiki-article.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append
           "G_SWITCHER_DETECTOR_REPORT=$(Join-Path $PWD 'target/wiki-detector-failures.csv')" | Out-File -FilePath $env:GITHUB_ENV -Append
           "G_SWITCHER_DETECTOR_SUMMARY=$(Join-Path $PWD 'target/wiki-detector-summary.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append
