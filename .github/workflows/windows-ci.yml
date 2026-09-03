@@ -25,7 +25,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if ((Get-Content Cargo.toml -Raw).Contains('version = "1.0.4"')) {
+          if ((Get-Content src/windows_runtime/e2e_tests.rs -Raw).Contains('BYCNHERWBB')) {
             Write-Host '1.0.4 promotion already applied'
             exit 0
           }
@@ -38,7 +38,9 @@ jobs:
             [IO.File]::WriteAllText($Path, $text.Replace($Old, $New), [Text.UTF8Encoding]::new($false))
           }
 
-          Replace-Text 'Cargo.toml' 'version = "1.0.3"' 'version = "1.0.4"'
+          if ((Get-Content Cargo.toml -Raw).Contains('version = "1.0.3"')) {
+            Replace-Text 'Cargo.toml' 'version = "1.0.3"' 'version = "1.0.4"'
+          }
           Replace-Text 'build.rs' 'resource.set("FileVersion", "1.0.3.0");' 'resource.set("FileVersion", "1.0.4.0");'
           Replace-Text 'build.rs' 'resource.set("ProductVersion", "1.0.3");' 'resource.set("ProductVersion", "1.0.4");'
           Replace-Text 'src/lib.rs' 'pub const PRODUCT_VERSION: &str = "1.0.3";' 'pub const PRODUCT_VERSION: &str = "1.0.4";'
