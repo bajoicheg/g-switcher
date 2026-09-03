@@ -26,16 +26,20 @@ fn restores_article_derived_wrong_layout_words_with_normal_context() {
 
     for word in ARTICLE_REGRESSIONS {
         let wrong = opposite_layout_text(word, Language::Russian);
-        let detection = correction_with_context(
-            &wrong,
-            &[],
-            DEFAULT_CONFIDENCE_THRESHOLD,
-            &context,
-        )
-        .unwrap_or_else(|| panic!("did not restore {word} from {wrong}"));
+        let detection =
+            correction_with_context(&wrong, &[], DEFAULT_CONFIDENCE_THRESHOLD, &context)
+                .unwrap_or_else(|| panic!("did not restore {word} from {wrong}"));
 
-        assert_eq!(detection.source, Language::English, "wrong source for {word}");
-        assert_eq!(detection.target, Language::Russian, "wrong target for {word}");
+        assert_eq!(
+            detection.source,
+            Language::English,
+            "wrong source for {word}"
+        );
+        assert_eq!(
+            detection.target,
+            Language::Russian,
+            "wrong target for {word}"
+        );
         assert_eq!(detection.corrected, *word, "wrong correction for {word}");
     }
 }
