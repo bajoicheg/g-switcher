@@ -29,7 +29,9 @@ jobs:
 
       - name: Apply and format
         shell: pwsh
-        run: ./scripts/apply-1.0.4-corpus-fixes.ps1
+        run: |
+          python ./scripts/apply-1.0.4-corpus-fixes.py
+          cargo fmt --all
 
       - name: Commit source fixes
         shell: pwsh
