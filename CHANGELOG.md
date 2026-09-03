@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.4 — 2026-09-03
+
+- Audits Detector v3 against a synthetic RU→EN wrong-layout corpus derived from a long Russian information-security article: 1,566 unique Russian word forms, with 13 residual misses isolated under Normal sensitivity and two-word Russian context.
+- Adds the common forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм` to deterministic local Russian target recognition.
+- Locks all 13 article-derived wrong-layout forms in integration regression coverage and adds real Win32 hook→EDIT E2E cases for `cbcntv` → `систем`, `ghjuhfvv` → `программ` and `bycnherwbb` → `инструкции`.
+- Preserves the 1.0.3 loss-aware partial `SendInput` delivery fix and OEM-prefix behavior for `rjhj,rf` → `коробка`, `rjhj,jxrf.` → `коробочка.`, `cdj,jle` → `свободу` and `,kz` → `бля`.
+- Updates package/Windows/UI metadata, release checks, CI artifact naming, documentation and gated release automation to 1.0.4.
+
 ## 1.0.3 — 2026-09-03
 
 - Fixes destructive truncation when Windows accepts only part of a correction `SendInput` batch: delivery now resumes from the first unsent INPUT with bounded retry instead of abandoning already-started Backspace/retype sequences.
@@ -14,6 +22,7 @@
 - Shortens long Russian UI labels and moves footer controls down to keep spacing stable on real Windows.
 - Adds more bottom room to the first-run window while preserving 1.0.1 detector/runtime behavior.
 - Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 1.0.2.
+
 ## 1.0.1 — 2026-09-03
 
 - Fixes clipping in the first-run Settings hint and restores deliberate spacing between the hint, separator, autostart row, action button, and copyright footer.
