@@ -1,4 +1,4 @@
-# G-switcher 1.0.2 functional specification
+# G-switcher 1.0.3 functional specification
 
 ## Product model
 
@@ -18,7 +18,9 @@ The user's configured Windows layout shortcut is irrelevant to G-switcher correc
 
 Space, Enter and Tab are token boundaries. Supported punctuation may also terminate a token. Ambiguous OEM keys are interpreted contextually because the same physical key may be punctuation in one layout and a letter in the other.
 
-A punctuation-looking OEM key may start or continue a candidate when the prospective physical-key sequence maps to a known prefix in the opposite language. This is required for cases such as English-layout `,kz` → Russian `бля`, where the first physical key normally produces a comma in English but `б` in Russian.
+A punctuation-looking OEM key may start or continue a candidate when the prospective physical-key sequence maps to a known prefix in the opposite language. This is required for cases such as English-layout `,kz` → Russian `бля` and `rjhj,jxrf.` → `коробочка.`, where OEM punctuation-looking keys participate in the opposite-layout word.
+
+Correction injection is loss-aware: if Windows accepts only part of a `SendInput` batch, G-switcher resumes from the first unsent INPUT with bounded retries instead of abandoning the batch after already-delivered Backspace events. If the initial `SendInput` call makes zero progress, the correction fails open before any synthetic deletion is delivered.
 
 Backspace updates the current candidate state instead of discarding all prior context. Cursor-moving operations, focus changes and unrelated command shortcuts invalidate transient text state when the runtime cannot prove that it remains applicable.
 
@@ -71,7 +73,7 @@ This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 1.0.2 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 1.0.3 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
