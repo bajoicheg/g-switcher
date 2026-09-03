@@ -30,10 +30,9 @@ if ($tailHeading.Success) {
 # Keyboard typing does not produce editorial stress accents. Remove only those
 # accents. Do NOT decompose all Unicode characters: doing so would turn native
 # Russian й/ё into и/е after stripping their combining marks.
-$articleText = $rawArticle
-    .Replace([string][char]0x0301, '')
-    .Replace([string][char]0x0300, '')
-    .Replace([char]0x00A0, ' ')
+$articleText = $rawArticle.Replace([string][char]0x0301, '')
+$articleText = $articleText.Replace([string][char]0x0300, '')
+$articleText = $articleText.Replace([char]0x00A0, ' ')
 $corpusPath = Join-Path $PWD 'target/wiki-article.txt'
 $reportPath = Join-Path $PWD 'target/wiki-corpus-failures.csv'
 $summaryPath = Join-Path $PWD 'target/wiki-corpus-summary.txt'
