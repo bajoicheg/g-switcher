@@ -1,4 +1,4 @@
-# G-switcher 1.0.3 security model
+# G-switcher 1.0.4 security model
 
 G-switcher is designed as a small local desktop utility with a deliberately narrow trust boundary.
 
@@ -6,6 +6,7 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - Current candidate text is never persisted by the normal runtime.
 - The runtime may retain exactly one immediately previous completed token for previous-word manual conversion and at most two completed context words for Detector v3. Both stores exist only in process memory and are never written to disk or transmitted.
 - Detector v3 uses only baked-in local RU/EN frequency and n-gram data plus local volatile context. It has no cloud model, remote dictionary or telemetry dependency.
+- The 1.0.4 article-corpus additions are compiled local lexical entries only; no corpus text, user typing, telemetry or external service is added to runtime behavior.
 - Contextual words are cleared when focus/process context changes, on Pause, on unrelated Ctrl/Alt command context, on secure-input entry, and on Undo. Context cannot override exact source system/user-dictionary protection.
 - Selected text is read only after the explicit selected-text hotkey is invoked and only from the currently focused supported native Win32 text control. The selected content is held transiently only long enough to perform replacement/Undo state.
 - The clipboard is not used for selected-text conversion.
@@ -25,7 +26,7 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - Automatic and manual token conversion use the same focused-control, layout-switch and integrity boundaries.
 - Hotkeys are matched locally and no global online service is involved.
 - The production binary is built on a Windows CI runner from the reviewed Rust source tree.
-- The release gate includes a real Win32 hook-to-EDIT test covering automatic correction/Undo, application modes, selected-text conversion/Undo and password EDIT protection.
+- The release gate includes a real Win32 hook-to-EDIT test covering automatic correction/Undo, article-derived detector cases, application modes, selected-text conversion/Undo and password EDIT protection.
 - Release artifacts include SHA-256 hashes and are intended to be Authenticode-signed in a separate protected release step when a trusted signing environment is available.
 - CI receives read-only repository contents unless a specific release job requires release publication rights.
-- The `v1.0.3` publication workflow consumes only the checked artifact from a successful `main` push Windows CI run and re-verifies its SHA-256 before creating the GitHub Release.
+- The `v1.0.4` publication workflow consumes only the checked artifact from a successful `main` push Windows CI run and re-verifies its SHA-256 before creating the GitHub Release.

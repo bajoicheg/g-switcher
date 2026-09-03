@@ -1,4 +1,4 @@
-# G-switcher 1.0.3 acceptance tests
+# G-switcher 1.0.4 acceptance tests
 
 The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
 
@@ -10,6 +10,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - `rjhj,rf ` → `коробка `
 - `rjhj,jxrf.` → `коробочка.`
 - `cdj,jle ` → `свободу `
+- article-derived real Win32 regressions: `cbcntv ` → `систем `, `ghjuhfvv ` → `программ `, `bycnherwbb ` → `инструкции `
 - Space, Enter and Tab delimiters are preserved
 - immediate Undo restores original text and source layout
 - simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress
@@ -24,6 +25,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - typed context never exceeds two completed words and is never persisted
 - opposite-language context alone cannot force a correction
 - known false-positive regressions remain protected
+- all 13 article-corpus forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны`, `норм` restore from their wrong-layout forms under Normal sensitivity with two-word Russian context
 
 ## Sensitivity profiles
 
@@ -146,6 +148,7 @@ With automatic correction disabled or an intentionally uncorrected token:
 - Cancel/close does not persist edits
 - UI states that detector context is volatile
 - UI states that password/PIN/OTP/secure input is not processed
+- visible Settings version is `1.0.4`
 
 ## Punctuation and editing
 
@@ -208,15 +211,15 @@ The following classes are not automatically rewritten:
 
 ## Release gate
 
-A releasable `v1.0.0` requires one successful Windows CI run on merged `main` containing:
+A releasable `v1.0.4` requires one successful Windows CI run on merged `main` containing:
 
 - `cargo fmt --all -- --check`
-- all unit/integration tests
-- ignored real Win32 hook-to-EDIT E2E with automatic correction, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
+- all unit/integration tests, including the 13 article-corpus regressions
+- ignored real Win32 hook-to-EDIT E2E with automatic correction, article-derived cases, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
 - `cargo clippy --all-targets -- -D warnings`
 - optimized `g-switcher.exe` build
-- Windows GUI subsystem and `1.0.0` branding/version checks
+- Windows GUI subsystem and `1.0.4` branding/version checks
 - generated SHA-256 sidecar
-- uploaded artifact named `g-switcher-1.0.0-windows-x64`
+- uploaded artifact named `g-switcher-1.0.4-windows-x64`
 
-Only that successful `main` push artifact may be used by the `v1.0.0` release workflow.
+Only that successful `main` push artifact may be used by the `v1.0.4` release workflow.
