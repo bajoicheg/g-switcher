@@ -150,7 +150,7 @@ pub fn show_first_run() -> Result<bool> {
         // client coordinates. Reserve the client area explicitly so title-bar/DPI metrics can
         // never squeeze the bottom row as happened in 0.8.0.
         let client_width = 680;
-        let client_height = 500;
+        let client_height = 530;
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
         let mut window_rect = RECT {
             left: 0,
@@ -396,7 +396,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let settings_hint_text = wide(
-        "Горячие клавиши и режимы приложений можно изменить через значок G-switcher в трее → Настройки.",
+        "Горячие клавиши и режимы приложений настраиваются через значок G-switcher в трее → «Настройки».",
     );
     let settings_hint = CreateWindowExW(
         0,
@@ -406,7 +406,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         36,
         358,
         608,
-        36,
+        52,
         hwnd,
         null_mut(),
         module,
@@ -419,7 +419,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
         36,
-        401,
+        414,
         608,
         2,
         hwnd,
@@ -435,7 +435,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         checkbox_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
         36,
-        418,
+        432,
         390,
         28,
         hwnd,
@@ -452,7 +452,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         footer_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
         36,
-        467,
+        500,
         300,
         20,
         hwnd,
@@ -468,7 +468,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         ok_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
         532,
-        413,
+        427,
         112,
         36,
         hwnd,
