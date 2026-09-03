@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.3 — 2026-09-03
+
+- Fixes destructive truncation when Windows accepts only part of a correction `SendInput` batch: delivery now resumes from the first unsent INPUT with bounded retry instead of abandoning already-started Backspace/retype sequences.
+- Keeps zero-progress injection fail-open: if the first `SendInput` call inserts nothing, the original text is left untouched.
+- Adds `коробочка` to deterministic local target recognition and locks `rjhj,jxrf.` → `коробочка.` in detector and real Win32 E2E coverage.
+- Adds pure regression tests for partial/zero-progress input delivery.
+- Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 1.0.3.
+
+## 1.0.2 — 2026-09-03
+
+- Hardens the Settings layout against clipping by increasing the client area and reserving dedicated multi-line regions for sensitivity and Pause help.
+- Shortens long Russian UI labels and moves footer controls down to keep spacing stable on real Windows.
+- Adds more bottom room to the first-run window while preserving 1.0.1 detector/runtime behavior.
+- Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 1.0.2.
 ## 1.0.1 — 2026-09-03
 
 - Fixes clipping in the first-run Settings hint and restores deliberate spacing between the hint, separator, autostart row, action button, and copyright footer.

@@ -138,6 +138,25 @@ fn real_windows_hook_to_edit_e2e() {
         ui_thread_id,
         Language::English,
         &[
+            key(b'R'),
+            key(b'J'),
+            key(b'H'),
+            key(b'J'),
+            key(VK_OEM_COMMA as u8),
+            key(b'J'),
+            key(b'X'),
+            key(b'R'),
+            key(b'F'),
+            key(VK_OEM_PERIOD as u8),
+        ],
+        "коробочка.",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
             key(b'C'),
             key(b'D'),
             key(b'J'),

@@ -1,4 +1,4 @@
-# G-switcher 1.0.0 acceptance tests
+# G-switcher 1.0.3 acceptance tests
 
 The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
 
@@ -8,9 +8,11 @@ The Windows release gate must test the full path from keyboard hook through focu
 - `руддщ ` → `hello `
 - `руддщ ghbdtn ` → `hello привет `
 - `rjhj,rf ` → `коробка `
+- `rjhj,jxrf.` → `коробочка.`
 - `cdj,jle ` → `свободу `
 - Space, Enter and Tab delimiters are preserved
 - immediate Undo restores original text and source layout
+- simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress
 
 ## Detector v3
 
@@ -151,6 +153,7 @@ With automatic correction disabled or an intentionally uncorrected token:
 - `ghbdtn,` → `привет,`
 - `ghbdtn.` → `привет.`
 - `rjhj,rf ` → `коробка `
+- `rjhj,jxrf.` → `коробочка.`
 - `cdj,jle ` → `свободу `; the internal physical comma key is the Russian letter `б`, not a boundary
 - punctuation is never lost when correction fails
 - Backspace reconstructs the remaining candidate correctly
