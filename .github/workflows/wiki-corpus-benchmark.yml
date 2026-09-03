@@ -44,6 +44,11 @@ jobs:
             $normalized = $normalized.Replace($needle, $replacement)
             Set-Content -LiteralPath $path -Value $normalized -Encoding UTF8 -NoNewline
           }
+
+          $corpusPath = 'src/windows_runtime/corpus_e2e.rs'
+          $corpus = Get-Content -LiteralPath $corpusPath -Raw -Encoding UTF8
+          $corpus = $corpus.Replace('Duration::from_millis(35)', 'Duration::from_millis(8)')
+          Set-Content -LiteralPath $corpusPath -Value $corpus -Encoding UTF8 -NoNewline
           cargo fmt --all
 
       - name: Commit reusable corpus harness
