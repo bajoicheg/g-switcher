@@ -1,4 +1,4 @@
-name: Patch G-switcher 1.0.3 fix
+name: Patch G-switcher 1.0.3 release
 
 on:
   push:
@@ -17,18 +17,18 @@ jobs:
         with:
           ref: fix/1.0.3-korobochka
           fetch-depth: 1
-      - name: Apply fix
+      - name: Apply release metadata
         shell: pwsh
-        run: ./scripts/patch-1.0.3-fix.ps1
+        run: ./scripts/patch-1.0.3-release.ps1
       - name: Format
         shell: pwsh
         run: cargo fmt --all
-      - name: Commit fix
+      - name: Commit release metadata
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/windows_runtime/mod.rs src/frequency_model.rs
+          git add Cargo.toml build.rs CHANGELOG.md README.md docs/FUNCTIONAL_SPEC.md docs/ACCEPTANCE_TESTS.md docs/SECURITY_MODEL.md scripts/release-check.ps1 src/lib.rs src/windows_runtime/ui/settings_dialog.rs
           if (git diff --cached --quiet) { exit 0 }
-          git commit -m "Retry partial SendInput delivery"
+          git commit -m "Prepare G-switcher 1.0.3"
           git push origin HEAD:fix/1.0.3-korobochka
