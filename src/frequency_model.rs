@@ -1,9 +1,26 @@
 use crate::model::Language;
 
 const EN_TOP: &str = "the be to of and a in that have i it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because these give day most us";
-const EN_COMMON: &str = "hello world system server user security window windows data code check object root linux docker json http api sql vpn edr soc network service file application process input keyboard layout settings manual auto automatic current previous selected text word test release build update local private privacy password secure";
+const EN_COMMON: &str = concat!(
+    "hello world system server user security window windows data code check object root linux docker json http api sql vpn edr soc network service file application process input keyboard layout settings manual auto automatic current previous selected text word test release build update local private privacy password secure ",
+    "truth true false fact facts real reality reason result answer question idea ideas mind thought thoughts knowledge information message messages email chat browser chrome edge firefox terminal powershell github git rust computer software hardware device devices screen display mouse key keys button buttons menu dialog form field fields list lists dictionary lexicon frequency confidence sensitivity conservative normal aggressive ",
+    "convert conversion correction undo hotkey pause resume start stop run running open close save cancel add remove change changed create delete edit read write search find show hide enable disable enabled disabled allow block protect protected protection safe unsafe error errors warning warnings problem problems issue issues bug bugs fix fixes version versions package packages install installed setup ",
+    "account accounts admin administrator client clients host hosts domain domains address addresses port ports protocol protocols internet web website websites page pages link links url path paths folder folders disk drive drives memory ram cpu gpu thread threads event events state states status mode modes rule rules policy policies access login logon logout signin signout authentication authorization token tokens certificate certificates secret secrets cloud telemetry clipboard history context remote public internal external ",
+    "company business office home house room street road city country countries people person persons man men woman women child children family families friend friends team teams group groups member members customer customers partner partners project projects product products work works working job jobs task tasks case cases time times day days week weeks month months year years today tomorrow yesterday morning evening night now later early late ",
+    "first second third last next old good better best bad worse worst big small large little long short high low right left top bottom inside outside before after during while until since always never often sometimes usually again already almost enough more most less least many much few several some any every each both either neither another other same different important possible impossible available ready free busy hard easy simple complex fast slow strong weak full empty common normal general special main major minor basic advanced final initial original future past ",
+    "value values number numbers amount total part parts side sides point points line lines name names type types kind kinds form forms level levels order orders place places area areas body head hand hands face eye eyes voice sound food water air fire earth money market markets price prices cost costs power energy health school education study studies learn learning book books story stories language languages english russian love hate ",
+    "want need needs use uses using make makes made get gets got give gives gave take takes took keep keeps kept know knows knew think thinks thought feel feels felt see sees saw look looks looked come comes came go goes went say says said tell tells told ask asks asked call calls called try tries tried help helps helped move moves moved live lives lived believe believes believed understand understands understood remember remembers remembered forget forgot find finds found lose loses lost win wins won play plays played read reads write writes written speak speaks spoke listen hear heard wait waits waited happen happens happened become becomes became seem seems seemed leave leaves left bring brings brought hold holds held follow follows followed meet meets met pay pays paid sit sits sat stand stands stood include includes included continue continues continued set sets lead leads led watch watches watched turn turns turned show shows showed grow grows grew buy buys bought send sends sent fall falls fell cut cuts reach reaches reached remain remains suggest suggests raise raises pass passes sell sells sold require requires report reports reported decide decides decided pull pulls return returns explain explains hope hopes develop develops carry carries break breaks broke receive receives received agree agrees support supports hit hits produce produces eat eats ate cover covers catch catches caught draw draws drew choose chooses chose cause causes caused realize involve increase improve improves join reduce pick wear wears wore drive drives drove deal deals ",
+    "fuck fucking fucked fucks fucker fuckers shit shitty shits bullshit bitch bitches bastard bastards ass asses asshole assholes dick dicks pussy pussies cunt cunts damn damned crap motherfucker motherfuckers hell sex sexy porn cock cocks tits tit boob boobs jerk jerks idiot idiots stupid dumb moron morons wtf omg god"
+);
 const RU_TOP: &str = "и в не на я быть он с что а по это она этот к но они мы как из у который то за свой весь год от так о для ты же все тот мочь вы человек такой его сказать только или ещё бы себя один уже до время если сам когда другой вот говорить наш мой знать стать при чтобы дело жизнь кто первый очень два день ее новый рука даже во со раз где там под можно ну какой после их работа без самый потом надо хотеть ли слово идти большой";
-const RU_COMMON: &str = "привет система сервер пользователь безопасность окно данные код проверка объект сеть служба файл приложение процесс ввод клавиатура раскладка настройки ручной автоматический текущий предыдущий выделенный текст слово тест релиз сборка обновление локальный приватность пароль защита коробка свобода свободу свободный хорошо работает работаю";
+const RU_COMMON: &str = concat!(
+    "привет мир система сервер пользователь безопасность окно данные код проверка объект сеть служба файл приложение процесс ввод клавиатура раскладка настройки ручной автоматический текущий предыдущий выделенный текст слово тест релиз сборка обновление локальный приватность пароль защита коробка свобода свободу свободный хорошо работает работаю ",
+    "правда правильный правильно ложь факт факты реальность причина результат ответ вопрос идея идеи мысль мысли знание информация сообщение сообщения почта чат браузер хром терминал компьютер программа железо устройство экран мышь клавиша клавиши кнопка кнопки меню диалог форма поле поля список списки словарь частота уверенность чувствительность консервативный нормальный агрессивный исправить исправление конвертация отмена горячая пауза продолжить старт стоп запуск остановка сохранить отменить добавить удалить изменить создать читать писать поиск найти показать скрыть включить выключить включено выключено разрешить блокировать защитить безопасный ошибка ошибки предупреждение проблема проблемы баг баги версия версии пакет установка ",
+    "аккаунт аккаунты админ администратор клиент клиенты хост хосты домен домены адрес адреса порт порты протокол протоколы интернет сайт сайты страница страницы ссылка ссылки путь пути папка папки диск память процессор видеокарта поток потоки событие события состояние статус режим режимы правило правила политика политики доступ вход выход аутентификация авторизация токен токены сертификат сертификаты ключ секрет секреты облако телеметрия буфер история контекст удаленный публичный внутренний внешний ",
+    "компания бизнес офис дом комната улица дорога город страна страны люди человек мужчина мужчины женщина женщины ребенок дети семья семьи друг друзья команда команды группа группы участник участники партнер проект проекты продукт продукты работа работы задача задачи случай случаи время день дни неделя недели месяц месяцы год годы сегодня завтра вчера утро вечер ночь сейчас потом рано поздно первый второй третий последний следующий новый старый хороший лучше лучший плохой хуже худший большой маленький длинный короткий высокий низкий правый левый верх низ внутри снаружи до после пока всегда никогда часто иногда обычно снова уже почти достаточно больше меньше много мало несколько некоторый любой каждый оба другой разный важный возможно невозможный доступный готов занят трудный легкий простой сложный быстрый медленный сильный слабый полный пустой общий специальный главный основной дополнительный финальный начальный оригинальный будущий прошлый ",
+    "значение значения число числа количество сумма часть части сторона стороны точка точки строка строки имя имена тип типы вид виды уровень уровни порядок место места область области тело голова рука руки лицо глаз глаза голос звук еда вода воздух огонь земля деньги рынок рынки цена цены стоимость сила энергия здоровье школа образование учеба учиться книга книги рассказ язык языки английский русский любовь ненависть любить хотеть нужно использовать сделать делать получить дать взять держать знать думать чувствовать видеть смотреть приходить идти говорить сказать рассказать спросить звонить пытаться помогать начинать заканчивать двигаться жить верить понимать помнить забыть находить терять выигрывать играть слушать слышать ждать случаться становиться казаться уходить приносить следовать встречать платить сидеть стоять включать продолжать ставить учить менять вести поворачивать показывать расти покупать отправлять строить падать резать достигать оставаться предлагать поднимать проходить продавать требовать сообщать решать тянуть возвращать объяснять надеяться развивать нести ломать соглашаться поддерживать ударять производить есть покрывать ловить рисовать выбирать вызывать участвовать увеличивать улучшать присоединяться уменьшать носить ехать управлять сделка дела жизнь ",
+    "бля блядь блять блядский блядская блядские блядство пизда пиздец пиздеж пиздеть пиздит пиздят пизду пизды пизде пиздой пиздануть пиздатый пиздатая пиздато хуй хуя хую хуе хуем хуи хуев хуйня хуйню хуйни хуйне хуйло ебать ебет ебал ебала ебали ебаный ебаная ебаное ебаные ебучий ебучая ебучее ебучие еблан ебланы заебал заебала заебали заебись заебать наебать наебал наебали поебать похуй нахуй охуеть охуел охуела охуенный охуенно сука суки суке суку сукой сучка сучки сучку мудак мудаки мудака мудаку мудачок долбоеб долбоебы долбоеба говно говна говноед жопа жопу жопы жопе дерьмо шлюха шлюхи трахать трахаться хер хера херово черт чертов дебил дебилы идиот идиоты тупой тупая придурок придурки козел козлы сволочь сволочи урод уроды"
+);
 
 const EN_BIGRAM_HIGH: &str =
     "th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le";
@@ -63,6 +80,16 @@ pub fn word_score(language: Language, token: &str) -> i32 {
         return 15;
     }
     0
+}
+
+pub fn has_word_prefix(language: Language, token: &str) -> bool {
+    let (top, common) = match language {
+        Language::English => (EN_TOP, EN_COMMON),
+        Language::Russian => (RU_TOP, RU_COMMON),
+    };
+    words(top)
+        .chain(words(common))
+        .any(|word| word.starts_with(token) && word.len() > token.len())
 }
 
 pub fn transition_score(language: Language, previous: &str, current: &str) -> i32 {
@@ -147,6 +174,23 @@ mod tests {
         assert!(
             lexical_score(Language::Russian, "система") > lexical_score(Language::Russian, "щжыы")
         );
+    }
+
+    #[test]
+    fn expanded_lexicon_contains_common_and_obscene_words() {
+        for word in ["truth", "information", "company", "fuck", "shit"] {
+            assert!(word_score(Language::English, word) >= 15, "missing {word}");
+        }
+        for word in ["правда", "сегодня", "пизда", "бля", "блять", "хуй", "ебать"] {
+            assert!(word_score(Language::Russian, word) >= 15, "missing {word}");
+        }
+    }
+
+    #[test]
+    fn common_prefixes_are_available_to_oem_candidate_tracking() {
+        assert!(has_word_prefix(Language::Russian, "б"));
+        assert!(has_word_prefix(Language::Russian, "бл"));
+        assert!(has_word_prefix(Language::English, "tru"));
     }
 
     #[test]
