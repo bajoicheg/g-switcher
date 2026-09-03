@@ -1,0 +1,68 @@
+name: Release G-switcher 1.0.3
+
+on:
+  workflow_run:
+    workflows: ["Windows Rust CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: windows-latest
+    steps:
+      - name: Skip if release already exists
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.0.3 --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Download checked Windows artifact
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g-switcher-1.0.3-windows-x64
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify artifact hash
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: |
+          $expected = ((Get-Content -LiteralPath release/g-switcher.exe.sha256 -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+          $actual = (Get-FileHash -LiteralPath release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "SHA-256 mismatch: expected $expected, got $actual"
+          }
+          Write-Host "SHA-256 verified: $actual"
+
+      - name: Create v1.0.3 release
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create v1.0.3 `
+            release/g-switcher.exe `
+            release/g-switcher.exe.sha256 `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:TARGET_SHA `
+            --title "G-switcher 1.0.3" `
+            --notes "G-switcher 1.0.3 fixes destructive truncation seen with rjhj,jxrf. -> коробочка. when Windows accepts only part of a SendInput correction batch. Partial delivery is now resumed from the exact unsent INPUT with bounded retries instead of abandoning already-delivered Backspace events; zero initial progress remains fail-open. коробочка is also deterministic local target recognition, and the exact rjhj,jxrf. case is locked in detector and real Win32 E2E coverage. The Windows gate verifies format, tests, E2E, Clippy, version/branding metadata and SHA-256. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
