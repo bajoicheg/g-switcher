@@ -16,9 +16,20 @@ if (-not $page -or -not $page.extract) {
     throw 'Wikipedia API returned no article extract'
 }
 
+# Benchmark encyclopedic prose, not the citation/bibliography/link tail. The
+# source revision is still recorded below so the corpus is reproducible.
+$rawArticle = [string]$page.extract
+$tailHeading = [regex]::Match(
+    $rawArticle,
+    '(?m)^==\s*(См\. также|Примечания|Литература|Ссылки)\s*==\s*$'
+)
+if ($tailHeading.Success) {
+    $rawArticle = $rawArticle.Substring(0, $tailHeading.Index)
+}
+
 # Keyboard typing does not produce combining stress marks. Normalize them out,
 # while preserving the article's actual RU/EN letters and punctuation in memory.
-$decomposed = $page.extract.Normalize([Text.NormalizationForm]::FormD)
+$decomposed = $rawArticle.Normalize([Text.NormalizationForm]::FormD)
 $builder = [Text.StringBuilder]::new()
 foreach ($ch in $decomposed.ToCharArray()) {
     $category = [Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch)
@@ -47,6 +58,7 @@ Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_page_id=$
 Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_revision_id=$($revision.revid)"
 Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_parent_revision_id=$($revision.parentid)"
 Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_revision_timestamp=$($revision.timestamp)"
+Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "benchmark_scope=article prose before See also/Notes/Literature/Links"
 
 Write-Host 'Wikipedia corpus benchmark complete'
 Get-Content -LiteralPath $summaryPath
