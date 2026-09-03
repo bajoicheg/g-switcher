@@ -1,4 +1,4 @@
-name: Patch G-switcher 1.0.3 repro
+name: Patch G-switcher 1.0.3 fix
 
 on:
   push:
@@ -17,18 +17,18 @@ jobs:
         with:
           ref: fix/1.0.3-korobochka
           fetch-depth: 1
-      - name: Apply reproducer
+      - name: Apply fix
         shell: pwsh
-        run: ./scripts/patch-1.0.3-repro.ps1
+        run: ./scripts/patch-1.0.3-fix.ps1
       - name: Format
         shell: pwsh
         run: cargo fmt --all
-      - name: Commit reproducer
+      - name: Commit fix
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/detector.rs src/windows_runtime/e2e_tests.rs
+          git add src/windows_runtime/mod.rs src/frequency_model.rs
           if (git diff --cached --quiet) { exit 0 }
-          git commit -m "Lock 1.0.3 коробочка regression"
+          git commit -m "Retry partial SendInput delivery"
           git push origin HEAD:fix/1.0.3-korobochka
