@@ -27,17 +27,13 @@ if ($tailHeading.Success) {
     $rawArticle = $rawArticle.Substring(0, $tailHeading.Index)
 }
 
-# Keyboard typing does not produce combining stress marks. Normalize them out,
-# while preserving the article's actual RU/EN letters and punctuation in memory.
-$decomposed = $rawArticle.Normalize([Text.NormalizationForm]::FormD)
-$builder = [Text.StringBuilder]::new()
-foreach ($ch in $decomposed.ToCharArray()) {
-    $category = [Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch)
-    if ($category -ne [Globalization.UnicodeCategory]::NonSpacingMark) {
-        [void]$builder.Append($ch)
-    }
-}
-$articleText = $builder.ToString().Normalize([Text.NormalizationForm]::FormC).Replace([char]0x00A0, ' ')
+# Keyboard typing does not produce editorial stress accents. Remove only those
+# accents. Do NOT decompose all Unicode characters: doing so would turn native
+# Russian й/ё into и/е after stripping their combining marks.
+$articleText = $rawArticle
+    .Replace([string][char]0x0301, '')
+    .Replace([string][char]0x0300, '')
+    .Replace([char]0x00A0, ' ')
 $corpusPath = Join-Path $PWD 'target/wiki-article.txt'
 $reportPath = Join-Path $PWD 'target/wiki-corpus-failures.csv'
 $summaryPath = Join-Path $PWD 'target/wiki-corpus-summary.txt'
