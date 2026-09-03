@@ -182,7 +182,8 @@ mod tests {
         for word in ["truth", "information", "company", "fuck", "shit"] {
             assert!(word_score(Language::English, word) >= 15, "missing {word}");
         }
-        for word in ["правда", "сегодня", "пизда", "бля", "блять", "хуй", "ебать"] {
+        for word in ["правда", "сегодня", "пизда", "бля", "блять", "хуй", "ебать"]
+        {
             assert!(word_score(Language::Russian, word) >= 15, "missing {word}");
         }
     }
