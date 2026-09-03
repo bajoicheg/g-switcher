@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 function Replace-Once([string]$Path, [string]$Old, [string]$New) {
     $text = [IO.File]::ReadAllText($Path)
     $count = ([regex]::Matches($text, [regex]::Escape($Old))).Count
-    if ($count -ne 1) { throw "$Path: expected one match, got $count" }
+    if ($count -ne 1) { throw "${Path}: expected one match, got $count" }
     [IO.File]::WriteAllText($Path, $text.Replace($Old, $New), [Text.UTF8Encoding]::new($false))
 }
 
@@ -118,7 +118,7 @@ Replace-Once $detector @'
             assert_eq!(detection.confidence, 100);
             assert!(detect(expected, &[]).is_none(), "correct EN source changed: {expected}");
         }
-        for expected in ["сша", "ссср", "гост", "исо", "ибп"] {
+        for expected in ["сша", "сср", "гост", "исо", "ибп"] {
             let wrong = opposite_layout_text(expected, Language::Russian);
             let detection = detect(&wrong, &[]).expect("RU acronym should correct");
             assert_eq!(detection.corrected.to_lowercase(), expected);
