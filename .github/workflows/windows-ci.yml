@@ -8,13 +8,129 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: windows-rust-ci-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
+  promote-1-0-4:
+    if: github.event_name == 'pull_request' && github.head_ref == 'audit/article-corpus-1.0.3'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: audit/article-corpus-1.0.3
+          fetch-depth: 0
+
+      - name: Apply release promotion when needed
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((Get-Content Cargo.toml -Raw).Contains('version = "1.0.4"')) {
+            Write-Host '1.0.4 promotion already applied'
+            exit 0
+          }
+
+          function Replace-Text([string]$Path, [string]$Old, [string]$New) {
+            $text = [IO.File]::ReadAllText($Path)
+            if (-not $text.Contains($Old)) {
+              throw "Expected text not found in $Path : $Old"
+            }
+            [IO.File]::WriteAllText($Path, $text.Replace($Old, $New), [Text.UTF8Encoding]::new($false))
+          }
+
+          Replace-Text 'Cargo.toml' 'version = "1.0.3"' 'version = "1.0.4"'
+          Replace-Text 'build.rs' 'resource.set("FileVersion", "1.0.3.0");' 'resource.set("FileVersion", "1.0.4.0");'
+          Replace-Text 'build.rs' 'resource.set("ProductVersion", "1.0.3");' 'resource.set("ProductVersion", "1.0.4");'
+          Replace-Text 'src/lib.rs' 'pub const PRODUCT_VERSION: &str = "1.0.3";' 'pub const PRODUCT_VERSION: &str = "1.0.4";'
+          Replace-Text 'scripts/release-check.ps1' "if (`$version.FileVersion -ne '1.0.3.0')" "if (`$version.FileVersion -ne '1.0.4.0')"
+          Replace-Text 'scripts/release-check.ps1' "if (`$version.ProductVersion -ne '1.0.3')" "if (`$version.ProductVersion -ne '1.0.4')"
+          Replace-Text 'src/windows_runtime/ui/settings_dialog.rs' 'GSwitcher.Settings.1.0.3' 'GSwitcher.Settings.1.0.4'
+          Replace-Text 'src/windows_runtime/ui/settings_dialog.rs' 'Настройки G-switcher 1.0.3' 'Настройки G-switcher 1.0.4'
+
+          $e2ePath = 'src/windows_runtime/e2e_tests.rs'
+          $e2e = [IO.File]::ReadAllText($e2ePath)
+          $needle = @'
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
+            key(b'R'),
+            key(b'J'),
+            key(b'H'),
+            key(b'J'),
+            key(VK_OEM_COMMA as u8),
+            key(b'J'),
+            key(b'X'),
+            key(b'R'),
+            key(b'F'),
+            key(VK_OEM_PERIOD as u8),
+        ],
+        "коробочка.",
+    );
+'@
+          if (-not $e2e.Contains($needle)) { throw 'E2E insertion point not found' }
+          $extra = @'
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"CBCNTV "),
+        "систем ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"GHJUHFVV "),
+        "программ ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"BYCNHERWBB "),
+        "инструкции ",
+    );
+'@
+          [IO.File]::WriteAllText($e2ePath, $e2e.Replace($needle, $needle + $extra), [Text.UTF8Encoding]::new($false))
+
+          Replace-Text 'README.md' 'Version 1.0.3 is a runtime reliability patch. It prevents destructive truncation when Windows accepts only part of a SendInput correction batch, and locks `rjhj,jxrf.` → `коробочка.` as a detector and real Win32 regression.' 'Version 1.0.4 improves Detector v3 coverage using a synthetic wrong-layout corpus derived from a long Russian information-security article. The audit isolated 13 residual common Russian word forms under Normal sensitivity; all are now deterministic local target recognition while the 1.0.3 partial-SendInput reliability fix remains unchanged.'
+          Replace-Text 'README.md' '## 1.0.3 behavior' '## 1.0.4 behavior'
+          Replace-Text 'README.md' 'G-switcher 1.0.3 version metadata' 'G-switcher 1.0.4 version metadata'
+          Replace-Text 'docs/ACCEPTANCE_TESTS.md' '# G-switcher 1.0.3 acceptance tests' '# G-switcher 1.0.4 acceptance tests'
+          Replace-Text 'docs/FUNCTIONAL_SPEC.md' '# G-switcher 1.0.3 functional specification' '# G-switcher 1.0.4 functional specification'
+          Replace-Text 'docs/FUNCTIONAL_SPEC.md' 'Version 1.0.3 stores explicit per-user hotkey definitions' 'Version 1.0.4 stores explicit per-user hotkey definitions'
+          Replace-Text 'docs/SECURITY_MODEL.md' '# G-switcher 1.0.3 security model' '# G-switcher 1.0.4 security model'
+          Replace-Text 'docs/SECURITY_MODEL.md' 'The `v1.0.3` publication workflow' 'The `v1.0.4` publication workflow'
+
+          $changelogPath = 'CHANGELOG.md'
+          $changelog = [IO.File]::ReadAllText($changelogPath)
+          if (-not $changelog.StartsWith("# Changelog`n")) { throw 'Unexpected CHANGELOG header' }
+          $entry = @'
+
+## 1.0.4 — 2026-09-03
+
+- Audits Detector v3 against a synthetic RU→EN wrong-layout corpus derived from a long Russian information-security article: 1,566 unique Russian word forms, with 13 residual misses isolated under Normal sensitivity and two-word Russian context.
+- Adds the missing common forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны`, and `норм` to deterministic local Russian target recognition.
+- Locks all 13 article-derived wrong-layout forms in integration regression coverage and adds real Win32 hook→EDIT E2E cases for `cbcntv` → `систем`, `ghjuhfvv` → `программ`, and `bycnherwbb` → `инструкции`.
+- Preserves the 1.0.3 loss-aware partial `SendInput` delivery fix and OEM-prefix behavior for `rjhj,rf` → `коробка`, `rjhj,jxrf.` → `коробочка.`, `cdj,jle` → `свободу`, and `,kz` → `бля`.
+- Updates package/Windows metadata and release checks to 1.0.4.
+'@
+          [IO.File]::WriteAllText($changelogPath, "# Changelog" + $entry + $changelog.Substring("# Changelog".Length), [Text.UTF8Encoding]::new($false))
+
+          cargo fmt --all
+          git config user.name 'g-switcher-ci'
+          git config user.email 'g-switcher-ci@users.noreply.github.com'
+          git add Cargo.toml build.rs src/lib.rs scripts/release-check.ps1 src/windows_runtime/ui/settings_dialog.rs src/windows_runtime/e2e_tests.rs README.md docs/ACCEPTANCE_TESTS.md docs/FUNCTIONAL_SPEC.md docs/SECURITY_MODEL.md CHANGELOG.md
+          git diff --cached --check
+          git commit -m '[patch-1.0.4] Promote article corpus fixes to 1.0.4'
+          git push origin HEAD:audit/article-corpus-1.0.3
+
   rust-gate:
     runs-on: windows-latest
     timeout-minutes: 45
