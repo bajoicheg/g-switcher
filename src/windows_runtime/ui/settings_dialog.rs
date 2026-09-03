@@ -29,7 +29,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use crate::windows_runtime::{current_process_name, settings};
 
-const CLASS_NAME: &str = "GSwitcher.Settings.1.0.1";
+const CLASS_NAME: &str = "GSwitcher.Settings.1.0.2";
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
 const ID_DISABLED_APPS: i32 = 3103;
@@ -81,7 +81,7 @@ pub fn show() -> Result<()> {
     unsafe {
         let module = GetModuleHandleW(null());
         let client_width = 900;
-        let client_height = 825;
+        let client_height = 855;
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
         let mut rect = RECT {
             left: 0,
@@ -218,7 +218,7 @@ unsafe fn save_and_close(hwnd: HWND) {
         ("текущего слова", current_hotkey.as_str()),
         ("предыдущего слова", previous_hotkey.as_str()),
         ("отмены", undo_hotkey.as_str()),
-        ("Pause/Resume", pause_hotkey.as_str()),
+        ("паузы", pause_hotkey.as_str()),
     ];
     for (name, value) in hotkeys {
         if settings::parse_hotkey(value).is_none() {
@@ -312,7 +312,7 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Настройки G-switcher 1.0.1",
+        "Настройки G-switcher 1.0.2",
         UiRect::new(28, 18, 840, 32),
     );
     set_font(title, title_font);
@@ -321,8 +321,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Детектор v3 работает локально; контекст — максимум два слова в RAM. Поля паролей, PIN и OTP всегда защищены.",
-        UiRect::new(28, 54, 840, 22),
+        "Работает локально. Контекст: до 2 слов в RAM. Пароли, PIN и OTP не обрабатываются.",
+        UiRect::new(28, 54, 840, 24),
     );
     set_font(privacy, hint_font);
 
@@ -388,8 +388,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Консервативный = меньше ложных замен; Агрессивный = больше автокоррекций.",
-        UiRect::new(420, 145, 426, 22),
+        "Консервативный — меньше ложных замен.\r\nАгрессивный — больше автокоррекций.",
+        UiRect::new(420, 137, 426, 42),
     );
     set_font(sensitivity_hint, hint_font);
 
@@ -618,8 +618,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Пауза / продолжить",
-        UiRect::new(44, 704, 140, 24),
+        "Пауза",
+        UiRect::new(44, 704, 140, 28),
     );
     set_font(pause_label, body_font);
     let pause_hotkey = create_single_edit(
@@ -636,8 +636,8 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Пауза временная. Защищённые поля блокируют автозамену и все горячие клавиши конвертации.",
-        UiRect::new(420, 704, 436, 24),
+        "Пауза действует до перезапуска.\r\nВ защищённых полях автозамена и конвертация отключены.",
+        UiRect::new(420, 694, 436, 44),
     );
     set_font(pause_hint, hint_font);
 
@@ -646,7 +646,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &static_class,
         "Изменения применяются сразу после сохранения.",
-        UiRect::new(28, 779, 500, 22),
+        UiRect::new(28, 809, 500, 22),
     );
     set_font(footer_hint, hint_font);
 
@@ -656,7 +656,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Сохранить",
         ID_SAVE,
-        UiRect::new(644, 769, 104, 34),
+        UiRect::new(644, 799, 104, 34),
         true,
     );
     set_font(save, body_font);
@@ -666,7 +666,7 @@ unsafe fn create_controls(hwnd: HWND) {
         &button_class,
         "Отмена",
         ID_CANCEL,
-        UiRect::new(762, 769, 104, 34),
+        UiRect::new(762, 799, 104, 34),
         false,
     );
     set_font(cancel, body_font);
