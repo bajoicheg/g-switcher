@@ -1,0 +1,82 @@
+name: Wikipedia corpus E2E benchmark
+
+on:
+  push:
+    branches: ["feature/1.0.4-wikipedia-corpus"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  corpus:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: feature/1.0.4-wikipedia-corpus
+          fetch-depth: 1
+
+      - name: Rust toolchain
+        shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt
+          rustup default stable
+
+      - name: Enable corpus test module
+        shell: pwsh
+        run: |
+          $path = 'src/windows_runtime/mod.rs'
+          $text = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+          if ($text -notmatch '(?m)^mod corpus_e2e;$') {
+            $pattern = '(?m)^#\[cfg\(test\)\]\r?\nmod e2e_tests;$'
+            if ($text -notmatch $pattern) { throw 'Could not locate e2e_tests module declaration' }
+            $replacement = "#[cfg(test)]`nmod corpus_e2e;`n`n#[cfg(test)]`nmod e2e_tests;"
+            $text = [regex]::Replace($text, $pattern, $replacement, 1)
+            Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+          }
+          cargo fmt --all
+
+      - name: Commit reusable corpus harness
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/windows_runtime/mod.rs src/windows_runtime/corpus_e2e.rs scripts/run-wikipedia-corpus.ps1
+          if (-not (git diff --cached --quiet)) {
+            git commit -m "Wire reusable Wikipedia corpus E2E harness"
+          }
+
+      - name: Run live Wikipedia corpus benchmark
+        shell: pwsh
+        run: ./scripts/run-wikipedia-corpus.ps1
+
+      - name: Save benchmark report
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path benchmarks | Out-Null
+          Copy-Item target/wiki-corpus-failures.csv benchmarks/wiki-corpus-failures.csv -Force
+          Copy-Item target/wiki-corpus-summary.txt benchmarks/wiki-corpus-summary.txt -Force
+          git add benchmarks/wiki-corpus-failures.csv benchmarks/wiki-corpus-summary.txt
+          if (-not (git diff --cached --quiet)) {
+            git commit -m "Record initial Wikipedia corpus E2E failures"
+          }
+          git push origin HEAD:feature/1.0.4-wikipedia-corpus
+
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wikipedia-corpus-e2e-report
+          path: |
+            target/wiki-corpus-failures.csv
+            target/wiki-corpus-summary.txt
+          if-no-files-found: error
+          retention-days: 30
