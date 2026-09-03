@@ -1,4 +1,4 @@
-# G-switcher 1.0.0 functional specification
+# G-switcher 1.0.1 functional specification
 
 ## Product model
 
@@ -18,6 +18,8 @@ The user's configured Windows layout shortcut is irrelevant to G-switcher correc
 
 Space, Enter and Tab are token boundaries. Supported punctuation may also terminate a token. Ambiguous OEM keys are interpreted contextually because the same physical key may be punctuation in one layout and a letter in the other.
 
+A punctuation-looking OEM key may start or continue a candidate when the prospective physical-key sequence maps to a known prefix in the opposite language. This is required for cases such as English-layout `,kz` → Russian `бля`, where the first physical key normally produces a comma in English but `б` in Russian.
+
 Backspace updates the current candidate state instead of discarding all prior context. Cursor-moving operations, focus changes and unrelated command shortcuts invalidate transient text state when the runtime cannot prove that it remains applicable.
 
 When a token reaches a boundary without automatic replacement, G-switcher may retain that token plus its delimiter as the single previous-token record. Typing the next visible token, changing process/focus context, entering Disabled mode, entering a secure input control, or pausing clears stale previous-token state.
@@ -29,7 +31,7 @@ Detector v3 combines:
 - exact source-language dictionary protection;
 - exact opposite-layout dictionary recognition;
 - explicit user-dictionary matches;
-- baked-in local RU/EN word-frequency priors;
+- baked-in local RU/EN common-word and word-frequency priors;
 - common bigram/trigram scoring;
 - morphology and word-shape signals;
 - punctuation penalties;
@@ -37,15 +39,19 @@ Detector v3 combines:
 - code-safe classification;
 - at most two volatile previous context words.
 
-A valid source-language word receives a strong preservation prior. An exact recognized target word receives maximum confidence. Unexpected punctuation introduced by opposite-layout mapping is not silently discarded before scoring.
+The built-in common-word lexicons include broad everyday, technical, colloquial and common obscene vocabulary in both Russian and English. A recognized built-in frequent source-language word is deterministic preservation evidence and must not be automatically rewritten. A mapped target that is a recognized built-in frequent word is deterministic recognition evidence and receives maximum confidence. This protects valid words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` while also recognizing their wrong-layout forms.
 
-Sensitivity changes the confidence threshold only:
+Short ambiguous words remain context-sensitive where required. The broad common-word layer must not silently convert intentionally ambiguous three-letter tokens merely because a plausible target exists; context-sensitive regression cases remain part of the detector contract.
+
+Unexpected punctuation introduced by opposite-layout mapping is not silently discarded before scoring.
+
+Sensitivity changes the heuristic confidence threshold only:
 
 - `Conservative` — highest threshold and lowest false-positive risk;
 - `Normal` — default balance;
 - `Aggressive` — lower threshold for more automatic corrections.
 
-The frequency model is compiled into the executable. No runtime network lookup, cloud model, remote dictionary or telemetry is used.
+The frequency model and common-word lexicons are compiled into the executable. No runtime network lookup, cloud model, remote dictionary or telemetry is used.
 
 ## Selected-text conversion
 
@@ -65,7 +71,7 @@ This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 1.0.0 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 1.0.1 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
@@ -135,6 +141,8 @@ The tray Settings window exposes:
 - five editable hotkey definitions.
 
 Settings take effect in the running process after Save and do not require elevation. Invalid hotkey syntax blocks Save with a local warning. The UI states that typed context is volatile and secure fields are not processed.
+
+The 1.0.1 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, and avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists.
 
 ## Privilege model
 
