@@ -1,0 +1,63 @@
+name: Wikipedia detector corpus analysis
+
+on:
+  push:
+    branches: ["analysis/1.0.4-detector-corpus"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Rust toolchain
+        shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable
+          rustup default stable
+
+      - name: Download article prose
+        shell: pwsh
+        run: |
+          $title = [uri]::EscapeDataString('Информационная безопасность')
+          $uri = "https://ru.wikipedia.org/w/api.php?action=query&prop=extracts%7Crevisions&explaintext=1&redirects=1&rvprop=ids%7Ctimestamp&format=json&formatversion=2&titles=$title"
+          $headers = @{ 'User-Agent' = 'G-switcher corpus benchmark/1.0 (+https://github.com/bajoicheg/g-switcher)' }
+          $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+          $page = $response.query.pages | Select-Object -First 1
+          if (-not $page.extract) { throw 'Wikipedia API returned no extract' }
+          $text = $page.extract
+          foreach ($heading in @("`n== См. также ==", "`n== Примечания ==", "`n== Литература ==", "`n== Ссылки ==")) {
+            $i = $text.IndexOf($heading, [StringComparison]::Ordinal)
+            if ($i -ge 0) { $text = $text.Substring(0, $i); break }
+          }
+          $d = $text.Normalize([Text.NormalizationForm]::FormD)
+          $b = [Text.StringBuilder]::new()
+          foreach ($ch in $d.ToCharArray()) {
+            if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$b.Append($ch) }
+          }
+          New-Item -ItemType Directory -Force target | Out-Null
+          [IO.File]::WriteAllText((Join-Path $PWD 'target/wiki-article.txt'), $b.ToString().Normalize([Text.NormalizationForm]::FormC).Replace([char]0x00A0, ' '), [Text.UTF8Encoding]::new($false))
+          "G_SWITCHER_CORPUS_PATH=$(Join-Path $PWD 'target/wiki-article.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "G_SWITCHER_DETECTOR_REPORT=$(Join-Path $PWD 'target/wiki-detector-failures.csv')" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "G_SWITCHER_DETECTOR_SUMMARY=$(Join-Path $PWD 'target/wiki-detector-summary.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Analyze detector
+        shell: pwsh
+        run: cargo test --test wiki_detector_corpus -- --nocapture
+
+      - name: Upload report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wikipedia-detector-report
+          path: |
+            target/wiki-detector-failures.csv
+            target/wiki-detector-summary.txt
+          if-no-files-found: error
+          retention-days: 30
