@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - fix/1.0.1-ui-lexicon
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,27 +17,13 @@ jobs:
         with:
           ref: fix/1.0.1-ui-lexicon
 
-      - name: Trim obsolete lockfile step
+      - name: Preserve ambiguous context test case
         shell: pwsh
         run: |
-          $path = 'scripts/patch-1.0.1.ps1'
+          $path = 'src/frequency_model.rs'
           $text = Get-Content -Raw -Encoding UTF8 $path
-          $marker = '# Cargo.lock records the package version independently from Cargo.toml.'
-          $index = $text.IndexOf($marker)
-          if ($index -ge 0) {
-            Set-Content -LiteralPath $path -Value $text.Substring(0, $index).TrimEnd() -Encoding UTF8 -NoNewline
-          }
-
-      - name: Apply patch
-        shell: pwsh
-        run: ./scripts/patch-1.0.1.ps1
-
-      - name: Rust toolchain
-        shell: pwsh
-        run: |
-          rustup set profile minimal
-          rustup toolchain install stable --component rustfmt
-          rustup default stable
+          $text = $text.Replace('"привет мир система сервер', '"привет система сервер')
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
 
       - name: Format
         shell: pwsh
@@ -47,12 +32,9 @@ jobs:
       - name: Commit patch
         shell: pwsh
         run: |
-          git add src/detector.rs src/windows_runtime/mod.rs src/windows_runtime/e2e_tests.rs src/windows_runtime/ui.rs src/windows_runtime/ui/settings_dialog.rs
-          if (git diff --cached --quiet) {
-            Write-Host 'Patch already applied.'
-            exit 0
-          }
+          git add src/frequency_model.rs
+          if (git diff --cached --quiet) { exit 0 }
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Apply 1.0.1 detector and UI fixes'
+          git commit -m 'Preserve context-sensitive short-word detection'
           git push origin HEAD:fix/1.0.1-ui-lexicon
