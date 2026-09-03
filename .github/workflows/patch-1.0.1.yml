@@ -18,6 +18,17 @@ jobs:
         with:
           ref: fix/1.0.1-ui-lexicon
 
+      - name: Trim obsolete lockfile step
+        shell: pwsh
+        run: |
+          $path = 'scripts/patch-1.0.1.ps1'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $marker = '# Cargo.lock records the package version independently from Cargo.toml.'
+          $index = $text.IndexOf($marker)
+          if ($index -ge 0) {
+            Set-Content -LiteralPath $path -Value $text.Substring(0, $index).TrimEnd() -Encoding UTF8 -NoNewline
+          }
+
       - name: Apply patch
         shell: pwsh
         run: ./scripts/patch-1.0.1.ps1
@@ -36,7 +47,7 @@ jobs:
       - name: Commit patch
         shell: pwsh
         run: |
-          git add Cargo.lock src/detector.rs src/windows_runtime/mod.rs src/windows_runtime/e2e_tests.rs src/windows_runtime/ui.rs src/windows_runtime/ui/settings_dialog.rs
+          git add src/detector.rs src/windows_runtime/mod.rs src/windows_runtime/e2e_tests.rs src/windows_runtime/ui.rs src/windows_runtime/ui/settings_dialog.rs
           if (git diff --cached --quiet) {
             Write-Host 'Patch already applied.'
             exit 0
