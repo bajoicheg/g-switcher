@@ -45,10 +45,10 @@ if ($version.FileDescription -ne 'G-switcher') {
 if ($version.ProductName -ne 'G-switcher') {
     throw "Unexpected ProductName: $($version.ProductName)"
 }
-if ($version.FileVersion -ne '1.0.0.0') {
+if ($version.FileVersion -ne '1.0.1.0') {
     throw "Unexpected FileVersion: $($version.FileVersion)"
 }
-if ($version.ProductVersion -ne '1.0.0') {
+if ($version.ProductVersion -ne '1.0.1') {
     throw "Unexpected ProductVersion: $($version.ProductVersion)"
 }
 
