@@ -1,0 +1,52 @@
+param(
+    [switch]$Strict
+)
+
+$ErrorActionPreference = 'Stop'
+
+$articleTitle = 'Информационная безопасность'
+$encodedTitle = [uri]::EscapeDataString($articleTitle)
+$api = "https://ru.wikipedia.org/w/api.php?action=query&prop=extracts%7Crevisions&explaintext=1&redirects=1&rvprop=ids%7Ctimestamp&format=json&formatversion=2&titles=$encodedTitle"
+$headers = @{ 'User-Agent' = 'G-switcher corpus benchmark/1.0 (+https://github.com/bajoicheg/g-switcher)' }
+
+New-Item -ItemType Directory -Force -Path target | Out-Null
+$response = Invoke-RestMethod -Uri $api -Headers $headers -Method Get
+$page = $response.query.pages | Select-Object -First 1
+if (-not $page -or -not $page.extract) {
+    throw 'Wikipedia API returned no article extract'
+}
+
+# Keyboard typing does not produce combining stress marks. Normalize them out,
+# while preserving the article's actual RU/EN letters and punctuation in memory.
+$decomposed = $page.extract.Normalize([Text.NormalizationForm]::FormD)
+$builder = [Text.StringBuilder]::new()
+foreach ($ch in $decomposed.ToCharArray()) {
+    $category = [Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch)
+    if ($category -ne [Globalization.UnicodeCategory]::NonSpacingMark) {
+        [void]$builder.Append($ch)
+    }
+}
+$articleText = $builder.ToString().Normalize([Text.NormalizationForm]::FormC).Replace([char]0x00A0, ' ')
+$corpusPath = Join-Path $PWD 'target/wiki-article.txt'
+$reportPath = Join-Path $PWD 'target/wiki-corpus-failures.csv'
+$summaryPath = Join-Path $PWD 'target/wiki-corpus-summary.txt'
+[IO.File]::WriteAllText($corpusPath, $articleText, [Text.UTF8Encoding]::new($false))
+
+$env:G_SWITCHER_CORPUS_PATH = $corpusPath
+$env:G_SWITCHER_CORPUS_REPORT = $reportPath
+$env:G_SWITCHER_CORPUS_SUMMARY = $summaryPath
+$env:G_SWITCHER_CORPUS_STRICT = if ($Strict) { '1' } else { '0' }
+
+cargo test --lib wikipedia_article_layout_corpus_e2e -- --ignored --test-threads=1 --nocapture
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+$revision = $page.revisions | Select-Object -First 1
+Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_page_id=$($page.pageid)"
+Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_revision_id=$($revision.revid)"
+Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_parent_revision_id=$($revision.parentid)"
+Add-Content -LiteralPath $summaryPath -Encoding utf8 -Value "wikipedia_revision_timestamp=$($revision.timestamp)"
+
+Write-Host 'Wikipedia corpus benchmark complete'
+Get-Content -LiteralPath $summaryPath
