@@ -1,0 +1,418 @@
+name: Patch G-switcher 1.0.1
+
+on:
+  push:
+    branches:
+      - fix/1.0.1-ui-lexicon
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/1.0.1-ui-lexicon
+
+      - name: Apply source fixes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Replace-Required([string]$Path, [string]$Old, [string]$New) {
+            $text = Get-Content -Raw -Encoding UTF8 $Path
+            if (-not $text.Contains($Old)) {
+              if ($text.Contains($New)) { return }
+              throw "Expected text not found in $Path: $Old"
+            }
+            $text = $text.Replace($Old, $New)
+            Set-Content -LiteralPath $Path -Value $text -Encoding UTF8 -NoNewline
+          }
+
+          Replace-Required 'Cargo.toml' 'version = "1.0.0"' 'version = "1.0.1"'
+          Replace-Required 'src/lib.rs' 'pub const PRODUCT_VERSION: &str = "1.0.0";' 'pub const PRODUCT_VERSION: &str = "1.0.1";'
+          Replace-Required 'build.rs' 'resource.set("FileVersion", "1.0.0.0");' 'resource.set("FileVersion", "1.0.1.0");'
+          Replace-Required 'build.rs' 'resource.set("ProductVersion", "1.0.0");' 'resource.set("ProductVersion", "1.0.1");'
+          Replace-Required 'scripts/release-check.ps1' "if (`$version.FileVersion -ne '1.0.0.0')" "if (`$version.FileVersion -ne '1.0.1.0')"
+          Replace-Required 'scripts/release-check.ps1' "if (`$version.ProductVersion -ne '1.0.0')" "if (`$version.ProductVersion -ne '1.0.1')"
+          Replace-Required '.github/workflows/windows-ci.yml' 'name: g-switcher-1.0.0-windows-x64' 'name: g-switcher-1.0.1-windows-x64'
+
+          $enCommon = @'
+hello world system server user security window windows data code check object root linux docker json http api sql vpn edr soc network service file application process input keyboard layout settings manual auto automatic current previous selected text word test release build update local private privacy password secure truth true false fact facts real reality reason result answer question idea ideas mind thought thoughts knowledge information message messages email chat browser chrome edge firefox terminal powershell github git rust computer software hardware device devices screen display mouse key keys button buttons menu dialog form field fields list lists dictionary lexicon frequency confidence sensitivity conservative normal aggressive convert conversion correction undo hotkey pause resume start stop run running open close save cancel add remove change changed create delete edit read write search find show hide enable disable enabled disabled allow block protect protected protection safe unsafe error errors warning warnings problem problems issue issues bug bugs fix fixes version versions package packages install installed setup account accounts admin administrator client clients host hosts domain domains address addresses port ports protocol protocols internet web website websites page pages link links url path paths folder folders disk drive drives memory ram cpu gpu process processes thread threads event events state states status mode modes rule rules policy policies access login logon logout sign signin signout authentication authorization token tokens certificate certificates key password passwords pin otp secret secrets cloud telemetry clipboard history context local remote public private internal external company business office home house room street road city country countries people person persons man men woman women child children family families friend friends team teams group groups member members customer customers partner partners project projects product products work works working job jobs task tasks case cases time times day days week weeks month months year years today tomorrow yesterday morning evening night now later early late first second third last next new old good better best bad worse worst big small large little long short high low right left top bottom inside outside before after during while until since always never often sometimes usually again already almost enough more most less least many much few several some any every each both either neither another other same different important possible impossible available ready free busy hard easy simple complex fast slow strong weak full empty common normal general special main major minor basic advanced final initial original current previous future past history truth value values number numbers amount total part parts side sides point points line lines word words name names type types kind kinds form forms level levels order orders place places area areas body head hand hands face eye eyes voice sound food water air fire earth money market markets price prices cost costs power energy health school education study studies learn learning book books story stories language languages english russian love hate like want need needs use uses using make makes made get gets got give gives gave take takes took keep keeps kept know knows knew think thinks thought feel feels felt see sees saw look looks looked come comes came go goes went say says said tell tells told ask asks asked call calls called try tries tried help helps helped start starts started stop stops stopped move moves moved live lives lived believe believes believed understand understands understood remember remembers remembered forget forgot find finds found lose loses lost win wins won work works worked play plays played read reads write writes written speak speaks spoke listen hear heard wait waits waited happen happens happened become becomes became seem seems seemed leave leaves left bring brings brought hold holds held follow follows followed meet meets met pay pays paid sit sits sat stand stands stood include includes included continue continues continued set sets learn change lead leads led watch watches watched turn turns turned show shows showed hear plays run runs grow grows grew buy buys bought send sends sent build builds built fall falls fell cut cuts reach reaches reached remain remains suggest suggests raise raises pass passes sell sells sold require requires report reports reported decide decides decided pull pulls return returns explain explains hope hopes develop develops carry carries break breaks broke receive receives received agree agrees support supports hit hits produce produces eat eats ate cover covers catch catches caught draw draws drew choose chooses chose cause causes caused listen realize place close involve increase improve improve improves join reduce speak pick wear wears wore drive drives drove deal deals hold fuck fucking fucked fucks fucker fuckers shit shitty shits bullshit bitch bitches bastard bastards ass asses asshole assholes dick dicks pussy pussies cunt cunts damn damned crap motherfucker motherfuckers fucking hell sex sexy porn cock cocks tits tit boob boobs boobs jerk jerks idiot idiots stupid dumb moron morons asshole wtf omg damn god fucking
+'@
+          $ruCommon = @'
+привет мир система сервер пользователь безопасность окно данные код проверка объект сеть служба файл приложение процесс ввод клавиатура раскладка настройки ручной автоматический текущий предыдущий выделенный текст слово тест релиз сборка обновление локальный приватность пароль защита коробка свобода свободу свободный хорошо работает работаю правда правильный правильно ложь факт факты реальность причина результат ответ вопрос идея мысли мысль знание информация сообщение сообщения почта чат браузер хром терминал компьютер программа железо устройство экран мышь клавиша клавиши кнопка кнопки меню диалог форма поле поля список списки словарь частота уверенность чувствительность консервативный нормальный агрессивный исправить исправление конвертация отмена горячая пауза продолжить старт стоп запуск остановка сохранить отменить добавить удалить изменить создать читать писать поиск найти показать скрыть включить выключить включено выключено разрешить блокировать защитить безопасный ошибка ошибки предупреждение проблема проблемы баг баги исправить версия версии пакет установка аккаунт аккаунты админ администратор клиент клиенты хост хосты домен домены адрес адреса порт порты протокол протоколы интернет сайт сайты страница страницы ссылка ссылки путь пути папка папки диск память процессор видеокарта потоки событие события состояние статус режим режимы правило правила политика политики доступ вход выход аутентификация авторизация токен токены сертификат сертификаты ключ секрет секреты облако телеметрия буфер история контекст удаленный публичный внутренний внешний компания бизнес офис дом комната улица дорога город страна страны люди человек мужчина мужчины женщина женщины ребенок дети семья семьи друг друзья команда команды группа группы участник участники клиент партнер проект проекты продукт продукты работа работы задача задачи случай случаи время день дни неделя недели месяц месяцы год годы сегодня завтра вчера утро вечер ночь сейчас потом рано поздно первый второй третий последний следующий новый старый хороший лучше лучший плохой хуже худший большой маленький длинный короткий высокий низкий правый левый верх низ внутри снаружи до после во время пока всегда никогда часто иногда обычно снова уже почти достаточно больше меньше много мало несколько некоторый любой каждый оба другой тот же разный важный возможно невозможный доступный готов свободный занят трудный легкий простой сложный быстрый медленный сильный слабый полный пустой общий специальный главный основной дополнительный финальный начальный оригинальный будущий прошлый история значение значения число числа количество сумма часть части сторона стороны точка точки строка строки имя имена тип типы вид виды уровень уровни порядок место места область области тело голова рука руки лицо глаз глаза голос звук еда вода воздух огонь земля деньги рынок рынки цена цены стоимость сила энергия здоровье школа образование учеба учиться книга книги рассказ язык языки английский русский любовь ненависть любить хотеть нужно использовать сделать делать получить дать взять держать знать думать чувствовать видеть смотреть приходить идти говорить сказать рассказать спросить звонить пытаться помогать начинать заканчивать двигаться жить верить понимать помнить забыть находить терять выигрывать работать играть читать писать слушать слышать ждать случаться становиться казаться уходить приносить держать следовать встречать платить сидеть стоять включать продолжать ставить учить менять вести смотреть поворачивать показывать расти покупать отправлять строить падать резать достигать оставаться предлагать поднимать проходить продавать требовать сообщать решать тянуть возвращать объяснять надеяться развивать нести ломать получать соглашаться поддерживать ударять производить есть покрывать ловить рисовать выбирать вызывать слушать понимать место закрывать участвовать увеличивать улучшать присоединяться уменьшать говорить выбирать носить ехать управлять сделка дела жизнь мир правда бля блядь блять блядский блядская блядские блядство пизда пиздец пиздеж пиздеть пиздит пиздят пизду пизды пизде пиздой пиздануть пиздатый пиздатая пиздато хуй хуя хую хуе хуем хуи хуев хуйня хуйню хуйни хуйне хуйло ебать ебет ебал ебала ебали ебаный ебаная ебаное ебаные ебучий ебучая ебучее ебучие еблан ебланы заебал заебала заебали заебись заебать наебать наебал наебали поебать похуй нахуй охуеть охуел охуела охуенный охуенно сука суки суке суку сукой сучка сучки сучку мудак мудаки мудака мудаку мудачок долбоеб долбоебы долбоеба говно говна говноед жопа жопу жопы жопе дерьмо шлюха шлюхи трахать трахаться хер хера херово черт чертов дебил дебилы идиот идиоты тупой тупая придурок придурки козел козлы сволочь сволочи урод уроды
+'@
+
+          $path = 'src/frequency_model.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $enReplacement = 'const EN_COMMON: &str = "' + $enCommon.Trim() + '";'
+          $ruReplacement = 'const RU_COMMON: &str = "' + $ruCommon.Trim() + '";'
+          $next = [regex]::Replace($text, 'const EN_COMMON: &str = ".*?";', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $enReplacement }, 1)
+          if ($next -eq $text -and -not $text.Contains('truth true false')) { throw 'EN_COMMON replacement failed' }
+          $text = $next
+          $next = [regex]::Replace($text, 'const RU_COMMON: &str = ".*?";', [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $ruReplacement }, 1)
+          if ($next -eq $text -and -not $text.Contains('пизда пиздец')) { throw 'RU_COMMON replacement failed' }
+          $text = $next
+
+          if (-not $text.Contains('pub fn has_word_prefix')) {
+            $marker = 'pub fn transition_score(language: Language, previous: &str, current: &str) -> i32 {'
+            $addition = @'
+pub fn has_word_prefix(language: Language, token: &str) -> bool {
+    let (top, common) = match language {
+        Language::English => (EN_TOP, EN_COMMON),
+        Language::Russian => (RU_TOP, RU_COMMON),
+    };
+    words(top)
+        .chain(words(common))
+        .any(|word| word.starts_with(token) && word.len() > token.len())
+}
+
+'@
+            if (-not $text.Contains($marker)) { throw 'frequency prefix marker not found' }
+            $text = $text.Replace($marker, $addition + $marker)
+          }
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+          $path = 'src/detector.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $old = @'
+    let source = infer_language(token)?;
+    let normalized = normalize(token, source);
+    if dictionary_contains(source, &normalized, user_words) {
+        return None;
+    }
+
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    let mapped_normalized = normalize(&mapped, target);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return None;
+    }
+
+    if dictionary_contains(target, &mapped_normalized, user_words) {
+        return Some(Detection {
+            source,
+            target,
+            corrected: mapped,
+            confidence: 100,
+        });
+    }
+'@
+          $new = @'
+    let source = infer_language(token)?;
+    let normalized = normalize(token, source);
+    let source_frequency = frequency_model::word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
+        return None;
+    }
+
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    let mapped_normalized = normalize(&mapped, target);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return None;
+    }
+
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+    if dictionary_contains(target, &mapped_normalized, user_words) || target_frequency >= 15 {
+        return Some(Detection {
+            source,
+            target,
+            corrected: mapped,
+            confidence: 100,
+        });
+    }
+'@
+          if ($text.Contains($old)) {
+            $text = $text.Replace($old, $new)
+          } elseif (-not $text.Contains('source_frequency >= 15')) {
+            throw 'detector known-word block not found'
+          }
+
+          $oldFrequency = @'
+    let source_frequency = frequency_model::word_score(source, &normalized);
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+
+    // A frequent real source-language word is strong preservation evidence.
+    if source_frequency >= 15 && target_frequency == 0 {
+        return None;
+    }
+
+'@
+          $text = $text.Replace($oldFrequency, '')
+
+          if (-not $text.Contains('pub fn opposite_candidate_is_prefix_for_language')) {
+            $marker = @'
+pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[String]) -> bool {
+    let Some(source) = infer_language(token) else {
+        return false;
+    };
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return false;
+    }
+    is_target_word_prefix(&normalize(&mapped, target), target, user_words)
+}
+'@
+            $replacement = @'
+pub fn opposite_candidate_is_prefix_with_user_words(token: &str, user_words: &[String]) -> bool {
+    let Some(source) = infer_language(token) else {
+        return false;
+    };
+    opposite_candidate_is_prefix_for_language(token, source, user_words)
+}
+
+pub fn opposite_candidate_is_prefix_for_language(
+    token: &str,
+    source: Language,
+    user_words: &[String],
+) -> bool {
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return false;
+    }
+    is_target_word_prefix(&normalize(&mapped, target), target, user_words)
+}
+'@
+            if (-not $text.Contains($marker)) { throw 'detector prefix function block not found' }
+            $text = $text.Replace($marker, $replacement)
+          }
+
+          $oldPrefix = @'
+fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
+    exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
+        || user_words.iter().any(|word| {
+'@
+          $newPrefix = @'
+fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
+    frequency_model::has_word_prefix(language, token)
+        || exact_words(language).any(|word| word.starts_with(token) && word.len() > token.len())
+        || user_words.iter().any(|word| {
+'@
+          if ($text.Contains($oldPrefix)) {
+            $text = $text.Replace($oldPrefix, $newPrefix)
+          } elseif (-not $text.Contains('frequency_model::has_word_prefix')) {
+            throw 'detector target prefix block not found'
+          }
+
+          if (-not $text.Contains('expanded_builtin_lexicon_protects_real_words')) {
+            $marker = @'
+    #[test]
+    fn frequency_model_protects_frequent_source_words() {
+'@
+            $tests = @'
+    #[test]
+    fn expanded_builtin_lexicon_protects_real_words() {
+        for word in [
+            "truth",
+            "information",
+            "company",
+            "fuck",
+            "shit",
+            "пизда",
+            "бля",
+            "блять",
+            "хуй",
+            "ебать",
+            "сука",
+            "правда",
+            "сегодня",
+        ] {
+            assert_eq!(decide(word), Decision::Keep, "changed valid word {word}");
+        }
+    }
+
+    #[test]
+    fn expanded_builtin_lexicon_corrects_wrong_layout_forms() {
+        for (word, language) in [
+            ("truth", Language::English),
+            ("fuck", Language::English),
+            ("пизда", Language::Russian),
+            ("бля", Language::Russian),
+            ("хуй", Language::Russian),
+            ("ебать", Language::Russian),
+        ] {
+            let wrong = opposite_layout_text(word, language);
+            assert_eq!(
+                decide(&wrong),
+                Decision::CorrectTo(language),
+                "did not restore {word} from {wrong}"
+            );
+        }
+    }
+
+'@
+            if (-not $text.Contains($marker)) { throw 'detector test insertion marker not found' }
+            $text = $text.Replace($marker, $tests + $marker)
+          }
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+          $path = 'src/windows_runtime/mod.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          Replace-Required $path 'correction_with_context, infer_language, opposite_candidate_is_prefix_with_user_words,' 'correction_with_context, infer_language, opposite_candidate_is_prefix_for_language,'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $old = @'
+        let runtime_settings = settings::runtime_settings();
+        if punctuation_can_extend_candidate(vk, target.language)
+            && opposite_candidate_is_prefix_with_user_words(
+                &self.candidate,
+                &runtime_settings.user_words,
+            )
+        {
+'@
+          $new = @'
+        let runtime_settings = settings::runtime_settings();
+        let mut prospective = self.candidate.clone();
+        prospective.push(ch);
+        if punctuation_can_extend_candidate(vk, target.language)
+            && opposite_candidate_is_prefix_for_language(
+                &prospective,
+                target.language,
+                &runtime_settings.user_words,
+            )
+        {
+'@
+          if ($text.Contains($old)) {
+            $text = $text.Replace($old, $new)
+          } elseif (-not $text.Contains('let mut prospective = self.candidate.clone();')) {
+            throw 'runtime punctuation block not found'
+          }
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+          $path = 'src/windows_runtime/e2e_tests.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          if (-not $text.Contains('"бля "')) {
+            $marker = @'
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
+            key(b'C'),
+            key(b'D'),
+            key(b'J'),
+            key(VK_OEM_COMMA as u8),
+            key(b'J'),
+            key(b'L'),
+            key(b'E'),
+            key(VK_SPACE as u8),
+        ],
+        "свободу ",
+    );
+'@
+            $addition = @'
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
+            key(VK_OEM_COMMA as u8),
+            key(b'K'),
+            key(b'Z'),
+            key(VK_SPACE as u8),
+        ],
+        "бля ",
+    );
+'@
+            if (-not $text.Contains($marker)) { throw 'E2E insertion marker not found' }
+            $text = $text.Replace($marker, $marker + "`r`n" + $addition)
+          }
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+          $path = 'src/windows_runtime/ui.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $text = $text.Replace('let client_height = 500;', 'let client_height = 530;')
+          $text = $text.Replace('"Горячие клавиши и режимы приложений можно изменить через значок G-switcher в трее → Настройки."', '"Горячие клавиши и режимы приложений настраиваются через значок G-switcher в трее → «Настройки»."')
+          $text = $text.Replace("        358,`r`n        608,`r`n        36,", "        358,`r`n        608,`r`n        52,")
+          $text = $text.Replace("        401,`r`n        608,", "        414,`r`n        608,")
+          $text = $text.Replace("        418,`r`n        390,", "        432,`r`n        390,")
+          $text = $text.Replace("        467,`r`n        300,", "        500,`r`n        300,")
+          $text = $text.Replace("        413,`r`n        112,", "        427,`r`n        112,")
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+          $path = 'src/windows_runtime/ui/settings_dialog.rs'
+          $text = Get-Content -Raw -Encoding UTF8 $path
+          $text = $text.Replace('const CLASS_NAME: &str = "GSwitcher.Settings.1.0";', 'const CLASS_NAME: &str = "GSwitcher.Settings.1.0.1";')
+          $text = $text.Replace('let client_height = 760;', 'let client_height = 825;')
+          $text = $text.Replace('"Настройки G-switcher 1.0.0"', '"Настройки G-switcher 1.0.1"')
+          $text = $text.Replace('"Detector v3 работает локально; контекст — максимум два слова в RAM. Password/PIN/OTP поля всегда защищены."', '"Детектор v3 работает локально; контекст — максимум два слова в RAM. Поля паролей, PIN и OTP всегда защищены."')
+          $text = $text.Replace('"Auto"', '"Авто"')
+          $text = $text.Replace('"Выберите запущенный процесс и назначьте режим. Auto удаляет индивидуальное исключение."', '"Выберите запущенный процесс и назначьте режим. «Авто» удаляет индивидуальное исключение."')
+          $text = $text.Replace('"Отключено — без анализа и hotkey"', '"Отключено — без анализа и горячих клавиш"')
+          $text = $text.Replace('"Выделенный текст работает в native Edit/RichEdit без использования clipboard."', '"Выделенный текст обрабатывается в стандартных Edit/RichEdit без буфера обмена."')
+          $text = $text.Replace('"Pause / Resume"', '"Пауза / продолжить"')
+          $text = $text.Replace('"Pause временный. Secure-поля блокируют auto и все conversion hotkeys независимо от режима приложения."', '"Пауза временная. Защищённые поля блокируют автозамену и все горячие клавиши конвертации."')
+          $text = $text.Replace('UiRect::new(24, 194, 852, 190)', 'UiRect::new(24, 194, 852, 210)')
+          $text = $text.Replace('UiRect::new(44, 307, 386, 56)', 'UiRect::new(44, 307, 386, 76)')
+          $text = $text.Replace('UiRect::new(470, 307, 386, 56)', 'UiRect::new(470, 307, 386, 76)')
+          $text = $text.Replace('UiRect::new(24, 396, 852, 98)', 'UiRect::new(24, 416, 852, 130)')
+          $text = $text.Replace('UiRect::new(44, 423, 812, 20)', 'UiRect::new(44, 443, 812, 20)')
+          $text = $text.Replace('UiRect::new(44, 447, 812, 32)', 'UiRect::new(44, 467, 812, 64)')
+          $text = $text.Replace('UiRect::new(24, 506, 852, 190)', 'UiRect::new(24, 558, 852, 190)')
+          $text = $text.Replace('UiRect::new(44, 533, 812, 20)', 'UiRect::new(44, 585, 812, 20)')
+          $text = $text.Replace('UiRect::new(44, 566, 140, 24)', 'UiRect::new(44, 618, 140, 24)')
+          $text = $text.Replace('UiRect::new(190, 561, 190, 30)', 'UiRect::new(190, 613, 190, 30)')
+          $text = $text.Replace('UiRect::new(462, 566, 156, 24)', 'UiRect::new(462, 618, 156, 24)')
+          $text = $text.Replace('UiRect::new(626, 561, 230, 30)', 'UiRect::new(626, 613, 230, 30)')
+          $text = $text.Replace('UiRect::new(44, 609, 140, 24)', 'UiRect::new(44, 661, 140, 24)')
+          $text = $text.Replace('UiRect::new(190, 604, 190, 30)', 'UiRect::new(190, 656, 190, 30)')
+          $text = $text.Replace('UiRect::new(462, 609, 156, 24)', 'UiRect::new(462, 661, 156, 24)')
+          $text = $text.Replace('UiRect::new(626, 604, 230, 30)', 'UiRect::new(626, 656, 230, 30)')
+          $text = $text.Replace('UiRect::new(44, 652, 140, 24)', 'UiRect::new(44, 704, 140, 24)')
+          $text = $text.Replace('UiRect::new(190, 647, 190, 30)', 'UiRect::new(190, 699, 190, 30)')
+          $text = $text.Replace('UiRect::new(420, 652, 436, 24)', 'UiRect::new(420, 704, 436, 24)')
+          $text = $text.Replace('UiRect::new(28, 716, 500, 22)', 'UiRect::new(28, 779, 500, 22)')
+          $text = $text.Replace('UiRect::new(644, 706, 104, 34)', 'UiRect::new(644, 769, 104, 34)')
+          $text = $text.Replace('UiRect::new(762, 706, 104, 34)', 'UiRect::new(762, 769, 104, 34)')
+
+          $oldStyle = @'
+    let mut style = WS_CHILD
+        | WS_VISIBLE
+        | WS_BORDER
+        | WS_VSCROLL
+        | ES_MULTILINE as u32
+        | ES_AUTOVSCROLL as u32;
+    if read_only {
+        style |= ES_READONLY as u32;
+    }
+'@
+          $newStyle = @'
+    let mut style = WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE as u32 | ES_AUTOVSCROLL as u32;
+    if read_only {
+        style |= ES_READONLY as u32;
+    } else {
+        style |= WS_VSCROLL;
+    }
+'@
+          if ($text.Contains($oldStyle)) {
+            $text = $text.Replace($oldStyle, $newStyle)
+          } elseif (-not $text.Contains('style |= WS_VSCROLL;')) {
+            throw 'settings multiline style block not found'
+          }
+          Set-Content -LiteralPath $path -Value $text -Encoding UTF8 -NoNewline
+
+      - name: Format
+        shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt
+          rustup default stable
+          cargo fmt --all
+
+      - name: Commit patch
+        shell: pwsh
+        run: |
+          git add Cargo.toml Cargo.lock build.rs scripts/release-check.ps1 .github/workflows/windows-ci.yml src/lib.rs src/detector.rs src/frequency_model.rs src/windows_runtime/mod.rs src/windows_runtime/e2e_tests.rs src/windows_runtime/ui.rs src/windows_runtime/ui/settings_dialog.rs
+          if (git diff --cached --quiet) { exit 0 }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix 1.0.1 UI layout and expand built-in lexicon'
+          git push origin HEAD:fix/1.0.1-ui-lexicon
