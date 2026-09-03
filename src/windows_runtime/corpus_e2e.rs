@@ -308,24 +308,28 @@ fn prepare_corpus_case(
     }
 
     let hkl = select_layout(source_language).expect("required RU/EN keyboard layout is unavailable");
-    unsafe {
-        assert_ne!(
-            PostMessageW(
-                window,
-                WM_CORPUS_SET_LAYOUT_AND_FOCUS,
-                hkl as usize,
-                edit as isize,
-            ),
-            0,
-            "failed to request corpus source layout"
-        );
-    }
+    let layout_ready = unsafe { GetKeyboardLayout(ui_thread_id) } as isize == hkl;
+    let focus_ready = unsafe { GetForegroundWindow() } == window;
+    if !layout_ready || !focus_ready {
+        unsafe {
+            assert_ne!(
+                PostMessageW(
+                    window,
+                    WM_CORPUS_SET_LAYOUT_AND_FOCUS,
+                    hkl as usize,
+                    edit as isize,
+                ),
+                0,
+                "failed to request corpus source layout"
+            );
+        }
 
-    wait_until(Duration::from_secs(2), || {
-        pump_hook_thread();
-        let current = unsafe { GetKeyboardLayout(ui_thread_id) } as isize;
-        current == hkl && unsafe { GetForegroundWindow() } == window
-    });
+        wait_until(Duration::from_secs(2), || {
+            pump_hook_thread();
+            let current = unsafe { GetKeyboardLayout(ui_thread_id) } as isize;
+            current == hkl && unsafe { GetForegroundWindow() } == window
+        });
+    }
 }
 
 fn settle_text(edit: HWND, expected: &str) -> String {
@@ -342,7 +346,7 @@ fn settle_text(edit: HWND, expected: &str) -> String {
         if current != last {
             last = current;
             stable_since = Instant::now();
-        } else if stable_since.elapsed() >= Duration::from_millis(35) {
+        } else if stable_since.elapsed() >= Duration::from_millis(8) {
             return current;
         }
         thread::sleep(Duration::from_millis(1));
