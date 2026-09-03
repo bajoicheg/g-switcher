@@ -1,4 +1,4 @@
-# G-switcher 1.0.0 security model
+# G-switcher 1.0.3 security model
 
 G-switcher is designed as a small local desktop utility with a deliberately narrow trust boundary.
 
@@ -20,7 +20,7 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - `Manual only` disables automatic replacement while preserving explicit actions outside secure input; `Disabled` performs no text conversion.
 - Tray status is derived locally from current process mode/layout and the latest correction/undo. It is not persisted or transmitted.
 - Normal operation does not request elevation.
-- Input injection failures are fail-open for the user's original keystroke where Windows permits safe recovery.
+- Input injection failures are fail-open for the user's original keystroke where Windows permits safe recovery. Partial `SendInput` batches are continued from the exact unsent INPUT with bounded retries so already-delivered Backspace events are not silently abandoned.
 - Queued manual correction restores only modifier keys that remain physically active when the queued operation executes, preventing stale Ctrl/Shift/Alt state from being synthetically reintroduced after hotkey release.
 - Automatic and manual token conversion use the same focused-control, layout-switch and integrity boundaries.
 - Hotkeys are matched locally and no global online service is involved.
@@ -28,4 +28,4 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - The release gate includes a real Win32 hook-to-EDIT test covering automatic correction/Undo, application modes, selected-text conversion/Undo and password EDIT protection.
 - Release artifacts include SHA-256 hashes and are intended to be Authenticode-signed in a separate protected release step when a trusted signing environment is available.
 - CI receives read-only repository contents unless a specific release job requires release publication rights.
-- The `v1.0.0` publication workflow consumes only the checked artifact from a successful `main` push Windows CI run and re-verifies its SHA-256 before creating the GitHub Release.
+- The `v1.0.3` publication workflow consumes only the checked artifact from a successful `main` push Windows CI run and re-verifies its SHA-256 before creating the GitHub Release.

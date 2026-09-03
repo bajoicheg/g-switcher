@@ -372,6 +372,10 @@ mod tests {
         assert_eq!(decide("ghbdtn"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("руддщ"), Decision::CorrectTo(Language::English));
         assert_eq!(decide("rjhj,rf"), Decision::CorrectTo(Language::Russian));
+        assert_eq!(
+            correction("rjhj,jxrf"),
+            Some((Language::English, Language::Russian, "коробочка".to_owned()))
+        );
         assert_eq!(decide("cdj,jle"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
     }
