@@ -156,6 +156,30 @@ fn real_windows_hook_to_edit_e2e() {
         edit,
         ui_thread_id,
         Language::English,
+        &keys(b"CBCNTV "),
+        "систем ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"GHJUHFVV "),
+        "программ ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"BYCNHERWBB "),
+        "инструкции ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
         &[
             key(b'C'),
             key(b'D'),

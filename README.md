@@ -2,14 +2,15 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.3 is a runtime reliability patch. It prevents destructive truncation when Windows accepts only part of a SendInput correction batch, and locks `rjhj,jxrf.` → `коробочка.` as a detector and real Win32 regression.
+Version 1.0.4 improves Detector v3 coverage using a synthetic wrong-layout corpus derived from a long Russian information-security article. The audit isolated 13 residual common Russian word forms under Normal sensitivity; all are now deterministic local target recognition while the 1.0.3 partial-`SendInput` reliability fix remains unchanged.
 
-## 1.0.3 behavior
+## 1.0.4 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
 - The built-in common-word lexicons include everyday, technical, colloquial and common obscene vocabulary in both languages.
 - Recognized frequent source-language words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` are protected from automatic rewriting; wrong-layout forms of recognized target words receive deterministic target recognition.
+- Article-corpus regression coverage includes the common Russian forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм`.
 - OEM-key candidate tracking supports words whose opposite-layout form begins with punctuation-looking keys, including `,kz` → `бля`, `rjhj,rf` → `коробка`, `rjhj,jxrf.` → `коробочка.` and `cdj,jle` → `свободу`.
 - Three sensitivity profiles control the heuristic confidence threshold: `Conservative`, `Normal` and `Aggressive`. `Normal` is the default.
 - Exact user-dictionary source matches protect valid text; explicit user-dictionary target matches receive maximum confidence.
@@ -20,7 +21,7 @@ Version 1.0.3 is a runtime reliability patch. It prevents destructive truncation
 - Configurable current-word, previous-word, Undo, Pause and selected-text hotkeys.
 - Per-application modes by executable basename: `Auto`, `Manual only`, and `Disabled`.
 - Native Settings process picker enumerates running processes plus already configured applications.
-- Settings now reserve a 900×855 client area and provide dedicated two-line help regions for sensitivity and Pause instead of forcing long Russian text into one-line rectangles.
+- Settings reserve a 900×855 client area and provide dedicated two-line help regions for sensitivity and Pause instead of forcing long Russian text into one-line rectangles.
 - The Pause label is shortened, footer controls are moved down, and long help text is split deliberately so it cannot overlap adjacent controls.
 - The first-run window gets additional bottom space and a shorter Settings hint so the separator, autostart row and copyright footer remain visually separated.
 - Read-only application-mode lists remain clean; the editable user dictionary keeps normal scrolling.
@@ -40,7 +41,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, and the OEM-leading `,kz` → `бля` regression. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.3 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived `cbcntv` → `систем`, `ghjuhfvv` → `программ`, and `bycnherwbb` → `инструкции` cases. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.4 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
