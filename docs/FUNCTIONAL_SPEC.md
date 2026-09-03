@@ -1,4 +1,4 @@
-# G-switcher 1.0.1 functional specification
+# G-switcher 1.0.2 functional specification
 
 ## Product model
 
@@ -71,7 +71,7 @@ This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 1.0.1 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 1.0.2 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
@@ -142,7 +142,7 @@ The tray Settings window exposes:
 
 Settings take effect in the running process after Save and do not require elevation. Invalid hotkey syntax blocks Save with a local warning. The UI states that typed context is volatile and secure fields are not processed.
 
-The 1.0.1 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, and avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists.
+The 1.0.2 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, and avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists.
 
 ## Privilege model
 
