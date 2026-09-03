@@ -153,6 +153,19 @@ fn real_windows_hook_to_edit_e2e() {
         window,
         edit,
         ui_thread_id,
+        Language::English,
+        &[
+            key(VK_OEM_COMMA as u8),
+            key(b'K'),
+            key(b'Z'),
+            key(VK_SPACE as u8),
+        ],
+        "бля ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
         Language::Russian,
         &keys(&[b'H', b'E', b'L', b'L', b'O', VK_SPACE as u8]),
         "hello ",
