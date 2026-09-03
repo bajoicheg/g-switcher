@@ -48,6 +48,21 @@ fn map_char(ch: char, source: Language) -> char {
 }
 
 fn map_en_to_ru(ch: char) -> char {
+    // Shifted OEM keys are distinct physical keystrokes. ASCII case folding
+    // cannot preserve them because punctuation has no upper/lower case.
+    match ch {
+        '~' => return 'Ё',
+        '{' => return 'Х',
+        '}' => return 'Ъ',
+        ':' => return 'Ж',
+        '"' => return 'Э',
+        '<' => return 'Б',
+        '>' => return 'Ю',
+        '/' => return '.',
+        '?' => return ',',
+        _ => {}
+    }
+
     let lower = ch.to_ascii_lowercase();
     if let Some((_, mapped)) = EN_TO_RU.iter().find(|(en, _)| *en == lower) {
         if ch.is_ascii_uppercase() {
@@ -61,6 +76,19 @@ fn map_en_to_ru(ch: char) -> char {
 }
 
 fn map_ru_to_en(ch: char) -> char {
+    match ch {
+        'Ё' => return '~',
+        'Х' => return '{',
+        'Ъ' => return '}',
+        'Ж' => return ':',
+        'Э' => return '"',
+        'Б' => return '<',
+        'Ю' => return '>',
+        '.' => return '/',
+        ',' => return '?',
+        _ => {}
+    }
+
     let lower = ch.to_lowercase().next().unwrap_or(ch);
     if let Some((mapped, _)) = EN_TO_RU.iter().find(|(_, ru)| *ru == lower) {
         if ch.is_uppercase() {
@@ -92,5 +120,19 @@ mod tests {
         assert_eq!(opposite_layout_text("Ghbdtn", Language::English), "Привет");
         assert_eq!(opposite_layout_text("GHBDTN", Language::English), "ПРИВЕТ");
         assert_eq!(opposite_layout_text("Руддщ", Language::Russian), "Hello");
+    }
+
+    #[test]
+    fn preserves_shifted_oem_letters_and_punctuation() {
+        assert_eq!(opposite_layout_text("<>~{}:\"?", Language::English), "БЮЁХЪЖЭ,");
+        assert_eq!(opposite_layout_text("БЮЁХЪЖЭ,.", Language::Russian), "<>~{}:\"?/");
+        assert_eq!(
+            opposite_layout_text("Безопасность", Language::Russian),
+            "<tpjgfcyjcnm"
+        );
+        assert_eq!(
+            opposite_layout_text("<tpjgfcyjcnm", Language::English),
+            "Безопасность"
+        );
     }
 }
