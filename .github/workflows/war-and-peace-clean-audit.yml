@@ -41,36 +41,22 @@ jobs:
           e2e = Path('src/windows_runtime/e2e_tests.rs')
           e = e2e.read_text(encoding='utf-8')
           if 'G-switcher E2E checkpoint: boundary prefix completion' not in e:
-              marker = '''    run_case(
-              window,
-              edit,
-              ui_thread_id,
-              Language::English,
-              &[
-                  key(b'R'),
-                  key(b'J'),
-                  key(b'H'),
-                  key(b'J'),
-                  key(VK_OEM_COMMA as u8),
-                  key(b'R'),
-                  key(b'F'),
-                  key(VK_SPACE as u8),
-              ],
-              "коробка ",
-          );'''
-              if marker not in e:
-                  raise SystemExit('E2E insertion marker missing')
+              anchor = '        "привет ",\n    );\n'
+              pos = e.find(anchor)
+              if pos < 0:
+                  raise SystemExit('E2E greeting anchor missing')
+              pos += len(anchor)
               boundary = '''    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
-          prepare_case(window, edit, ui_thread_id, Language::English);
-          {
-              let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();
-              engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];
-          }
-          inject_strokes(&keys(b"GMTH "));
-          await_text(edit, "пьер ");
+              prepare_case(window, edit, ui_thread_id, Language::English);
+              {
+                  let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();
+                  engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];
+              }
+              inject_strokes(&keys(b"GMTH "));
+              await_text(edit, "пьер ");
 
           '''
-              e = e.replace(marker, marker + '\n' + boundary, 1)
+              e = e[:pos] + boundary + e[pos:]
               e2e.write_text(e, encoding='utf-8')
 
           changelog = Path('CHANGELOG.md')
@@ -79,12 +65,11 @@ jobs:
               entry = '''## 1.0.7 — 2026-09-04
 
           - Audits Detector v3 against the exact novel body of Leo Tolstoy's `War and Peace` from the official Tolstoy.ru DOCX: 342,237 eligible Russian word occurrences and 11,594 eligible Latin-layout occurrences after documented short/ALL-CAPS exclusions.
-          - Raises automatic RU→EN wrong-layout restoration on the full novel from the earlier 98.80% baseline to 340,059/342,237 (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections in the corpus.
+          - Raises automatic RU→EN wrong-layout restoration on the full novel to 340,059/342,237 (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections in the corpus.
           - Scopes opposite-target prefix holding to the punctuation/OEM input path. True Space/Enter/Tab word boundaries no longer suppress complete words such as `gmth` → `пьер`, while internal OEM sequences still preserve `rjhj,rf` → `коробка` and `rjhj,jxrf.` → `коробочка.`.
-          - Adds explicit source protection for Russian forms and common French/German/Latin-layout words observed in the mixed-language novel so correct prose stays fail-open rather than being rewritten.
-          - Keeps deliberate source collisions such as valid English `here`/`her` fail-open instead of forcing `руку`/`рук`; no global confidence threshold is lowered.
+          - Adds explicit source protection for Russian forms and common French/German/Latin-layout words observed in the mixed-language novel; valid-source collisions such as `here`/`her` remain fail-open instead of being forced to `руку`/`рук`.
           - Adds permanent detector regressions and real Win32 boundary E2E coverage for `пьер`, while retaining existing OEM, collision, secure-input, Undo and application-mode gates.
-          - The Tolstoy.ru download and full-novel audit tooling are release-time QA only and are removed from the production branch; normal runtime remains local-only with no network or telemetry behavior.
+          - Removes the Tolstoy.ru download and full-novel audit tooling from the production branch; normal runtime remains local-only with no network or telemetry behavior.
           - Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.7.
 
           '''
@@ -93,30 +78,28 @@ jobs:
 
           readme = Path('README.md')
           r = readme.read_text(encoding='utf-8')
-          old_intro_start = 'Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.'
+          old_intro = 'Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.'
           new_intro = 'Version 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s `War and Peace`. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while producing zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the same mixed Russian/French/German corpus.'
-          if old_intro_start not in r:
+          if old_intro not in r:
               raise SystemExit('README intro marker missing')
-          r = r.replace(old_intro_start, new_intro, 1)
+          r = r.replace(old_intro, new_intro, 1)
           r = r.replace('## 1.0.6 behavior', '## 1.0.7 behavior', 1)
-          needle = '- Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.\n'
-          addition = '- At real Space/Enter/Tab word boundaries, complete opposite-layout words are evaluated without the OEM prefix hold; punctuation entry keeps the prefix hold needed for embedded physical comma/period keys.\n- Full-novel mixed-language source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.\n'
-          if needle not in r:
+          behavior = '- Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.\n'
+          if behavior not in r:
               raise SystemExit('README behavior marker missing')
-          r = r.replace(needle, needle + addition, 1)
+          r = r.replace(behavior, behavior + '- Space/Enter/Tab boundaries evaluate complete opposite-layout words without the OEM prefix hold; punctuation entry keeps the prefix hold required by embedded physical comma/period keys.\n- Full-novel source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.\n', 1)
           r = r.replace('G-switcher 1.0.6 version metadata', 'G-switcher 1.0.7 version metadata', 1)
           readme.write_text(r, encoding='utf-8')
 
-          release_106 = Path('.github/workflows/release-1.0.6.yml').read_text(encoding='utf-8')
-          release_107 = release_106.replace('1.0.6', '1.0.7')
-          lines = release_107.splitlines()
-          notes = '            --notes "G-switcher 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s War and Peace. At true word boundaries the full mixed-language corpus restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections. Target-prefix holding is now scoped to punctuation/OEM input so complete words at Space/Enter/Tab boundaries are not suppressed, while existing коробка/коробочка OEM behavior remains protected. Explicit Russian and Latin-layout source protections keep mixed Russian/French/German prose fail-open, including deliberate valid-source collisions such as here/her. Real Win32 E2E includes the new пьер boundary case and retains existing OEM, collision, secure-input, Undo and application-mode gates. The Tolstoy.ru corpus download and audit harness are QA-only and are not shipped in runtime. Normal G-switcher remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."'
-          replaced = False
+          rel = Path('.github/workflows/release-1.0.6.yml').read_text(encoding='utf-8').replace('1.0.6', '1.0.7')
+          lines = rel.splitlines()
+          release_notes = '            --notes "G-switcher 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s War and Peace. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while preserving 342,237/342,237 correct Russian and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections. Target-prefix holding is scoped to punctuation/OEM input so complete Space/Enter/Tab words are no longer suppressed while коробка/коробочка OEM behavior remains protected. Explicit Russian and Latin-layout source protections keep mixed Russian/French/German prose fail-open, including valid-source collisions such as here/her. Real Win32 E2E includes the new пьер boundary case. Full-novel retrieval/audit tooling is QA-only and is not shipped. Runtime remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."'
+          found = False
           for i, line in enumerate(lines):
               if line.lstrip().startswith('--notes '):
-                  lines[i] = notes
-                  replaced = True
-          if not replaced:
+                  lines[i] = release_notes
+                  found = True
+          if not found:
               raise SystemExit('release notes marker missing')
           Path('.github/workflows/release-1.0.7.yml').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
@@ -138,6 +121,7 @@ jobs:
           grep -q '1.0.7.0' build.rs
           grep -q 'PRODUCT_VERSION: &str = "1.0.7"' src/lib.rs
           grep -q 'g-switcher-1.0.7-windows-x64' .github/workflows/windows-ci.yml
+          grep -q 'GSwitcher.Settings.1.0.7' src/windows_runtime/ui/settings_dialog.rs
           test -f .github/workflows/release-1.0.7.yml
           test ! -e examples/war_and_peace_audit.rs
           test ! -e .github/workflows/war-and-peace-volume-audit.yml
