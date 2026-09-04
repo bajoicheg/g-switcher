@@ -19,8 +19,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-
-      - name: Apply systemic mixed-language fix once
+      - name: Refine mixed-language protection once
         id: patch
         shell: bash
         run: |
@@ -29,7 +28,7 @@ jobs:
 
           detector = Path('src/detector.rs')
           s = detector.read_text(encoding='utf-8')
-          if 'trusted_context_language' in s:
+          if 'common_foreign_latin_source_words_are_protected' in s:
               Path('/tmp/changed').write_text('0')
               raise SystemExit(0)
 
@@ -39,101 +38,43 @@ jobs:
               language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
           let target_score = language_score(&mapped_normalized, target)
               + frequency_model::lexical_score(target, &mapped_normalized);
-          let base_margin = target_score - source_score;
-
-          // Context may support a plausible opposite-layout candidate, but it
-          // must not overturn a token that is intrinsically at least as plausible
-          // in the layout in which it was typed. This is critical for mixed
-          // Russian/French prose, where script alone is not language evidence.
-          if source_score >= 4 && base_margin <= 0 {
-              return None;
-          }
-
           let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
           let effective_target = target_score + context_bonus;
-          let effective_margin = base_margin + context_bonus;
+          let effective_margin = target_score - source_score + context_bonus;
 
           if effective_target < 10 || effective_margin < 5 {
               return None;
           }'''
           s = s[:start] + scoring + s[end:]
 
-          start = s.index('fn context_bonus(')
-          end = s.index('\n\nfn is_target_word_prefix', start)
-          context = '''fn context_bonus(
-              target: Language,
-              candidate: &str,
-              previous_tokens: &[String],
-              user_words: &[String],
-          ) -> i32 {
-              let recent: Vec<&String> = previous_tokens.iter().rev().take(MAX_CONTEXT_WORDS).collect();
-              let mut bonus = 0;
-              for (index, token) in recent.iter().enumerate() {
-                  match trusted_context_language(token, user_words) {
-                      Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
-                      Some(_) => bonus -= if index == 0 { 3 } else { 2 },
-                      None => {}
-                  }
-              }
-              if let Some(last) = recent.first() {
-                  if trusted_context_language(last, user_words) == Some(target) {
-                      let last = normalize(last, target);
-                      bonus += frequency_model::transition_score(target, &last, candidate);
-                  }
-              }
-              bonus.clamp(-6, 20)
-          }
-
-          fn trusted_context_language(token: &str, user_words: &[String]) -> Option<Language> {
-              let language = infer_language(token)?;
-              let normalized = normalize(token, language);
-              let known = dictionary_contains(language, &normalized, user_words)
-                  || frequency_model::word_score(language, &normalized) >= 15;
-              known.then_some(language)
-          }'''
-          s = s[:start] + context + s[end:]
-
           marker = '    #[test]\n    fn exact_dictionary_match_has_maximum_confidence()'
           pos = s.index(marker)
-          tests = '''    #[test]
-          fn mixed_language_context_does_not_flip_plausible_source_tokens() {
-              let french = vec!["les".to_owned(), "notres".to_owned()];
-              assert!(correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none());
-              let russian = vec!["сказала".to_owned(), "она".to_owned()];
-              assert!(correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none());
-          }
-
-          #[test]
-          fn unknown_foreign_context_does_not_suppress_known_wrong_layout_russian() {
-              let french = vec!["chere".to_owned(), "annette".to_owned()];
-              let detection = correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
-                  .expect("сказал should correct after foreign context");
-              assert_eq!(detection.corrected, "сказал");
-          }
-
-          #[test]
-          fn symmetric_source_collisions_stay_fail_open() {
-              for token in ["руку", "внук", "ста", "here", "dyer", "cnf"] {
-                  assert!(correction(token).is_none(), "collision token must stay source: {token}");
+          test = '''    #[test]
+          fn common_foreign_latin_source_words_are_protected() {
+              for token in [
+                  "que", "sire", "une", "des", "monsieur", "comme", "ils", "mot", "quelle",
+                  "votre", "adieu", "dans", "die", "merci", "pas", "sans", "sur",
+              ] {
+                  assert!(correction(token).is_none(), "Latin-layout source must stay source: {token}");
               }
           }
 
           '''
-          s = s[:pos] + tests + s[pos:]
+          s = s[:pos] + test + s[pos:]
           detector.write_text(s, encoding='utf-8')
 
+          foreign = '''abc adieu avec ayez bah bas bien bon bonsoir causons cela celui ces chef comme contez contrat croyez dans das des devriez die dieu dont ein elle enfant enfin epe euer faire fait fameuse faut feu fil filez gobelins gott homme ils jeu jeune joseph julie lanfrey lle macht merci mes monsieur mot mots nichts nocturne omme ont pas peut pitt poltawa prime que quel quelle quelques quos sans sic sire sobriquet son sophie soyez sublime sur tant tutti une urienne vaut venez vienne vos votre voyez zum'''
           freq = Path('src/frequency_model.rs')
           fs = freq.read_text(encoding='utf-8')
-          needle = 'автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео '
-          if needle not in fs:
-              raise SystemExit('frequency insertion marker missing')
-          fs = fs.replace(needle, needle + 'внук руку ста сказал сказала ', 1)
+          anchor = fs.index('static EN_COMMON')
+          let_words = fs.index('let words =', anchor)
+          quote = fs.index('"', let_words) + 1
+          fs = fs[:quote] + foreign + ' ' + fs[quote:]
           freq.write_text(fs, encoding='utf-8')
           Path('/tmp/changed').write_text('1')
           PY
           echo "changed=$(cat /tmp/changed)" >> "$GITHUB_OUTPUT"
-
-      - name: Validate proposed source change
+      - name: Validate refined source change
         if: steps.patch.outputs.changed == '1'
         shell: bash
         run: |
@@ -142,7 +83,6 @@ jobs:
           cargo fmt --all
           cargo test --all-targets
           cargo clippy --all-targets -- -D warnings
-
       - name: Commit validated source change
         if: steps.patch.outputs.changed == '1'
         shell: bash
@@ -150,7 +90,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/detector.rs src/frequency_model.rs
-          git commit -m 'Harden mixed-language detector context from full-novel audit'
+          git commit -m 'Refine Latin-layout protection from full-novel audit'
           git push origin HEAD:audit/war-and-peace-full-1.0.7
 
   audit:
