@@ -29,7 +29,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use crate::windows_runtime::{current_process_name, settings};
 
-const CLASS_NAME: &str = "GSwitcher.Settings.1.0.7";
+const CLASS_NAME: &str = concat!("GSwitcher.Settings.", env!("CARGO_PKG_VERSION"));
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
 const ID_DISABLED_APPS: i32 = 3103;
@@ -144,7 +144,7 @@ fn ensure_class() -> Result<()> {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: module,
-            hIcon: null_mut(),
+            hIcon: super::load_app_icon(),
             hCursor: LoadCursorW(null_mut(), IDC_ARROW),
             hbrBackground: GetSysColorBrush(COLOR_3DFACE_INDEX),
             lpszMenuName: null(),
@@ -312,7 +312,7 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Настройки G-switcher 1.0.6",
+        concat!("Настройки G-switcher ", env!("CARGO_PKG_VERSION")),
         UiRect::new(28, 18, 840, 32),
     );
     set_font(title, title_font);
@@ -321,7 +321,7 @@ unsafe fn create_controls(hwnd: HWND) {
         hwnd,
         module,
         &static_class,
-        "Работает локально. Контекст: до 2 слов в RAM. Пароли, PIN и OTP не обрабатываются.",
+        "Работает локально. Контекст — до 2 слов только в RAM. Пароли, PIN и OTP не обрабатываются.",
         UiRect::new(28, 54, 840, 24),
     );
     set_font(privacy, hint_font);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.8 - 2026-09-04
+
+- Fixes first-run text overlap by replacing the fragile split description/privacy controls with four explicit bounded lines in one control.
+- Makes the first-run autostart choice authoritative in both directions: unchecked now removes an existing `HKCU\...\Run` entry instead of silently preserving it.
+- Initializes the first-run autostart checkbox from the actual Windows Run state, matching Settings.
+- Removes stale hard-coded Settings version text; first-run/Settings UI version labels now come from `CARGO_PKG_VERSION`.
+- Restores the G-switcher application icon in the Settings title bar and tightens the privacy subtitle wording.
+- Detector/runtime behavior from 1.0.7 is otherwise unchanged.
+
 ## 1.0.7 — 2026-09-04
 
 - Audits Detector v3 against the exact novel body of Leo Tolstoy's `War and Peace` from the official Tolstoy.ru DOCX: 342,237 eligible Russian word occurrences and 11,594 eligible Latin-layout occurrences after documented short/ALL-CAPS exclusions.

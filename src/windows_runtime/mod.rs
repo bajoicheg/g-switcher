@@ -161,9 +161,7 @@ pub fn run() -> Result<()> {
     settings::set_paused(false);
     if !settings::first_run_completed() {
         let enable_autostart = ui::show_first_run()?;
-        if enable_autostart {
-            settings::set_autostart(true)?;
-        }
+        settings::set_autostart(enable_autostart)?;
         settings::mark_first_run_completed()?;
     }
 
