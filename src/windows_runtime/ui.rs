@@ -165,7 +165,11 @@ pub fn show_first_run() -> Result<bool> {
         let height = window_rect.bottom - window_rect.top;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
-        let title = wide(concat!("G-switcher ", env!("CARGO_PKG_VERSION"), " — первый запуск"));
+        let title = wide(concat!(
+            "G-switcher ",
+            env!("CARGO_PKG_VERSION"),
+            " — первый запуск"
+        ));
         let hwnd = CreateWindowExW(
             0,
             class.as_ptr(),
@@ -433,7 +437,11 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
     );
 
-    let footer_text = wide(concat!("G-switcher ", env!("CARGO_PKG_VERSION"), " © V. Vasilev 2026"));
+    let footer_text = wide(concat!(
+        "G-switcher ",
+        env!("CARGO_PKG_VERSION"),
+        " © V. Vasilev 2026"
+    ));
     let footer = CreateWindowExW(
         0,
         static_class.as_ptr(),
