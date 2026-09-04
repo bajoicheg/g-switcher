@@ -76,6 +76,23 @@ pub fn detect_with_context(
     user_words: &[String],
     previous_tokens: &[String],
 ) -> Option<Detection> {
+    detect_with_context_policy(token, user_words, previous_tokens, true)
+}
+
+pub fn detect_at_boundary_with_context(
+    token: &str,
+    user_words: &[String],
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    detect_with_context_policy(token, user_words, previous_tokens, false)
+}
+
+fn detect_with_context_policy(
+    token: &str,
+    user_words: &[String],
+    previous_tokens: &[String],
+    hold_target_prefix: bool,
+) -> Option<Detection> {
     if is_code_safe_token(token) || token.chars().count() < 3 {
         return None;
     }
@@ -109,7 +126,7 @@ pub fn detect_with_context(
 
     // OEM punctuation can map to a letter in the opposite layout. Keep a known
     // target prefix intact until the remaining physical keys arrive.
-    if is_target_word_prefix(&mapped_normalized, target, user_words) {
+    if hold_target_prefix && is_target_word_prefix(&mapped_normalized, target, user_words) {
         return None;
     }
 
@@ -165,6 +182,16 @@ pub fn correction_with_context(
     previous_tokens: &[String],
 ) -> Option<Detection> {
     let detection = detect_with_context(token, user_words, previous_tokens)?;
+    (detection.confidence >= confidence_threshold).then_some(detection)
+}
+
+pub fn correction_at_boundary_with_context(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    let detection = detect_at_boundary_with_context(token, user_words, previous_tokens)?;
     (detection.confidence >= confidence_threshold).then_some(detection)
 }
 
@@ -406,6 +433,89 @@ mod tests {
         );
         assert_eq!(decide("cdj,jle"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
+    }
+
+    #[test]
+    fn mixed_language_context_does_not_flip_plausible_source_tokens() {
+        let french = vec!["les".to_owned(), "notres".to_owned()];
+        assert!(
+            correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none()
+        );
+        let russian = vec!["сказала".to_owned(), "она".to_owned()];
+        assert!(
+            correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none()
+        );
+    }
+
+    #[test]
+    fn unknown_foreign_context_does_not_suppress_known_wrong_layout_russian() {
+        let french = vec!["chere".to_owned(), "annette".to_owned()];
+        let detection =
+            correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
+                .expect("сказал should correct after foreign context");
+        assert_eq!(detection.corrected, "сказал");
+    }
+
+    #[test]
+    fn symmetric_source_collisions_stay_fail_open() {
+        for token in ["руку", "внук", "ста", "here", "dyer", "cnf"] {
+            assert!(
+                correction(token).is_none(),
+                "collision token must stay source: {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn common_foreign_latin_source_words_are_protected() {
+        for token in [
+            "que", "sire", "une", "des", "monsieur", "comme", "ils", "mot", "quelle", "votre",
+            "adieu", "dans", "die", "merci", "pas", "sans", "sur",
+        ] {
+            assert!(
+                correction(token).is_none(),
+                "Latin-layout source must stay source: {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn war_and_peace_source_false_positive_forms_are_protected() {
+        for token in [
+            "князь",
+            "думал",
+            "вдруг",
+            "крикнул",
+            "давно",
+            "руку",
+            "внук",
+            "ста",
+            "граф",
+            "княгиня",
+            "взглянув",
+            "решил",
+            "штраф",
+        ] {
+            assert!(
+                correction(token).is_none(),
+                "correct Russian source must stay source: {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn boundary_detection_does_not_hold_complete_target_prefix() {
+        let context = vec!["князь".to_owned(), "сказал".to_owned()];
+        assert!(opposite_candidate_is_prefix("gmth"));
+        let detection = correction_at_boundary_with_context(
+            "gmth",
+            &[],
+            DEFAULT_CONFIDENCE_THRESHOLD,
+            &context,
+        )
+        .expect("пьер at a true word boundary should correct");
+        assert_eq!(detection.corrected, "пьер");
+        assert_eq!(detection.target, Language::Russian);
     }
 
     #[test]

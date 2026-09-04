@@ -29,7 +29,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use crate::windows_runtime::{current_process_name, settings};
 
-const CLASS_NAME: &str = "GSwitcher.Settings.1.0.6";
+const CLASS_NAME: &str = "GSwitcher.Settings.1.0.7";
 const ID_AUTO_CORRECT: i32 = 3101;
 const ID_AUTOSTART: i32 = 3102;
 const ID_DISABLED_APPS: i32 = 3103;
