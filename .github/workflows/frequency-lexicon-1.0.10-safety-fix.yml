@@ -20,7 +20,7 @@ jobs:
           ref: feature/frequency-lexicon-1.0.10
           fetch-depth: 0
 
-      - name: Exclude generated short forms and prefixes
+      - name: Harden generated frequency evidence
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -28,14 +28,18 @@ jobs:
           @'
           from pathlib import Path
 
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, got {count}: {old[:120]!r}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
           path = Path("tools/generate_frequency_lexicon.py")
           text = path.read_text(encoding="utf-8")
-
           replacements = [
-              (
-                  '    if length == 3:\n        return 3_000',
-                  '    if length == 3:\n        return 0',
-              ),
+              ('    if length == 3:\n        return 3_000', '    if length == 3:\n        return 0'),
               (
                   '// Source protection keeps the first 30,000 corpus rows per language.\n// Target promotion is deliberately narrower: ranks <= 3,000 for 3-letter\n// forms, <= 10,000 for 4-letter forms, and <= 15,000 for 5+ letters.',
                   '// Generated runtime frequency evidence starts at 4 letters; 3-letter forms\n// remain under the existing context-sensitive detector policy. Source protection\n// keeps 4+ letter forms from the first 30,000 corpus rows per language. Target\n// promotion is <= 10,000 for 4-letter forms and <= 15,000 for 5+ letters.',
@@ -47,7 +51,7 @@ jobs:
               ),
               (
                   '- Source protection: every normalized alphabetic form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.',
-                  '- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms and generated prefixes shorter than 4 letters are deliberately held out so the existing context-sensitive short-word policy remains unchanged.\n- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
+                  '- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms and generated prefixes shorter than 4 letters are deliberately held out so the existing context-sensitive short-word policy remains unchanged.\n- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.\n- Curated G-switcher target words override generated-only source protection; curated source words still always win.',
               ),
               (
                   '    ru_source = {word: data for word, data in ru.items() if data[0] <= SOURCE_RANK_LIMIT}\n    en_source = {word: data for word, data in en.items() if data[0] <= SOURCE_RANK_LIMIT}',
@@ -58,14 +62,103 @@ jobs:
                   '    if "mod frequent_forms;" not in Path("src/lib.rs").read_text(encoding="utf-8"):\n        patch_runtime()\n        patch_tests()\n    write_docs(ru, en, ru_rows, en_rows, ru_source, en_source)',
               ),
           ]
-
           for old, new in replacements:
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f"expected one generator match, got {count}: {old!r}")
+                  raise SystemExit(f"generator: expected one match, got {count}: {old[:120]!r}")
               text = text.replace(old, new, 1)
-
           path.write_text(text, encoding="utf-8")
+
+          replace_once(
+              "src/frequency_model.rs",
+              "fn curated_word_score(language: Language, token: &str) -> i32 {",
+              "pub fn curated_word_score(language: Language, token: &str) -> i32 {",
+          )
+
+          old = '''    let normalized = normalize(token, source);
+    let source_frequency = frequency_model::source_word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
+        return None;
+    }
+
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    let mapped_normalized = normalize(&mapped, target);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return None;
+    }
+
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+    if dictionary_contains(target, &mapped_normalized, user_words) || target_frequency >= 15 {
+'''
+          new = '''    let normalized = normalize(token, source);
+    let source_frequency = frequency_model::source_word_score(source, &normalized);
+    let source_curated = frequency_model::curated_word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_curated >= 15 {
+        return None;
+    }
+
+    let target = opposite(source);
+    let mapped = opposite_layout_text(token, source);
+    let mapped_normalized = normalize(&mapped, target);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return None;
+    }
+
+    let target_is_explicit = dictionary_contains(target, &mapped_normalized, user_words);
+    let target_curated = frequency_model::curated_word_score(target, &mapped_normalized);
+    if source_frequency >= 15 && !target_is_explicit && target_curated < 15 {
+        return None;
+    }
+
+    let target_frequency = frequency_model::word_score(target, &mapped_normalized);
+    if target_is_explicit || target_frequency >= 15 {
+'''
+          replace_once("src/detector.rs", old, new)
+
+          anchor = '''    #[test]
+    fn corrects_known_wrong_layout_words() {'''
+          extra = '''    #[test]
+    fn curated_targets_override_generated_only_source_protection() {
+        let detection = correction_at_boundary_with_context(
+            "cath",
+            &[],
+            DEFAULT_CONFIDENCE_THRESHOLD,
+            &[],
+        )
+        .expect("curated Russian target must override generated-only English source evidence");
+        assert_eq!(detection.corrected, "сфер");
+        assert_eq!(detection.confidence, 100);
+    }
+
+    #[test]
+    fn generated_source_forms_stay_fail_open_unless_curated_target_overrides() {
+        for source in [Language::Russian, Language::English] {
+            for &(word, _rank) in crate::frequent_forms::forms(source) {
+                let mapped = opposite_layout_text(word, source);
+                let target = opposite(source);
+                let mapped_normalized = normalize(&mapped, target);
+                let source_curated = frequency_model::curated_word_score(source, word) >= 15;
+                let target_curated = frequency_model::curated_word_score(target, &mapped_normalized) >= 15;
+                let detection = correction_at_boundary_with_context(
+                    word,
+                    &[],
+                    DEFAULT_CONFIDENCE_THRESHOLD,
+                    &[],
+                );
+                if source_curated || !target_curated {
+                    assert!(detection.is_none(), "generated source form was not preserved: {word} -> {mapped}");
+                } else {
+                    let detection = detection.unwrap_or_else(|| panic!("curated target did not override generated-only source: {word} -> {mapped}"));
+                    assert_eq!(normalize(&detection.corrected, target), mapped_normalized);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn corrects_known_wrong_layout_words() {'''
+          replace_once("src/detector.rs", anchor, extra)
           '@ | python -
           python tools/generate_frequency_lexicon.py
 
@@ -93,7 +186,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
-          git add tools/generate_frequency_lexicon.py src/frequent_forms.rs docs/FREQUENCY_LEXICON_1_0_10.md
+          git add tools/generate_frequency_lexicon.py src/frequent_forms.rs src/frequency_model.rs src/detector.rs docs/FREQUENCY_LEXICON_1_0_10.md
           git diff --cached --check
-          git commit -m "Keep generated short forms context-sensitive"
+          git commit -m "Harden broad frequency lexicon precedence"
           git push origin HEAD:feature/frequency-lexicon-1.0.10
