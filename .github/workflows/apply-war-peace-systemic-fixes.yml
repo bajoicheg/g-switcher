@@ -1,0 +1,190 @@
+name: Apply War and Peace systemic detector fixes
+
+on:
+  push:
+    branches: [audit/war-and-peace-full-1.0.7]
+    paths: [.github/workflows/apply-war-peace-systemic-fixes.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Patch detector and regressions
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/detector.rs')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''    let source_score =
+        language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
+    let target_score = language_score(&mapped_normalized, target)
+        + frequency_model::lexical_score(target, &mapped_normalized);
+    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
+    let effective_target = target_score + context_bonus;
+    let effective_margin = target_score - source_score + context_bonus;
+
+    if effective_target < 10 || effective_margin < 5 {
+        return None;
+    }
+'''
+          new = '''    let source_score =
+        language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
+    let target_score = language_score(&mapped_normalized, target)
+        + frequency_model::lexical_score(target, &mapped_normalized);
+    let base_margin = target_score - source_score;
+
+    // Context is supporting evidence, not permission to overturn a token that
+    // is intrinsically at least as plausible in the layout it was typed in.
+    // This matters for mixed-language text: a French/Latin word next to Russian
+    // prose must not become a Russian-layout correction merely because the
+    // neighboring script is Russian (and vice versa).
+    if source_score >= 4 && base_margin <= 0 {
+        return None;
+    }
+
+    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
+    let effective_target = target_score + context_bonus;
+    let effective_margin = base_margin + context_bonus;
+
+    if effective_target < 10 || effective_margin < 5 {
+        return None;
+    }
+'''
+          if old not in s:
+              raise SystemExit('detector scoring block not found')
+          s = s.replace(old, new, 1)
+
+          old = '''fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
+    let recent: Vec<&String> = previous_tokens
+        .iter()
+        .rev()
+        .take(MAX_CONTEXT_WORDS)
+        .collect();
+    let mut bonus = 0;
+
+    for (index, token) in recent.iter().enumerate() {
+        match infer_language(token) {
+            Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
+            Some(_) => bonus -= if index == 0 { 3 } else { 2 },
+            None => {}
+        }
+    }
+
+    if let Some(last) = recent.first() {
+        if infer_language(last) == Some(target) {
+            let last = normalize(last, target);
+            bonus += frequency_model::transition_score(target, &last, candidate);
+        }
+    }
+
+    bonus.clamp(-6, 20)
+}
+'''
+          new = '''fn context_bonus(
+    target: Language,
+    candidate: &str,
+    previous_tokens: &[String],
+    user_words: &[String],
+) -> i32 {
+    let recent: Vec<&String> = previous_tokens
+        .iter()
+        .rev()
+        .take(MAX_CONTEXT_WORDS)
+        .collect();
+    let mut bonus = 0;
+
+    for (index, token) in recent.iter().enumerate() {
+        match trusted_context_language(token, user_words) {
+            Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
+            Some(_) => bonus -= if index == 0 { 3 } else { 2 },
+            None => {}
+        }
+    }
+
+    if let Some(last) = recent.first() {
+        if trusted_context_language(last, user_words) == Some(target) {
+            let last = normalize(last, target);
+            bonus += frequency_model::transition_score(target, &last, candidate);
+        }
+    }
+
+    bonus.clamp(-6, 20)
+}
+
+fn trusted_context_language(token: &str, user_words: &[String]) -> Option<Language> {
+    let language = infer_language(token)?;
+    let normalized = normalize(token, language);
+    let known = dictionary_contains(language, &normalized, user_words)
+        || frequency_model::word_score(language, &normalized) >= 15;
+    known.then_some(language)
+}
+'''
+          if old not in s:
+              raise SystemExit('context_bonus block not found')
+          s = s.replace(old, new, 1)
+
+          marker = '''    #[test]
+    fn exact_dictionary_match_has_maximum_confidence() {'''
+          tests = '''    #[test]
+    fn mixed_language_context_does_not_flip_plausible_source_tokens() {
+        let french = vec!["les".to_owned(), "notres".to_owned()];
+        assert!(correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none());
+
+        let russian = vec!["сказала".to_owned(), "она".to_owned()];
+        assert!(correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none());
+    }
+
+    #[test]
+    fn unknown_foreign_context_does_not_suppress_clear_wrong_layout_russian() {
+        let french = vec!["chere".to_owned(), "annette".to_owned()];
+        let detection = correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
+            .expect("сказал should still correct after foreign context");
+        assert_eq!(detection.corrected, "сказал");
+    }
+
+    #[test]
+    fn symmetric_source_collisions_stay_fail_open() {
+        for token in ["руку", "внук", "ста", "here", "dyer", "cnf"] {
+            assert!(correction(token).is_none(), "collision token must stay source: {token}");
+        }
+    }
+
+'''
+          if marker not in s:
+              raise SystemExit('test insertion marker not found')
+          s = s.replace(marker, tests + marker, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/frequency_model.rs')
+          s = p.read_text(encoding='utf-8')
+          needle = '"автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео'
+          repl = '"автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео внук руку ста'
+          if needle not in s:
+              raise SystemExit('RU_COMMON insertion point not found')
+          s = s.replace(needle, repl, 1)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Format and test
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/detector.rs src/frequency_model.rs
+          git commit -m 'Harden mixed-language detector context from full-novel audit'
+          git push origin HEAD:audit/war-and-peace-full-1.0.7
