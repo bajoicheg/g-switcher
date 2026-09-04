@@ -117,9 +117,19 @@ pub fn detect_with_context(
         language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
     let target_score = language_score(&mapped_normalized, target)
         + frequency_model::lexical_score(target, &mapped_normalized);
-    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
+    let base_margin = target_score - source_score;
+
+    // Context may support a plausible opposite-layout candidate, but it
+    // must not overturn a token that is intrinsically at least as plausible
+    // in the layout in which it was typed. This is critical for mixed
+    // Russian/French prose, where script alone is not language evidence.
+    if source_score >= 4 && base_margin <= 0 {
+        return None;
+    }
+
+    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
     let effective_target = target_score + context_bonus;
-    let effective_margin = target_score - source_score + context_bonus;
+    let effective_margin = base_margin + context_bonus;
 
     if effective_target < 10 || effective_margin < 5 {
         return None;
@@ -228,30 +238,40 @@ fn confidence_from_scores(
     raw.clamp(0, 96) as u8
 }
 
-fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
+fn context_bonus(
+    target: Language,
+    candidate: &str,
+    previous_tokens: &[String],
+    user_words: &[String],
+) -> i32 {
     let recent: Vec<&String> = previous_tokens
         .iter()
         .rev()
         .take(MAX_CONTEXT_WORDS)
         .collect();
     let mut bonus = 0;
-
     for (index, token) in recent.iter().enumerate() {
-        match infer_language(token) {
+        match trusted_context_language(token, user_words) {
             Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
             Some(_) => bonus -= if index == 0 { 3 } else { 2 },
             None => {}
         }
     }
-
     if let Some(last) = recent.first() {
-        if infer_language(last) == Some(target) {
+        if trusted_context_language(last, user_words) == Some(target) {
             let last = normalize(last, target);
             bonus += frequency_model::transition_score(target, &last, candidate);
         }
     }
-
     bonus.clamp(-6, 20)
+}
+
+fn trusted_context_language(token: &str, user_words: &[String]) -> Option<Language> {
+    let language = infer_language(token)?;
+    let normalized = normalize(token, language);
+    let known = dictionary_contains(language, &normalized, user_words)
+        || frequency_model::word_score(language, &normalized) >= 15;
+    known.then_some(language)
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
@@ -406,6 +426,37 @@ mod tests {
         );
         assert_eq!(decide("cdj,jle"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("цштвщц"), Decision::CorrectTo(Language::English));
+    }
+
+    #[test]
+    fn mixed_language_context_does_not_flip_plausible_source_tokens() {
+        let french = vec!["les".to_owned(), "notres".to_owned()];
+        assert!(
+            correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none()
+        );
+        let russian = vec!["сказала".to_owned(), "она".to_owned()];
+        assert!(
+            correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none()
+        );
+    }
+
+    #[test]
+    fn unknown_foreign_context_does_not_suppress_known_wrong_layout_russian() {
+        let french = vec!["chere".to_owned(), "annette".to_owned()];
+        let detection =
+            correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
+                .expect("сказал should correct after foreign context");
+        assert_eq!(detection.corrected, "сказал");
+    }
+
+    #[test]
+    fn symmetric_source_collisions_stay_fail_open() {
+        for token in ["руку", "внук", "ста", "here", "dyer", "cnf"] {
+            assert!(
+                correction(token).is_none(),
+                "collision token must stay source: {token}"
+            );
+        }
     }
 
     #[test]
