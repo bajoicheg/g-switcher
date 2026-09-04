@@ -1,0 +1,91 @@
+name: Harden G-switcher 1.0.10 frequency lexicon
+
+on:
+  push:
+    branches:
+      - feature/frequency-lexicon-1.0.10
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: feature/frequency-lexicon-1.0.10
+          fetch-depth: 0
+
+      - name: Remove generated three-letter target promotion
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          @'
+          from pathlib import Path
+
+          path = Path("tools/generate_frequency_lexicon.py")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  '    if length == 3:\n        return 3_000',
+                  '    if length == 3:\n        return 0',
+              ),
+              (
+                  '// Target promotion is deliberately narrower: ranks <= 3,000 for 3-letter\n// forms, <= 10,000 for 4-letter forms, and <= 15,000 for 5+ letters.',
+                  '// New 3-letter forms are source-protected but are not automatically promoted.\n// Target promotion is <= 10,000 for 4-letter forms and <= 15,000 for 5+ letters.',
+              ),
+              ('        3 => 3_000,', '        3 => 0,'),
+              (
+                  '- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.',
+                  '- New 3-letter forms are source-protected but are not deterministically promoted; automatic target promotion is rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
+              ),
+              (
+                  '    patch_runtime()\n    patch_tests()\n    write_docs(ru, en, ru_rows, en_rows, ru_source, en_source)',
+                  '    if "mod frequent_forms;" not in Path("src/lib.rs").read_text(encoding="utf-8"):\n        patch_runtime()\n        patch_tests()\n    write_docs(ru, en, ru_rows, en_rows, ru_source, en_source)',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one generator match, got {count}: {old!r}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+          '@ | python -
+          python tools/generate_frequency_lexicon.py
+
+      - name: Strict validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
+          cargo fmt --all -- --check
+          cargo test --all-targets -- --nocapture
+          cargo test --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+          cargo clippy --all-targets -- -D warnings
+          git diff --check
+
+      - name: Commit hardened policy
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
+          git add tools/generate_frequency_lexicon.py src/frequent_forms.rs docs/FREQUENCY_LEXICON_1_0_10.md
+          git diff --cached --check
+          git commit -m "Keep generated three-letter forms context-sensitive"
+          git push origin HEAD:feature/frequency-lexicon-1.0.10
