@@ -20,7 +20,7 @@ jobs:
           ref: feature/frequency-lexicon-1.0.10
           fetch-depth: 0
 
-      - name: Remove generated three-letter target promotion
+      - name: Exclude generated three-letter forms and regenerate
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -37,13 +37,17 @@ jobs:
                   '    if length == 3:\n        return 0',
               ),
               (
-                  '// Target promotion is deliberately narrower: ranks <= 3,000 for 3-letter\n// forms, <= 10,000 for 4-letter forms, and <= 15,000 for 5+ letters.',
-                  '// New 3-letter forms are source-protected but are not automatically promoted.\n// Target promotion is <= 10,000 for 4-letter forms and <= 15,000 for 5+ letters.',
+                  '// Source protection keeps the first 30,000 corpus rows per language.\n// Target promotion is deliberately narrower: ranks <= 3,000 for 3-letter\n// forms, <= 10,000 for 4-letter forms, and <= 15,000 for 5+ letters.',
+                  '// Generated runtime frequency evidence starts at 4 letters; 3-letter forms\n// remain under the existing context-sensitive detector policy. Source protection\n// keeps 4+ letter forms from the first 30,000 corpus rows per language. Target\n// promotion is <= 10,000 for 4-letter forms and <= 15,000 for 5+ letters.',
               ),
               ('        3 => 3_000,', '        3 => 0,'),
               (
-                  '- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.',
-                  '- New 3-letter forms are source-protected but are not deterministically promoted; automatic target promotion is rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
+                  '- Source protection: every normalized alphabetic form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.',
+                  '- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms are deliberately held out so the existing context-sensitive short-word policy remains unchanged.\n- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
+              ),
+              (
+                  '    ru_source = {word: data for word, data in ru.items() if data[0] <= SOURCE_RANK_LIMIT}\n    en_source = {word: data for word, data in en.items() if data[0] <= SOURCE_RANK_LIMIT}',
+                  '    ru_source = {\n        word: data\n        for word, data in ru.items()\n        if data[0] <= SOURCE_RANK_LIMIT and len(word) >= 4\n    }\n    en_source = {\n        word: data\n        for word, data in en.items()\n        if data[0] <= SOURCE_RANK_LIMIT and len(word) >= 4\n    }',
               ),
               (
                   '    patch_runtime()\n    patch_tests()\n    write_docs(ru, en, ru_rows, en_rows, ru_source, en_source)',
@@ -87,5 +91,5 @@ jobs:
           if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
           git add tools/generate_frequency_lexicon.py src/frequent_forms.rs docs/FREQUENCY_LEXICON_1_0_10.md
           git diff --cached --check
-          git commit -m "Keep generated three-letter forms context-sensitive"
+          git commit -m "Keep generated short forms context-sensitive"
           git push origin HEAD:feature/frequency-lexicon-1.0.10
