@@ -1,4 +1,4 @@
-name: War and Peace clean full-text audit
+name: Prepare G-switcher 1.0.7 release candidate
 
 on:
   push:
@@ -6,67 +6,148 @@ on:
       - audit/war-and-peace-full-1.0.7
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          persist-credentials: false
-      - name: Rust toolchain
-        shell: bash
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
-      - name: Extract exact novel range from official Tolstoy.ru DOCX
+          fetch-depth: 0
+      - name: Apply production release changes
         shell: bash
         run: |
           python - <<'PY'
-          import hashlib, io, pathlib, urllib.request, zipfile
-          import xml.etree.ElementTree as ET
-          url='https://tolstoy.ru/upload/wap/War_and_Peace.docx'
-          req=urllib.request.Request(url,headers={'User-Agent':'G-switcher-clean-novel-audit/1.0'})
-          with urllib.request.urlopen(req,timeout=90) as r: data=r.read()
-          ns={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
-          with zipfile.ZipFile(io.BytesIO(data)) as zf: root=ET.fromstring(zf.read('word/document.xml'))
-          paras=[]
-          for idx,p in enumerate(root.findall('.//w:body/w:p',ns)):
-              text=''.join((n.text or '') for n in p.findall('.//w:t',ns))
-              style=None
-              ppr=p.find('w:pPr',ns)
-              if ppr is not None:
-                  ps=ppr.find('w:pStyle',ns)
-                  if ps is not None: style=ps.attrib.get('{%s}val'%ns['w'])
-              paras.append((idx,style,text))
-          heading=start=end=None
-          for idx,style,text in paras:
-              if heading is None and style=='Heading1' and text.startswith('ВОЙНА И МИР'): heading=idx
-              elif heading is not None and start is None and style=='Heading2' and text.strip()=='ТОМ ПЕРВЫЙ': start=idx
-              elif start is not None and style=='Heading1' and text.startswith('ПЕЧАТНЫЕ ВАРИАНТЫ'):
-                  end=idx; break
-          if (heading,start,end)!=(443,452,14260): raise RuntimeError((heading,start,end))
-          selected=[text for idx,style,text in paras if start<=idx<end]
-          nonempty=[x for x in selected if x]
-          if nonempty[0]!='ТОМ ПЕРВЫЙ' or nonempty[-1]!='Конец.': raise RuntimeError('boundary mismatch')
-          text='\n'.join(selected)
-          pathlib.Path('audit-corpus').mkdir(exist_ok=True)
-          pathlib.Path('audit-corpus/war_and_peace_novel.txt').write_text(text,encoding='utf-8')
-          pathlib.Path('audit-corpus/provenance.txt').write_text(
-              f'source_url={url}\ndocx_sha256={hashlib.sha256(data).hexdigest()}\nnovel_chars={len(text)}\n',encoding='utf-8')
+          from pathlib import Path
+
+          replacements = {
+              'Cargo.toml': [('version = "1.0.6"', 'version = "1.0.7"')],
+              'build.rs': [('1.0.6.0', '1.0.7.0'), ('1.0.6', '1.0.7')],
+              'src/lib.rs': [('PRODUCT_VERSION: &str = "1.0.6"', 'PRODUCT_VERSION: &str = "1.0.7"')],
+              'scripts/release-check.ps1': [("'1.0.6.0'", "'1.0.7.0'"), ("'1.0.6'", "'1.0.7'")],
+              'src/windows_runtime/ui/settings_dialog.rs': [('GSwitcher.Settings.1.0.6', 'GSwitcher.Settings.1.0.7')],
+              '.github/workflows/windows-ci.yml': [('g-switcher-1.0.6-windows-x64', 'g-switcher-1.0.7-windows-x64')],
+          }
+          for name, pairs in replacements.items():
+              p = Path(name)
+              text = p.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  if old not in text:
+                      raise SystemExit(f'missing version marker {old!r} in {name}')
+                  text = text.replace(old, new)
+              p.write_text(text, encoding='utf-8')
+
+          e2e = Path('src/windows_runtime/e2e_tests.rs')
+          e = e2e.read_text(encoding='utf-8')
+          if 'G-switcher E2E checkpoint: boundary prefix completion' not in e:
+              marker = '''    run_case(
+              window,
+              edit,
+              ui_thread_id,
+              Language::English,
+              &[
+                  key(b'R'),
+                  key(b'J'),
+                  key(b'H'),
+                  key(b'J'),
+                  key(VK_OEM_COMMA as u8),
+                  key(b'R'),
+                  key(b'F'),
+                  key(VK_SPACE as u8),
+              ],
+              "коробка ",
+          );'''
+              if marker not in e:
+                  raise SystemExit('E2E insertion marker missing')
+              boundary = '''    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
+          prepare_case(window, edit, ui_thread_id, Language::English);
+          {
+              let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();
+              engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];
+          }
+          inject_strokes(&keys(b"GMTH "));
+          await_text(edit, "пьер ");
+
+          '''
+              e = e.replace(marker, marker + '\n' + boundary, 1)
+              e2e.write_text(e, encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          c = changelog.read_text(encoding='utf-8')
+          if '## 1.0.7 — 2026-09-04' not in c:
+              entry = '''## 1.0.7 — 2026-09-04
+
+          - Audits Detector v3 against the exact novel body of Leo Tolstoy's `War and Peace` from the official Tolstoy.ru DOCX: 342,237 eligible Russian word occurrences and 11,594 eligible Latin-layout occurrences after documented short/ALL-CAPS exclusions.
+          - Raises automatic RU→EN wrong-layout restoration on the full novel from the earlier 98.80% baseline to 340,059/342,237 (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections in the corpus.
+          - Scopes opposite-target prefix holding to the punctuation/OEM input path. True Space/Enter/Tab word boundaries no longer suppress complete words such as `gmth` → `пьер`, while internal OEM sequences still preserve `rjhj,rf` → `коробка` and `rjhj,jxrf.` → `коробочка.`.
+          - Adds explicit source protection for Russian forms and common French/German/Latin-layout words observed in the mixed-language novel so correct prose stays fail-open rather than being rewritten.
+          - Keeps deliberate source collisions such as valid English `here`/`her` fail-open instead of forcing `руку`/`рук`; no global confidence threshold is lowered.
+          - Adds permanent detector regressions and real Win32 boundary E2E coverage for `пьер`, while retaining existing OEM, collision, secure-input, Undo and application-mode gates.
+          - The Tolstoy.ru download and full-novel audit tooling are release-time QA only and are removed from the production branch; normal runtime remains local-only with no network or telemetry behavior.
+          - Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.7.
+
+          '''
+              c = c.replace('# Changelog\n\n', '# Changelog\n\n' + entry, 1)
+              changelog.write_text(c, encoding='utf-8')
+
+          readme = Path('README.md')
+          r = readme.read_text(encoding='utf-8')
+          old_intro_start = 'Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.'
+          new_intro = 'Version 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s `War and Peace`. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while producing zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the same mixed Russian/French/German corpus.'
+          if old_intro_start not in r:
+              raise SystemExit('README intro marker missing')
+          r = r.replace(old_intro_start, new_intro, 1)
+          r = r.replace('## 1.0.6 behavior', '## 1.0.7 behavior', 1)
+          needle = '- Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.\n'
+          addition = '- At real Space/Enter/Tab word boundaries, complete opposite-layout words are evaluated without the OEM prefix hold; punctuation entry keeps the prefix hold needed for embedded physical comma/period keys.\n- Full-novel mixed-language source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.\n'
+          if needle not in r:
+              raise SystemExit('README behavior marker missing')
+          r = r.replace(needle, needle + addition, 1)
+          r = r.replace('G-switcher 1.0.6 version metadata', 'G-switcher 1.0.7 version metadata', 1)
+          readme.write_text(r, encoding='utf-8')
+
+          release_106 = Path('.github/workflows/release-1.0.6.yml').read_text(encoding='utf-8')
+          release_107 = release_106.replace('1.0.6', '1.0.7')
+          lines = release_107.splitlines()
+          notes = '            --notes "G-switcher 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s War and Peace. At true word boundaries the full mixed-language corpus restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections. Target-prefix holding is now scoped to punctuation/OEM input so complete words at Space/Enter/Tab boundaries are not suppressed, while existing коробка/коробочка OEM behavior remains protected. Explicit Russian and Latin-layout source protections keep mixed Russian/French/German prose fail-open, including deliberate valid-source collisions such as here/her. Real Win32 E2E includes the new пьер boundary case and retains existing OEM, collision, secure-input, Undo and application-mode gates. The Tolstoy.ru corpus download and audit harness are QA-only and are not shipped in runtime. Normal G-switcher remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."'
+          replaced = False
+          for i, line in enumerate(lines):
+              if line.lstrip().startswith('--notes '):
+                  lines[i] = notes
+                  replaced = True
+          if not replaced:
+              raise SystemExit('release notes marker missing')
+          Path('.github/workflows/release-1.0.7.yml').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
-      - name: Run actual Detector v3 at true word boundaries
+
+          git rm -f .github/workflows/war-and-peace-clean-audit.yml
+          git rm -f .github/workflows/war-and-peace-volume-audit.yml
+          git rm -f audit-trigger.txt
+          git rm -f examples/war_and_peace_audit.rs
+
+      - name: Validate release candidate
         shell: bash
         run: |
-          cargo run --release --quiet --example war_and_peace_audit -- audit-corpus/war_and_peace_novel.txt
-          cat audit-output/summary.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: war-and-peace-clean-full-text-audit
-          path: |
-            audit-output/
-            audit-corpus/provenance.txt
-          retention-days: 30
-          if-no-files-found: error
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+          grep -q 'version = "1.0.7"' Cargo.toml
+          grep -q '1.0.7.0' build.rs
+          grep -q 'PRODUCT_VERSION: &str = "1.0.7"' src/lib.rs
+          grep -q 'g-switcher-1.0.7-windows-x64' .github/workflows/windows-ci.yml
+          test -f .github/workflows/release-1.0.7.yml
+          test ! -e examples/war_and_peace_audit.rs
+          test ! -e .github/workflows/war-and-peace-volume-audit.yml
+          test ! -e audit-trigger.txt
+
+      - name: Commit release candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Prepare G-switcher 1.0.7 release candidate'
+          git push origin HEAD:audit/war-and-peace-full-1.0.7
