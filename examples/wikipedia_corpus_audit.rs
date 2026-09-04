@@ -98,15 +98,15 @@ fn main() {
         let mut failed = 0usize;
         let mut excluded_all_caps = 0usize;
 
-        for word in words {
+        for original in words {
+            let normalized = original.to_lowercase();
             let previous: Vec<String> = context.iter().cloned().collect();
-            let normalized = word.to_lowercase();
 
-            if is_all_caps_word(&word) {
+            if is_all_caps_word(&original) {
                 excluded_all_caps += 1;
             } else if seen.insert(normalized.clone()) {
                 unique += 1;
-                let wrong = opposite_layout_text(&word, Language::Russian);
+                let wrong = opposite_layout_text(&normalized, Language::Russian);
                 let raw = detect_with_context(&wrong, &[], &previous);
                 let detection = correction_with_context(
                     &wrong,
@@ -115,9 +115,9 @@ fn main() {
                     &previous,
                 );
 
-                let ok = detection
-                    .as_ref()
-                    .is_some_and(|d| d.target == Language::Russian && d.corrected == word);
+                let ok = detection.as_ref().is_some_and(|d| {
+                    d.target == Language::Russian && d.corrected == normalized
+                });
                 if ok {
                     passed += 1;
                 } else {
@@ -146,7 +146,7 @@ fn main() {
                     failures_csv.push_str(&format!(
                         "{},{},{},{},{},{},{},{},{},{}\n",
                         csv_escape(title),
-                        csv_escape(&word),
+                        csv_escape(&normalized),
                         csv_escape(&wrong),
                         csv_escape(&observed),
                         csv_escape(&confidence),
@@ -162,7 +162,7 @@ fn main() {
             if context.len() == 2 {
                 context.pop_front();
             }
-            context.push_back(word);
+            context.push_back(normalized);
         }
 
         total_unique += unique;
