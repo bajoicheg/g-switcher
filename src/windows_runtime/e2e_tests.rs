@@ -8,8 +8,8 @@ use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     ActivateKeyboardLayout, GetKeyboardLayout, SendInput, SetFocus, INPUT, INPUT_0, INPUT_KEYBOARD,
-    KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CONTROL, VK_OEM_2, VK_OEM_3, VK_OEM_COMMA,
-    VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
+    KEYBDINPUT, KEYEVENTF_KEYUP, VK_BACK, VK_CONTROL, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4,
+    VK_OEM_7, VK_OEM_COMMA, VK_OEM_PERIOD, VK_RETURN, VK_SHIFT, VK_SPACE, VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
@@ -174,6 +174,36 @@ fn real_windows_hook_to_edit_e2e() {
         Language::English,
         &keys(b"BYCNHERWBB "),
         "инструкции ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
+            key(VK_OEM_1 as u8),
+            key(VK_OEM_7 as u8),
+            key(VK_OEM_4 as u8),
+            key(VK_OEM_7 as u8),
+            key(VK_SPACE as u8),
+        ],
+        "жэхэ ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"KEYS "),
+        "keys ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"HER "),
+        "her ",
     );
     run_case(
         window,

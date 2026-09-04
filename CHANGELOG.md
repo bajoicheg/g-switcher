@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.5 — 2026-09-04
+
+- Audits Detector v3 against five large Russian Wikipedia articles: `Россия`, `Москва`, `Вторая мировая война`, `Интернет` and `Вселенная`. After normalization and intentional ALL-CAPS/code-safe exclusions, the corpus contains 23,336 unique testable Russian word forms.
+- Improves automatic restoration from 23,105/23,336 (99.0101%) to 23,332/23,336 (99.9829%). The remaining four occurrences are deliberate source-language protections: `луны` maps to valid English `keys` three times and `рук` maps to valid English `her` once.
+- Adds 151 corpus-derived regression forms, including final gaps `нефти`, `наук` and `сфер`, without lowering global confidence thresholds.
+- Adds a narrow OEM-only detector fallback for known Russian targets while arbitrary punctuation remains fail-open.
+- Adds real Win32 hook-to-EDIT E2E coverage for the OEM-only `жэхэ` case and anti-regressions preserving valid English `keys` and `her`.
+- Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.5.
+
 ## 1.0.4 — 2026-09-03
 
 - Audits Detector v3 against a synthetic RU→EN wrong-layout corpus derived from a long Russian information-security article: 1,566 unique Russian word forms, with 13 residual misses isolated under Normal sensitivity and two-word Russian context.
