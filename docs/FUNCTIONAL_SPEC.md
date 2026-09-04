@@ -1,10 +1,12 @@
-# G-switcher 1.0.4 functional specification
+# G-switcher 1.0.6 functional specification
 
 ## Product model
 
 G-switcher runs in the current Windows user session and observes keyboard events only to maintain the current candidate token. It may additionally retain exactly one immediately previous completed token for manual previous-word conversion and at most two completed context words for Detector v3. All typed state is volatile-only and is never persisted or transmitted.
 
 The default decision rule is conservative: if evidence is ambiguous, leave the user's text unchanged. Automatic correction is performed only when Detector v3 reaches the confidence threshold selected by the current sensitivity profile.
+
+The 1.0.6 ten-article corpus expansion preserves that fail-open rule: 55 safe target forms are recognized deterministically, while ambiguous short forms and valid English-source collisions are intentionally left unchanged. Global sensitivity thresholds are not lowered.
 
 ## Layout behavior
 

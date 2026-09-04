@@ -1,4 +1,4 @@
-# G-switcher 1.0.4 acceptance tests
+# G-switcher 1.0.6 acceptance tests
 
 The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
 
@@ -11,6 +11,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - `rjhj,jxrf.` → `коробочка.`
 - `cdj,jle ` → `свободу `
 - article-derived real Win32 regressions: `cbcntv ` → `систем `, `ghjuhfvv ` → `программ `, `bycnherwbb ` → `инструкции `
+- ten-corpus real Win32 regressions: `vfntvfnbrf ` → `математика `, `tdhjgf ` → `европа `, `abpbrf ` → `физика `; valid English `dyer`, `ytd` and `cnf` remain unchanged
 - Space, Enter and Tab delimiters are preserved
 - immediate Undo restores original text and source layout
 - simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress
@@ -26,6 +27,7 @@ The Windows release gate must test the full path from keyboard hook through focu
 - opposite-language context alone cannot force a correction
 - known false-positive regressions remain protected
 - all 13 article-corpus forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны`, `норм` restore from their wrong-layout forms under Normal sensitivity with two-word Russian context
+- all 55 safe ten-corpus regression forms restore deterministically, while the 19 documented short/source-collision forms remain fail-open
 
 ## Sensitivity profiles
 

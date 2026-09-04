@@ -210,6 +210,54 @@ fn real_windows_hook_to_edit_e2e() {
         edit,
         ui_thread_id,
         Language::English,
+        &keys(b"VFNTVFNBRF "),
+        "математика ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"TDHJGF "),
+        "европа ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"ABPBRF "),
+        "физика ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"DYER "),
+        "dyer ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"YTD "),
+        "ytd ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"CNF "),
+        "cnf ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
         &[
             key(b'C'),
             key(b'D'),

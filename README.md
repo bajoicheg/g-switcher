@@ -2,15 +2,15 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.5 expands Detector v3 validation across five large Russian Wikipedia articles (Russia, Moscow, World War II, Internet and Universe). The final synthetic RU→EN wrong-layout corpus contains 23,336 unique testable word forms: 23,332 are automatically restored, while four occurrences are deliberately preserved because their wrong-layout strings are valid English source words (`keys`/`her`).
+Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.
 
-## 1.0.5 behavior
+## 1.0.6 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
 - The built-in common-word lexicons include everyday, technical, colloquial and common obscene vocabulary in both languages.
 - Recognized frequent source-language words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` are protected from automatic rewriting; wrong-layout forms of recognized target words receive deterministic target recognition.
-- Five-Wikipedia corpus regression coverage adds 151 corpus-derived Russian forms and explicitly preserves genuine EN/RU source collisions such as `keys` ↔ `луны` and `her` ↔ `рук`.
+- Ten-article follow-up corpus coverage adds 55 safe Russian target forms while explicitly protecting valid/ambiguous English source tokens including `keys`, `dyer`, `ytd`, `cnf`, `lev` and `ren`; global confidence thresholds are unchanged.
 - OEM-key candidate tracking supports words whose opposite-layout form begins with punctuation-looking keys, including `,kz` → `бля`, `rjhj,rf` → `коробка`, `rjhj,jxrf.` → `коробочка.` and `cdj,jle` → `свободу`.
 - Three sensitivity profiles control the heuristic confidence threshold: `Conservative`, `Normal` and `Aggressive`. `Normal` is the default.
 - Exact user-dictionary source matches protect valid text; explicit user-dictionary target matches receive maximum confidence.
@@ -41,7 +41,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived correction cases, the OEM-only `жэхэ` case, plus `keys`/`her` source-collision protection. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.5 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, plus `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.6 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
