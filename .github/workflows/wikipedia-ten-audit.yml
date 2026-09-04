@@ -1,0 +1,106 @@
+name: Wikipedia ten-corpus detector audit
+
+on:
+  push:
+    branches: [audit/wikipedia-ten-1.0.6]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wikipedia-ten-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+# Temporary QA workflow for the 1.0.6 ten-corpus verification.
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        shell: bash
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Fetch Wikipedia plaintext corpus
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import urllib.parse
+          import urllib.request
+
+          articles = {
+              'earth.txt': 'Земля',
+              'human.txt': 'Человек',
+              'europe.txt': 'Европа',
+              'ussr.txt': 'СССР',
+              'russian_empire.txt': 'Российская империя',
+              'wwi.txt': 'Первая мировая война',
+              'solar_system.txt': 'Солнечная система',
+              'computer.txt': 'Компьютер',
+              'mathematics.txt': 'Математика',
+              'physics.txt': 'Физика',
+          }
+          out = pathlib.Path('audit-corpus')
+          out.mkdir(exist_ok=True)
+          for filename, title in articles.items():
+              params = urllib.parse.urlencode({
+                  'action': 'query',
+                  'prop': 'extracts',
+                  'explaintext': '1',
+                  'redirects': '1',
+                  'titles': title,
+                  'format': 'json',
+                  'formatversion': '2',
+              })
+              url = 'https://ru.wikipedia.org/w/api.php?' + params
+              request = urllib.request.Request(
+                  url,
+                  headers={'User-Agent': 'G-switcher-corpus-audit/1.0 (GitHub Actions)'},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  payload = json.load(response)
+              page = payload['query']['pages'][0]
+              extract = page.get('extract', '')
+              if not extract:
+                  raise RuntimeError(f'empty extract for {title}')
+              (out / filename).write_text(extract, encoding='utf-8')
+              print(f'{title}: {len(extract)} chars')
+          PY
+
+      - name: Run Detector v3 ten-corpus audit
+        shell: bash
+        run: |
+          cargo run --quiet --example wikipedia_corpus_audit -- \
+            'Земля=audit-corpus/earth.txt' \
+            'Человек=audit-corpus/human.txt' \
+            'Европа=audit-corpus/europe.txt' \
+            'СССР=audit-corpus/ussr.txt' \
+            'Российская империя=audit-corpus/russian_empire.txt' \
+            'Первая мировая война=audit-corpus/wwi.txt' \
+            'Солнечная система=audit-corpus/solar_system.txt' \
+            'Компьютер=audit-corpus/computer.txt' \
+            'Математика=audit-corpus/mathematics.txt' \
+            'Физика=audit-corpus/physics.txt'
+          echo '--- failures ---'
+          cat audit-output/failures.csv
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wikipedia-ten-detector-audit
+          path: audit-output/
+          if-no-files-found: error
+          retention-days: 30
