@@ -116,13 +116,16 @@ fn real_windows_hook_to_edit_e2e() {
         "привет ",
     );
     eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
-    prepare_case(window, edit, ui_thread_id, Language::English);
-    {
-        let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();
-        engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];
-    }
+    prepare_case(window, edit, ui_thread_id, Language::Russian);
+    inject_strokes(&keys(b"RYZPM CRFPFK "));
+    await_text(edit, "князь сказал ");
+    let english_hkl = select_layout(Language::English).expect("English HKL is unavailable");
+    assert!(
+        switch_layout(edit, ui_thread_id, english_hkl),
+        "test context layout switch RU -> EN failed"
+    );
     inject_strokes(&keys(b"GMTH "));
-    await_text(edit, "пьер ");
+    await_text(edit, "князь сказал пьер ");
 
     run_case(
         window,
