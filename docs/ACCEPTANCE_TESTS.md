@@ -150,7 +150,7 @@ With automatic correction disabled or an intentionally uncorrected token:
 - Cancel/close does not persist edits
 - UI states that detector context is volatile
 - UI states that password/PIN/OTP/secure input is not processed
-- visible Settings version is `1.0.4`
+- visible Settings version is `1.0.6`
 
 ## Punctuation and editing
 
@@ -213,15 +213,15 @@ The following classes are not automatically rewritten:
 
 ## Release gate
 
-A releasable `v1.0.4` requires one successful Windows CI run on merged `main` containing:
+A releasable `v1.0.6` requires one successful Windows CI run on merged `main` containing:
 
 - `cargo fmt --all -- --check`
 - all unit/integration tests, including the 13 article-corpus regressions
 - ignored real Win32 hook-to-EDIT E2E with automatic correction, article-derived cases, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
 - `cargo clippy --all-targets -- -D warnings`
 - optimized `g-switcher.exe` build
-- Windows GUI subsystem and `1.0.4` branding/version checks
+- Windows GUI subsystem and `1.0.6` branding/version checks
 - generated SHA-256 sidecar
-- uploaded artifact named `g-switcher-1.0.4-windows-x64`
+- uploaded artifact named `g-switcher-1.0.6-windows-x64`
 
-Only that successful `main` push artifact may be used by the `v1.0.4` release workflow.
+Only that successful `main` push artifact may be used by the `v1.0.6` release workflow.
