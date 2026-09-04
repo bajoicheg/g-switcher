@@ -5,6 +5,7 @@
 pub mod code_safe;
 pub mod detector;
 pub mod frequency_model;
+mod frequent_forms;
 pub mod layout;
 pub mod model;
 pub mod state;
