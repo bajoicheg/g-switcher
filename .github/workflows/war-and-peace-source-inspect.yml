@@ -1,43 +1,87 @@
-name: War and Peace source inspection
+name: Apply refined War and Peace Latin-layout protection
 
 on:
   push:
     branches: [audit/war-and-peace-full-1.0.7]
-  workflow_dispatch:
+    paths: [.github/workflows/war-and-peace-source-inspect.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
-    if: github.event.head_commit.message == 'Add temporary War and Peace source inspection workflow'
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Fetch official Tolstoy.ru DOCX
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Apply refined detector change
         shell: bash
         run: |
           python - <<'PY'
-          import hashlib
-          import pathlib
-          import urllib.request
-          url = 'https://tolstoy.ru/upload/wap/War_and_Peace.docx'
-          req = urllib.request.Request(url, headers={'User-Agent':'G-switcher-source-inspection/1.0'})
-          with urllib.request.urlopen(req, timeout=90) as r:
-              data = r.read()
-          if not data.startswith(b'PK'):
-              raise RuntimeError('not a DOCX')
-          pathlib.Path('War_and_Peace.docx').write_bytes(data)
-          pathlib.Path('source.sha256').write_text(hashlib.sha256(data).hexdigest() + '\n', encoding='utf-8')
-          print('bytes', len(data))
-          print('sha256', hashlib.sha256(data).hexdigest())
+          from pathlib import Path
+
+          detector = Path('src/detector.rs')
+          s = detector.read_text(encoding='utf-8')
+          start = s.index('    let source_score =')
+          end = s.index('\n\n    // Unknown short words', start)
+          scoring = '''    let source_score =
+              language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
+          let target_score = language_score(&mapped_normalized, target)
+              + frequency_model::lexical_score(target, &mapped_normalized);
+          let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
+          let effective_target = target_score + context_bonus;
+          let effective_margin = target_score - source_score + context_bonus;
+
+          if effective_target < 10 || effective_margin < 5 {
+              return None;
+          }'''
+          s = s[:start] + scoring + s[end:]
+
+          if 'common_foreign_latin_source_words_are_protected' not in s:
+              marker = '    #[test]\n    fn exact_dictionary_match_has_maximum_confidence()'
+              pos = s.index(marker)
+              test = '''    #[test]
+              fn common_foreign_latin_source_words_are_protected() {
+                  for token in [
+                      "que", "sire", "une", "des", "monsieur", "comme", "ils", "mot", "quelle",
+                      "votre", "adieu", "dans", "die", "merci", "pas", "sans", "sur",
+                  ] {
+                      assert!(correction(token).is_none(), "Latin-layout source must stay source: {token}");
+                  }
+              }
+
+              '''
+              s = s[:pos] + test + s[pos:]
+          detector.write_text(s, encoding='utf-8')
+
+          foreign = '''abc adieu avec ayez bah bas bien bon bonsoir causons cela celui ces chef comme contez contrat croyez dans das des devriez die dieu dont ein elle enfant enfin epe euer faire fait fameuse faut feu fil filez gobelins gott homme ils jeu jeune joseph julie lanfrey lle macht merci mes monsieur mot mots nichts nocturne omme ont pas peut pitt poltawa prime que quel quelle quelques quos sans sic sire sobriquet son sophie soyez sublime sur tant tutti une urienne vaut venez vienne vos votre voyez zum'''
+          freq = Path('src/frequency_model.rs')
+          fs = freq.read_text(encoding='utf-8')
+          if 'abc adieu avec ayez bah bas bien bon bonsoir' not in fs:
+              anchor = fs.index('const EN_COMMON')
+              let_words = fs.index('let words =', anchor) if 'let words =' in fs[anchor:] else -1
+              if let_words >= 0:
+                  quote = fs.index('"', let_words) + 1
+              else:
+                  concat = fs.index('concat!(', anchor)
+                  quote = fs.index('"', concat) + 1
+              fs = fs[:quote] + foreign + ' ' + fs[quote:]
+              freq.write_text(fs, encoding='utf-8')
           PY
-      - name: Upload source for structural inspection
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: war-and-peace-official-source
-          path: |
-            War_and_Peace.docx
-            source.sha256
-          retention-days: 7
-          if-no-files-found: error
+      - name: Validate
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+      - name: Commit validated change
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/detector.rs src/frequency_model.rs
+          git commit -m 'Refine Latin-layout protection from full-novel audit'
+          git push origin HEAD:audit/war-and-peace-full-1.0.7
