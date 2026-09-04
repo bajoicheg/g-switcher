@@ -1,0 +1,68 @@
+name: Release G-switcher 1.0.10
+
+on:
+  workflow_run:
+    workflows: ["Windows Rust CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: windows-latest
+    steps:
+      - name: Skip if release already exists
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.0.10 --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Download checked Windows artifact
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g-switcher-1.0.10-windows-x64
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify artifact hash
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: |
+          $expected = ((Get-Content -LiteralPath release/g-switcher.exe.sha256 -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+          $actual = (Get-FileHash -LiteralPath release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "SHA-256 mismatch: expected $expected, got $actual"
+          }
+          Write-Host "SHA-256 verified: $actual"
+
+      - name: Create v1.0.10 release
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create v1.0.10 `
+            release/g-switcher.exe `
+            release/g-switcher.exe.sha256 `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:TARGET_SHA `
+            --title "G-switcher 1.0.10" `
+            --notes "G-switcher 1.0.10 adds a broad reproducible everyday-frequency layer derived from pinned OpenSubtitles2018 Russian and English surface-form frequency data (CC BY 3.0 attribution included). The generated source-protection layer embeds 28,235 Russian and 27,801 English 4+ letter forms, 56,036 total. Exhaustive detector regression confirms 26,990 frequency target forms are deterministically restorable under unchanged global confidence thresholds, with nine generated cross-layout collisions intentionally kept fail-open. Generated three-letter forms and prefixes shorter than four letters are deliberately excluded after safety tests showed that ambiguous short tokens require context. Detector precedence is explicit source > curated source > curated target > generated source/target, preserving established curated corrections while protecting explicit valid source tokens such as here. Real Win32 hook-to-EDIT E2E covers representative everyday forms including знаешь, домой, машина, wanted and looking, plus the exact Vfvf vskf hfve ghbdtn -> Мама мыла раму привет regression. Frequency generation is development-time only; runtime remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
