@@ -1,3 +1,4 @@
+// Permanent regressions from the ten-article Wikipedia corpus audit.
 use g_switcher::{
     detector::{correction_with_context, DEFAULT_CONFIDENCE_THRESHOLD},
     layout::opposite_layout_text,
