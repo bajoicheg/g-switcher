@@ -66,13 +66,8 @@ jobs:
               previous_tokens: &[String],
               user_words: &[String],
           ) -> i32 {
-              let recent: Vec<&String> = previous_tokens
-                  .iter()
-                  .rev()
-                  .take(MAX_CONTEXT_WORDS)
-                  .collect();
+              let recent: Vec<&String> = previous_tokens.iter().rev().take(MAX_CONTEXT_WORDS).collect();
               let mut bonus = 0;
-
               for (index, token) in recent.iter().enumerate() {
                   match trusted_context_language(token, user_words) {
                       Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
@@ -80,14 +75,12 @@ jobs:
                       None => {}
                   }
               }
-
               if let Some(last) = recent.first() {
                   if trusted_context_language(last, user_words) == Some(target) {
                       let last = normalize(last, target);
                       bonus += frequency_model::transition_score(target, &last, candidate);
                   }
               }
-
               bonus.clamp(-6, 20)
           }
 
@@ -106,16 +99,15 @@ jobs:
           fn mixed_language_context_does_not_flip_plausible_source_tokens() {
               let french = vec!["les".to_owned(), "notres".to_owned()];
               assert!(correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none());
-
               let russian = vec!["сказала".to_owned(), "она".to_owned()];
               assert!(correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none());
           }
 
           #[test]
-          fn unknown_foreign_context_does_not_suppress_clear_wrong_layout_russian() {
+          fn unknown_foreign_context_does_not_suppress_known_wrong_layout_russian() {
               let french = vec!["chere".to_owned(), "annette".to_owned()];
               let detection = correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
-                  .expect("сказал should still correct after foreign context");
+                  .expect("сказал should correct after foreign context");
               assert_eq!(detection.corrected, "сказал");
           }
 
@@ -135,7 +127,7 @@ jobs:
           needle = 'автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео '
           if needle not in fs:
               raise SystemExit('frequency insertion marker missing')
-          fs = fs.replace(needle, needle + 'внук руку ста ', 1)
+          fs = fs.replace(needle, needle + 'внук руку ста сказал сказала ', 1)
           freq.write_text(fs, encoding='utf-8')
           Path('/tmp/changed').write_text('1')
           PY
@@ -208,7 +200,8 @@ jobs:
           text='\n'.join(selected)
           pathlib.Path('audit-corpus').mkdir(exist_ok=True)
           pathlib.Path('audit-corpus/war_and_peace_novel.txt').write_text(text,encoding='utf-8')
-          pathlib.Path('audit-corpus/provenance.txt').write_text(f'source_url={url}\ndocx_sha256={hashlib.sha256(data).hexdigest()}\nnovel_chars={len(text)}\n',encoding='utf-8')
+          pathlib.Path('audit-corpus/provenance.txt').write_text(
+              f'source_url={url}\ndocx_sha256={hashlib.sha256(data).hexdigest()}\nnovel_chars={len(text)}\n',encoding='utf-8')
           PY
       - name: Run actual Detector v3 on every eligible occurrence
         shell: bash
