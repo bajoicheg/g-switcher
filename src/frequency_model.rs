@@ -80,7 +80,7 @@ pub fn source_word_score(language: Language, token: &str) -> i32 {
     frequent_forms::source_word_score(language, token)
 }
 
-fn curated_word_score(language: Language, token: &str) -> i32 {
+pub fn curated_word_score(language: Language, token: &str) -> i32 {
     let (top, common) = match language {
         Language::English => (EN_TOP, EN_COMMON),
         Language::Russian => (RU_TOP, RU_COMMON),

@@ -103,7 +103,8 @@ fn detect_with_context_policy(
     };
     let normalized = normalize(token, source);
     let source_frequency = frequency_model::source_word_score(source, &normalized);
-    if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
+    let source_curated = frequency_model::curated_word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_curated >= 15 {
         return None;
     }
 
@@ -114,8 +115,14 @@ fn detect_with_context_policy(
         return None;
     }
 
+    let target_is_explicit = dictionary_contains(target, &mapped_normalized, user_words);
+    let target_curated = frequency_model::curated_word_score(target, &mapped_normalized);
+    if source_frequency >= 15 && !target_is_explicit && target_curated < 15 {
+        return None;
+    }
+
     let target_frequency = frequency_model::word_score(target, &mapped_normalized);
-    if dictionary_contains(target, &mapped_normalized, user_words) || target_frequency >= 15 {
+    if target_is_explicit || target_frequency >= 15 {
         return Some(Detection {
             source,
             target,
@@ -475,18 +482,24 @@ mod tests {
                 let source = opposite(target);
                 let normalized_source = normalize(&wrong, source);
                 if frequency_model::source_word_score(source, &normalized_source) >= 15 {
-                    intentional_collisions += 1;
-                    assert!(
-                        correction_at_boundary_with_context(
-                            &wrong,
-                            &[],
-                            DEFAULT_CONFIDENCE_THRESHOLD,
-                            &[],
-                        )
-                        .is_none(),
-                        "frequent cross-language source collision must stay fail-open: {wrong} -> {word}"
-                    );
-                    continue;
+                    let source_is_explicit = dictionary_contains(source, &normalized_source, &[])
+                        || frequency_model::curated_word_score(source, &normalized_source) >= 15;
+                    let target_is_curated = dictionary_contains(target, word, &[])
+                        || frequency_model::curated_word_score(target, word) >= 15;
+                    if source_is_explicit || !target_is_curated {
+                        intentional_collisions += 1;
+                        assert!(
+                            correction_at_boundary_with_context(
+                                &wrong,
+                                &[],
+                                DEFAULT_CONFIDENCE_THRESHOLD,
+                                &[],
+                            )
+                            .is_none(),
+                            "protected source collision must stay fail-open: {wrong} -> {word}"
+                        );
+                        continue;
+                    }
                 }
 
                 let detection = correction_at_boundary_with_context(
@@ -541,6 +554,52 @@ mod tests {
                 correction_at_boundary_with_context(&wrong, &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
                     .unwrap_or_else(|| panic!("frequent form did not restore: {wrong} -> {word}"));
             assert_eq!(normalize(&detection.corrected, language), word);
+        }
+    }
+
+    #[test]
+    fn curated_targets_override_generated_only_source_protection() {
+        let detection =
+            correction_at_boundary_with_context("cath", &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
+                .expect(
+                    "curated Russian target must override generated-only English source evidence",
+                );
+        assert_eq!(detection.corrected, "сфер");
+        assert_eq!(detection.confidence, 100);
+    }
+
+    #[test]
+    fn generated_source_forms_follow_explicit_precedence() {
+        for source in [Language::Russian, Language::English] {
+            for &(word, _rank) in crate::frequent_forms::forms(source) {
+                let mapped = opposite_layout_text(word, source);
+                let target = opposite(source);
+                let mapped_normalized = normalize(&mapped, target);
+                let source_is_explicit = is_code_safe_token(word)
+                    || dictionary_contains(source, word, &[])
+                    || frequency_model::curated_word_score(source, word) >= 15;
+                let target_is_curated = dictionary_contains(target, &mapped_normalized, &[])
+                    || frequency_model::curated_word_score(target, &mapped_normalized) >= 15;
+                let detection = correction_at_boundary_with_context(
+                    word,
+                    &[],
+                    DEFAULT_CONFIDENCE_THRESHOLD,
+                    &[],
+                );
+                if source_is_explicit || !target_is_curated {
+                    assert!(
+                        detection.is_none(),
+                        "generated source form was not preserved: {word} -> {mapped}"
+                    );
+                } else {
+                    let detection = detection.unwrap_or_else(|| {
+                        panic!(
+                            "curated target did not override generated-only source: {word} -> {mapped}"
+                        )
+                    });
+                    assert_eq!(normalize(&detection.corrected, target), mapped_normalized);
+                }
+            }
         }
     }
 
