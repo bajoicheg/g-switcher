@@ -115,6 +115,70 @@ fn real_windows_hook_to_edit_e2e() {
         &keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]),
         "привет ",
     );
+    eprintln!("G-switcher E2E checkpoint: basic мама мыла раму phrase");
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &[
+            Stroke {
+                vk: b'V' as u16,
+                shift: true,
+            },
+            key(b'F'),
+            key(b'V'),
+            key(b'F'),
+            key(VK_SPACE as u8),
+        ],
+        "Мама ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"VSKF "),
+        "мыла ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"HFVE "),
+        "раму ",
+    );
+    prepare_case(window, edit, ui_thread_id, Language::English);
+    inject_strokes(&[
+        Stroke {
+            vk: b'V' as u16,
+            shift: true,
+        },
+        key(b'F'),
+        key(b'V'),
+        key(b'F'),
+        key(VK_SPACE as u8),
+        key(b'V'),
+        key(b'S'),
+        key(b'K'),
+        key(b'F'),
+        key(VK_SPACE as u8),
+        key(b'H'),
+        key(b'F'),
+        key(b'V'),
+        key(b'E'),
+        key(VK_SPACE as u8),
+        key(b'G'),
+        key(b'H'),
+        key(b'B'),
+        key(b'D'),
+        key(b'T'),
+        key(b'N'),
+        key(VK_SPACE as u8),
+    ]);
+    await_text(edit, "Мама мыла раму привет ");
+
     eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
     prepare_case(window, edit, ui_thread_id, Language::Russian);
     inject_strokes(&keys(b"RYZPM CRFPFK "));
