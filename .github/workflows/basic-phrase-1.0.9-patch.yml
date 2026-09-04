@@ -1,0 +1,76 @@
+name: Apply G-switcher 1.0.9 basic phrase fix
+
+on:
+  push:
+    branches: [fix/ui-first-run-autostart-1.0.8]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/ui-first-run-autostart-1.0.8
+          fetch-depth: 0
+
+      - name: Patch basic Russian lexicon and regressions
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              data = p.read_text(encoding='utf-8')
+              count = data.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, got {count}: {old[:120]!r}')
+              p.write_text(data.replace(old, new, 1), encoding='utf-8')
+
+          # Conservative everyday forms whose EN-layout physical spellings are
+          # highly implausible as ordinary Latin source words. Do not lower the
+          # global detector threshold for this regression.
+          replace_once(
+              'src/frequency_model.rs',
+              'ребенок дети семья семьи друг друзья',
+              'ребенок дети семья семьи мама маму папа папу мыла мыло моет рама раму раме рамой дома домой дочь друг друзья'
+          )
+
+          detector_anchor = '''    #[test]\n    fn corrects_known_wrong_layout_words() {'''
+          detector_test = '''    #[test]\n    fn basic_mama_phrase_words_are_known_and_case_preserving() {\n        for (source, expected) in [("Vfvf", "Мама"), ("vskf", "мыла"), ("hfve", "раму")] {\n            let detection = correction_at_boundary_with_context(\n                source,\n                &[],\n                DEFAULT_CONFIDENCE_THRESHOLD,\n                &[],\n            )\n            .unwrap_or_else(|| panic!("basic wrong-layout word was not corrected: {source}"));\n            assert_eq!(detection.corrected, expected, "wrong correction for {source}");\n            assert_eq!(detection.target, Language::Russian);\n            assert_eq!(detection.confidence, 100);\n        }\n        for source in ["мама", "мыла", "раму"] {\n            assert_eq!(decide(source), Decision::Keep, "valid Russian source changed: {source}");\n        }\n    }\n\n    #[test]\n    fn corrects_known_wrong_layout_words() {'''
+          replace_once('src/detector.rs', detector_anchor, detector_test)
+
+          e2e_anchor = '''    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");'''
+          e2e_test = '''    eprintln!("G-switcher E2E checkpoint: basic мама мыла раму phrase");\n    run_case(\n        window,\n        edit,\n        ui_thread_id,\n        Language::English,\n        &[\n            Stroke { vk: b'V' as u16, shift: true },\n            key(b'F'),\n            key(b'V'),\n            key(b'F'),\n            key(VK_SPACE as u8),\n        ],\n        "Мама ",\n    );\n    run_case(\n        window,\n        edit,\n        ui_thread_id,\n        Language::English,\n        &keys(b"VSKF "),\n        "мыла ",\n    );\n    run_case(\n        window,\n        edit,\n        ui_thread_id,\n        Language::English,\n        &keys(b"HFVE "),\n        "раму ",\n    );\n    prepare_case(window, edit, ui_thread_id, Language::English);\n    inject_strokes(&[\n        Stroke { vk: b'V' as u16, shift: true },\n        key(b'F'),\n        key(b'V'),\n        key(b'F'),\n        key(VK_SPACE as u8),\n        key(b'V'),\n        key(b'S'),\n        key(b'K'),\n        key(b'F'),\n        key(VK_SPACE as u8),\n        key(b'H'),\n        key(b'F'),\n        key(b'V'),\n        key(b'E'),\n        key(VK_SPACE as u8),\n        key(b'G'),\n        key(b'H'),\n        key(b'B'),\n        key(b'D'),\n        key(b'T'),\n        key(b'N'),\n        key(VK_SPACE as u8),\n    ]);\n    await_text(edit, "Мама мыла раму привет ");\n\n    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");'''
+          replace_once('src/windows_runtime/e2e_tests.rs', e2e_anchor, e2e_test)
+          '@ | python -
+
+      - name: Validate source patch
+        shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
+          cargo fmt --all -- --check
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+          git diff --check
+
+      - name: Commit validated source patch
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
+          git add src/frequency_model.rs src/detector.rs src/windows_runtime/e2e_tests.rs
+          git diff --cached --check
+          git commit -m "Restore basic Russian phrase detection"
+          git push origin HEAD:fix/ui-first-run-autostart-1.0.8
