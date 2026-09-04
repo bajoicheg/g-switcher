@@ -12,7 +12,7 @@ concurrency:
   group: wikipedia-five-audit-${{ github.ref }}
   cancel-in-progress: true
 
-# Temporary QA workflow for the 1.0.5 post-fix corpus verification.
+# Temporary QA workflow for the final 1.0.5 five-corpus verification.
 jobs:
   audit:
     runs-on: ubuntu-latest
