@@ -1,10 +1,12 @@
-# G-switcher 1.0.4 functional specification
+# G-switcher 1.0.6 functional specification
 
 ## Product model
 
 G-switcher runs in the current Windows user session and observes keyboard events only to maintain the current candidate token. It may additionally retain exactly one immediately previous completed token for manual previous-word conversion and at most two completed context words for Detector v3. All typed state is volatile-only and is never persisted or transmitted.
 
 The default decision rule is conservative: if evidence is ambiguous, leave the user's text unchanged. Automatic correction is performed only when Detector v3 reaches the confidence threshold selected by the current sensitivity profile.
+
+The 1.0.6 ten-article corpus expansion preserves that fail-open rule: 55 safe target forms are recognized deterministically, while ambiguous short forms and valid English-source collisions are intentionally left unchanged. Global sensitivity thresholds are not lowered.
 
 ## Layout behavior
 
@@ -43,7 +45,7 @@ Detector v3 combines:
 
 The built-in common-word lexicons include broad everyday, technical, colloquial and common obscene vocabulary in both Russian and English. A recognized built-in frequent source-language word is deterministic preservation evidence and must not be automatically rewritten. A mapped target that is a recognized built-in frequent word is deterministic recognition evidence and receives maximum confidence. This protects valid words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` while also recognizing their wrong-layout forms.
 
-Version 1.0.4 extends deterministic Russian target recognition with 13 common forms isolated by a synthetic wrong-layout corpus: `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм`. Their wrong-layout forms are locked in integration regression coverage. Representative full runtime cases `cbcntv` → `систем`, `ghjuhfvv` → `программ` and `bycnherwbb` → `инструкции` are also part of the real Win32 hook-to-EDIT release gate.
+Version 1.0.6 extends deterministic Russian target recognition with 13 common forms isolated by a synthetic wrong-layout corpus: `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм`. Their wrong-layout forms are locked in integration regression coverage. Representative full runtime cases `cbcntv` → `систем`, `ghjuhfvv` → `программ` and `bycnherwbb` → `инструкции` are also part of the real Win32 hook-to-EDIT release gate.
 
 Short ambiguous words remain context-sensitive where required. The broad common-word layer must not silently convert intentionally ambiguous three-letter tokens merely because a plausible target exists; context-sensitive regression cases remain part of the detector contract.
 
@@ -75,7 +77,7 @@ This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 1.0.4 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 1.0.6 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
@@ -146,7 +148,7 @@ The tray Settings window exposes:
 
 Settings take effect in the running process after Save and do not require elevation. Invalid hotkey syntax blocks Save with a local warning. The UI states that typed context is volatile and secure fields are not processed.
 
-The 1.0.4 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists, and visibly identifies the Settings build as 1.0.4.
+The 1.0.6 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists, and visibly identifies the Settings build as 1.0.6.
 
 ## Privilege model
 
