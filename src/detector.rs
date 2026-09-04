@@ -117,7 +117,7 @@ pub fn detect_with_context(
         language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
     let target_score = language_score(&mapped_normalized, target)
         + frequency_model::lexical_score(target, &mapped_normalized);
-    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
+    let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
     let effective_target = target_score + context_bonus;
     let effective_margin = target_score - source_score + context_bonus;
 
@@ -228,40 +228,30 @@ fn confidence_from_scores(
     raw.clamp(0, 96) as u8
 }
 
-fn context_bonus(
-    target: Language,
-    candidate: &str,
-    previous_tokens: &[String],
-    user_words: &[String],
-) -> i32 {
+fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
     let recent: Vec<&String> = previous_tokens
         .iter()
         .rev()
         .take(MAX_CONTEXT_WORDS)
         .collect();
     let mut bonus = 0;
+
     for (index, token) in recent.iter().enumerate() {
-        match trusted_context_language(token, user_words) {
+        match infer_language(token) {
             Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
             Some(_) => bonus -= if index == 0 { 3 } else { 2 },
             None => {}
         }
     }
+
     if let Some(last) = recent.first() {
-        if trusted_context_language(last, user_words) == Some(target) {
+        if infer_language(last) == Some(target) {
             let last = normalize(last, target);
             bonus += frequency_model::transition_score(target, &last, candidate);
         }
     }
-    bonus.clamp(-6, 20)
-}
 
-fn trusted_context_language(token: &str, user_words: &[String]) -> Option<Language> {
-    let language = infer_language(token)?;
-    let normalized = normalize(token, language);
-    let known = dictionary_contains(language, &normalized, user_words)
-        || frequency_model::word_score(language, &normalized) >= 15;
-    known.then_some(language)
+    bonus.clamp(-6, 20)
 }
 
 fn is_target_word_prefix(token: &str, language: Language, user_words: &[String]) -> bool {
@@ -458,6 +448,30 @@ mod tests {
             assert!(
                 correction(token).is_none(),
                 "Latin-layout source must stay source: {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn war_and_peace_source_false_positive_forms_are_protected() {
+        for token in [
+            "князь",
+            "думал",
+            "вдруг",
+            "крикнул",
+            "давно",
+            "руку",
+            "внук",
+            "ста",
+            "граф",
+            "княгиня",
+            "взглянув",
+            "решил",
+            "штраф",
+        ] {
+            assert!(
+                correction(token).is_none(),
+                "correct Russian source must stay source: {token}"
             );
         }
     }
