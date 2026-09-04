@@ -102,7 +102,7 @@ fn detect_with_context_policy(
         None => punctuation_only_known_target_source(token, user_words)?,
     };
     let normalized = normalize(token, source);
-    let source_frequency = frequency_model::word_score(source, &normalized);
+    let source_frequency = frequency_model::source_word_score(source, &normalized);
     if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
         return None;
     }
@@ -444,6 +444,103 @@ mod tests {
                 Decision::Keep,
                 "valid Russian source changed: {source}"
             );
+        }
+    }
+
+    #[test]
+    fn generated_frequent_forms_are_source_safe_and_target_covered() {
+        let mut protected_sources = 0usize;
+        let mut promoted_targets = 0usize;
+        let mut intentional_collisions = 0usize;
+        let mut code_safe_skips = 0usize;
+
+        for target in [Language::Russian, Language::English] {
+            for &(word, rank) in crate::frequent_forms::forms(target) {
+                assert!(
+                    frequency_model::source_word_score(target, word) >= 15,
+                    "frequent source form is not protected: {word}"
+                );
+                protected_sources += 1;
+
+                if !crate::frequent_forms::target_eligible(word, rank) {
+                    continue;
+                }
+
+                let wrong = opposite_layout_text(word, target);
+                if is_code_safe_token(&wrong) {
+                    code_safe_skips += 1;
+                    continue;
+                }
+
+                let source = opposite(target);
+                let normalized_source = normalize(&wrong, source);
+                if frequency_model::source_word_score(source, &normalized_source) >= 15 {
+                    intentional_collisions += 1;
+                    assert!(
+                        correction_at_boundary_with_context(
+                            &wrong,
+                            &[],
+                            DEFAULT_CONFIDENCE_THRESHOLD,
+                            &[],
+                        )
+                        .is_none(),
+                        "frequent cross-language source collision must stay fail-open: {wrong} -> {word}"
+                    );
+                    continue;
+                }
+
+                let detection = correction_at_boundary_with_context(
+                    &wrong,
+                    &[],
+                    DEFAULT_CONFIDENCE_THRESHOLD,
+                    &[],
+                )
+                .unwrap_or_else(|| {
+                    panic!("frequent target form was not corrected: {wrong} -> {word}")
+                });
+                assert_eq!(detection.target, target);
+                assert_eq!(normalize(&detection.corrected, target), word);
+                assert_eq!(detection.confidence, 100);
+                promoted_targets += 1;
+            }
+        }
+
+        assert!(protected_sources > 40_000);
+        assert!(promoted_targets > 15_000);
+        eprintln!(
+            "frequency lexicon: protected_sources={protected_sources}, promoted_targets={promoted_targets}, intentional_collisions={intentional_collisions}, code_safe_skips={code_safe_skips}"
+        );
+    }
+
+    #[test]
+    fn common_frequency_wordforms_are_deterministic() {
+        for (word, language) in [
+            ("мама", Language::Russian),
+            ("мыла", Language::Russian),
+            ("раму", Language::Russian),
+            ("знаешь", Language::Russian),
+            ("хочешь", Language::Russian),
+            ("сказала", Language::Russian),
+            ("домой", Language::Russian),
+            ("wanted", Language::English),
+            ("looking", Language::English),
+            ("friends", Language::English),
+            ("mother", Language::English),
+        ] {
+            assert!(
+                frequency_model::word_score(language, word) >= 15,
+                "missing frequent form: {word}"
+            );
+            let wrong = opposite_layout_text(word, language);
+            let source = opposite(language);
+            let normalized_source = normalize(&wrong, source);
+            if frequency_model::source_word_score(source, &normalized_source) >= 15 {
+                continue;
+            }
+            let detection =
+                correction_at_boundary_with_context(&wrong, &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
+                    .unwrap_or_else(|| panic!("frequent form did not restore: {wrong} -> {word}"));
+            assert_eq!(normalize(&detection.corrected, language), word);
         }
     }
 

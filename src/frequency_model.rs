@@ -1,4 +1,4 @@
-use crate::model::Language;
+use crate::{frequent_forms, model::Language};
 
 const EN_TOP: &str = "the be to of and a in that have i it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because these give day most us";
 const EN_COMMON: &str = concat!(
@@ -65,6 +65,22 @@ pub fn lexical_score(language: Language, token: &str) -> i32 {
 }
 
 pub fn word_score(language: Language, token: &str) -> i32 {
+    let curated = curated_word_score(language, token);
+    if curated > 0 {
+        return curated;
+    }
+    frequent_forms::target_word_score(language, token)
+}
+
+pub fn source_word_score(language: Language, token: &str) -> i32 {
+    let curated = curated_word_score(language, token);
+    if curated > 0 {
+        return curated;
+    }
+    frequent_forms::source_word_score(language, token)
+}
+
+fn curated_word_score(language: Language, token: &str) -> i32 {
     let (top, common) = match language {
         Language::English => (EN_TOP, EN_COMMON),
         Language::Russian => (RU_TOP, RU_COMMON),
@@ -92,6 +108,7 @@ pub fn has_word_prefix(language: Language, token: &str) -> bool {
     words(top)
         .chain(words(common))
         .any(|word| word.starts_with(token) && word.len() > token.len())
+        || frequent_forms::has_target_prefix(language, token)
 }
 
 pub fn transition_score(language: Language, previous: &str, current: &str) -> i32 {
