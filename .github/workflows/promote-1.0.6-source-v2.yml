@@ -1,0 +1,179 @@
+name: Promote G-switcher 1.0.6 source v2
+
+on:
+  push:
+    branches: [audit/wikipedia-ten-1.0.6]
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    if: github.event.head_commit.message == 'Add source-only 1.0.6 promotion gate v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: audit/wikipedia-ten-1.0.6
+
+      - name: Rust toolchain
+        shell: bash
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt --component clippy
+          rustup default stable
+
+      - name: Promote source metadata docs and E2E
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def rep(path, old, new, count=1):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              if old not in s:
+                  raise SystemExit(f'anchor not found: {path}: {old[:60]}')
+              p.write_text(s.replace(old, new, count), encoding='utf-8')
+
+          rep('Cargo.toml', 'version = "1.0.5"', 'version = "1.0.6"')
+          rep('build.rs', 'resource.set("FileVersion", "1.0.5.0");', 'resource.set("FileVersion", "1.0.6.0");')
+          rep('build.rs', 'resource.set("ProductVersion", "1.0.5");', 'resource.set("ProductVersion", "1.0.6");')
+          rep('src/lib.rs', 'pub const PRODUCT_VERSION: &str = "1.0.5";', 'pub const PRODUCT_VERSION: &str = "1.0.6";')
+          rep('scripts/release-check.ps1', "$version.FileVersion -ne '1.0.5.0'", "$version.FileVersion -ne '1.0.6.0'")
+          rep('scripts/release-check.ps1', "$version.ProductVersion -ne '1.0.5'", "$version.ProductVersion -ne '1.0.6'")
+
+          p = Path('src/windows_runtime/ui/settings_dialog.rs')
+          s = p.read_text(encoding='utf-8')
+          if '1.0.5' not in s:
+              raise SystemExit('settings version anchor not found')
+          p.write_text(s.replace('1.0.5', '1.0.6'), encoding='utf-8')
+
+          e2e = Path('src/windows_runtime/e2e_tests.rs')
+          s = e2e.read_text(encoding='utf-8')
+          anchor_lines = [
+              '    run_case(',
+              '        window,',
+              '        edit,',
+              '        ui_thread_id,',
+              '        Language::English,',
+              '        &keys(b"HER "),',
+              '        "her ",',
+              '    );',
+          ]
+          anchor = '\n'.join(anchor_lines) + '\n'
+          extra = []
+          cases = [
+              ('VFNTVFNBRF ', 'математика '),
+              ('TDHJGF ', 'европа '),
+              ('ABPBRF ', 'физика '),
+              ('DYER ', 'dyer '),
+              ('YTD ', 'ytd '),
+              ('CNF ', 'cnf '),
+          ]
+          for typed, expected in cases:
+              extra.extend([
+                  '    run_case(',
+                  '        window,',
+                  '        edit,',
+                  '        ui_thread_id,',
+                  '        Language::English,',
+                  f'        &keys(b"{typed}"),',
+                  f'        "{expected}",',
+                  '    );',
+              ])
+          addition = anchor + '\n'.join(extra) + '\n'
+          if anchor not in s:
+              raise SystemExit('E2E HER anchor not found')
+          e2e.write_text(s.replace(anchor, addition, 1), encoding='utf-8')
+
+          readme = Path('README.md')
+          s = readme.read_text(encoding='utf-8')
+          old = 'Version 1.0.5 expands Detector v3 validation across five large Russian Wikipedia articles (Russia, Moscow, World War II, Internet and Universe). The final synthetic RU→EN wrong-layout corpus contains 23,336 unique testable word forms: 23,332 are automatically restored, while four occurrences are deliberately preserved because their wrong-layout strings are valid English source words (`keys`/`her`).'
+          new = 'Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.'
+          if old not in s:
+              raise SystemExit('README intro anchor not found')
+          s = s.replace(old, new, 1)
+          s = s.replace('## 1.0.5 behavior', '## 1.0.6 behavior', 1)
+          old = '- Five-Wikipedia corpus regression coverage adds 151 corpus-derived Russian forms and explicitly preserves genuine EN/RU source collisions such as `keys` ↔ `луны` and `her` ↔ `рук`.'
+          new = '- Ten-article follow-up corpus coverage adds 55 safe Russian target forms while explicitly protecting valid/ambiguous English source tokens including `keys`, `dyer`, `ytd`, `cnf`, `lev` and `ren`; global confidence thresholds are unchanged.'
+          if old not in s:
+              raise SystemExit('README corpus bullet anchor not found')
+          s = s.replace(old, new, 1)
+          s = s.replace('G-switcher 1.0.5 version metadata', 'G-switcher 1.0.6 version metadata', 1)
+          old = 'the OEM-only `жэхэ` case, plus `keys`/`her` source-collision protection.'
+          new = 'the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, plus `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection.'
+          if old not in s:
+              raise SystemExit('README assurance anchor not found')
+          readme.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          s = changelog.read_text(encoding='utf-8')
+          if not s.startswith('# Changelog\n\n'):
+              raise SystemExit('CHANGELOG header not found')
+          lines = [
+              '# Changelog',
+              '',
+              '## 1.0.6 — 2026-09-04',
+              '',
+              '- Audits Detector v3 against ten additional large Russian Wikipedia articles: `Земля`, `Человек`, `Европа`, `СССР`, `Российская империя`, `Первая мировая война`, `Солнечная система`, `Компьютер`, `Математика` and `Физика`. The normalized corpus contains 31,738 unique testable Russian word forms.',
+              '- Improves automatic restoration on that corpus from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences / 19 unique forms are intentionally fail-open because they collide with valid English tokens or are ambiguous three-character sequences.',
+              '- Adds 55 safe corpus-derived Russian target forms without lowering global confidence thresholds.',
+              '- Adds source-language protections for `dyer`, `ytd`, `cnf`, `lev` and `ren`, while preserving the existing `keys` protection.',
+              '- Adds permanent regression coverage for all 55 safe forms and the 19 intentional KEEP forms, plus real Win32 hook-to-EDIT E2E for `математика`, `европа`, `физика` and English `dyer`/`ytd`/`cnf`.',
+              '- Keeps Wikipedia retrieval and corpus processing strictly in temporary QA automation; normal G-switcher runtime remains local-only with no network or telemetry behavior.',
+              '- Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.6.',
+              '',
+          ]
+          entry = '\n'.join(lines) + '\n'
+          changelog.write_text(entry + s[len('# Changelog\n\n'):], encoding='utf-8')
+
+          acceptance = Path('docs/ACCEPTANCE_TESTS.md')
+          s = acceptance.read_text(encoding='utf-8')
+          s = s.replace('# G-switcher 1.0.4 acceptance tests', '# G-switcher 1.0.6 acceptance tests', 1)
+          anchor = '- article-derived real Win32 regressions: `cbcntv ` → `систем `, `ghjuhfvv ` → `программ `, `bycnherwbb ` → `инструкции `\n'
+          if anchor not in s:
+              raise SystemExit('acceptance E2E anchor not found')
+          s = s.replace(anchor, anchor + '- ten-corpus real Win32 regressions: `vfntvfnbrf ` → `математика `, `tdhjgf ` → `европа `, `abpbrf ` → `физика `; valid English `dyer`, `ytd` and `cnf` remain unchanged\n', 1)
+          anchor = '- all 13 article-corpus forms `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны`, `норм` restore from their wrong-layout forms under Normal sensitivity with two-word Russian context\n'
+          if anchor not in s:
+              raise SystemExit('acceptance detector anchor not found')
+          acceptance.write_text(s.replace(anchor, anchor + '- all 55 safe ten-corpus regression forms restore deterministically, while the 19 documented short/source-collision forms remain fail-open\n', 1), encoding='utf-8')
+
+          functional = Path('docs/FUNCTIONAL_SPEC.md')
+          s = functional.read_text(encoding='utf-8')
+          s = s.replace('# G-switcher 1.0.4 functional specification', '# G-switcher 1.0.6 functional specification', 1)
+          anchor = "The default decision rule is conservative: if evidence is ambiguous, leave the user's text unchanged. Automatic correction is performed only when Detector v3 reaches the confidence threshold selected by the current sensitivity profile.\n"
+          if anchor not in s:
+              raise SystemExit('functional anchor not found')
+          functional.write_text(s.replace(anchor, anchor + '\nThe 1.0.6 ten-article corpus expansion preserves that fail-open rule: 55 safe target forms are recognized deterministically, while ambiguous short forms and valid English-source collisions are intentionally left unchanged. Global sensitivity thresholds are not lowered.\n', 1), encoding='utf-8')
+
+          security = Path('docs/SECURITY_MODEL.md')
+          s = security.read_text(encoding='utf-8')
+          s = s.replace('# G-switcher 1.0.4 security model', '# G-switcher 1.0.6 security model', 1)
+          old = '- The 1.0.4 article-corpus additions are compiled local lexical entries only; no corpus text, user typing, telemetry or external service is added to runtime behavior.'
+          new = '- The 1.0.6 corpus additions are compiled local lexical/source-protection entries only; Wikipedia retrieval and corpus text exist only in temporary QA automation and are not shipped in runtime behavior.'
+          if old not in s:
+              raise SystemExit('security corpus anchor not found')
+          s = s.replace(old, new, 1)
+          s = s.replace('`v1.0.4` publication workflow', '`v1.0.6` publication workflow', 1)
+          security.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Linux source gate
+        shell: bash
+        run: |
+          cargo fmt --all -- --check || cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+
+      - name: Commit promoted 1.0.6 source
+        shell: bash
+        run: |
+          git config user.name 'g-switcher-ci'
+          git config user.email 'g-switcher-ci@users.noreply.github.com'
+          git add Cargo.toml Cargo.lock build.rs scripts/release-check.ps1 src/lib.rs src/windows_runtime/e2e_tests.rs src/windows_runtime/ui/settings_dialog.rs README.md CHANGELOG.md docs/ACCEPTANCE_TESTS.md docs/FUNCTIONAL_SPEC.md docs/SECURITY_MODEL.md
+          git commit -m 'Promote ten-Wikipedia fixes to G-switcher 1.0.6'
+          git push origin HEAD:audit/wikipedia-ten-1.0.6
