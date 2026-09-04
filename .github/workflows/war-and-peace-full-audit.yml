@@ -1,0 +1,99 @@
+name: War and Peace full-text detector audit
+
+on:
+  push:
+    branches: [audit/war-and-peace-full-1.0.7]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: war-and-peace-full-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        shell: bash
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Fetch official Tolstoy.ru Word edition and extract text
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import io
+          import pathlib
+          import urllib.request
+          import zipfile
+          import xml.etree.ElementTree as ET
+
+          url = 'https://tolstoy.ru/upload/wap/War_and_Peace.docx'
+          req = urllib.request.Request(url, headers={
+              'User-Agent': 'G-switcher-full-text-audit/1.0 (+https://github.com/bajoicheg/g-switcher)'
+          })
+          with urllib.request.urlopen(req, timeout=90) as response:
+              data = response.read()
+          if not data.startswith(b'PK'):
+              raise RuntimeError(f'expected DOCX/ZIP, got {data[:32]!r}')
+
+          sha256 = hashlib.sha256(data).hexdigest()
+          pathlib.Path('audit-corpus').mkdir(exist_ok=True)
+          pathlib.Path('audit-corpus/War_and_Peace.docx').write_bytes(data)
+
+          ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+          with zipfile.ZipFile(io.BytesIO(data)) as zf:
+              xml = zf.read('word/document.xml')
+          root = ET.fromstring(xml)
+          paragraphs = []
+          for p in root.findall('.//w:body/w:p', ns):
+              pieces = [node.text or '' for node in p.findall('.//w:t', ns)]
+              if pieces:
+                  paragraphs.append(''.join(pieces))
+          text = '\n'.join(paragraphs)
+          pathlib.Path('audit-corpus/war_and_peace.txt').write_text(text, encoding='utf-8')
+          provenance = (
+              f'source_url={url}\n'
+              f'docx_bytes={len(data)}\n'
+              f'docx_sha256={sha256}\n'
+              f'paragraphs={len(paragraphs)}\n'
+              f'text_chars={len(text)}\n'
+          )
+          pathlib.Path('audit-corpus/provenance.txt').write_text(provenance, encoding='utf-8')
+          print(provenance)
+          print('first_text:', text[:500].replace('\n', ' | '))
+          print('last_text:', text[-500:].replace('\n', ' | '))
+          PY
+
+      - name: Run actual Detector v3 across full text
+        shell: bash
+        run: |
+          cargo run --quiet --example war_and_peace_audit -- audit-corpus/war_and_peace.txt
+          echo '--- summary ---'
+          cat audit-output/summary.txt
+          echo '--- first failures ---'
+          head -n 80 audit-output/failures.csv
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: war-and-peace-full-detector-audit
+          path: |
+            audit-output/
+            audit-corpus/provenance.txt
+          if-no-files-found: error
+          retention-days: 30
