@@ -4,7 +4,12 @@ use std::fs;
 use std::path::Path;
 
 use g_switcher::{
-    detector::{correction_with_context, DEFAULT_CONFIDENCE_THRESHOLD},
+    code_safe::is_code_safe_token,
+    detector::{
+        correction_with_context, detect_with_context, opposite_candidate_is_prefix,
+        DEFAULT_CONFIDENCE_THRESHOLD,
+    },
+    frequency_model,
     layout::opposite_layout_text,
     model::Language,
 };
@@ -51,7 +56,9 @@ fn main() {
     let out_dir = Path::new("audit-output");
     fs::create_dir_all(out_dir).expect("failed to create audit-output");
 
-    let mut failures_csv = String::from("article,word,wrong_layout,observed,confidence,context\n");
+    let mut failures_csv = String::from(
+        "article,word,wrong_layout,observed,confidence,raw_confidence,cause,target_prefix,target_frequency,context\n",
+    );
     let mut summary = String::new();
     let mut total_unique = 0usize;
     let mut total_passed = 0usize;
@@ -75,6 +82,7 @@ fn main() {
             if seen.insert(word.clone()) {
                 unique += 1;
                 let wrong = opposite_layout_text(&word, Language::Russian);
+                let raw = detect_with_context(&wrong, &[], &previous);
                 let detection = correction_with_context(
                     &wrong,
                     &[],
@@ -93,14 +101,33 @@ fn main() {
                         Some(d) => (d.corrected, d.confidence.to_string()),
                         None => ("KEEP".to_owned(), String::new()),
                     };
+                    let prefix = opposite_candidate_is_prefix(&wrong);
+                    let target_frequency = frequency_model::word_score(Language::Russian, &word);
+                    let raw_confidence = raw
+                        .as_ref()
+                        .map(|d| d.confidence.to_string())
+                        .unwrap_or_default();
+                    let cause = if is_code_safe_token(&wrong) {
+                        "code_safe"
+                    } else if prefix {
+                        "target_prefix_hold"
+                    } else if raw.is_some() {
+                        "below_threshold"
+                    } else {
+                        "no_detection"
+                    };
                     let context_text = previous.join(" ");
                     failures_csv.push_str(&format!(
-                        "{},{},{},{},{},{}\n",
+                        "{},{},{},{},{},{},{},{},{},{}\n",
                         csv_escape(title),
                         csv_escape(&word),
                         csv_escape(&wrong),
                         csv_escape(&observed),
                         csv_escape(&confidence),
+                        csv_escape(&raw_confidence),
+                        cause,
+                        prefix,
+                        target_frequency,
                         csv_escape(&context_text),
                     ));
                 }
