@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
 
+# Final one-shot gate for the three non-colliding residual forms.
 jobs:
   apply:
     runs-on: ubuntu-latest
