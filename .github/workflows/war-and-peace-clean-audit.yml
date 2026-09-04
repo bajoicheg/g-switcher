@@ -6,122 +6,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: war-and-peace-clean-audit-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  patch:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          fetch-depth: 0
-      - name: Protect observed source forms while restoring full context recall
-        id: patch
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          detector = Path('src/detector.rs')
-          s = detector.read_text(encoding='utf-8')
-          marker_name = 'war_and_peace_source_false_positive_forms_are_protected'
-          if marker_name in s:
-              Path('/tmp/changed').write_text('0')
-              raise SystemExit(0)
-
-          start = s.index('fn context_bonus(')
-          end = s.index('\n\nfn is_target_word_prefix', start)
-          original_context = '''fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
-              let recent: Vec<&String> = previous_tokens
-                  .iter()
-                  .rev()
-                  .take(MAX_CONTEXT_WORDS)
-                  .collect();
-              let mut bonus = 0;
-
-              for (index, token) in recent.iter().enumerate() {
-                  match infer_language(token) {
-                      Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
-                      Some(_) => bonus -= if index == 0 { 3 } else { 2 },
-                      None => {}
-                  }
-              }
-
-              if let Some(last) = recent.first() {
-                  if infer_language(last) == Some(target) {
-                      let last = normalize(last, target);
-                      bonus += frequency_model::transition_score(target, &last, candidate);
-                  }
-              }
-
-              bonus.clamp(-6, 20)
-          }'''
-          s = s[:start] + original_context + s[end:]
-
-          # Restore the call signature used before the trusted-context experiment.
-          s = s.replace(
-              'context_bonus(target, &mapped_normalized, previous_tokens, user_words)',
-              'context_bonus(target, &mapped_normalized, previous_tokens)',
-              1,
-          )
-
-          test_anchor = '    #[test]\n    fn exact_dictionary_match_has_maximum_confidence()'
-          pos = s.index(test_anchor)
-          test = '''    #[test]
-          fn war_and_peace_source_false_positive_forms_are_protected() {
-              for token in [
-                  "князь", "думал", "вдруг", "крикнул", "давно", "руку", "внук", "ста",
-                  "граф", "княгиня", "взглянув", "решил", "штраф",
-              ] {
-                  assert!(correction(token).is_none(), "correct Russian source must stay source: {token}");
-              }
-          }
-
-          '''
-          s = s[:pos] + test + s[pos:]
-          detector.write_text(s, encoding='utf-8')
-
-          ru_source_forms = '''альфонс анне вдруг вернейший взглянув внук вокруг вошла враг всего вышел вышла граф графиня давно даму донесенья другая думал душевно знавшие княгиня князь крикнул курагина кутузов лучшие мешала мишо могли нашего нечего одна одни откинув откуда паулучи пленные пусти пфуль пьеру решил руку ста сын тетушку туда турки туче умно ура фигура фока фыркнув шелингу шерер шосс штраф'''
-          freq = Path('src/frequency_model.rs')
-          fs = freq.read_text(encoding='utf-8')
-          if 'альфонс анне вдруг вернейший' not in fs:
-              anchor = fs.index('const RU_COMMON')
-              concat = fs.index('concat!(', anchor)
-              quote = fs.index('"', concat) + 1
-              fs = fs[:quote] + ru_source_forms + ' ' + fs[quote:]
-              freq.write_text(fs, encoding='utf-8')
-
-          Path('/tmp/changed').write_text('1')
-          PY
-          echo "changed=$(cat /tmp/changed)" >> "$GITHUB_OUTPUT"
-
-      - name: Validate source changes
-        if: steps.patch.outputs.changed == '1'
-        shell: bash
-        run: |
-          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-          rustup default stable
-          cargo fmt --all
-          cargo test --all-targets
-          cargo clippy --all-targets -- -D warnings
-
-      - name: Commit validated source changes
-        if: steps.patch.outputs.changed == '1'
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/detector.rs src/frequency_model.rs
-          git commit -m 'Protect mixed-language source forms from full-novel audit'
-          git push origin HEAD:audit/war-and-peace-full-1.0.7
-
   audit:
-    needs: patch
-    if: needs.patch.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
