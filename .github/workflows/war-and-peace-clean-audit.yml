@@ -1,4 +1,4 @@
-name: Prepare G-switcher 1.0.7 release candidate
+name: Finalize G-switcher 1.0.7 source
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      - name: Apply production release changes
+      - name: Apply source and documentation changes
         shell: bash
         run: |
           python - <<'PY'
@@ -27,7 +27,6 @@ jobs:
               'src/lib.rs': [('PRODUCT_VERSION: &str = "1.0.6"', 'PRODUCT_VERSION: &str = "1.0.7"')],
               'scripts/release-check.ps1': [("'1.0.6.0'", "'1.0.7.0'"), ("'1.0.6'", "'1.0.7'")],
               'src/windows_runtime/ui/settings_dialog.rs': [('GSwitcher.Settings.1.0.6', 'GSwitcher.Settings.1.0.7')],
-              '.github/workflows/windows-ci.yml': [('g-switcher-1.0.6-windows-x64', 'g-switcher-1.0.7-windows-x64')],
           }
           for name, pairs in replacements.items():
               p = Path(name)
@@ -90,26 +89,12 @@ jobs:
           r = r.replace(behavior, behavior + '- Space/Enter/Tab boundaries evaluate complete opposite-layout words without the OEM prefix hold; punctuation entry keeps the prefix hold required by embedded physical comma/period keys.\n- Full-novel source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.\n', 1)
           r = r.replace('G-switcher 1.0.6 version metadata', 'G-switcher 1.0.7 version metadata', 1)
           readme.write_text(r, encoding='utf-8')
-
-          rel = Path('.github/workflows/release-1.0.6.yml').read_text(encoding='utf-8').replace('1.0.6', '1.0.7')
-          lines = rel.splitlines()
-          release_notes = '            --notes "G-switcher 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s War and Peace. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while preserving 342,237/342,237 correct Russian and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections. Target-prefix holding is scoped to punctuation/OEM input so complete Space/Enter/Tab words are no longer suppressed while коробка/коробочка OEM behavior remains protected. Explicit Russian and Latin-layout source protections keep mixed Russian/French/German prose fail-open, including valid-source collisions such as here/her. Real Win32 E2E includes the new пьер boundary case. Full-novel retrieval/audit tooling is QA-only and is not shipped. Runtime remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."'
-          found = False
-          for i, line in enumerate(lines):
-              if line.lstrip().startswith('--notes '):
-                  lines[i] = release_notes
-                  found = True
-          if not found:
-              raise SystemExit('release notes marker missing')
-          Path('.github/workflows/release-1.0.7.yml').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
 
-          git rm -f .github/workflows/war-and-peace-clean-audit.yml
-          git rm -f .github/workflows/war-and-peace-volume-audit.yml
           git rm -f audit-trigger.txt
           git rm -f examples/war_and_peace_audit.rs
 
-      - name: Validate release candidate
+      - name: Validate source candidate
         shell: bash
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
@@ -120,18 +105,17 @@ jobs:
           grep -q 'version = "1.0.7"' Cargo.toml
           grep -q '1.0.7.0' build.rs
           grep -q 'PRODUCT_VERSION: &str = "1.0.7"' src/lib.rs
-          grep -q 'g-switcher-1.0.7-windows-x64' .github/workflows/windows-ci.yml
           grep -q 'GSwitcher.Settings.1.0.7' src/windows_runtime/ui/settings_dialog.rs
-          test -f .github/workflows/release-1.0.7.yml
           test ! -e examples/war_and_peace_audit.rs
-          test ! -e .github/workflows/war-and-peace-volume-audit.yml
           test ! -e audit-trigger.txt
+          rm -f Cargo.lock
 
-      - name: Commit release candidate
+      - name: Commit source candidate
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Prepare G-switcher 1.0.7 release candidate'
+          git add Cargo.toml build.rs src/lib.rs scripts/release-check.ps1 src/windows_runtime/ui/settings_dialog.rs src/windows_runtime/e2e_tests.rs CHANGELOG.md README.md
+          git add -u audit-trigger.txt examples/war_and_peace_audit.rs
+          git commit -m 'Prepare G-switcher 1.0.7 source candidate'
           git push origin HEAD:audit/war-and-peace-full-1.0.7
