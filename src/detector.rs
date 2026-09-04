@@ -423,6 +423,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn basic_mama_phrase_words_are_known_and_case_preserving() {
+        for (source, expected) in [("Vfvf", "Мама"), ("vskf", "мыла"), ("hfve", "раму")]
+        {
+            let detection =
+                correction_at_boundary_with_context(source, &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
+                    .unwrap_or_else(|| {
+                        panic!("basic wrong-layout word was not corrected: {source}")
+                    });
+            assert_eq!(
+                detection.corrected, expected,
+                "wrong correction for {source}"
+            );
+            assert_eq!(detection.target, Language::Russian);
+            assert_eq!(detection.confidence, 100);
+        }
+        for source in ["мама", "мыла", "раму"] {
+            assert_eq!(
+                decide(source),
+                Decision::Keep,
+                "valid Russian source changed: {source}"
+            );
+        }
+    }
+
+    #[test]
     fn corrects_known_wrong_layout_words() {
         assert_eq!(decide("ghbdtn"), Decision::CorrectTo(Language::Russian));
         assert_eq!(decide("руддщ"), Decision::CorrectTo(Language::English));
