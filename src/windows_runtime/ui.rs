@@ -27,7 +27,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 use super::{paused, settings, toggle_pause};
 
-const FIRST_RUN_CLASS: &str = "GSwitcher.FirstRun";
+const FIRST_RUN_CLASS: &str = concat!("GSwitcher.FirstRun.", env!("CARGO_PKG_VERSION"));
 const TRAY_CLASS: &str = "GSwitcher.Tray";
 const TRAY_ID: u32 = 1;
 const WM_TRAY: u32 = WM_APP + 7;
@@ -165,7 +165,11 @@ pub fn show_first_run() -> Result<bool> {
         let height = window_rect.bottom - window_rect.top;
         let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
         let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
-        let title = wide("G-switcher — первый запуск");
+        let title = wide(concat!(
+            "G-switcher ",
+            env!("CARGO_PKG_VERSION"),
+            " — первый запуск"
+        ));
         let hwnd = CreateWindowExW(
             0,
             class.as_ptr(),
@@ -265,7 +269,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         0,
     );
 
-    let title_text = wide("G-switcher");
+    let title_text = wide(concat!("G-switcher ", env!("CARGO_PKG_VERSION")));
     let title = CreateWindowExW(
         0,
         static_class.as_ptr(),
@@ -282,7 +286,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let description_text = wide(
-        "Исправляет слова, набранные в неверной русской или английской раскладке.\r\nРаботает полностью локально — без сети, облака и телеметрии.",
+        "Исправляет слова, набранные в неверной раскладке:\r\nрусской или английской.\r\nРаботает локально — без сети, облака и телеметрии.\r\nНабираемый текст не сохраняется на диск.",
     );
     let description = CreateWindowExW(
         0,
@@ -292,23 +296,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         176,
         82,
         448,
-        58,
-        hwnd,
-        null_mut(),
-        module,
-        null(),
-    );
-
-    let privacy_text = wide("Набираемый текст не сохраняется на диск.");
-    let privacy = CreateWindowExW(
-        0,
-        static_class.as_ptr(),
-        privacy_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        176,
-        146,
-        448,
-        24,
+        88,
         hwnd,
         null_mut(),
         module,
@@ -442,9 +430,18 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         module,
         null(),
     );
-    SendMessageW(checkbox, BM_SETCHECK, BST_CHECKED_VALUE as usize, 0);
+    SendMessageW(
+        checkbox,
+        BM_SETCHECK,
+        usize::from(settings::autostart_enabled()) * BST_CHECKED_VALUE as usize,
+        0,
+    );
 
-    let footer_text = wide("G-switcher © V. Vasilev 2026");
+    let footer_text = wide(concat!(
+        "G-switcher ",
+        env!("CARGO_PKG_VERSION"),
+        " © V. Vasilev 2026"
+    ));
     let footer = CreateWindowExW(
         0,
         static_class.as_ptr(),
@@ -507,7 +504,6 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     }
     for control in [
         description,
-        privacy,
         examples,
         undo,
         settings_hint,

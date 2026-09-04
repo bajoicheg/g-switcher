@@ -1,4 +1,4 @@
-name: Release G-switcher 1.0.7
+name: Release G-switcher 1.0.8
 
 on:
   workflow_run:
@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.7 --repo $env:GITHUB_REPOSITORY *> $null
+          gh release view v1.0.8 --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
@@ -35,7 +35,7 @@ jobs:
         if: steps.existing.outputs.exists != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: g-switcher-1.0.7-windows-x64
+          name: g-switcher-1.0.8-windows-x64
           path: release
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -52,17 +52,17 @@ jobs:
           }
           Write-Host "SHA-256 verified: $actual"
 
-      - name: Create v1.0.7 release
+      - name: Create v1.0.8 release
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          gh release create v1.0.7 `
+          gh release create v1.0.8 `
             release/g-switcher.exe `
             release/g-switcher.exe.sha256 `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:TARGET_SHA `
-            --title "G-switcher 1.0.7" `
-            --notes "G-switcher 1.0.7 validates Detector v3 against the exact novel body of Tolstoy's War and Peace. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while preserving 342,237/342,237 correct Russian and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections in that corpus. Target-prefix holding is now scoped to punctuation/OEM input, so complete Space/Enter/Tab words such as gmth to пьер are no longer suppressed while existing коробка/коробочка OEM behavior remains protected. Explicit Russian and Latin-layout source protections keep mixed Russian/French/German prose fail-open, including valid-source collisions such as here/her. Real Win32 E2E includes the new пьер boundary case and retains the existing OEM, collision, secure-input, Undo and application-mode gates. Full-novel retrieval/audit tooling is QA-only and is not shipped. Runtime remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
+            --title "G-switcher 1.0.8" `
+            --notes "G-switcher 1.0.8 fixes the first-run UI and autostart-state regression reported in 1.0.7. The first-run information block now uses four explicit bounded lines in one native control so long Russian text cannot overlap the privacy line. Its autostart checkbox is initialized from the actual per-user Windows Run state, and the first-run choice is authoritative in both directions: clearing the checkbox now removes an existing G-switcher Run entry instead of silently leaving stale autostart enabled. First-run and Settings version labels now come from the package version rather than stale hard-coded strings, and the Settings title bar uses the G-switcher application icon. Detector and correction behavior are otherwise unchanged from 1.0.7: the full War and Peace audit remains 340,059/342,237 eligible wrong-layout Russian occurrences restored (99.3636%), with zero false automatic corrections across 342,237 checked correct Russian and 11,594 checked correct Latin-layout occurrences. Runtime remains local-only with no network or telemetry. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
