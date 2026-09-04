@@ -6,8 +6,8 @@ use std::path::Path;
 use g_switcher::{
     code_safe::is_code_safe_token,
     detector::{
-        correction_with_context, detect_with_context, opposite_candidate_is_prefix,
-        DEFAULT_CONFIDENCE_THRESHOLD,
+        correction_at_boundary_with_context, detect_at_boundary_with_context,
+        opposite_candidate_is_prefix, DEFAULT_CONFIDENCE_THRESHOLD,
     },
     frequency_model,
     layout::opposite_layout_text,
@@ -52,8 +52,7 @@ fn is_ru_letter(ch: char) -> bool {
 }
 
 fn is_latin_letter(ch: char) -> bool {
-    ch.is_ascii_alphabetic()
-        || matches!(ch, '\u{00c0}'..='\u{00ff}' | '\u{0100}'..='\u{024f}')
+    ch.is_ascii_alphabetic() || matches!(ch, '\u{00c0}'..='\u{00ff}' | '\u{0100}'..='\u{024f}')
 }
 
 fn is_combining_mark(ch: char) -> bool {
@@ -192,7 +191,7 @@ fn main() {
                     ru_source_checked += 1;
                     ru_unique_eligible.insert(normalized.clone());
 
-                    if let Some(d) = correction_with_context(
+                    if let Some(d) = correction_at_boundary_with_context(
                         &normalized,
                         &[],
                         DEFAULT_CONFIDENCE_THRESHOLD,
@@ -209,8 +208,8 @@ fn main() {
                     }
 
                     let wrong = opposite_layout_text(&normalized, Language::Russian);
-                    let raw = detect_with_context(&wrong, &[], &previous);
-                    let detection = correction_with_context(
+                    let raw = detect_at_boundary_with_context(&wrong, &[], &previous);
+                    let detection = correction_at_boundary_with_context(
                         &wrong,
                         &[],
                         DEFAULT_CONFIDENCE_THRESHOLD,
@@ -262,7 +261,7 @@ fn main() {
                 if len >= 3 {
                     latin_eligible_occurrences += 1;
                     latin_unique_eligible.insert(normalized.clone());
-                    if let Some(d) = correction_with_context(
+                    if let Some(d) = correction_at_boundary_with_context(
                         &normalized,
                         &[],
                         DEFAULT_CONFIDENCE_THRESHOLD,
@@ -377,14 +376,22 @@ fn main() {
             csv_escape(&f.causes.iter().cloned().collect::<Vec<_>>().join("|")),
             f.source_score,
             f.target_score,
-            csv_escape(&f.raw_confidences.iter().cloned().collect::<Vec<_>>().join("|")),
+            csv_escape(
+                &f.raw_confidences
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("|")
+            ),
             csv_escape(&f.observed.iter().cloned().collect::<Vec<_>>().join("|")),
             csv_escape(&f.sample_contexts.join(" || ")),
         ));
     }
 
     let write_fp_csv = |path: &Path, values: &BTreeMap<String, FalsePositiveAgg>| {
-        let mut csv = String::from("word,false_correction_occurrences,corrected,confidences,sample_contexts\n");
+        let mut csv = String::from(
+            "word,false_correction_occurrences,corrected,confidences,sample_contexts\n",
+        );
         for (word, f) in values {
             csv.push_str(&format!(
                 "{},{},{},{},{}\n",
