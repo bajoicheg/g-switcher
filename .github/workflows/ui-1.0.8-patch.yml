@@ -46,14 +46,12 @@ jobs:
           replace_once('src/lib.rs', 'pub const PRODUCT_VERSION: &str = "1.0.7";', 'pub const PRODUCT_VERSION: &str = "1.0.8";')
           replace_all('scripts/release-check.ps1', '1.0.7', '1.0.8')
 
-          # First-run autostart choice must be authoritative in both directions.
           replace_once(
               'src/windows_runtime/mod.rs',
               '''        let enable_autostart = ui::show_first_run()?;\n        if enable_autostart {\n            settings::set_autostart(true)?;\n        }\n        settings::mark_first_run_completed()?;''',
               '''        let enable_autostart = ui::show_first_run()?;\n        settings::set_autostart(enable_autostart)?;\n        settings::mark_first_run_completed()?;'''
           )
 
-          # First-run screen: versioned class/title, bounded explicit lines, actual autostart state.
           replace_once(
               'src/windows_runtime/ui.rs',
               'const FIRST_RUN_CLASS: &str = "GSwitcher.FirstRun";',
@@ -84,14 +82,12 @@ jobs:
               '    let footer_text = wide("G-switcher © V. Vasilev 2026");',
               '    let footer_text = wide(concat!("G-switcher ", env!("CARGO_PKG_VERSION"), " © V. Vasilev 2026"));'
           )
-          # Privacy line is gone, so remove its font assignment from the common list.
           replace_once(
               'src/windows_runtime/ui.rs',
-              '    for control in [description, privacy, examples, undo, settings_hint, footer] {',
-              '    for control in [description, examples, undo, settings_hint, footer] {'
+              '''        description,\n        privacy,\n        examples,''',
+              '''        description,\n        examples,'''
           )
 
-          # Settings screen: never hard-code the visible version again and use the product icon.
           replace_once(
               'src/windows_runtime/ui/settings_dialog.rs',
               'const CLASS_NAME: &str = "GSwitcher.Settings.1.0.7";',
@@ -113,15 +109,19 @@ jobs:
               '        "Работает локально. Контекст — до 2 слов только в RAM. Пароли, PIN и OTP не обрабатываются.",'
           )
 
-          # README current-version wording and UI notes.
           readme = Path('README.md').read_text(encoding='utf-8')
           old = '''Version 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s `War and Peace`. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while producing zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the same mixed Russian/French/German corpus.\n\n## 1.0.7 behavior'''
           new = '''Version 1.0.8 fixes first-run/autostart state synchronization and hardens the native first-run and Settings layouts. Detector v3 remains the 1.0.7 full-novel build: 340,059/342,237 eligible wrong-layout Russian occurrences restored (99.3636%) with zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the mixed Russian/French/German `War and Peace` corpus.\n\n## 1.0.8 behavior'''
           if old not in readme:
               raise SystemExit('README current-version marker missing')
           readme = readme.replace(old, new, 1)
-          readme = readme.replace('- The first-run window gets additional bottom space and a shorter Settings hint so the separator, autostart row and copyright footer remain visually separated.', '- The first-run description uses four explicit bounded lines in one control, preventing text overlap; its autostart checkbox reflects the actual Windows Run state.', 1)
+          old_bullet = '- The first-run window gets additional bottom space and a shorter Settings hint so the separator, autostart row and copyright footer remain visually separated.'
+          if old_bullet not in readme:
+              raise SystemExit('README first-run bullet missing')
+          readme = readme.replace(old_bullet, '- The first-run description uses four explicit bounded lines in one control, preventing text overlap; its autostart checkbox reflects the actual Windows Run state.', 1)
           anchor = '- Read-only application-mode lists remain clean; the editable user dictionary keeps normal scrolling.\n'
+          if anchor not in readme:
+              raise SystemExit('README UI anchor missing')
           readme = readme.replace(anchor, '- Settings and first-run headings use the package version dynamically, and the Settings title bar uses the G-switcher application icon.\n- An unchecked first-run autostart choice now explicitly removes any existing G-switcher Run entry instead of leaving stale autostart enabled.\n' + anchor, 1)
           readme = readme.replace('G-switcher 1.0.7 version metadata', 'G-switcher 1.0.8 version metadata')
           Path('README.md').write_text(readme, encoding='utf-8')
