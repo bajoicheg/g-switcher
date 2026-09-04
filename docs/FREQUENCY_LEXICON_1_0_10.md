@@ -6,8 +6,10 @@ The runtime tables intentionally use **surface forms**, because G-switcher must 
 
 ## Selection policy
 
-- Source protection: every normalized alphabetic form whose raw source rank is <= 30,000; this layer is deliberately broad.
-- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.
+- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms and generated prefixes shorter than 4 letters are deliberately held out so the existing context-sensitive short-word policy remains unchanged.
+- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= 30,000; this layer is deliberately broad.
+- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.
+- Precedence is explicit source > curated source > curated target > generated source/target. Generated-vs-generated collisions stay fail-open.
 - Russian `ё` is normalized to `е`, matching the detector's existing normalization.
 - Tokens shorter than 3 letters and non-alphabetic rows are excluded because automatic correction already ignores them or treats them as special input.
 - If a target's physical wrong-layout spelling is itself a frequent source form in the opposite language, source protection wins and the case stays fail-open.
@@ -19,11 +21,11 @@ The runtime tables intentionally use **surface forms**, because G-switcher must 
 | --- | ---: | ---: |
 | Raw CSV rows | 30,000 | 30,000 |
 | Clean unique >=3-letter forms | 29,121 | 29,084 |
-| Embedded source-protection forms | 29,121 | 29,084 |
-| Target-promoted forms before collision/code-safe gates | 13,839 | 13,586 |
-| Source-layer token mass within clean pinned list | 100.0000% | 100.0000% |
-| Target-promotion token mass within clean pinned list | 93.1848% | 97.3234% |
-| Frequent cross-layout collisions kept fail-open | 11 | 10 |
+| Embedded source-protection forms | 28,235 | 27,801 |
+| Target-promoted forms before collision/code-safe gates | 13,648 | 13,351 |
+| Source-layer token mass within clean pinned list | 76.5207% | 68.3613% |
+| Target-promotion token mass within clean pinned list | 70.4469% | 66.2075% |
+| Frequent cross-layout collisions kept fail-open | 6 | 3 |
 
 ## Everyday probes — Russian
 
@@ -53,26 +55,14 @@ The runtime tables intentionally use **surface forms**, because G-switcher must 
 
 ## Highest-frequency cross-layout collisions
 
-- RU `еще` ↔ EN source `tot` (RU rank 68, EN rank 24796)
 - RU `руки` ↔ EN source `herb` (RU rank 348, EN rank 7121)
 - RU `руку` ↔ EN source `here` (RU rank 666, EN rank 38)
-- RU `рук` ↔ EN source `her` (RU rank 1574, EN rank 63)
-- RU `ешь` ↔ EN source `tim` (RU rank 1964, EN rank 2260)
-- RU `душ` ↔ EN source `lei` (RU rank 2046, EN rank 15690)
 - RU `душа` ↔ EN source `leif` (RU rank 2187, EN rank 28434)
-- RU `кун` ↔ EN source `rey` (RU rank 2279, EN rank 15719)
 - RU `луны` ↔ EN source `keys` (RU rank 6442, EN rank 1267)
 - RU `внук` ↔ EN source `dyer` (RU rank 9484, EN rank 28259)
 - RU `штуке` ↔ EN source `inert` (RU rank 13920, EN rank 28471)
 - EN `here` ↔ RU source `руку` (EN rank 38, RU rank 666)
-- EN `get` ↔ RU source `пуе` (EN rank 41, RU rank 29373)
-- EN `her` ↔ RU source `рук` (EN rank 63, RU rank 1574)
-- EN `key` ↔ RU source `лун` (EN rank 837, RU rank 25030)
-- EN `bob` ↔ RU source `ищи` (EN rank 1015, RU rank 6076)
-- EN `cat` ↔ RU source `сфе` (EN rank 1044, RU rank 14734)
 - EN `keys` ↔ RU source `луны` (EN rank 1267, RU rank 6442)
-- EN `tim` ↔ RU source `ешь` (EN rank 2260, RU rank 1964)
-- EN `eve` ↔ RU source `уму` (EN rank 2405, RU rank 22994)
 - EN `herb` ↔ RU source `руки` (EN rank 7121, RU rank 348)
 
 The exhaustive Rust regression checks every embedded source form for preservation and every promoted target form for deterministic restoration unless it is an explicit frequent-source collision or a protected code-like token. Real Win32 E2E additionally exercises representative RU and EN wordforms through the low-level keyboard hook and `SendInput` path.

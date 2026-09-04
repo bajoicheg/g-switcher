@@ -56,7 +56,7 @@ def load(language: str) -> tuple[dict[str, tuple[int, int]], int]:
 def target_rank_limit(word: str) -> int:
     length = len(word)
     if length == 3:
-        return 3_000
+        return 0
     if length == 4:
         return 10_000
     return 15_000
@@ -99,9 +99,10 @@ def generate_rust_module(
 // https://github.com/kapzam123/subtitle-frequency, pinned to {SOURCE_COMMIT}.
 // Original frequency data: CC BY 3.0. See THIRD_PARTY_DATA.md.
 //
-// Source protection keeps the first 30,000 corpus rows per language.
-// Target promotion is deliberately narrower: ranks <= 3,000 for 3-letter
-// forms, <= 10,000 for 4-letter forms, and <= 15,000 for 5+ letters.
+// Generated runtime frequency evidence starts at 4 letters; 3-letter forms
+// remain under the existing context-sensitive detector policy. Source protection
+// keeps 4+ letter forms from the first 30,000 corpus rows per language. Target
+// promotion is <= 10,000 for 4-letter forms and <= 15,000 for 5+ letters.
 
 use crate::model::Language;
 
@@ -127,7 +128,7 @@ pub fn rank(language: Language, token: &str) -> Option<u16> {{
 pub fn target_eligible(word: &str, rank: u16) -> bool {{
     let limit = match word.chars().count() {{
         0..=2 => 0,
-        3 => 3_000,
+        3 => 0,
         4 => 10_000,
         _ => 15_000,
     }};
@@ -146,7 +147,7 @@ pub fn source_word_score(language: Language, token: &str) -> i32 {{
 }}
 
 pub fn has_target_prefix(language: Language, prefix: &str) -> bool {{
-    if prefix.is_empty() {{
+    if prefix.chars().count() < 4 {{
         return false;
     }}
     let table = forms(language);
@@ -360,8 +361,10 @@ The runtime tables intentionally use **surface forms**, because G-switcher must 
 
 ## Selection policy
 
-- Source protection: every normalized alphabetic form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.
-- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.
+- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms and generated prefixes shorter than 4 letters are deliberately held out so the existing context-sensitive short-word policy remains unchanged.
+- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.
+- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.
+- Precedence is explicit source > curated source > curated target > generated source/target. Generated-vs-generated collisions stay fail-open.
 - Russian `ё` is normalized to `е`, matching the detector's existing normalization.
 - Tokens shorter than 3 letters and non-alphabetic rows are excluded because automatic correction already ignores them or treats them as special input.
 - If a target's physical wrong-layout spelling is itself a frequent source form in the opposite language, source protection wins and the case stays fail-open.
@@ -411,14 +414,23 @@ G-switcher stores only normalized word forms and source ranks needed for local d
 def main() -> None:
     ru, ru_rows = load("ru")
     en, en_rows = load("en")
-    ru_source = {word: data for word, data in ru.items() if data[0] <= SOURCE_RANK_LIMIT}
-    en_source = {word: data for word, data in en.items() if data[0] <= SOURCE_RANK_LIMIT}
+    ru_source = {
+        word: data
+        for word, data in ru.items()
+        if data[0] <= SOURCE_RANK_LIMIT and len(word) >= 4
+    }
+    en_source = {
+        word: data
+        for word, data in en.items()
+        if data[0] <= SOURCE_RANK_LIMIT and len(word) >= 4
+    }
 
     Path("src/frequent_forms.rs").write_text(
         generate_rust_module(ru_source, en_source), encoding="utf-8"
     )
-    patch_runtime()
-    patch_tests()
+    if "mod frequent_forms;" not in Path("src/lib.rs").read_text(encoding="utf-8"):
+        patch_runtime()
+        patch_tests()
     write_docs(ru, en, ru_rows, en_rows, ru_source, en_source)
 
     print(f"Russian embedded source forms: {len(ru_source):,}")
