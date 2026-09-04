@@ -82,7 +82,7 @@ jobs:
       - name: Run actual Detector v3 across full text
         shell: bash
         run: |
-          cargo run --quiet --example war_and_peace_audit -- audit-corpus/war_and_peace.txt
+          cargo run --release --quiet --example war_and_peace_audit -- audit-corpus/war_and_peace.txt
           echo '--- summary ---'
           cat audit-output/summary.txt
           echo '--- first failures ---'
