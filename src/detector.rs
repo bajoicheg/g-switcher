@@ -80,7 +80,10 @@ pub fn detect_with_context(
         return None;
     }
 
-    let source = infer_language(token)?;
+    let source = match infer_language(token) {
+        Some(source) => source,
+        None => punctuation_only_known_target_source(token, user_words)?,
+    };
     let normalized = normalize(token, source);
     let source_frequency = frequency_model::word_score(source, &normalized);
     if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
@@ -187,6 +190,31 @@ pub fn opposite_candidate_is_prefix_for_language(
         return false;
     }
     is_target_word_prefix(&normalize(&mapped, target), target, user_words)
+}
+
+fn punctuation_only_known_target_source(token: &str, user_words: &[String]) -> Option<Language> {
+    if token.chars().count() < 3
+        || token
+            .chars()
+            .any(|ch| ch.is_ascii_alphanumeric() || is_ru_letter(ch) || ch.is_whitespace())
+    {
+        return None;
+    }
+
+    // A few Russian words can be typed entirely on OEM keys in the English
+    // layout (for example, жэхэ -> ;'['). Only admit this otherwise
+    // language-less shape when it maps to an already-known Russian target.
+    // This keeps arbitrary punctuation fail-open.
+    let source = Language::English;
+    let target = Language::Russian;
+    let mapped = opposite_layout_text(token, source);
+    if !candidate_shape_is_valid(&mapped, target) {
+        return None;
+    }
+    let normalized = normalize(&mapped, target);
+    let known_target = dictionary_contains(target, &normalized, user_words)
+        || frequency_model::word_score(target, &normalized) >= 15;
+    known_target.then_some(source)
 }
 
 fn confidence_from_scores(

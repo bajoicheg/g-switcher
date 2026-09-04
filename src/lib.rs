@@ -14,4 +14,4 @@ pub mod undo;
 pub mod windows_runtime;
 
 pub const PRODUCT_NAME: &str = "G-switcher";
-pub const PRODUCT_VERSION: &str = "1.0.4";
+pub const PRODUCT_VERSION: &str = "1.0.5";

@@ -1,6 +1,6 @@
 [package]
 name = "g-switcher"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["V. Vasilev"]
 description = "Local Russian/English keyboard layout correction utility for Windows"
