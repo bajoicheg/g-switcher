@@ -116,6 +116,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Cargo.toml build.rs src/lib.rs scripts/release-check.ps1 src/windows_runtime/ui/settings_dialog.rs src/windows_runtime/e2e_tests.rs CHANGELOG.md README.md
-          git add -u audit-trigger.txt examples/war_and_peace_audit.rs
           git commit -m 'Prepare G-switcher 1.0.7 source candidate'
           git push origin HEAD:audit/war-and-peace-full-1.0.7
