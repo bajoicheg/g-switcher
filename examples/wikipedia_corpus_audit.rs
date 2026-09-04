@@ -18,12 +18,18 @@ fn is_ru_letter(ch: char) -> bool {
     matches!(ch, 'а'..='я' | 'А'..='Я' | 'ё' | 'Ё')
 }
 
+fn is_combining_mark(ch: char) -> bool {
+    matches!(ch, '\u{0300}'..='\u{036f}')
+}
+
 fn extract_words(text: &str) -> Vec<String> {
     let mut words = Vec::new();
     let mut current = String::new();
     for ch in text.chars() {
         if is_ru_letter(ch) {
-            current.extend(ch.to_lowercase());
+            current.push(ch);
+        } else if is_combining_mark(ch) && !current.is_empty() {
+            continue;
         } else if !current.is_empty() {
             if current.chars().count() >= 3 {
                 words.push(std::mem::take(&mut current));
@@ -36,6 +42,19 @@ fn extract_words(text: &str) -> Vec<String> {
         words.push(current);
     }
     words
+}
+
+fn is_all_caps_word(word: &str) -> bool {
+    let mut has_letter = false;
+    for ch in word.chars() {
+        if is_ru_letter(ch) {
+            has_letter = true;
+            if ch.is_lowercase() {
+                return false;
+            }
+        }
+    }
+    has_letter
 }
 
 fn csv_escape(value: &str) -> String {
@@ -63,6 +82,7 @@ fn main() {
     let mut total_unique = 0usize;
     let mut total_passed = 0usize;
     let mut total_failed = 0usize;
+    let mut total_excluded_all_caps = 0usize;
 
     for spec in specs {
         let (title, file) = spec
@@ -76,10 +96,15 @@ fn main() {
         let mut unique = 0usize;
         let mut passed = 0usize;
         let mut failed = 0usize;
+        let mut excluded_all_caps = 0usize;
 
         for word in words {
             let previous: Vec<String> = context.iter().cloned().collect();
-            if seen.insert(word.clone()) {
+            let normalized = word.to_lowercase();
+
+            if is_all_caps_word(&word) {
+                excluded_all_caps += 1;
+            } else if seen.insert(normalized.clone()) {
                 unique += 1;
                 let wrong = opposite_layout_text(&word, Language::Russian);
                 let raw = detect_with_context(&wrong, &[], &previous);
@@ -102,7 +127,8 @@ fn main() {
                         None => ("KEEP".to_owned(), String::new()),
                     };
                     let prefix = opposite_candidate_is_prefix(&wrong);
-                    let target_frequency = frequency_model::word_score(Language::Russian, &word);
+                    let target_frequency =
+                        frequency_model::word_score(Language::Russian, &normalized);
                     let raw_confidence = raw
                         .as_ref()
                         .map(|d| d.confidence.to_string())
@@ -142,13 +168,14 @@ fn main() {
         total_unique += unique;
         total_passed += passed;
         total_failed += failed;
+        total_excluded_all_caps += excluded_all_caps;
         let rate = if unique == 0 {
             0.0
         } else {
             passed as f64 * 100.0 / unique as f64
         };
         summary.push_str(&format!(
-            "{title}: unique={unique} passed={passed} failed={failed} rate={rate:.4}%\n"
+            "{title}: unique={unique} passed={passed} failed={failed} excluded_all_caps={excluded_all_caps} rate={rate:.4}%\n"
         ));
     }
 
@@ -158,7 +185,7 @@ fn main() {
         total_passed as f64 * 100.0 / total_unique as f64
     };
     summary.push_str(&format!(
-        "TOTAL: unique={total_unique} passed={total_passed} failed={total_failed} rate={total_rate:.4}%\n"
+        "TOTAL: unique={total_unique} passed={total_passed} failed={total_failed} excluded_all_caps={total_excluded_all_caps} rate={total_rate:.4}%\n"
     ));
 
     fs::write(out_dir.join("failures.csv"), failures_csv).expect("failed to write failures.csv");
