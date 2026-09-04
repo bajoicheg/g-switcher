@@ -179,6 +179,48 @@ fn real_windows_hook_to_edit_e2e() {
     ]);
     await_text(edit, "Мама мыла раму привет ");
 
+    eprintln!("G-switcher E2E checkpoint: frequent everyday wordforms");
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"PYFTIM "),
+        "знаешь ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"LJVJQ "),
+        "домой ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::English,
+        &keys(b"VFIBYF "),
+        "машина ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::Russian,
+        &keys(b"WANTED "),
+        "wanted ",
+    );
+    run_case(
+        window,
+        edit,
+        ui_thread_id,
+        Language::Russian,
+        &keys(b"LOOKING "),
+        "looking ",
+    );
+
     eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
     prepare_case(window, edit, ui_thread_id, Language::Russian);
     inject_strokes(&keys(b"RYZPM CRFPFK "));

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.10 - 2026-09-04
+
+- Adds a reproducible generated RU/EN surface-form frequency layer from OpenSubtitles2018 data pinned to a specific source commit, with CC BY 3.0 attribution recorded in `THIRD_PARTY_DATA.md`.
+- Embeds 28,235 Russian and 27,801 English 4+ letter source-protection forms (56,036 total) and deterministically promotes 26,990 frequent wrong-layout target forms under the existing confidence thresholds.
+- Deliberately excludes generated three-letter forms and generated prefixes shorter than four letters after safety regressions showed that short forms such as `vbh`/`мир` require context.
+- Defines precedence as explicit source > curated source > curated target > generated source/target, preserving established corrections such as `cath` → `сфер` while explicit English `here` remains fail-open.
+- Keeps nine generated cross-layout collisions fail-open and adds exhaustive regression coverage across every embedded generated source form and every promoted target form.
+- Extends real Win32 hook-to-EDIT E2E with representative everyday forms including `знаешь`, `домой`, `машина`, `wanted` and `looking`, while retaining the exact `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет ` gate.
+- Runtime remains fully local-only: the generator is development-time tooling and no frequency data is downloaded during normal application operation.
+
+## 1.0.9 - 2026-09-04
+
+- Restores basic everyday Russian vocabulary missing from the curated detector model, including `мама`, `мыла`, `раму` and closely related forms, without lowering global confidence thresholds.
+- Adds permanent unit and real Win32 E2E gates for `Vfvf` → `Мама`, `vskf` → `мыла`, `hfve` → `раму`, and the exact sequence `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет `.
+- Preserves all 1.0.8 UI/autostart fixes and previous mixed-language/collision safety behavior.
+
 ## 1.0.8 - 2026-09-04
 
 - Fixes first-run text overlap by replacing the fragile split description/privacy controls with four explicit bounded lines in one control.
