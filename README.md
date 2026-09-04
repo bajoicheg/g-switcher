@@ -2,12 +2,15 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.9 restores basic Russian everyday-word coverage after the missing-lexicon regression found with `Vfvf vskf hfve ghbdtn` → `Мама мыла раму привет`. The fix adds only conservative known-word entries; global detector confidence thresholds are unchanged. Version 1.0.8 first-run/autostart fixes remain intact, and Detector v3 retains the 1.0.7 full-novel baseline: 340,059/342,237 eligible wrong-layout Russian occurrences restored (99.3636%) with zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the mixed Russian/French/German `War and Peace` corpus.
+Version 1.0.10 adds a pinned, generated everyday-frequency layer from OpenSubtitles2018 surface-form frequencies while preserving the conservative detector policy. The embedded generated source layer contains 56,036 normalized Russian/English forms of four or more letters; 26,990 frequent target forms are deterministically restorable, and nine generated cross-layout collisions remain fail-open. Three-letter corpus forms stay under the existing context-sensitive policy. The exact `Vfvf vskf hfve ghbdtn` → `Мама мыла раму привет` regression remains a permanent real Win32 release gate, and global detector confidence thresholds are unchanged.
 
-## 1.0.9 behavior
+## 1.0.10 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
+- A generated frequency layer derived from pinned OpenSubtitles2018 RU/EN surface-form lists protects 56,036 common 4+ letter source forms and deterministically promotes 26,990 frequent target forms. Generated evidence never downloads at runtime.
+- Generated three-letter forms and generated prefixes shorter than four letters are deliberately excluded so ambiguous short tokens keep the existing context-sensitive behavior.
+- Detector precedence is explicit source > curated source > curated target > generated source/target; generated-vs-generated cross-layout collisions stay fail-open.
 - Basic everyday Russian forms now include `мама`, `маму`, `папа`, `папу`, `мыла`, `мыло`, `моет`, `рама`, `раму`, `раме`, `рамой`, `дома`, `домой` and `дочь`; their wrong-layout forms are deterministic known-target corrections without lowering global thresholds.
 - The exact regression `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет ` is a permanent real Win32 E2E release gate, with separate E2E cases for `Vfvf` → `Мама`, `vskf` → `мыла`, and `hfve` → `раму`.
 - Space/Enter/Tab boundaries evaluate complete opposite-layout words without the OEM prefix hold; punctuation entry keeps the prefix hold required by embedded physical comma/period keys.
@@ -47,7 +50,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection, and the exact basic phrase `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет `. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.9 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection, and the exact basic phrase `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет `. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.10 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
