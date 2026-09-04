@@ -7,8 +7,8 @@ fn main() {
         resource.set("ProductName", "G-switcher");
         resource.set("CompanyName", "V. Vasilev");
         resource.set("LegalCopyright", "Copyright (c) V. Vasilev 2026");
-        resource.set("FileVersion", "1.0.8.0");
-        resource.set("ProductVersion", "1.0.8");
+        resource.set("FileVersion", "1.0.9.0");
+        resource.set("ProductVersion", "1.0.9");
         resource
             .compile()
             .expect("failed to compile Windows resources");
