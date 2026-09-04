@@ -1,0 +1,43 @@
+name: War and Peace source inspection
+
+on:
+  push:
+    branches: [audit/war-and-peace-full-1.0.7]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.event.head_commit.message == 'Add temporary War and Peace source inspection workflow'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch official Tolstoy.ru DOCX
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import pathlib
+          import urllib.request
+          url = 'https://tolstoy.ru/upload/wap/War_and_Peace.docx'
+          req = urllib.request.Request(url, headers={'User-Agent':'G-switcher-source-inspection/1.0'})
+          with urllib.request.urlopen(req, timeout=90) as r:
+              data = r.read()
+          if not data.startswith(b'PK'):
+              raise RuntimeError('not a DOCX')
+          pathlib.Path('War_and_Peace.docx').write_bytes(data)
+          pathlib.Path('source.sha256').write_text(hashlib.sha256(data).hexdigest() + '\n', encoding='utf-8')
+          print('bytes', len(data))
+          print('sha256', hashlib.sha256(data).hexdigest())
+          PY
+      - name: Upload source for structural inspection
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: war-and-peace-official-source
+          path: |
+            War_and_Peace.docx
+            source.sha256
+          retention-days: 7
+          if-no-files-found: error
