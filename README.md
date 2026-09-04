@@ -2,12 +2,14 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.8 fixes first-run/autostart state synchronization and hardens the native first-run and Settings layouts. Detector v3 remains the 1.0.7 full-novel build: 340,059/342,237 eligible wrong-layout Russian occurrences restored (99.3636%) with zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the mixed Russian/French/German `War and Peace` corpus.
+Version 1.0.9 restores basic Russian everyday-word coverage after the missing-lexicon regression found with `Vfvf vskf hfve ghbdtn` → `Мама мыла раму привет`. The fix adds only conservative known-word entries; global detector confidence thresholds are unchanged. Version 1.0.8 first-run/autostart fixes remain intact, and Detector v3 retains the 1.0.7 full-novel baseline: 340,059/342,237 eligible wrong-layout Russian occurrences restored (99.3636%) with zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the mixed Russian/French/German `War and Peace` corpus.
 
-## 1.0.8 behavior
+## 1.0.9 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
+- Basic everyday Russian forms now include `мама`, `маму`, `папа`, `папу`, `мыла`, `мыло`, `моет`, `рама`, `раму`, `раме`, `рамой`, `дома`, `домой` and `дочь`; their wrong-layout forms are deterministic known-target corrections without lowering global thresholds.
+- The exact regression `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет ` is a permanent real Win32 E2E release gate, with separate E2E cases for `Vfvf` → `Мама`, `vskf` → `мыла`, and `hfve` → `раму`.
 - Space/Enter/Tab boundaries evaluate complete opposite-layout words without the OEM prefix hold; punctuation entry keeps the prefix hold required by embedded physical comma/period keys.
 - Full-novel source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.
 - The built-in common-word lexicons include everyday, technical, colloquial and common obscene vocabulary in both languages.
@@ -45,7 +47,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, plus `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.8 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection, and the exact basic phrase `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет `. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.9 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
