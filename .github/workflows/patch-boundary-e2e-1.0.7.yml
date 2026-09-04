@@ -22,27 +22,29 @@ jobs:
           from pathlib import Path
           p = Path('src/windows_runtime/e2e_tests.rs')
           s = p.read_text(encoding='utf-8')
-          old = '''    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
-    prepare_case(window, edit, ui_thread_id, Language::English);
-    {
-        let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();
-        engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];
-    }
-    inject_strokes(&keys(b"GMTH "));
-    await_text(edit, "пьер ");
-'''
-          new = '''    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
-    prepare_case(window, edit, ui_thread_id, Language::Russian);
-    inject_strokes(&keys(b"RYZPM CRFPFK "));
-    await_text(edit, "князь сказал ");
-    let english_hkl = select_layout(Language::English).expect("English HKL is unavailable");
-    assert!(
-        switch_layout(edit, ui_thread_id, english_hkl),
-        "test context layout switch RU -> EN failed"
-    );
-    inject_strokes(&keys(b"GMTH "));
-    await_text(edit, "князь сказал пьер ");
-'''
+          old = (
+              '    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");\n'
+              '    prepare_case(window, edit, ui_thread_id, Language::English);\n'
+              '    {\n'
+              '        let mut engine = ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock();\n'
+              '        engine.context_tokens = vec!["князь".to_owned(), "сказал".to_owned()];\n'
+              '    }\n'
+              '    inject_strokes(&keys(b"GMTH "));\n'
+              '    await_text(edit, "пьер ");\n'
+          )
+          new = (
+              '    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");\n'
+              '    prepare_case(window, edit, ui_thread_id, Language::Russian);\n'
+              '    inject_strokes(&keys(b"RYZPM CRFPFK "));\n'
+              '    await_text(edit, "князь сказал ");\n'
+              '    let english_hkl = select_layout(Language::English).expect("English HKL is unavailable");\n'
+              '    assert!(\n'
+              '        switch_layout(edit, ui_thread_id, english_hkl),\n'
+              '        "test context layout switch RU -> EN failed"\n'
+              '    );\n'
+              '    inject_strokes(&keys(b"GMTH "));\n'
+              '    await_text(edit, "князь сказал пьер ");\n'
+          )
           if new in s:
               Path('/tmp/changed').write_text('0')
           elif old in s:
