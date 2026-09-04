@@ -20,7 +20,7 @@ jobs:
           ref: feature/frequency-lexicon-1.0.10
           fetch-depth: 0
 
-      - name: Exclude generated three-letter forms and regenerate
+      - name: Exclude generated short forms and prefixes
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -42,8 +42,12 @@ jobs:
               ),
               ('        3 => 3_000,', '        3 => 0,'),
               (
+                  'pub fn has_target_prefix(language: Language, prefix: &str) -> bool {{\n    if prefix.is_empty() {{',
+                  'pub fn has_target_prefix(language: Language, prefix: &str) -> bool {{\n    if prefix.chars().count() < 4 {{',
+              ),
+              (
                   '- Source protection: every normalized alphabetic form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 3,000 for 3-letter forms, <= 10,000 for 4-letter forms, <= 15,000 for 5+ letter forms.',
-                  '- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms are deliberately held out so the existing context-sensitive short-word policy remains unchanged.\n- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
+                  '- Generated runtime frequency evidence starts at 4 letters. Three-letter corpus forms and generated prefixes shorter than 4 letters are deliberately held out so the existing context-sensitive short-word policy remains unchanged.\n- Source protection: every normalized alphabetic 4+ letter form whose raw source rank is <= {SOURCE_RANK_LIMIT:,}; this layer is deliberately broad.\n- Automatic target promotion: rank <= 10,000 for 4-letter forms and <= 15,000 for 5+ letter forms.',
               ),
               (
                   '    ru_source = {word: data for word, data in ru.items() if data[0] <= SOURCE_RANK_LIMIT}\n    en_source = {word: data for word, data in en.items() if data[0] <= SOURCE_RANK_LIMIT}',
