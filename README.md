@@ -2,12 +2,14 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 1.0.6 extends Detector v3 validation with ten additional large Russian Wikipedia articles across geography, history, science and IT. On the 31,738-form normalized synthetic RU→EN wrong-layout corpus, automatic restoration improves from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences are deliberately fail-open short/English-source collisions rather than forced corrections.
+Version 1.0.7 validates Detector v3 against the exact novel body of Tolstoy’s `War and Peace`. At true word boundaries it restores 340,059/342,237 eligible wrong-layout Russian occurrences (99.3636%) while producing zero false automatic corrections across 342,237 correct Russian and 11,594 correct Latin-layout occurrences in the same mixed Russian/French/German corpus.
 
-## 1.0.6 behavior
+## 1.0.7 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
+- Space/Enter/Tab boundaries evaluate complete opposite-layout words without the OEM prefix hold; punctuation entry keeps the prefix hold required by embedded physical comma/period keys.
+- Full-novel source protections preserve observed Russian forms and common French/German/Latin-layout words; deliberate valid-source collisions such as `here`/`her` remain fail-open.
 - The built-in common-word lexicons include everyday, technical, colloquial and common obscene vocabulary in both languages.
 - Recognized frequent source-language words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` are protected from automatic rewriting; wrong-layout forms of recognized target words receive deterministic target recognition.
 - Ten-article follow-up corpus coverage adds 55 safe Russian target forms while explicitly protecting valid/ambiguous English source tokens including `keys`, `dyer`, `ytd`, `cnf`, `lev` and `ren`; global confidence thresholds are unchanged.
@@ -41,7 +43,7 @@ Persisted data is limited to explicit user configuration: automatic-correction s
 
 ## Release assurance
 
-The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, plus `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.6 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
+The Windows CI gate runs formatting, unit/integration tests, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, and article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, plus `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection. The built EXE is then checked for Windows GUI subsystem, G-switcher 1.0.7 version metadata, forbidden legacy-brand residue, and a SHA-256 file is generated before the artifact is uploaded.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
