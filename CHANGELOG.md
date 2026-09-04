@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.7 — 2026-09-04
+
+- Audits Detector v3 against the exact novel body of Leo Tolstoy's `War and Peace` from the official Tolstoy.ru DOCX: 342,237 eligible Russian word occurrences and 11,594 eligible Latin-layout occurrences after documented short/ALL-CAPS exclusions.
+- Raises automatic RU→EN wrong-layout restoration on the full novel to 340,059/342,237 (99.3636%) while preserving 342,237/342,237 correct Russian occurrences and 11,594/11,594 correct Latin-layout occurrences with zero false automatic corrections in the corpus.
+- Scopes opposite-target prefix holding to the punctuation/OEM input path. True Space/Enter/Tab word boundaries no longer suppress complete words such as `gmth` → `пьер`, while internal OEM sequences still preserve `rjhj,rf` → `коробка` and `rjhj,jxrf.` → `коробочка.`.
+- Adds explicit source protection for Russian forms and common French/German/Latin-layout words observed in the mixed-language novel; valid-source collisions such as `here`/`her` remain fail-open instead of being forced to `руку`/`рук`.
+- Adds permanent detector regressions and real Win32 boundary E2E coverage for `пьер`, while retaining existing OEM, collision, secure-input, Undo and application-mode gates.
+- Removes the Tolstoy.ru download and full-novel audit tooling from the production branch; normal runtime remains local-only with no network or telemetry behavior.
+- Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.7.
+
 ## 1.0.6 — 2026-09-04
 
 - Audits Detector v3 against ten additional large Russian Wikipedia articles: `Земля`, `Человек`, `Европа`, `СССР`, `Российская империя`, `Первая мировая война`, `Солнечная система`, `Компьютер`, `Математика` and `Физика`. The normalized corpus contains 31,738 unique testable Russian word forms.

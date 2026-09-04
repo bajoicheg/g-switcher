@@ -115,6 +115,18 @@ fn real_windows_hook_to_edit_e2e() {
         &keys(&[b'G', b'H', b'B', b'D', b'T', b'N', VK_SPACE as u8]),
         "привет ",
     );
+    eprintln!("G-switcher E2E checkpoint: boundary prefix completion");
+    prepare_case(window, edit, ui_thread_id, Language::Russian);
+    inject_strokes(&keys(b"RYZPM CRFPFK "));
+    await_text(edit, "князь сказал ");
+    let english_hkl = select_layout(Language::English).expect("English HKL is unavailable");
+    assert!(
+        switch_layout(edit, ui_thread_id, english_hkl),
+        "test context layout switch RU -> EN failed"
+    );
+    inject_strokes(&keys(b"GMTH "));
+    await_text(edit, "князь сказал пьер ");
+
     run_case(
         window,
         edit,
