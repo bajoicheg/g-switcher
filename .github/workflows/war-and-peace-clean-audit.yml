@@ -6,15 +6,208 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: war-and-peace-clean-audit-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Apply systemic detector fix if not present
+        id: patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/detector.rs')
+          s = p.read_text(encoding='utf-8')
+          if 'trusted_context_language' in s:
+              Path('/tmp/changed').write_text('0')
+              raise SystemExit(0)
+
+          old = '''    let source_score =
+              language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
+          let target_score = language_score(&mapped_normalized, target)
+              + frequency_model::lexical_score(target, &mapped_normalized);
+          let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens);
+          let effective_target = target_score + context_bonus;
+          let effective_margin = target_score - source_score + context_bonus;
+
+          if effective_target < 10 || effective_margin < 5 {
+              return None;
+          }
+          '''
+          new = '''    let source_score =
+              language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
+          let target_score = language_score(&mapped_normalized, target)
+              + frequency_model::lexical_score(target, &mapped_normalized);
+          let base_margin = target_score - source_score;
+
+          // Context may support an intrinsically plausible opposite-layout candidate,
+          // but it must not overturn a token that is already at least as plausible
+          // in the layout in which it was typed. This prevents mixed Russian/French
+          // prose from treating script alone as language evidence.
+          if source_score >= 4 && base_margin <= 0 {
+              return None;
+          }
+
+          let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
+          let effective_target = target_score + context_bonus;
+          let effective_margin = base_margin + context_bonus;
+
+          if effective_target < 10 || effective_margin < 5 {
+              return None;
+          }
+          '''
+          if old not in s:
+              raise SystemExit('detector scoring block not found')
+          s = s.replace(old, new, 1)
+
+          old = '''fn context_bonus(target: Language, candidate: &str, previous_tokens: &[String]) -> i32 {
+              let recent: Vec<&String> = previous_tokens
+                  .iter()
+                  .rev()
+                  .take(MAX_CONTEXT_WORDS)
+                  .collect();
+              let mut bonus = 0;
+
+              for (index, token) in recent.iter().enumerate() {
+                  match infer_language(token) {
+                      Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
+                      Some(_) => bonus -= if index == 0 { 3 } else { 2 },
+                      None => {}
+                  }
+              }
+
+              if let Some(last) = recent.first() {
+                  if infer_language(last) == Some(target) {
+                      let last = normalize(last, target);
+                      bonus += frequency_model::transition_score(target, &last, candidate);
+                  }
+              }
+
+              bonus.clamp(-6, 20)
+          }
+          '''
+          new = '''fn context_bonus(
+              target: Language,
+              candidate: &str,
+              previous_tokens: &[String],
+              user_words: &[String],
+          ) -> i32 {
+              let recent: Vec<&String> = previous_tokens
+                  .iter()
+                  .rev()
+                  .take(MAX_CONTEXT_WORDS)
+                  .collect();
+              let mut bonus = 0;
+
+              for (index, token) in recent.iter().enumerate() {
+                  match trusted_context_language(token, user_words) {
+                      Some(language) if language == target => bonus += if index == 0 { 7 } else { 4 },
+                      Some(_) => bonus -= if index == 0 { 3 } else { 2 },
+                      None => {}
+                  }
+              }
+
+              if let Some(last) = recent.first() {
+                  if trusted_context_language(last, user_words) == Some(target) {
+                      let last = normalize(last, target);
+                      bonus += frequency_model::transition_score(target, &last, candidate);
+                  }
+              }
+
+              bonus.clamp(-6, 20)
+          }
+
+          fn trusted_context_language(token: &str, user_words: &[String]) -> Option<Language> {
+              let language = infer_language(token)?;
+              let normalized = normalize(token, language);
+              let known = dictionary_contains(language, &normalized, user_words)
+                  || frequency_model::word_score(language, &normalized) >= 15;
+              known.then_some(language)
+          }
+          '''
+          if old not in s:
+              raise SystemExit('context_bonus block not found')
+          s = s.replace(old, new, 1)
+
+          marker = '''    #[test]
+              fn exact_dictionary_match_has_maximum_confidence() {'''
+          tests = '''    #[test]
+              fn mixed_language_context_does_not_flip_plausible_source_tokens() {
+                  let french = vec!["les".to_owned(), "notres".to_owned()];
+                  assert!(correction_with_context("князь", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french).is_none());
+
+                  let russian = vec!["сказала".to_owned(), "она".to_owned()];
+                  assert!(correction_with_context("que", &[], DEFAULT_CONFIDENCE_THRESHOLD, &russian).is_none());
+              }
+
+              #[test]
+              fn unknown_foreign_context_does_not_suppress_clear_wrong_layout_russian() {
+                  let french = vec!["chere".to_owned(), "annette".to_owned()];
+                  let detection = correction_with_context("crfpfk", &[], DEFAULT_CONFIDENCE_THRESHOLD, &french)
+                      .expect("сказал should still correct after foreign context");
+                  assert_eq!(detection.corrected, "сказал");
+              }
+
+              #[test]
+              fn symmetric_source_collisions_stay_fail_open() {
+                  for token in ["руку", "внук", "ста", "here", "dyer", "cnf"] {
+                      assert!(correction(token).is_none(), "collision token must stay source: {token}");
+                  }
+              }
+
+          '''
+          if marker not in s:
+              raise SystemExit('test insertion marker not found')
+          s = s.replace(marker, tests + marker, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/frequency_model.rs')
+          s = p.read_text(encoding='utf-8')
+          needle = '"автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео'
+          replacement = '"автоматически автор англ блок боукы будут бук бурундук быт верит вес взят видео внук руку ста'
+          if needle not in s:
+              raise SystemExit('RU_COMMON insertion point not found')
+          s = s.replace(needle, replacement, 1)
+          p.write_text(s, encoding='utf-8')
+          Path('/tmp/changed').write_text('1')
+          PY
+          echo "changed=$(cat /tmp/changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate patch
+        if: steps.patch.outputs.changed == '1'
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+
+      - name: Commit validated patch
+        if: steps.patch.outputs.changed == '1'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/detector.rs src/frequency_model.rs
+          git commit -m 'Harden mixed-language detector context from full-novel audit'
+          git push origin HEAD:audit/war-and-peace-full-1.0.7
+
   audit:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Add clean four-volume War and Peace audit'
+    needs: patch
+    if: needs.patch.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -29,98 +222,57 @@ jobs:
           rustup set profile minimal
           rustup toolchain install stable
           rustup default stable
-          rustc --version
-          cargo --version
 
       - name: Extract only the four-volume novel plus epilogue
         shell: bash
         run: |
           python - <<'PY'
-          import hashlib
-          import io
-          import pathlib
-          import urllib.request
-          import zipfile
+          import hashlib, io, pathlib, urllib.request, zipfile
           import xml.etree.ElementTree as ET
-
           url = 'https://tolstoy.ru/upload/wap/War_and_Peace.docx'
           req = urllib.request.Request(url, headers={'User-Agent':'G-switcher-clean-novel-audit/1.0'})
           with urllib.request.urlopen(req, timeout=90) as r:
               data = r.read()
-          if not data.startswith(b'PK'):
-              raise RuntimeError('expected DOCX')
-
           ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
           with zipfile.ZipFile(io.BytesIO(data)) as zf:
               root = ET.fromstring(zf.read('word/document.xml'))
-
           paragraphs = []
           for idx, p in enumerate(root.findall('.//w:body/w:p', ns)):
               text = ''.join((n.text or '') for n in p.findall('.//w:t', ns))
               style = None
               ppr = p.find('w:pPr', ns)
               if ppr is not None:
-                  pstyle = ppr.find('w:pStyle', ns)
-                  if pstyle is not None:
-                      style = pstyle.attrib.get('{%s}val' % ns['w'])
+                  ps = ppr.find('w:pStyle', ns)
+                  if ps is not None:
+                      style = ps.attrib.get('{%s}val' % ns['w'])
               paragraphs.append((idx, style, text))
-
-          main_heading = None
-          start = None
-          end = None
+          main_heading = start = end = None
           for idx, style, text in paragraphs:
               if main_heading is None and style == 'Heading1' and text.startswith('ВОЙНА И МИР'):
                   main_heading = idx
-                  continue
-              if main_heading is not None and start is None and style == 'Heading2' and text.strip() == 'ТОМ ПЕРВЫЙ':
+              elif main_heading is not None and start is None and style == 'Heading2' and text.strip() == 'ТОМ ПЕРВЫЙ':
                   start = idx
-                  continue
-              if start is not None and style == 'Heading1' and text.startswith('ПЕЧАТНЫЕ ВАРИАНТЫ'):
+              elif start is not None and style == 'Heading1' and text.startswith('ПЕЧАТНЫЕ ВАРИАНТЫ'):
                   end = idx
                   break
-
           if (main_heading, start, end) != (443, 452, 14260):
-              raise RuntimeError(f'unexpected structural boundaries: {(main_heading, start, end)}')
+              raise RuntimeError(f'unexpected boundaries {(main_heading, start, end)}')
           selected = [text for idx, style, text in paragraphs if start <= idx < end]
-          if not selected or selected[0] != 'ТОМ ПЕРВЫЙ' or selected[-2:] != ['', 'Конец.']:
-              # Empty paragraphs can vary in joins; verify explicit terminator independently below.
-              pass
           nonempty = [p for p in selected if p]
           if nonempty[0] != 'ТОМ ПЕРВЫЙ' or nonempty[-1] != 'Конец.':
-              raise RuntimeError(f'bad novel boundaries: {nonempty[:1]} ... {nonempty[-1:]}')
-
+              raise RuntimeError('novel boundary verification failed')
           text = '\n'.join(selected)
           pathlib.Path('audit-corpus').mkdir(exist_ok=True)
           pathlib.Path('audit-corpus/war_and_peace_novel.txt').write_text(text, encoding='utf-8')
-          provenance = (
-              f'source_url={url}\n'
-              f'docx_bytes={len(data)}\n'
-              f'docx_sha256={hashlib.sha256(data).hexdigest()}\n'
-              f'document_paragraphs={len(paragraphs)}\n'
-              f'main_heading_paragraph={main_heading}\n'
-              f'novel_start_paragraph={start}\n'
-              f'novel_end_exclusive_paragraph={end}\n'
-              f'novel_paragraphs={len(selected)}\n'
-              f'novel_chars={len(text)}\n'
-              f'first_nonempty={nonempty[0]}\n'
-              f'last_nonempty={nonempty[-1]}\n'
-          )
-          pathlib.Path('audit-corpus/provenance.txt').write_text(provenance, encoding='utf-8')
-          print(provenance)
+          pathlib.Path('audit-corpus/provenance.txt').write_text(
+              f'source_url={url}\ndocx_sha256={hashlib.sha256(data).hexdigest()}\nnovel_chars={len(text)}\nnovel_start={start}\nnovel_end_exclusive={end}\n', encoding='utf-8')
           PY
 
       - name: Run actual Detector v3 over every eligible occurrence
         shell: bash
         run: |
           cargo run --release --quiet --example war_and_peace_audit -- audit-corpus/war_and_peace_novel.txt
-          echo '--- summary ---'
           cat audit-output/summary.txt
-          echo '--- top RU misses by source order sample ---'
-          head -n 60 audit-output/failures.csv
-          echo '--- RU source false positives ---'
-          cat audit-output/russian_source_false_positives.csv
-          echo '--- Latin/French source false positives ---'
-          cat audit-output/latin_source_false_positives.csv
 
       - name: Upload clean audit report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
