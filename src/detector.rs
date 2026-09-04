@@ -76,6 +76,23 @@ pub fn detect_with_context(
     user_words: &[String],
     previous_tokens: &[String],
 ) -> Option<Detection> {
+    detect_with_context_policy(token, user_words, previous_tokens, true)
+}
+
+pub fn detect_at_boundary_with_context(
+    token: &str,
+    user_words: &[String],
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    detect_with_context_policy(token, user_words, previous_tokens, false)
+}
+
+fn detect_with_context_policy(
+    token: &str,
+    user_words: &[String],
+    previous_tokens: &[String],
+    hold_target_prefix: bool,
+) -> Option<Detection> {
     if is_code_safe_token(token) || token.chars().count() < 3 {
         return None;
     }
@@ -109,7 +126,7 @@ pub fn detect_with_context(
 
     // OEM punctuation can map to a letter in the opposite layout. Keep a known
     // target prefix intact until the remaining physical keys arrive.
-    if is_target_word_prefix(&mapped_normalized, target, user_words) {
+    if hold_target_prefix && is_target_word_prefix(&mapped_normalized, target, user_words) {
         return None;
     }
 
@@ -165,6 +182,16 @@ pub fn correction_with_context(
     previous_tokens: &[String],
 ) -> Option<Detection> {
     let detection = detect_with_context(token, user_words, previous_tokens)?;
+    (detection.confidence >= confidence_threshold).then_some(detection)
+}
+
+pub fn correction_at_boundary_with_context(
+    token: &str,
+    user_words: &[String],
+    confidence_threshold: u8,
+    previous_tokens: &[String],
+) -> Option<Detection> {
+    let detection = detect_at_boundary_with_context(token, user_words, previous_tokens)?;
     (detection.confidence >= confidence_threshold).then_some(detection)
 }
 
@@ -474,6 +501,21 @@ mod tests {
                 "correct Russian source must stay source: {token}"
             );
         }
+    }
+
+    #[test]
+    fn boundary_detection_does_not_hold_complete_target_prefix() {
+        let context = vec!["князь".to_owned(), "сказал".to_owned()];
+        assert!(opposite_candidate_is_prefix("gmth"));
+        let detection = correction_at_boundary_with_context(
+            "gmth",
+            &[],
+            DEFAULT_CONFIDENCE_THRESHOLD,
+            &context,
+        )
+        .expect("пьер at a true word boundary should correct");
+        assert_eq!(detection.corrected, "пьер");
+        assert_eq!(detection.target, Language::Russian);
     }
 
     #[test]

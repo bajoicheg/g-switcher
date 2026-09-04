@@ -36,8 +36,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::detector::{
-    correction_with_context, infer_language, opposite_candidate_is_prefix_for_language,
-    MAX_CONTEXT_WORDS,
+    correction_at_boundary_with_context, correction_with_context, infer_language,
+    opposite_candidate_is_prefix_for_language, MAX_CONTEXT_WORDS,
 };
 use crate::layout::opposite_layout_text;
 use crate::model::Language;
@@ -484,7 +484,7 @@ impl Engine {
         delimiter: Delimiter,
         allow_auto: bool,
     ) -> HookDecision {
-        if allow_auto && self.try_correct(target, delimiter) {
+        if allow_auto && self.try_correct(target, delimiter, true) {
             self.previous = None;
             HookDecision::Suppress
         } else {
@@ -507,7 +507,7 @@ impl Engine {
         };
         let delimiter = Delimiter::Character(ch);
 
-        if allow_auto && self.try_correct(target, delimiter) {
+        if allow_auto && self.try_correct(target, delimiter, false) {
             self.previous = None;
             return HookDecision::Suppress;
         }
@@ -568,7 +568,12 @@ impl Engine {
         self.context_tokens.push(token);
     }
 
-    fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {
+    fn try_correct(
+        &mut self,
+        source: FocusTarget,
+        delimiter: Delimiter,
+        at_boundary: bool,
+    ) -> bool {
         if self.candidate.is_empty() || self.strokes.is_empty() || self.pending_correction.is_some()
         {
             return false;
@@ -578,12 +583,22 @@ impl Engine {
         if !runtime_settings.auto_correct {
             return false;
         }
-        let Some(detection) = correction_with_context(
-            &self.candidate,
-            &runtime_settings.user_words,
-            runtime_settings.sensitivity.confidence_threshold(),
-            &self.context_tokens,
-        ) else {
+        let detection = if at_boundary {
+            correction_at_boundary_with_context(
+                &self.candidate,
+                &runtime_settings.user_words,
+                runtime_settings.sensitivity.confidence_threshold(),
+                &self.context_tokens,
+            )
+        } else {
+            correction_with_context(
+                &self.candidate,
+                &runtime_settings.user_words,
+                runtime_settings.sensitivity.confidence_threshold(),
+                &self.context_tokens,
+            )
+        };
+        let Some(detection) = detection else {
             return false;
         };
         if detection.source != source.language {
