@@ -1,0 +1,33 @@
+name: Format G-switcher 1.0.8
+
+on:
+  push:
+    branches: [fix/ui-first-run-autostart-1.0.8]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/ui-first-run-autostart-1.0.8
+      - shell: pwsh
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --component rustfmt
+          rustup default stable
+          cargo fmt --all
+          if (Test-Path Cargo.lock) { Remove-Item Cargo.lock }
+          git diff --check
+      - shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/windows_runtime/ui.rs
+          git diff --cached --quiet; if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "Apply rustfmt to 1.0.8 UI changes"
+          git push origin HEAD:fix/ui-first-run-autostart-1.0.8
