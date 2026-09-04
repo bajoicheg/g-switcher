@@ -117,19 +117,9 @@ pub fn detect_with_context(
         language_score(&normalized, source) + frequency_model::lexical_score(source, &normalized);
     let target_score = language_score(&mapped_normalized, target)
         + frequency_model::lexical_score(target, &mapped_normalized);
-    let base_margin = target_score - source_score;
-
-    // Context may support a plausible opposite-layout candidate, but it
-    // must not overturn a token that is intrinsically at least as plausible
-    // in the layout in which it was typed. This is critical for mixed
-    // Russian/French prose, where script alone is not language evidence.
-    if source_score >= 4 && base_margin <= 0 {
-        return None;
-    }
-
     let context_bonus = context_bonus(target, &mapped_normalized, previous_tokens, user_words);
     let effective_target = target_score + context_bonus;
-    let effective_margin = base_margin + context_bonus;
+    let effective_margin = target_score - source_score + context_bonus;
 
     if effective_target < 10 || effective_margin < 5 {
         return None;
@@ -455,6 +445,19 @@ mod tests {
             assert!(
                 correction(token).is_none(),
                 "collision token must stay source: {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn common_foreign_latin_source_words_are_protected() {
+        for token in [
+            "que", "sire", "une", "des", "monsieur", "comme", "ils", "mot", "quelle", "votre",
+            "adieu", "dans", "die", "merci", "pas", "sans", "sur",
+        ] {
+            assert!(
+                correction(token).is_none(),
+                "Latin-layout source must stay source: {token}"
             );
         }
     }
