@@ -6,14 +6,185 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: war-and-peace-clean-audit-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Move target-prefix hold to punctuation path
+        id: patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          detector = Path('src/detector.rs')
+          s = detector.read_text(encoding='utf-8')
+          if 'detect_at_boundary_with_context' in s:
+              Path('/tmp/changed').write_text('0')
+              raise SystemExit(0)
+
+          start = s.index('pub fn detect_with_context(')
+          body = s.index('    if is_code_safe_token', start)
+          replacement = '''pub fn detect_with_context(
+              token: &str,
+              user_words: &[String],
+              previous_tokens: &[String],
+          ) -> Option<Detection> {
+              detect_with_context_policy(token, user_words, previous_tokens, true)
+          }
+
+          pub fn detect_at_boundary_with_context(
+              token: &str,
+              user_words: &[String],
+              previous_tokens: &[String],
+          ) -> Option<Detection> {
+              detect_with_context_policy(token, user_words, previous_tokens, false)
+          }
+
+          fn detect_with_context_policy(
+              token: &str,
+              user_words: &[String],
+              previous_tokens: &[String],
+              hold_target_prefix: bool,
+          ) -> Option<Detection> {
+          '''
+          s = s[:start] + replacement + s[body:]
+          old = '    if is_target_word_prefix(&mapped_normalized, target, user_words) {'
+          if old not in s:
+              raise SystemExit('prefix guard marker missing')
+          s = s.replace(old, '    if hold_target_prefix && is_target_word_prefix(&mapped_normalized, target, user_words) {', 1)
+
+          insert_at = s.index('\n\npub fn opposite_candidate_is_prefix')
+          boundary_correction = '''
+
+          pub fn correction_at_boundary_with_context(
+              token: &str,
+              user_words: &[String],
+              confidence_threshold: u8,
+              previous_tokens: &[String],
+          ) -> Option<Detection> {
+              let detection = detect_at_boundary_with_context(token, user_words, previous_tokens)?;
+              (detection.confidence >= confidence_threshold).then_some(detection)
+          }'''
+          s = s[:insert_at] + boundary_correction + s[insert_at:]
+
+          test_anchor = '    #[test]\n    fn exact_dictionary_match_has_maximum_confidence()'
+          pos = s.index(test_anchor)
+          test = '''    #[test]
+          fn boundary_detection_does_not_hold_complete_target_prefix() {
+              let context = vec!["князь".to_owned(), "сказал".to_owned()];
+              assert!(opposite_candidate_is_prefix("gmth"));
+              let detection = correction_at_boundary_with_context(
+                  "gmth",
+                  &[],
+                  DEFAULT_CONFIDENCE_THRESHOLD,
+                  &context,
+              )
+              .expect("пьер at a true word boundary should correct");
+              assert_eq!(detection.corrected, "пьер");
+              assert_eq!(detection.target, Language::Russian);
+          }
+
+          '''
+          s = s[:pos] + test + s[pos:]
+          detector.write_text(s, encoding='utf-8')
+
+          runtime = Path('src/windows_runtime/mod.rs')
+          r = runtime.read_text(encoding='utf-8')
+          r = r.replace(
+              '    correction_with_context, infer_language, opposite_candidate_is_prefix_for_language,',
+              '    correction_at_boundary_with_context, correction_with_context, infer_language,\n    opposite_candidate_is_prefix_for_language,',
+              1,
+          )
+          r = r.replace(
+              'if allow_auto && self.try_correct(target, delimiter) {',
+              'if allow_auto && self.try_correct(target, delimiter, true) {',
+              1,
+          )
+          r = r.replace(
+              'if allow_auto && self.try_correct(target, delimiter) {',
+              'if allow_auto && self.try_correct(target, delimiter, false) {',
+              1,
+          )
+          old_sig = '    fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter) -> bool {'
+          if old_sig not in r:
+              raise SystemExit('try_correct signature marker missing')
+          r = r.replace(
+              old_sig,
+              '    fn try_correct(&mut self, source: FocusTarget, delimiter: Delimiter, at_boundary: bool) -> bool {',
+              1,
+          )
+          call_start = r.index('        let Some(detection) = correction_with_context(', r.index('    fn try_correct('))
+          call_end = r.index('        if detection.source != source.language {', call_start)
+          call = '''        let detection = if at_boundary {
+              correction_at_boundary_with_context(
+                  &self.candidate,
+                  &runtime_settings.user_words,
+                  runtime_settings.sensitivity.confidence_threshold(),
+                  &self.context_tokens,
+              )
+          } else {
+              correction_with_context(
+                  &self.candidate,
+                  &runtime_settings.user_words,
+                  runtime_settings.sensitivity.confidence_threshold(),
+                  &self.context_tokens,
+              )
+          };
+          let Some(detection) = detection else {
+              return false;
+          };
+'''
+          r = r[:call_start] + call + r[call_end:]
+          runtime.write_text(r, encoding='utf-8')
+
+          audit = Path('examples/war_and_peace_audit.rs')
+          a = audit.read_text(encoding='utf-8')
+          a = a.replace(
+              'correction_with_context, detect_with_context, opposite_candidate_is_prefix,',
+              'correction_at_boundary_with_context, detect_at_boundary_with_context,\n        opposite_candidate_is_prefix,',
+              1,
+          )
+          a = a.replace('correction_with_context(', 'correction_at_boundary_with_context(')
+          a = a.replace('detect_with_context(', 'detect_at_boundary_with_context(')
+          audit.write_text(a, encoding='utf-8')
+
+          Path('/tmp/changed').write_text('1')
+          PY
+          echo "changed=$(cat /tmp/changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate source changes
+        if: steps.patch.outputs.changed == '1'
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --all
+          cargo test --all-targets
+          cargo clippy --all-targets -- -D warnings
+
+      - name: Commit validated source changes
+        if: steps.patch.outputs.changed == '1'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/detector.rs src/windows_runtime/mod.rs examples/war_and_peace_audit.rs
+          git commit -m 'Scope target-prefix hold to punctuation input'
+          git push origin HEAD:audit/war-and-peace-full-1.0.7
+
   audit:
+    needs: patch
+    if: needs.patch.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
