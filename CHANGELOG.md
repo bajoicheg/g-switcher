@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.6 — 2026-09-04
+
+- Audits Detector v3 against ten additional large Russian Wikipedia articles: `Земля`, `Человек`, `Европа`, `СССР`, `Российская империя`, `Первая мировая война`, `Солнечная система`, `Компьютер`, `Математика` and `Физика`. The normalized corpus contains 31,738 unique testable Russian word forms.
+- Improves automatic restoration on that corpus from 31,658/31,738 (99.7479%) in 1.0.5 to 31,716/31,738 (99.9307%). The remaining 22 occurrences / 19 unique forms are intentionally fail-open because they collide with valid English tokens or are ambiguous three-character sequences.
+- Adds 55 safe corpus-derived Russian target forms without lowering global confidence thresholds.
+- Adds source-language protections for `dyer`, `ytd`, `cnf`, `lev` and `ren`, while preserving the existing `keys` protection.
+- Adds permanent regression coverage for all 55 safe forms and the 19 intentional KEEP forms, plus real Win32 hook-to-EDIT E2E for `математика`, `европа`, `физика` and English `dyer`/`ytd`/`cnf`.
+- Keeps Wikipedia retrieval and corpus processing strictly in temporary QA automation; normal G-switcher runtime remains local-only with no network or telemetry behavior.
+- Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.6.
+
 ## 1.0.5 — 2026-09-04
 
 - Audits Detector v3 against five large Russian Wikipedia articles: `Россия`, `Москва`, `Вторая мировая война`, `Интернет` and `Вселенная`. After normalization and intentional ALL-CAPS/code-safe exclusions, the corpus contains 23,336 unique testable Russian word forms.
