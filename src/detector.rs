@@ -102,8 +102,9 @@ fn detect_with_context_policy(
         None => punctuation_only_known_target_source(token, user_words)?,
     };
     let normalized = normalize(token, source);
-    let source_frequency = frequency_model::word_score(source, &normalized);
-    if dictionary_contains(source, &normalized, user_words) || source_frequency >= 15 {
+    let source_frequency = frequency_model::source_word_score(source, &normalized);
+    let source_curated = frequency_model::curated_word_score(source, &normalized);
+    if dictionary_contains(source, &normalized, user_words) || source_curated >= 15 {
         return None;
     }
 
@@ -114,8 +115,14 @@ fn detect_with_context_policy(
         return None;
     }
 
+    let target_is_explicit = dictionary_contains(target, &mapped_normalized, user_words);
+    let target_curated = frequency_model::curated_word_score(target, &mapped_normalized);
+    if source_frequency >= 15 && !target_is_explicit && target_curated < 15 {
+        return None;
+    }
+
     let target_frequency = frequency_model::word_score(target, &mapped_normalized);
-    if dictionary_contains(target, &mapped_normalized, user_words) || target_frequency >= 15 {
+    if target_is_explicit || target_frequency >= 15 {
         return Some(Detection {
             source,
             target,
@@ -444,6 +451,155 @@ mod tests {
                 Decision::Keep,
                 "valid Russian source changed: {source}"
             );
+        }
+    }
+
+    #[test]
+    fn generated_frequent_forms_are_source_safe_and_target_covered() {
+        let mut protected_sources = 0usize;
+        let mut promoted_targets = 0usize;
+        let mut intentional_collisions = 0usize;
+        let mut code_safe_skips = 0usize;
+
+        for target in [Language::Russian, Language::English] {
+            for &(word, rank) in crate::frequent_forms::forms(target) {
+                assert!(
+                    frequency_model::source_word_score(target, word) >= 15,
+                    "frequent source form is not protected: {word}"
+                );
+                protected_sources += 1;
+
+                if !crate::frequent_forms::target_eligible(word, rank) {
+                    continue;
+                }
+
+                let wrong = opposite_layout_text(word, target);
+                if is_code_safe_token(&wrong) {
+                    code_safe_skips += 1;
+                    continue;
+                }
+
+                let source = opposite(target);
+                let normalized_source = normalize(&wrong, source);
+                if frequency_model::source_word_score(source, &normalized_source) >= 15 {
+                    let source_is_explicit = dictionary_contains(source, &normalized_source, &[])
+                        || frequency_model::curated_word_score(source, &normalized_source) >= 15;
+                    let target_is_curated = dictionary_contains(target, word, &[])
+                        || frequency_model::curated_word_score(target, word) >= 15;
+                    if source_is_explicit || !target_is_curated {
+                        intentional_collisions += 1;
+                        assert!(
+                            correction_at_boundary_with_context(
+                                &wrong,
+                                &[],
+                                DEFAULT_CONFIDENCE_THRESHOLD,
+                                &[],
+                            )
+                            .is_none(),
+                            "protected source collision must stay fail-open: {wrong} -> {word}"
+                        );
+                        continue;
+                    }
+                }
+
+                let detection = correction_at_boundary_with_context(
+                    &wrong,
+                    &[],
+                    DEFAULT_CONFIDENCE_THRESHOLD,
+                    &[],
+                )
+                .unwrap_or_else(|| {
+                    panic!("frequent target form was not corrected: {wrong} -> {word}")
+                });
+                assert_eq!(detection.target, target);
+                assert_eq!(normalize(&detection.corrected, target), word);
+                assert_eq!(detection.confidence, 100);
+                promoted_targets += 1;
+            }
+        }
+
+        assert!(protected_sources > 40_000);
+        assert!(promoted_targets > 15_000);
+        eprintln!(
+            "frequency lexicon: protected_sources={protected_sources}, promoted_targets={promoted_targets}, intentional_collisions={intentional_collisions}, code_safe_skips={code_safe_skips}"
+        );
+    }
+
+    #[test]
+    fn common_frequency_wordforms_are_deterministic() {
+        for (word, language) in [
+            ("мама", Language::Russian),
+            ("мыла", Language::Russian),
+            ("раму", Language::Russian),
+            ("знаешь", Language::Russian),
+            ("хочешь", Language::Russian),
+            ("сказала", Language::Russian),
+            ("домой", Language::Russian),
+            ("wanted", Language::English),
+            ("looking", Language::English),
+            ("friends", Language::English),
+            ("mother", Language::English),
+        ] {
+            assert!(
+                frequency_model::word_score(language, word) >= 15,
+                "missing frequent form: {word}"
+            );
+            let wrong = opposite_layout_text(word, language);
+            let source = opposite(language);
+            let normalized_source = normalize(&wrong, source);
+            if frequency_model::source_word_score(source, &normalized_source) >= 15 {
+                continue;
+            }
+            let detection =
+                correction_at_boundary_with_context(&wrong, &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
+                    .unwrap_or_else(|| panic!("frequent form did not restore: {wrong} -> {word}"));
+            assert_eq!(normalize(&detection.corrected, language), word);
+        }
+    }
+
+    #[test]
+    fn curated_targets_override_generated_only_source_protection() {
+        let detection =
+            correction_at_boundary_with_context("cath", &[], DEFAULT_CONFIDENCE_THRESHOLD, &[])
+                .expect(
+                    "curated Russian target must override generated-only English source evidence",
+                );
+        assert_eq!(detection.corrected, "сфер");
+        assert_eq!(detection.confidence, 100);
+    }
+
+    #[test]
+    fn generated_source_forms_follow_explicit_precedence() {
+        for source in [Language::Russian, Language::English] {
+            for &(word, _rank) in crate::frequent_forms::forms(source) {
+                let mapped = opposite_layout_text(word, source);
+                let target = opposite(source);
+                let mapped_normalized = normalize(&mapped, target);
+                let source_is_explicit = is_code_safe_token(word)
+                    || dictionary_contains(source, word, &[])
+                    || frequency_model::curated_word_score(source, word) >= 15;
+                let target_is_curated = dictionary_contains(target, &mapped_normalized, &[])
+                    || frequency_model::curated_word_score(target, &mapped_normalized) >= 15;
+                let detection = correction_at_boundary_with_context(
+                    word,
+                    &[],
+                    DEFAULT_CONFIDENCE_THRESHOLD,
+                    &[],
+                );
+                if source_is_explicit || !target_is_curated {
+                    assert!(
+                        detection.is_none(),
+                        "generated source form was not preserved: {word} -> {mapped}"
+                    );
+                } else {
+                    let detection = detection.unwrap_or_else(|| {
+                        panic!(
+                            "curated target did not override generated-only source: {word} -> {mapped}"
+                        )
+                    });
+                    assert_eq!(normalize(&detection.corrected, target), mapped_normalized);
+                }
+            }
         }
     }
 
