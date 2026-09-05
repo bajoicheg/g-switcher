@@ -3,7 +3,9 @@
 #[cfg(windows)]
 fn main() {
     if let Err(error) = g_switcher::windows_runtime::run() {
-        eprintln!("G-switcher failed: {error:#}");
+        g_switcher::windows_runtime::show_fatal_error(&format!(
+            "G-switcher не удалось запустить.\r\n\r\n{error:#}"
+        ));
     }
 }
 

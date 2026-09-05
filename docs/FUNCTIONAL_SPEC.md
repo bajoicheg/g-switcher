@@ -1,4 +1,4 @@
-# G-switcher 1.0.6 functional specification
+# G-switcher 2.0.0 functional specification
 
 ## Product model
 
@@ -6,7 +6,7 @@ G-switcher runs in the current Windows user session and observes keyboard events
 
 The default decision rule is conservative: if evidence is ambiguous, leave the user's text unchanged. Automatic correction is performed only when Detector v3 reaches the confidence threshold selected by the current sensitivity profile.
 
-The 1.0.6 ten-article corpus expansion preserves that fail-open rule: 55 safe target forms are recognized deterministically, while ambiguous short forms and valid English-source collisions are intentionally left unchanged. Global sensitivity thresholds are not lowered.
+The 2.0.0 line starts strictly from 1.0.10 and preserves its fail-open detector rule. The pinned generated frequency layer contains 56,036 normalized RU/EN source forms of four or more letters and 26,990 deterministically restorable targets. Nine generated cross-layout collisions and ambiguous generated three-letter forms remain unchanged by design. Global sensitivity thresholds are not lowered.
 
 ## Layout behavior
 
@@ -45,7 +45,7 @@ Detector v3 combines:
 
 The built-in common-word lexicons include broad everyday, technical, colloquial and common obscene vocabulary in both Russian and English. A recognized built-in frequent source-language word is deterministic preservation evidence and must not be automatically rewritten. A mapped target that is a recognized built-in frequent word is deterministic recognition evidence and receives maximum confidence. This protects valid words such as `truth`, `fuck`, `пизда`, `бля`, `блять`, `хуй` and `ебать` while also recognizing their wrong-layout forms.
 
-Version 1.0.6 extends deterministic Russian target recognition with 13 common forms isolated by a synthetic wrong-layout corpus: `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм`. Their wrong-layout forms are locked in integration regression coverage. Representative full runtime cases `cbcntv` → `систем`, `ghjuhfvv` → `программ` and `bycnherwbb` → `инструкции` are also part of the real Win32 hook-to-EDIT release gate.
+The 1.0.10 base retains the earlier deterministic Russian target additions, including `политик`, `систем`, `спрос`, `программ`, `лиц`, `дел`, `правил`, `команд`, `виде`, `работ`, `инструкции`, `важны` and `норм`. Their wrong-layout forms remain locked in integration regression coverage. Representative full runtime cases `cbcntv` → `систем`, `ghjuhfvv` → `программ` and `bycnherwbb` → `инструкции` are also part of the real Win32 hook-to-EDIT release gate.
 
 Short ambiguous words remain context-sensitive where required. The broad common-word layer must not silently convert intentionally ambiguous three-letter tokens merely because a plausible target exists; context-sensitive regression cases remain part of the detector contract.
 
@@ -69,15 +69,17 @@ The clipboard is not read, written or modified. If the focused control does not 
 
 ## Secure input protection
 
-G-switcher must not build candidates, score text, perform manual conversion, convert selections, or restore text through Undo inside password/PIN/OTP/credential/secure input controls.
+G-switcher must not build candidates, score text, perform manual conversion, convert selections, or restore text through Undo inside native password controls or recognized Windows credential/secure targets.
 
 Protection includes native password EDIT state and known secure/credential control or process families. When a secure input target is detected, transient G-switcher text state is cleared and the user's original input is passed through unchanged.
+
+Browser and custom-rendered controls may not expose their secure state through the native focused HWND. G-switcher does not claim to inspect browser DOM fields or arbitrary accessibility trees. Users can assign `Disabled` mode to an application when secure-state detection cannot be verified.
 
 This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 1.0.6 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 2.0.0 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
@@ -86,6 +88,8 @@ Version 1.0.6 stores explicit per-user hotkey definitions for five actions. Defa
 - Pause/Resume: `Ctrl+Shift+F11`.
 
 Settings accepts Ctrl/Shift/Alt combinations with F1–F12, letters, digits, Space or Backspace. The action key event itself is suppressed only when G-switcher successfully recognizes it as a configured action.
+
+All five actions must use distinct combinations. Settings rejects a duplicate pair with a local warning and does not persist a partially ambiguous mapping.
 
 Queued manual correction restores only modifier keys that are still physically active when the queued correction executes; already-released hotkey modifiers must not be synthetically re-pressed.
 
@@ -125,7 +129,7 @@ Preserve lower case, Initial capital and ALL CAPS. Mixed case that resembles ide
 
 ## Code-safe mode
 
-Automatic correction is suppressed for tokens resembling technical identifiers, including common forms of URLs, email addresses, paths, IP/CIDR values, hostnames/domains, GUID/UUID values, hexadecimal strings/hashes, variable names, command-line switches, and mixed alpha-numeric identifiers.
+Automatic correction is suppressed for tokens resembling technical identifiers, including common forms of URLs, email addresses, absolute paths, IP/CIDR values, GUID/UUID values, hexadecimal strings/hashes, variable names, command-line switches, and mixed alpha-numeric identifiers.
 
 Code-safe behavior is fail-open: the original text is never swallowed merely because correction was refused. Explicit manual conversion remains a user action except in Disabled mode, Pause or secure input.
 
@@ -135,20 +139,29 @@ Immediately after a successful automatic, current-token manual, previous-token m
 
 Selected-text Undo restores exactly the replaced native selection range. Token-based Undo restores the original physical-key token and delimiter if present.
 
+## Correction sound
+
+After a confirmed successful automatic, current-word, previous-word or selected-text conversion, G-switcher may play one short correction signal. Refused or failed conversions, Pause, secure native input and Undo do not produce the signal.
+
+The signal is enabled by default at 20% and can be disabled or adjusted from 0% to 100% in 5% steps on first launch and in Settings. Volume changes the PCM sample amplitude rather than the Windows master volume. The waveform is generated and cached in process memory; no external audio asset, recorded content, network access or text-derived sound is used.
+
 ## Settings
 
 The tray Settings window exposes:
 
 - automatic correction on/off;
 - sensitivity profile;
+- correction sound on/off and volume;
 - per-user autostart on/off;
 - per-application mode management through a process picker;
 - explicit user-dictionary words;
 - five editable hotkey definitions.
 
-Settings take effect in the running process after Save and do not require elevation. Invalid hotkey syntax blocks Save with a local warning. The UI states that typed context is volatile and secure fields are not processed.
+Settings take effect in the running process after Save and do not require elevation. Invalid or duplicate hotkeys block Save with a local warning. The UI states that typed context is volatile and identifies protection as applying to native secure fields.
 
-The 1.0.6 native layout reserves enough client height for all sections, provides a genuinely multiline user-dictionary editor, avoids displaying non-functional vertical scrollbars on the read-only application-mode result lists, and visibly identifies the Settings build as 1.0.6.
+The 2.0.0 native layout uses a 900×680 client area and centers inside the Windows work area so the complete form remains usable on a typical 1366×768 desktop with a taskbar. It provides a multiline user-dictionary editor, avoids non-functional vertical scrollbars on the read-only application-mode result lists, and identifies the Settings build dynamically from the package version.
+
+The first-run dialog exposes autostart, correction-sound state and correction volume before activation. Closing it cancels startup without writing first-run completion, so onboarding is presented again next launch.
 
 ## Privilege model
 
@@ -158,4 +171,4 @@ The application runs as a standard user and does not require elevation for norma
 
 Normal operation has no network dependency. Current candidate text, the single previous-token record, at most two context words, pending selected text and Undo state are held only in volatile process memory and are not written to disk.
 
-Persistent configuration is restricted to explicit user choices: booleans, sensitivity, executable basenames, user-dictionary entries, hotkey definitions and autostart state. Diagnostic functionality, if added later, must be content-free by default.
+Persistent configuration is restricted to explicit user choices: automatic-correction and sound booleans, sound volume, sensitivity, executable basenames, user-dictionary entries, hotkey definitions and autostart state. Diagnostic functionality, if added later, must be content-free by default.

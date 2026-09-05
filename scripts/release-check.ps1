@@ -9,6 +9,13 @@ if (-not (Test-Path -LiteralPath $ExePath)) {
 }
 
 $exe = (Resolve-Path -LiteralPath $ExePath).Path
+$manifest = Get-Content -LiteralPath "Cargo.toml" -Raw
+$versionMatch = [regex]::Match($manifest, '(?m)^version\s*=\s*"([^"]+)"')
+if (-not $versionMatch.Success) {
+    throw "Package version is missing from Cargo.toml"
+}
+$expectedProductVersion = $versionMatch.Groups[1].Value
+$expectedFileVersion = "$expectedProductVersion.0"
 
 # Build forbidden names dynamically so the gate does not contain the forbidden
 # strings it is intended to detect.
@@ -45,10 +52,10 @@ if ($version.FileDescription -ne 'G-switcher') {
 if ($version.ProductName -ne 'G-switcher') {
     throw "Unexpected ProductName: $($version.ProductName)"
 }
-if ($version.FileVersion -ne '1.0.10.0') {
+if ($version.FileVersion -ne $expectedFileVersion) {
     throw "Unexpected FileVersion: $($version.FileVersion)"
 }
-if ($version.ProductVersion -ne '1.0.10') {
+if ($version.ProductVersion -ne $expectedProductVersion) {
     throw "Unexpected ProductVersion: $($version.ProductVersion)"
 }
 
