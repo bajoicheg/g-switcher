@@ -2,7 +2,7 @@ mod settings_dialog;
 
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut, without_provenance};
-use std::sync::atomic::{AtomicI32, AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 
 use anyhow::{anyhow, Result};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
@@ -16,13 +16,15 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsWindow,
-    LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW,
-    SendMessageW, SetForegroundWindow, ShowWindow, TrackPopupMenu, TranslateMessage, BM_GETCHECK,
-    BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG,
-    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, STM_SETICON, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-    WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP, WM_SETFONT,
-    WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    DestroyWindow, DispatchMessageW, EnableWindow, GetCursorPos, GetDlgItem, GetSystemMetrics,
+    IsDialogMessageW, IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage,
+    RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
+    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
+    CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_SEPARATOR, MF_STRING,
+    MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SW_SHOW,
+    TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY,
+    WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU,
+    WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -35,8 +37,11 @@ const ID_SETTINGS: usize = 1000;
 const ID_AUTOSTART: usize = 1001;
 const ID_EXIT: usize = 1002;
 const ID_PAUSE: usize = 1003;
-const ID_CHECKBOX: i32 = 2001;
-const ID_OK: i32 = 2002;
+const ID_AUTOSTART_CHECKBOX: i32 = 2001;
+const ID_OK: i32 = 1;
+const ID_CANCEL: i32 = 2;
+const ID_SOUND_CHECKBOX: i32 = 2003;
+const ID_SOUND_VOLUME: i32 = 2004;
 const BST_CHECKED_VALUE: u32 = 1;
 const COLOR_3DFACE_INDEX: i32 = 15;
 const SS_LEFT_STYLE: u32 = 0;
@@ -46,7 +51,10 @@ const IMAGE_ICON_VALUE: u32 = 1;
 const LR_SHARED_VALUE: u32 = 0x0000_8000;
 const TRANSPARENT_BK_MODE: i32 = 1;
 
-static FIRST_RUN_RESULT: AtomicI32 = AtomicI32::new(-1);
+static FIRST_RUN_ACCEPTED: AtomicBool = AtomicBool::new(false);
+static FIRST_RUN_AUTOSTART: AtomicBool = AtomicBool::new(false);
+static FIRST_RUN_SOUND_ENABLED: AtomicBool = AtomicBool::new(true);
+static FIRST_RUN_SOUND_VOLUME: AtomicU8 = AtomicU8::new(settings::DEFAULT_SOUND_VOLUME);
 static TITLE_FONT: AtomicIsize = AtomicIsize::new(0);
 static EMPHASIS_FONT: AtomicIsize = AtomicIsize::new(0);
 static BODY_FONT: AtomicIsize = AtomicIsize::new(0);
@@ -54,6 +62,13 @@ static BODY_FONT: AtomicIsize = AtomicIsize::new(0);
 pub struct TrayGuard {
     hwnd: HWND,
     data: NOTIFYICONDATAW,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FirstRunPreferences {
+    pub autostart: bool,
+    pub sound_enabled: bool,
+    pub sound_volume: u8,
 }
 
 impl TrayGuard {
@@ -125,8 +140,13 @@ impl Drop for TrayGuard {
     }
 }
 
-pub fn show_first_run() -> Result<bool> {
-    FIRST_RUN_RESULT.store(-1, Ordering::SeqCst);
+pub fn show_first_run() -> Result<Option<FirstRunPreferences>> {
+    let runtime = settings::runtime_settings();
+    FIRST_RUN_ACCEPTED.store(false, Ordering::SeqCst);
+    FIRST_RUN_AUTOSTART.store(settings::autostart_enabled(), Ordering::SeqCst);
+    FIRST_RUN_SOUND_ENABLED.store(runtime.sound_enabled, Ordering::SeqCst);
+    FIRST_RUN_SOUND_VOLUME.store(runtime.sound_volume, Ordering::SeqCst);
+
     unsafe {
         let module = GetModuleHandleW(null());
         let class = wide(FIRST_RUN_CLASS);
@@ -146,11 +166,8 @@ pub fn show_first_run() -> Result<bool> {
             return Err(anyhow!("RegisterClassW for first-run window failed"));
         }
 
-        // CreateWindowExW expects the outer window dimensions, while all child controls use
-        // client coordinates. Reserve the client area explicitly so title-bar/DPI metrics can
-        // never squeeze the bottom row as happened in 0.8.0.
-        let client_width = 680;
-        let client_height = 550;
+        let client_width = 720;
+        let client_height = 590;
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
         let mut window_rect = RECT {
             left: 0,
@@ -163,8 +180,7 @@ pub fn show_first_run() -> Result<bool> {
         }
         let width = window_rect.right - window_rect.left;
         let height = window_rect.bottom - window_rect.top;
-        let x = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
-        let y = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
+        let (x, y) = centered_in_work_area(width, height);
         let title = wide(concat!(
             "G-switcher ",
             env!("CARGO_PKG_VERSION"),
@@ -193,14 +209,24 @@ pub fn show_first_run() -> Result<bool> {
         let mut message: MSG = zeroed();
         while IsWindow(hwnd) != 0 {
             while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
-                TranslateMessage(&message);
-                DispatchMessageW(&message);
+                if IsDialogMessageW(hwnd, &message) == 0 {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
             }
             Sleep(10);
         }
     }
 
-    Ok(FIRST_RUN_RESULT.load(Ordering::SeqCst) == 1)
+    if FIRST_RUN_ACCEPTED.load(Ordering::SeqCst) {
+        Ok(Some(FirstRunPreferences {
+            autostart: FIRST_RUN_AUTOSTART.load(Ordering::SeqCst),
+            sound_enabled: FIRST_RUN_SOUND_ENABLED.load(Ordering::SeqCst),
+            sound_volume: FIRST_RUN_SOUND_VOLUME.load(Ordering::SeqCst),
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 unsafe extern "system" fn first_run_proc(
@@ -217,9 +243,24 @@ unsafe extern "system" fn first_run_proc(
         WM_COMMAND => {
             let command = (wparam & 0xffff) as i32;
             if command == ID_OK {
-                let checkbox = GetDlgItem(hwnd, ID_CHECKBOX);
-                let checked = SendMessageW(checkbox, BM_GETCHECK, 0, 0) as u32 == BST_CHECKED_VALUE;
-                FIRST_RUN_RESULT.store(i32::from(checked), Ordering::SeqCst);
+                FIRST_RUN_AUTOSTART.store(
+                    is_checked(hwnd, ID_AUTOSTART_CHECKBOX),
+                    Ordering::SeqCst,
+                );
+                FIRST_RUN_SOUND_ENABLED.store(
+                    is_checked(hwnd, ID_SOUND_CHECKBOX),
+                    Ordering::SeqCst,
+                );
+                FIRST_RUN_SOUND_VOLUME.store(selected_volume(hwnd), Ordering::SeqCst);
+                FIRST_RUN_ACCEPTED.store(true, Ordering::SeqCst);
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            if command == ID_SOUND_CHECKBOX {
+                update_volume_enabled(hwnd);
+                return 0;
+            }
+            if command == ID_CANCEL {
                 DestroyWindow(hwnd);
                 return 0;
             }
@@ -230,7 +271,6 @@ unsafe extern "system" fn first_run_proc(
             GetSysColorBrush(COLOR_3DFACE_INDEX) as LRESULT
         }
         WM_CLOSE => {
-            FIRST_RUN_RESULT.store(0, Ordering::SeqCst);
             DestroyWindow(hwnd);
             0
         }
@@ -246,6 +286,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     let module = GetModuleHandleW(null());
     let static_class = wide("STATIC");
     let button_class = wide("BUTTON");
+    let combo_class = wide("COMBOBOX");
     let empty = wide("");
 
     let icon_control = CreateWindowExW(
@@ -253,10 +294,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ICON_STYLE,
-        36,
-        30,
-        116,
-        116,
+        32,
+        28,
+        108,
+        108,
         hwnd,
         null_mut(),
         module,
@@ -265,7 +306,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     SendMessageW(
         icon_control,
         STM_SETICON,
-        load_app_icon_sized(112, 112) as usize,
+        load_app_icon_sized(104, 104) as usize,
         0,
     );
 
@@ -275,9 +316,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         title_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        176,
-        34,
-        448,
+        158,
+        30,
+        526,
         40,
         hwnd,
         null_mut(),
@@ -286,17 +327,17 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     );
 
     let description_text = wide(
-        "Исправляет слова, набранные в неверной раскладке:\r\nрусской или английской.\r\nРаботает локально — без сети, облака и телеметрии.\r\nНабираемый текст не сохраняется на диск.",
+        "Исправляет слова, набранные в неверной русской или\r\nанглийской раскладке. Работает локально — без сети,\r\nоблака и телеметрии. Текст остаётся только в памяти.",
     );
     let description = CreateWindowExW(
         0,
         static_class.as_ptr(),
         description_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        176,
-        82,
-        448,
-        88,
+        158,
+        78,
+        526,
+        72,
         hwnd,
         null_mut(),
         module,
@@ -308,9 +349,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
-        36,
-        184,
-        608,
+        32,
+        170,
+        656,
         2,
         hwnd,
         null_mut(),
@@ -324,8 +365,8 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         examples_header_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        36,
-        207,
+        32,
+        193,
         160,
         24,
         hwnd,
@@ -340,9 +381,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         examples_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        36,
-        237,
-        608,
+        32,
+        222,
+        656,
         26,
         hwnd,
         null_mut(),
@@ -356,8 +397,8 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         undo_header_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        36,
-        282,
+        32,
+        264,
         260,
         24,
         hwnd,
@@ -373,27 +414,44 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         undo_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        32,
+        292,
+        656,
         36,
-        312,
-        608,
-        42,
         hwnd,
         null_mut(),
         module,
         null(),
     );
 
-    let settings_hint_text =
-        wide("Горячие клавиши и режимы приложений: значок G-switcher в трее → «Настройки».");
+    let settings_header_text = wide("Управление");
+    let settings_header = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        settings_header_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        32,
+        340,
+        260,
+        24,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+
+    let settings_hint_text = wide(
+        "Горячие клавиши, режимы приложений и звук можно изменить через\r\nзначок G-switcher в трее → «Настройки».",
+    );
     let settings_hint = CreateWindowExW(
         0,
         static_class.as_ptr(),
         settings_hint_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        32,
+        368,
+        656,
         36,
-        358,
-        608,
-        46,
         hwnd,
         null_mut(),
         module,
@@ -405,9 +463,9 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         empty.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ_STYLE,
-        36,
-        422,
-        608,
+        32,
+        414,
+        656,
         2,
         hwnd,
         null_mut(),
@@ -415,27 +473,84 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         null(),
     );
 
-    let checkbox_text = wide("Запускать G-switcher при входе в Windows");
-    let checkbox = CreateWindowExW(
+    let autostart_text = wide("Запускать G-switcher при входе в Windows");
+    let autostart = CreateWindowExW(
         0,
         button_class.as_ptr(),
-        checkbox_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-        36,
-        442,
+        autostart_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+        32,
+        432,
         390,
         28,
         hwnd,
-        ID_CHECKBOX as usize as *mut core::ffi::c_void,
+        ID_AUTOSTART_CHECKBOX as usize as *mut core::ffi::c_void,
         module,
         null(),
     );
     SendMessageW(
-        checkbox,
+        autostart,
         BM_SETCHECK,
-        usize::from(settings::autostart_enabled()) * BST_CHECKED_VALUE as usize,
+        usize::from(FIRST_RUN_AUTOSTART.load(Ordering::SeqCst))
+            * BST_CHECKED_VALUE as usize,
         0,
     );
+
+    let sound_text = wide("Звуковой сигнал после исправления");
+    let sound_checkbox = CreateWindowExW(
+        0,
+        button_class.as_ptr(),
+        sound_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+        32,
+        469,
+        370,
+        28,
+        hwnd,
+        ID_SOUND_CHECKBOX as usize as *mut core::ffi::c_void,
+        module,
+        null(),
+    );
+    SendMessageW(
+        sound_checkbox,
+        BM_SETCHECK,
+        usize::from(FIRST_RUN_SOUND_ENABLED.load(Ordering::SeqCst))
+            * BST_CHECKED_VALUE as usize,
+        0,
+    );
+
+    let volume_label_text = wide("Громкость");
+    let volume_label = CreateWindowExW(
+        0,
+        static_class.as_ptr(),
+        volume_label_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
+        430,
+        471,
+        90,
+        24,
+        hwnd,
+        null_mut(),
+        module,
+        null(),
+    );
+    let volume_text = wide("");
+    let volume = CreateWindowExW(
+        0,
+        combo_class.as_ptr(),
+        volume_text.as_ptr(),
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST as u32,
+        526,
+        464,
+        158,
+        260,
+        hwnd,
+        ID_SOUND_VOLUME as usize as *mut core::ffi::c_void,
+        module,
+        null(),
+    );
+    populate_volume(volume, FIRST_RUN_SOUND_VOLUME.load(Ordering::SeqCst));
+    update_volume_enabled(hwnd);
 
     let footer_text = wide(concat!(
         "G-switcher ",
@@ -447,8 +562,8 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         static_class.as_ptr(),
         footer_text.as_ptr(),
         WS_CHILD | WS_VISIBLE | SS_LEFT_STYLE,
-        36,
-        516,
+        32,
+        558,
         300,
         20,
         hwnd,
@@ -457,16 +572,16 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         null(),
     );
 
-    let ok_text = wide("OK");
+    let ok_text = wide("Начать работу");
     let ok = CreateWindowExW(
         0,
         button_class.as_ptr(),
         ok_text.as_ptr(),
-        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
-        532,
-        437,
-        112,
-        36,
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
+        540,
+        514,
+        144,
+        38,
         hwnd,
         ID_OK as usize as *mut core::ffi::c_void,
         module,
@@ -499,7 +614,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     };
 
     SendMessageW(title, WM_SETFONT, title_font as usize, 1);
-    for control in [examples_header, undo_header] {
+    for control in [examples_header, undo_header, settings_header] {
         SendMessageW(control, WM_SETFONT, emphasis_font as usize, 1);
     }
     for control in [
@@ -507,7 +622,10 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         examples,
         undo,
         settings_hint,
-        checkbox,
+        autostart,
+        sound_checkbox,
+        volume_label,
+        volume,
         footer,
         ok,
         separator,
@@ -515,6 +633,55 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     ] {
         SendMessageW(control, WM_SETFONT, body_font as usize, 1);
     }
+}
+
+unsafe fn populate_volume(combo: HWND, current: u8) {
+    for volume in (0..=settings::MAX_SOUND_VOLUME).step_by(5) {
+        let label = wide(&format!("{volume} %"));
+        SendMessageW(combo, CB_ADDSTRING, 0, label.as_ptr() as LPARAM);
+    }
+    let index = ((u16::from(current.min(settings::MAX_SOUND_VOLUME)) + 2) / 5) as usize;
+    SendMessageW(combo, CB_SETCURSEL, index, 0);
+}
+
+unsafe fn selected_volume(hwnd: HWND) -> u8 {
+    let index = SendMessageW(GetDlgItem(hwnd, ID_SOUND_VOLUME), CB_GETCURSEL, 0, 0);
+    if index < 0 {
+        settings::DEFAULT_SOUND_VOLUME
+    } else {
+        (index as u8).saturating_mul(5).min(settings::MAX_SOUND_VOLUME)
+    }
+}
+
+unsafe fn is_checked(hwnd: HWND, id: i32) -> bool {
+    SendMessageW(GetDlgItem(hwnd, id), BM_GETCHECK, 0, 0) as u32 == BST_CHECKED_VALUE
+}
+
+unsafe fn update_volume_enabled(hwnd: HWND) {
+    EnableWindow(
+        GetDlgItem(hwnd, ID_SOUND_VOLUME),
+        i32::from(is_checked(hwnd, ID_SOUND_CHECKBOX)),
+    );
+}
+
+unsafe fn centered_in_work_area(width: i32, height: i32) -> (i32, i32) {
+    let mut work_area = RECT {
+        left: 0,
+        top: 0,
+        right: GetSystemMetrics(SM_CXSCREEN),
+        bottom: GetSystemMetrics(SM_CYSCREEN),
+    };
+    let _ = SystemParametersInfoW(
+        SPI_GETWORKAREA,
+        0,
+        &mut work_area as *mut RECT as *mut core::ffi::c_void,
+        0,
+    );
+    let available_width = work_area.right - work_area.left;
+    let available_height = work_area.bottom - work_area.top;
+    let x = work_area.left + (available_width - width).max(0) / 2;
+    let y = work_area.top + (available_height - height).max(0) / 2;
+    (x, y)
 }
 
 unsafe fn create_ui_font(height: i32, weight: i32) -> *mut core::ffi::c_void {

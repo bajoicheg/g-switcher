@@ -13,11 +13,14 @@ use windows_sys::Win32::System::Registry::{
 use crate::detector::{
     AGGRESSIVE_CONFIDENCE_THRESHOLD, CONSERVATIVE_CONFIDENCE_THRESHOLD, NORMAL_CONFIDENCE_THRESHOLD,
 };
+pub(crate) use crate::sound_wave::{DEFAULT_SOUND_VOLUME, MAX_SOUND_VOLUME};
 
 const SETTINGS_KEY: &str = "Software\\GSwitcher";
 const FIRST_RUN_VALUE: &str = "FirstRunCompleted";
 const AUTO_CORRECT_VALUE: &str = "AutoCorrectEnabled";
 const SENSITIVITY_VALUE: &str = "SensitivityProfile";
+const SOUND_ENABLED_VALUE: &str = "CorrectionSoundEnabled";
+const SOUND_VOLUME_VALUE: &str = "CorrectionSoundVolume";
 const DISABLED_APPS_VALUE: &str = "DisabledApps";
 const MANUAL_ONLY_APPS_VALUE: &str = "ManualOnlyApps";
 const LEGACY_EXCLUDED_APPS_VALUE: &str = "ExcludedApps";
@@ -118,6 +121,8 @@ pub const DEFAULT_PAUSE_HOTKEY: Hotkey = Hotkey::new(true, true, false, 0x7A); /
 pub struct RuntimeSettings {
     pub auto_correct: bool,
     pub sensitivity: SensitivityProfile,
+    pub sound_enabled: bool,
+    pub sound_volume: u8,
     pub disabled_apps: Vec<String>,
     pub manual_only_apps: Vec<String>,
     pub user_words: Vec<String>,
@@ -133,6 +138,8 @@ impl Default for RuntimeSettings {
         Self {
             auto_correct: true,
             sensitivity: SensitivityProfile::Normal,
+            sound_enabled: true,
+            sound_volume: DEFAULT_SOUND_VOLUME,
             disabled_apps: Vec::new(),
             manual_only_apps: Vec::new(),
             user_words: Vec::new(),
@@ -210,6 +217,16 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
         u32::from(value.auto_correct),
     )?;
     write_string(SETTINGS_KEY, SENSITIVITY_VALUE, value.sensitivity.as_text())?;
+    write_dword(
+        SETTINGS_KEY,
+        SOUND_ENABLED_VALUE,
+        u32::from(value.sound_enabled),
+    )?;
+    write_dword(
+        SETTINGS_KEY,
+        SOUND_VOLUME_VALUE,
+        u32::from(value.sound_volume),
+    )?;
     write_string(
         SETTINGS_KEY,
         DISABLED_APPS_VALUE,
@@ -259,6 +276,8 @@ pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
 pub fn settings_from_text(
     auto_correct: bool,
     sensitivity: &str,
+    sound_enabled: bool,
+    sound_volume: u8,
     disabled_apps: &str,
     manual_only_apps: &str,
     user_words: &str,
@@ -271,6 +290,8 @@ pub fn settings_from_text(
     normalize_runtime_settings(RuntimeSettings {
         auto_correct,
         sensitivity: parse_sensitivity(sensitivity).unwrap_or(SensitivityProfile::Normal),
+        sound_enabled,
+        sound_volume,
         disabled_apps: parse_entries(disabled_apps, true),
         manual_only_apps: parse_entries(manual_only_apps, true),
         user_words: parse_entries(user_words, false),
@@ -326,6 +347,17 @@ pub fn parse_hotkey(value: &str) -> Option<Hotkey> {
     Some(Hotkey::new(ctrl, shift, alt, vk))
 }
 
+pub fn first_duplicate_hotkey(hotkeys: &[Hotkey]) -> Option<(usize, usize)> {
+    for (left_index, left) in hotkeys.iter().enumerate() {
+        for (right_index, right) in hotkeys.iter().enumerate().skip(left_index + 1) {
+            if left == right {
+                return Some((left_index, right_index));
+            }
+        }
+    }
+    None
+}
+
 pub fn first_run_completed() -> bool {
     read_dword(SETTINGS_KEY, FIRST_RUN_VALUE) == Some(1)
 }
@@ -363,6 +395,10 @@ fn load_runtime_settings() -> RuntimeSettings {
         sensitivity: read_string(SETTINGS_KEY, SENSITIVITY_VALUE)
             .and_then(|value| parse_sensitivity(&value))
             .unwrap_or(SensitivityProfile::Normal),
+        sound_enabled: read_dword(SETTINGS_KEY, SOUND_ENABLED_VALUE).unwrap_or(1) != 0,
+        sound_volume: read_dword(SETTINGS_KEY, SOUND_VOLUME_VALUE)
+            .unwrap_or(u32::from(DEFAULT_SOUND_VOLUME))
+            .min(u32::from(MAX_SOUND_VOLUME)) as u8,
         disabled_apps,
         manual_only_apps: read_string(SETTINGS_KEY, MANUAL_ONLY_APPS_VALUE)
             .map(|value| parse_entries(&value, true))
@@ -388,6 +424,7 @@ fn read_hotkey(name: &str, default: Hotkey) -> Hotkey {
 }
 
 fn normalize_runtime_settings(mut value: RuntimeSettings) -> RuntimeSettings {
+    value.sound_volume = value.sound_volume.min(MAX_SOUND_VOLUME);
     value.disabled_apps = normalize_entries(value.disabled_apps, true);
     value.manual_only_apps = normalize_entries(value.manual_only_apps, true);
     value.manual_only_apps.retain(|entry| {
@@ -640,6 +677,8 @@ mod tests {
         let settings = settings_from_text(
             true,
             "Normal",
+            true,
+            DEFAULT_SOUND_VOLUME,
             "Code.EXE\r\npowershell.exe; code.exe",
             "terminal.exe\nCODE.EXE",
             "",
@@ -661,6 +700,8 @@ mod tests {
         let settings = settings_from_text(
             true,
             "Normal",
+            true,
+            DEFAULT_SOUND_VOLUME,
             "",
             "",
             "Градиент\nGradient\nГрадиент",
@@ -711,6 +752,31 @@ mod tests {
         assert_eq!(parse_hotkey("Alt+Q").unwrap().to_text(), "Alt+Q");
         assert_eq!(parse_hotkey("F12"), None);
         assert_eq!(parse_hotkey("Ctrl+NoSuchKey"), None);
+    }
+
+    #[test]
+    fn correction_sound_defaults_to_enabled_at_twenty_percent() {
+        let settings = RuntimeSettings::default();
+        assert!(settings.sound_enabled);
+        assert_eq!(settings.sound_volume, 20);
+    }
+
+    #[test]
+    fn detects_duplicate_hotkeys() {
+        let hotkeys = [
+            DEFAULT_SELECTED_TEXT_HOTKEY,
+            DEFAULT_MANUAL_CURRENT_HOTKEY,
+            DEFAULT_SELECTED_TEXT_HOTKEY,
+        ];
+        assert_eq!(first_duplicate_hotkey(&hotkeys), Some((0, 2)));
+        assert_eq!(
+            first_duplicate_hotkey(&[
+                DEFAULT_SELECTED_TEXT_HOTKEY,
+                DEFAULT_MANUAL_CURRENT_HOTKEY,
+                DEFAULT_PREVIOUS_WORD_HOTKEY,
+            ]),
+            None
+        );
     }
 
     #[test]

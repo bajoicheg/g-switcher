@@ -1,6 +1,7 @@
 mod secure_input;
 mod selection;
 mod settings;
+mod sound;
 mod tray_status;
 mod ui;
 
@@ -30,9 +31,10 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
-    GetWindowThreadProcessId, PostMessageW, PostThreadMessageW, SetWindowsHookExW,
-    TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
-    WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN, WM_SYSKEYDOWN,
+    GetWindowThreadProcessId, MessageBoxW, PostMessageW, PostThreadMessageW, SetWindowsHookExW,
+    TranslateMessage, UnhookWindowsHookEx, GUITHREADINFO, KBDLLHOOKSTRUCT, LLKHF_INJECTED,
+    MB_ICONERROR, MB_OK, MSG, WH_KEYBOARD_LL, WM_APP, WM_INPUTLANGCHANGEREQUEST, WM_KEYDOWN,
+    WM_SYSKEYDOWN,
 };
 
 use crate::detector::{
@@ -160,8 +162,14 @@ pub fn run() -> Result<()> {
 
     settings::set_paused(false);
     if !settings::first_run_completed() {
-        let enable_autostart = ui::show_first_run()?;
-        settings::set_autostart(enable_autostart)?;
+        let Some(preferences) = ui::show_first_run()? else {
+            return Ok(());
+        };
+        let mut runtime = settings::runtime_settings();
+        runtime.sound_enabled = preferences.sound_enabled;
+        runtime.sound_volume = preferences.sound_volume;
+        settings::save_runtime_settings(runtime)?;
+        settings::set_autostart(preferences.autostart)?;
         settings::mark_first_run_completed()?;
     }
 
@@ -188,6 +196,19 @@ pub fn run() -> Result<()> {
     drop(tray);
     drop(mutex);
     Ok(())
+}
+
+pub fn show_fatal_error(message: &str) {
+    let message = wide(message);
+    let title = wide("G-switcher — ошибка запуска");
+    unsafe {
+        MessageBoxW(
+            null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_OK | MB_ICONERROR,
+        );
+    }
 }
 
 pub(crate) fn paused() -> bool {
@@ -693,6 +714,7 @@ impl Engine {
         self.previous = None;
         self.context_tokens.clear();
         tray_status::note_correction(target_language);
+        sound::play_correction(&runtime_settings);
     }
 
     fn try_manual_convert(&mut self, source: FocusTarget, modifiers: Modifiers) -> bool {
@@ -866,6 +888,7 @@ impl Engine {
             self.push_context(pending.corrected.clone());
         }
         tray_status::note_correction(opposite_language(pending.source_language));
+        sound::play_correction(&settings::runtime_settings());
     }
 
     fn restore_failed_correction(&mut self, pending: &PendingCorrection) {

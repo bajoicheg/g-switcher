@@ -1,0 +1,87 @@
+name: Release G-switcher 2.0.0
+
+on:
+  workflow_run:
+    workflows: ["Windows Rust CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: windows-latest
+    steps:
+      - name: Skip if release already exists
+        id: existing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v2.0.0 --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Download checked Windows artifact
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: g-switcher-2.0.0-windows-x64
+          path: release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify release hashes
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: |
+          $files = @(
+            @{ Path = "release/g-switcher.exe"; Hash = "release/g-switcher.exe.sha256" },
+            @{ Path = "release/g-switcher-2.0.0-windows-x64.zip"; Hash = "release/g-switcher-2.0.0-windows-x64.zip.sha256" }
+          )
+          foreach ($file in $files) {
+            $expected = ((Get-Content -LiteralPath $file.Hash -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+            $actual = (Get-FileHash -LiteralPath $file.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) {
+              throw "SHA-256 mismatch for $($file.Path): expected $expected, got $actual"
+            }
+            Write-Host "SHA-256 verified for $($file.Path): $actual"
+          }
+
+      - name: Verify packaged executable
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: |
+          Expand-Archive -LiteralPath release/g-switcher-2.0.0-windows-x64.zip -DestinationPath release/package-check
+          $standalone = (Get-FileHash -LiteralPath release/g-switcher.exe -Algorithm SHA256).Hash
+          $packaged = (Get-FileHash -LiteralPath release/package-check/g-switcher.exe -Algorithm SHA256).Hash
+          if ($standalone -ne $packaged) {
+            throw "Packaged executable differs from the checked standalone executable"
+          }
+
+      - name: Create v2.0.0 release
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create v2.0.0 `
+            release/g-switcher.exe `
+            release/g-switcher.exe.sha256 `
+            release/g-switcher-2.0.0-windows-x64.zip `
+            release/g-switcher-2.0.0-windows-x64.zip.sha256 `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:TARGET_SHA `
+            --title "G-switcher 2.0.0" `
+            --notes "G-switcher 2.0.0 is the public-release line built strictly from 1.0.10. It adds an optional local correction sound with real 0–100% amplitude control (enabled at 20% by default), exposes the choice during first launch and in Settings, compacts Settings for 768p desktops, rejects conflicting hotkeys, centers dialogs inside the Windows work area, and shows startup failures in a native dialog. The conservative RU/EN detector, generated OpenSubtitles2018 frequency layer, fail-open collision policy, local-only runtime, Undo, application modes and real Win32 regression suite remain intact. The ZIP includes the executable, checksum, documentation, changelog and third-party data attribution. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
