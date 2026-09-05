@@ -19,14 +19,13 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
     EnableWindow, GetDlgItem, GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW,
     IsDialogMessageW, IsWindow, LoadCursorW, MessageBoxW, PeekMessageW, RegisterClassW,
-    SendMessageW, SetWindowTextW,
-    SetForegroundWindow, ShowWindow, SystemParametersInfoW, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
-    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, BS_GROUPBOX, CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL,
-    CB_GETLBTEXT, CB_GETLBTEXTLEN, CB_SETCURSEL, ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE,
-    ES_READONLY, IDC_ARROW, MB_ICONWARNING, MB_OK, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN,
-    SPI_GETWORKAREA, SW_SHOW, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_SETFONT,
-    WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP,
-    WS_VISIBLE, WS_VSCROLL,
+    SendMessageW, SetForegroundWindow, SetWindowTextW, ShowWindow, SystemParametersInfoW,
+    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, BS_GROUPBOX,
+    CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_GETLBTEXT, CB_GETLBTEXTLEN, CB_SETCURSEL,
+    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, ES_READONLY, IDC_ARROW, MB_ICONWARNING, MB_OK,
+    MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, SW_SHOW, WM_CLOSE, WM_COMMAND,
+    WM_CTLCOLORSTATIC, WM_DESTROY, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD,
+    WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
 
 use crate::windows_runtime::{current_process_name, settings};
@@ -766,7 +765,9 @@ unsafe fn selected_volume(combo: HWND) -> u8 {
     if index < 0 {
         settings::DEFAULT_SOUND_VOLUME
     } else {
-        (index as u8).saturating_mul(5).min(settings::MAX_SOUND_VOLUME)
+        (index as u8)
+            .saturating_mul(5)
+            .min(settings::MAX_SOUND_VOLUME)
     }
 }
 

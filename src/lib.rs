@@ -8,8 +8,8 @@ pub mod frequency_model;
 mod frequent_forms;
 pub mod layout;
 pub mod model;
-pub mod state;
 mod sound_wave;
+pub mod state;
 pub mod undo;
 
 #[cfg(windows)]
