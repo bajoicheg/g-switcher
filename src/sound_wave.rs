@@ -47,8 +47,10 @@ mod tests {
     use super::*;
 
     fn peak(wave: &[u8]) -> u16 {
-        wave[44..]
-            .chunks_exact(2)
+        let (samples, remainder) = wave[44..].as_chunks::<2>();
+        assert!(remainder.is_empty());
+        samples
+            .iter()
             .map(|bytes| i16::from_le_bytes([bytes[0], bytes[1]]).unsigned_abs())
             .max()
             .unwrap_or(0)
