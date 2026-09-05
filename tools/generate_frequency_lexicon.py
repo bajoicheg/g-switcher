@@ -402,7 +402,7 @@ The exhaustive Rust regression checks every embedded source form for preservatio
 
 ## OpenSubtitles2018 word-form frequency data
 
-G-switcher 1.0.10 includes a generated, filtered frequency table derived from the Russian and English word-form frequency lists in `kapzam123/subtitle-frequency`, pinned to commit `{SOURCE_COMMIT}`. That repository mirrors data derived from OpenSubtitles2018.
+G-switcher 1.0.10 and the 2.0.0 line based on it include a generated, filtered frequency table derived from the Russian and English word-form frequency lists in `kapzam123/subtitle-frequency`, pinned to commit `{SOURCE_COMMIT}`. That repository mirrors data derived from OpenSubtitles2018.
 
 Original data license: Creative Commons Attribution 3.0 (CC BY 3.0). Source repository: https://github.com/kapzam123/subtitle-frequency . Original project attribution: OpenSubtitles / OpenSubtitles2018.
 

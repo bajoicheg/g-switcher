@@ -1,4 +1,4 @@
-//! G-switcher core interfaces for the 1.0 implementation line.
+//! G-switcher core interfaces.
 //! Runtime modules are developed against the functional specification and
 //! acceptance matrix in `docs/`.
 
@@ -8,6 +8,7 @@ pub mod frequency_model;
 mod frequent_forms;
 pub mod layout;
 pub mod model;
+mod sound_wave;
 pub mod state;
 pub mod undo;
 
@@ -15,4 +16,4 @@ pub mod undo;
 pub mod windows_runtime;
 
 pub const PRODUCT_NAME: &str = "G-switcher";
-pub const PRODUCT_VERSION: &str = "1.0.10";
+pub const PRODUCT_VERSION: &str = env!("CARGO_PKG_VERSION");

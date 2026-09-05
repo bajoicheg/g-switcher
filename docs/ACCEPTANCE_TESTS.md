@@ -1,4 +1,4 @@
-# G-switcher 1.0.6 acceptance tests
+# G-switcher 2.0.0 acceptance tests
 
 The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
 
@@ -57,7 +57,7 @@ On a supported focused native Edit/RichEdit control:
 
 ## Secure input protection
 
-For a native `EDIT` control with password state and for recognized credential/PIN/OTP/secure targets:
+For a native `EDIT` control with password state and for recognized Windows credential/secure targets:
 
 - `ghbdtn ` remains exactly `ghbdtn `
 - no automatic correction occurs
@@ -84,6 +84,7 @@ Acceptance requirements:
 - each action can be reassigned to another supported modifier/key combination
 - changes take effect without restart
 - malformed combinations are rejected by Settings
+- a combination already assigned to another action is rejected by Settings
 - matching requires the configured modifier set rather than a prefix/superset match
 - queued manual correction must not synthetically re-press Ctrl/Shift/Alt after the user has already released those modifiers
 - immediate Undo after previous-word manual conversion must work even when the queued correction executes after hotkey key-up events
@@ -137,11 +138,24 @@ With automatic correction disabled or an intentionally uncorrected token:
 - a correct dictionary word is protected from automatic rewriting
 - an opposite-layout candidate mapping exactly to a dictionary word receives maximum confidence
 
+## Correction sound
+
+- new configuration defaults to sound enabled at 20%
+- first-run and Settings each expose sound on/off and 0–100% volume in 5% steps
+- a confirmed automatic correction plays one signal
+- confirmed current-word, previous-word and selected-text conversions play one signal
+- failed/refused corrections, Pause, native secure input and Undo remain silent
+- 0% produces no playback even when sound is enabled
+- generated PCM has a valid RIFF/WAVE header and bounded duration
+- PCM peak amplitude rises with the configured percentage and values above 100% are clamped
+- playback does not change the Windows master volume and requires no external file
+
 ## Settings UI
 
 - Settings is reachable from the tray menu
 - automatic correction can be enabled or disabled
 - sensitivity profile can be selected
+- correction sound can be enabled/disabled and its volume selected
 - autostart can be enabled or disabled
 - application mode is managed through the process picker
 - user-dictionary words can be edited as one entry per line
@@ -149,8 +163,10 @@ With automatic correction disabled or an intentionally uncorrected token:
 - Save updates the running process without elevation
 - Cancel/close does not persist edits
 - UI states that detector context is volatile
-- UI states that password/PIN/OTP/secure input is not processed
-- visible Settings version is `1.0.6`
+- UI accurately scopes secure-input wording to native protected controls
+- Settings client area is 900×680 and all controls fit without clipping on a 1366×768 desktop work area
+- first-run close does not mark onboarding complete or silently overwrite choices
+- visible Settings version is `2.0.0`
 
 ## Punctuation and editing
 
@@ -213,15 +229,18 @@ The following classes are not automatically rewritten:
 
 ## Release gate
 
-A releasable `v1.0.6` requires one successful Windows CI run on merged `main` containing:
+A releasable `v2.0.0` requires one successful Windows CI run on merged `main` containing:
 
 - `cargo fmt --all -- --check`
-- all unit/integration tests, including the 13 article-corpus regressions
+- all Cargo resolution/build commands use the committed lockfile through `--locked`
+- all unit/integration tests, including frequency-layer, sound-wave, settings and article-corpus regressions
 - ignored real Win32 hook-to-EDIT E2E with automatic correction, article-derived cases, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
 - `cargo clippy --all-targets -- -D warnings`
 - optimized `g-switcher.exe` build
-- Windows GUI subsystem and `1.0.6` branding/version checks
-- generated SHA-256 sidecar
-- uploaded artifact named `g-switcher-1.0.6-windows-x64`
+- Windows GUI subsystem and `2.0.0` branding/version checks derived from the Cargo package version
+- generated SHA-256 sidecars for standalone EXE and ZIP
+- ZIP verification that its EXE is byte-identical to the checked standalone executable
+- ZIP contents include README, changelog and third-party data attribution
+- uploaded artifact named `g-switcher-2.0.0-windows-x64`
 
-Only that successful `main` push artifact may be used by the `v1.0.6` release workflow.
+Only that successful `main` push artifact may be used by the `v2.0.0` release workflow.
