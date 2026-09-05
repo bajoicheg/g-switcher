@@ -232,6 +232,7 @@ The following classes are not automatically rewritten:
 A releasable `v2.0.0` requires one successful Windows CI run on merged `main` containing:
 
 - `cargo fmt --all -- --check`
+- all Cargo resolution/build commands use the committed lockfile through `--locked`
 - all unit/integration tests, including frequency-layer, sound-wave, settings and article-corpus regressions
 - ignored real Win32 hook-to-EDIT E2E with automatic correction, article-derived cases, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
 - `cargo clippy --all-targets -- -D warnings`

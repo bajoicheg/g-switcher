@@ -39,19 +39,19 @@ jobs:
 
       - name: Unit tests
         shell: pwsh
-        run: cargo test --all-targets
+        run: cargo test --locked --all-targets
 
       - name: Windows E2E
         shell: pwsh
-        run: cargo test --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+        run: cargo test --locked --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
 
       - name: Clippy
         shell: pwsh
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Release build
         shell: pwsh
-        run: cargo build --release --bin g-switcher
+        run: cargo build --locked --release --bin g-switcher
 
       - name: Release and branding checks
         shell: pwsh

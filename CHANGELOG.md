@@ -8,6 +8,7 @@
 - Redesigns Settings from a 900×855 to a 900×680 client area and centers both dialogs inside the Windows work area for practical 1366×768 use.
 - Rejects duplicate hotkeys across actions and displays GUI-subsystem startup failures in a native Windows dialog.
 - Makes Windows version resources and the release gate derive their expected value from the Cargo package version, removing duplicated version literals.
+- Commits the CI-generated dependency lockfile and enforces `--locked` across tests, Clippy and release builds.
 - Adds waveform, sound-default and duplicate-hotkey regressions.
 - Publishes both a standalone EXE and a verified ZIP with SHA-256 sidecars; the ZIP includes README, changelog and third-party data attribution.
 
