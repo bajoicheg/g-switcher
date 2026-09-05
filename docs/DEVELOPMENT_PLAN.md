@@ -19,6 +19,7 @@ The 2.0.0 line is based strictly on the reviewed 1.0.10 source. Detector thresho
 
 ## Gate 3 — Release assurance
 
+- Commit the CI-generated dependency lockfile and run all resolution/build commands with `--locked`.
 - Run formatting, all unit/integration tests, Clippy with warnings denied and the ignored real Win32 hook-to-EDIT E2E.
 - Verify GUI subsystem, dynamic 2.0.0 version metadata, branding policy and checksums.
 - Produce a standalone EXE and a ZIP containing the identical EXE, checksum, README, changelog and third-party data attribution.
