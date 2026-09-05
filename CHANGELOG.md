@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0 - 2026-09-05
+
+- Starts the 2.0 public-release line strictly from the reviewed 1.0.10 source and preserves its detector thresholds, generated frequency layer, collision policy and Win32 E2E regressions.
+- Adds a short in-memory PCM correction signal after confirmed successful token and selected-text conversions. Sound is enabled by default at 20%, with an on/off checkbox and 0–100% amplitude control on first launch and in Settings.
+- Keeps failed/refused corrections, secure native input, Pause and Undo silent.
+- Redesigns Settings from a 900×855 to a 900×680 client area and centers both dialogs inside the Windows work area for practical 1366×768 use.
+- Rejects duplicate hotkeys across actions and displays GUI-subsystem startup failures in a native Windows dialog.
+- Makes Windows version resources and the release gate derive their expected value from the Cargo package version, removing duplicated version literals.
+- Commits the CI-generated dependency lockfile and enforces `--locked` across tests, Clippy and release builds.
+- Adds waveform, sound-default and duplicate-hotkey regressions.
+- Publishes both a standalone EXE and a verified ZIP with SHA-256 sidecars; the ZIP includes README, changelog and third-party data attribution.
+
 ## 1.0.10 - 2026-09-04
 
 - Adds a reproducible generated RU/EN surface-form frequency layer from OpenSubtitles2018 data pinned to a specific source commit, with CC BY 3.0 attribution recorded in `THIRD_PARTY_DATA.md`.

@@ -1,30 +1,28 @@
-# G-switcher 0.6 development plan
+# G-switcher 2.0.0 release plan
 
-The 0.6 implementation is split into reviewable gates so that each layer remains independently testable on Windows CI.
+The 2.0.0 line is based strictly on the reviewed 1.0.10 source. Detector thresholds, generated frequency data, collision handling and existing Win32 regressions remain unchanged unless a failing test proves a defect.
 
-## PR 1 — Core decision engine
+## Gate 1 — Runtime and configuration
 
-- Physical RU/EN key mapping independent of the user's manual layout shortcut.
-- Conservative source-language protection.
-- Code-safe token classification.
-- Editable candidate state with reversible Backspace handling.
-- Undo record state machine.
-- Regression tests for known layout and false-positive cases.
+- Generate a short correction PCM signal entirely in memory.
+- Persist sound enabled/disabled and 0–100% amplitude, defaulting to enabled at 20%.
+- Play only after confirmed successful token or selected-text replacement.
+- Keep failed/refused corrections, secure native input, Pause and Undo silent.
 
-## PR 2 — Windows runtime
+## Gate 2 — Native UI quality
 
-- Low-level keyboard hook.
-- Focused-control discovery.
-- Explicit RU/EN HKL selection and confirmation.
-- Physical-key correction injection with fail-open handling.
-- Single-instance, tray, first-run and per-user autostart.
+- Expose sound state and volume on first launch and in Settings.
+- Fit Settings in a 900×680 client area for a typical 1366×768 work area.
+- Center first-run and Settings dialogs inside the desktop work area.
+- Reject conflicting hotkeys before persistence.
+- Present startup failures in a visible native dialog.
 
-## PR 3 — Windows end-to-end release gate
+## Gate 3 — Release assurance
 
-- Real Win32 edit control.
-- Real hook → detector → HKL → SendInput path.
-- Space/Enter/Tab/punctuation matrix.
-- Code-safe and Undo scenarios.
-- Release artifact and PE checks.
+- Commit the CI-generated dependency lockfile and run all resolution/build commands with `--locked`.
+- Run formatting, all unit/integration tests, Clippy with warnings denied and the ignored real Win32 hook-to-EDIT E2E.
+- Verify GUI subsystem, dynamic 2.0.0 version metadata, branding policy and checksums.
+- Produce a standalone EXE and a ZIP containing the identical EXE, checksum, README, changelog and third-party data attribution.
+- Publish `v2.0.0` only from the successful checked `main` workflow artifact.
 
-A production 0.6.0 release is created only after all three gates are green on Windows CI.
+The EXE remains unsigned until an Authenticode certificate or trusted signing service is configured. SHA-256 verification is mandatory for the unsigned public artifact.

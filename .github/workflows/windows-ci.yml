@@ -39,30 +39,55 @@ jobs:
 
       - name: Unit tests
         shell: pwsh
-        run: cargo test --all-targets
+        run: cargo test --locked --all-targets
 
       - name: Windows E2E
         shell: pwsh
-        run: cargo test --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+        run: cargo test --locked --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
 
       - name: Clippy
         shell: pwsh
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Release build
         shell: pwsh
-        run: cargo build --release --bin g-switcher
+        run: cargo build --locked --release --bin g-switcher
 
       - name: Release and branding checks
         shell: pwsh
         run: ./scripts/release-check.ps1
 
+      - name: Prepare public release package
+        shell: pwsh
+        run: |
+          $packageRoot = "target/release/g-switcher-2.0.0"
+          New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
+          Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $packageRoot
+          Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $packageRoot
+          Copy-Item -LiteralPath README.md -Destination $packageRoot
+          Copy-Item -LiteralPath CHANGELOG.md -Destination $packageRoot
+          Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
+          $zip = "target/release/g-switcher-2.0.0-windows-x64.zip"
+          Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath "$zip.sha256" -Value "$hash  g-switcher-2.0.0-windows-x64.zip" -Encoding ascii -NoNewline
+
       - name: Upload checked Windows artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: g-switcher-1.0.10-windows-x64
+          name: g-switcher-2.0.0-windows-x64
           path: |
             target/release/g-switcher.exe
             target/release/g-switcher.exe.sha256
+            target/release/g-switcher-2.0.0-windows-x64.zip
+            target/release/g-switcher-2.0.0-windows-x64.zip.sha256
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g-switcher-2.0.0-lockfile
+          path: Cargo.lock
+          if-no-files-found: error
+          retention-days: 7
