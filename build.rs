@@ -1,8 +1,8 @@
 fn main() {
     #[cfg(windows)]
     {
-        let version = std::env::var("CARGO_PKG_VERSION")
-            .expect("CARGO_PKG_VERSION is always set by Cargo");
+        let version =
+            std::env::var("CARGO_PKG_VERSION").expect("CARGO_PKG_VERSION is always set by Cargo");
         let file_version = format!("{version}.0");
         let mut resource = winres::WindowsResource::new();
         resource.set_icon("assets/g-switcher.ico");

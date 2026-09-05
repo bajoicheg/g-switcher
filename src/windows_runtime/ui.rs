@@ -18,13 +18,13 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, EnableWindow, GetCursorPos, GetDlgItem, GetSystemMetrics,
     IsDialogMessageW, IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage,
-    RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
-    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
+    RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW,
+    TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
     CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_SEPARATOR, MF_STRING,
-    MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SW_SHOW,
-    TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY,
-    WM_RBUTTONUP, WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU,
-    WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
+    MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SW_SHOW, TPM_RETURNCMD,
+    TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP,
+    WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE,
+    WS_VSCROLL,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -243,14 +243,10 @@ unsafe extern "system" fn first_run_proc(
         WM_COMMAND => {
             let command = (wparam & 0xffff) as i32;
             if command == ID_OK {
-                FIRST_RUN_AUTOSTART.store(
-                    is_checked(hwnd, ID_AUTOSTART_CHECKBOX),
-                    Ordering::SeqCst,
-                );
-                FIRST_RUN_SOUND_ENABLED.store(
-                    is_checked(hwnd, ID_SOUND_CHECKBOX),
-                    Ordering::SeqCst,
-                );
+                FIRST_RUN_AUTOSTART
+                    .store(is_checked(hwnd, ID_AUTOSTART_CHECKBOX), Ordering::SeqCst);
+                FIRST_RUN_SOUND_ENABLED
+                    .store(is_checked(hwnd, ID_SOUND_CHECKBOX), Ordering::SeqCst);
                 FIRST_RUN_SOUND_VOLUME.store(selected_volume(hwnd), Ordering::SeqCst);
                 FIRST_RUN_ACCEPTED.store(true, Ordering::SeqCst);
                 DestroyWindow(hwnd);
@@ -491,8 +487,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     SendMessageW(
         autostart,
         BM_SETCHECK,
-        usize::from(FIRST_RUN_AUTOSTART.load(Ordering::SeqCst))
-            * BST_CHECKED_VALUE as usize,
+        usize::from(FIRST_RUN_AUTOSTART.load(Ordering::SeqCst)) * BST_CHECKED_VALUE as usize,
         0,
     );
 
@@ -514,8 +509,7 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
     SendMessageW(
         sound_checkbox,
         BM_SETCHECK,
-        usize::from(FIRST_RUN_SOUND_ENABLED.load(Ordering::SeqCst))
-            * BST_CHECKED_VALUE as usize,
+        usize::from(FIRST_RUN_SOUND_ENABLED.load(Ordering::SeqCst)) * BST_CHECKED_VALUE as usize,
         0,
     );
 
@@ -649,7 +643,9 @@ unsafe fn selected_volume(hwnd: HWND) -> u8 {
     if index < 0 {
         settings::DEFAULT_SOUND_VOLUME
     } else {
-        (index as u8).saturating_mul(5).min(settings::MAX_SOUND_VOLUME)
+        (index as u8)
+            .saturating_mul(5)
+            .min(settings::MAX_SOUND_VOLUME)
     }
 }
 

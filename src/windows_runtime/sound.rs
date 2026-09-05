@@ -1,9 +1,7 @@
 use std::ptr::null_mut;
 use std::sync::OnceLock;
 
-use windows_sys::Win32::Media::Audio::{
-    PlaySoundW, SND_ASYNC, SND_MEMORY, SND_NODEFAULT,
-};
+use windows_sys::Win32::Media::Audio::{PlaySoundW, SND_ASYNC, SND_MEMORY, SND_NODEFAULT};
 
 use crate::sound_wave::{correction_wav, MAX_SOUND_VOLUME};
 
