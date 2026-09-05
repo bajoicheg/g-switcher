@@ -15,10 +15,11 @@ use windows_sys::Win32::System::Diagnostics::ToolHelp::{
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::EnableWindow;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EnableWindow, GetDlgItem, GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW,
-    IsDialogMessageW, IsWindow, LoadCursorW, MessageBoxW, PeekMessageW, RegisterClassW,
+    GetDlgItem, GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, IsDialogMessageW, IsWindow,
+    LoadCursorW, MessageBoxW, PeekMessageW, RegisterClassW,
     SendMessageW, SetForegroundWindow, SetWindowTextW, ShowWindow, SystemParametersInfoW,
     TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, BS_GROUPBOX,
     CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_GETLBTEXT, CB_GETLBTEXTLEN, CB_SETCURSEL,

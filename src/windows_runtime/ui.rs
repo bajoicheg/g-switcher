@@ -11,13 +11,14 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::EnableWindow;
 use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, EnableWindow, GetCursorPos, GetDlgItem, GetSystemMetrics,
-    IsDialogMessageW, IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage,
+    DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsDialogMessageW,
+    IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage,
     RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW,
     TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
     CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_SEPARATOR, MF_STRING,
