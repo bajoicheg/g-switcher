@@ -18,9 +18,9 @@ use windows_sys::Win32::UI::Shell::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsDialogMessageW,
-    IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage,
-    RegisterClassW, SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW,
-    TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
+    IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW,
+    SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
+    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
     CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_SEPARATOR, MF_STRING,
     MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SW_SHOW, TPM_RETURNCMD,
     TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP,
