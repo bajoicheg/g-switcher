@@ -38,6 +38,41 @@ if ($updated -notmatch 'mod cross_process_e2e;') {
     $updated = $updated.Replace($e2eMarker, $e2eMarker + $crossProcessModule)
 }
 
+$oldSelectionReplace = 'if !selection::replace_range(target.hwnd, selected.start, selected.end, &corrected) {'
+$newSelectionReplace = @'
+if !selection::replace_range_if_matches(
+            target.hwnd,
+            selected.start,
+            selected.end,
+            &selected.text,
+            &corrected,
+        ) {
+'@
+if ($updated.Contains($oldSelectionReplace)) {
+    $updated = $updated.Replace($oldSelectionReplace, $newSelectionReplace.TrimEnd("`r", "`n"))
+}
+if ($updated -notmatch 'selection::replace_range_if_matches') {
+    throw 'Could not wire verified selected-text replacement.'
+}
+
+$queuePattern = '(?s)(fn queue_correction_parts\(.*?\n\s*\) -> bool \{\n)(\s*let Some\(target_hkl\))'
+$queueInsert = @'
+$1        // 2.0.1 fails open for controls without a synchronously verifiable
+        // Edit/RichEdit message adapter. UI Automation support is added as a
+        // separate adapter; raw SendInput mutation is not allowed to guess.
+        if !selection::is_standard_edit(source.hwnd) {
+            return false;
+        }
+
+$2
+'@
+if ($updated -notmatch 'raw SendInput mutation is not allowed to guess') {
+    $updated = [regex]::Replace($updated, $queuePattern, $queueInsert, 1)
+}
+if ($updated -notmatch 'if !selection::is_standard_edit\(source\.hwnd\)') {
+    throw 'Could not install fail-open mutation gate.'
+}
+
 if ($updated -ne $text) {
     Set-Content -LiteralPath $path -Value $updated -Encoding utf8 -NoNewline
 }
