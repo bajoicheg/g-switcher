@@ -5,9 +5,9 @@ use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
 };
 use windows::Win32::UI::Accessibility::{
-    CUIAutomation, IUIAutomation, IUIAutomationLegacyIAccessiblePattern, IUIAutomationTextPattern,
-    IUIAutomationTextRange, TextPatternRangeEndpoint_End, TextPatternRangeEndpoint_Start,
-    TextUnit_Character, UIA_LegacyIAccessiblePatternId, UIA_TextPatternId,
+    CUIAutomation, IUIAutomation, IUIAutomationTextPattern, IUIAutomationTextRange,
+    TextPatternRangeEndpoint, TextPatternRangeEndpoint_End, TextPatternRangeEndpoint_Start,
+    TextUnit_Character, UIA_TextPatternId,
 };
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -42,7 +42,8 @@ pub fn read_selected_text(hwnd: HWND) -> Option<UiaSelectedText> {
         if selected.is_empty() {
             return None;
         }
-        let prefix_start = prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_Start)?;
+        let prefix_start =
+            prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_Start)?;
         let prefix_end = prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_End)?;
         let start = char_count_u32(&prefix_start)?;
         let end = char_count_u32(&prefix_end)?;
@@ -99,7 +100,10 @@ pub fn replace_range_if_matches(
         }
 
         let mut planned = String::with_capacity(
-            before.len().saturating_sub(expected.len()).saturating_add(replacement.len()),
+            before
+                .len()
+                .saturating_sub(expected.len())
+                .saturating_add(replacement.len()),
         );
         planned.push_str(&before[..start_index]);
         planned.push_str(replacement);
@@ -127,9 +131,12 @@ pub fn replace_range_if_matches(
 
         // A partial or unexpected mutation is never accepted. Re-select the
         // replacement span through UIA and restore the verified original text.
-        let replacement_end = start.saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
+        let replacement_end = start
+            .saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
         if let Some(current_document) = unsafe { pattern.DocumentRange().ok() } {
-            if let Some(rollback_range) = range_for_char_offsets(&current_document, start, replacement_end) {
+            if let Some(rollback_range) =
+                range_for_char_offsets(&current_document, start, replacement_end)
+            {
                 if unsafe { rollback_range.Select().is_ok() }
                     && current_selected_text(pattern).as_deref() == Some(replacement)
                 {
@@ -142,16 +149,13 @@ pub fn replace_range_if_matches(
     .unwrap_or(false)
 }
 
-/// Returns true when the focused RichEdit-like UIA provider offers both the
-/// Text pattern and a writable legacy accessibility value path. This is used
-/// only as a capability probe; actual edits preserve formatting by replacing
-/// a UIA-selected range with EM_REPLACESEL rather than replacing the document.
+/// Returns true when the focused RichEdit-like UIA provider exposes TextPattern.
+/// The exact class-family check remains in selection.rs; range mutation itself
+/// uses a UIA-verified selection plus documented RichEdit EM_REPLACESEL.
 pub fn has_rich_text_adapter(hwnd: HWND) -> bool {
     with_focused_element(hwnd, |element| {
         let text = unsafe { element.GetCurrentPattern(UIA_TextPatternId).ok()? };
         let _: IUIAutomationTextPattern = text.cast().ok()?;
-        let legacy = unsafe { element.GetCurrentPattern(UIA_LegacyIAccessiblePatternId).ok()? };
-        let _: IUIAutomationLegacyIAccessiblePattern = legacy.cast().ok()?;
         Some(true)
     })
     .unwrap_or(false)
@@ -225,7 +229,7 @@ fn current_selected_text(pattern: &IUIAutomationTextPattern) -> Option<String> {
 fn prefix_to_endpoint(
     document: &IUIAutomationTextRange,
     selection: &IUIAutomationTextRange,
-    endpoint: i32,
+    endpoint: TextPatternRangeEndpoint,
 ) -> Option<String> {
     let prefix = unsafe { document.Clone().ok()? };
     unsafe {
