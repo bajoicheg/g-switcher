@@ -1,7 +1,7 @@
 use windows_sys::Win32::Foundation::HWND;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageTimeoutW, GWL_STYLE,
-    SMTO_ABORTIFHUNG, SMTO_BLOCK,
+    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageTimeoutW, GWL_STYLE, SMTO_ABORTIFHUNG,
+    SMTO_BLOCK,
 };
 
 const ES_PASSWORD_VALUE: isize = 0x0020;

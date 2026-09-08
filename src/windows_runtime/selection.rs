@@ -1,7 +1,6 @@
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT,
-    WM_GETTEXTLENGTH,
+    GetClassNameW, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT, WM_GETTEXTLENGTH,
 };
 
 const EM_GETSEL_VALUE: u32 = 0x00B0;
@@ -103,14 +102,7 @@ pub fn replace_range(hwnd: HWND, start: u32, end: u32, text: &str) -> bool {
     }
 
     let text = wide(text);
-    if send_timeout(
-        hwnd,
-        EM_REPLACESEL_VALUE,
-        1,
-        text.as_ptr() as isize,
-    )
-    .is_none()
-    {
+    if send_timeout(hwnd, EM_REPLACESEL_VALUE, 1, text.as_ptr() as isize).is_none() {
         return false;
     }
     true
@@ -141,12 +133,7 @@ pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
     }
     let capacity = length as usize + 1;
     let mut buffer = vec![0u16; capacity];
-    let copied = send_timeout(
-        hwnd,
-        WM_GETTEXT,
-        capacity,
-        buffer.as_mut_ptr() as isize,
-    )?;
+    let copied = send_timeout(hwnd, WM_GETTEXT, capacity, buffer.as_mut_ptr() as isize)?;
     if copied < 0 {
         return None;
     }
@@ -220,7 +207,10 @@ mod tests {
             assert!(is_message_text_class(class_name), "missed {class_name}");
         }
         for class_name in ["Chrome_RenderWidgetHostHWND", "Windows.UI.Core.CoreWindow"] {
-            assert!(!is_message_text_class(class_name), "unsafe class {class_name}");
+            assert!(
+                !is_message_text_class(class_name),
+                "unsafe class {class_name}"
+            );
         }
     }
 }

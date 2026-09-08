@@ -32,12 +32,13 @@ use windows_sys::Win32::System::Threading::{
     PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    ActivateKeyboardLayout, GetAsyncKeyState, GetKeyState, GetKeyboardLayout, GetKeyboardLayoutList,
-    LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
-    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL, VK_CONTROL, VK_END, VK_HOME,
-    VK_INSERT, VK_LEFT, VK_MENU, VK_NEXT, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5,
-    VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PERIOD, VK_OEM_PLUS, VK_PRIOR,
-    VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_TAB, VK_UP, VK_DOWN, VK_DELETE,
+    ActivateKeyboardLayout, GetAsyncKeyState, GetKeyState, GetKeyboardLayout,
+    GetKeyboardLayoutList, LoadKeyboardLayoutW, SendInput, VkKeyScanExW, INPUT, INPUT_0,
+    INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, VK_BACK, VK_CAPITAL,
+    VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_HOME, VK_INSERT, VK_LEFT, VK_MENU, VK_NEXT,
+    VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA,
+    VK_OEM_MINUS, VK_OEM_PERIOD, VK_OEM_PLUS, VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE,
+    VK_TAB, VK_UP,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetForegroundWindow, GetGUIThreadInfo, GetMessageW,
@@ -435,27 +436,25 @@ unsafe fn keyboard_proc_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
     let previous_focus = HOOK_FOCUS.swap(focus, Ordering::SeqCst);
     let mut generation = CONTEXT_GENERATION.load(Ordering::SeqCst);
     if focus == 0 || previous_focus != focus {
-        generation = CONTEXT_GENERATION.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        generation = CONTEXT_GENERATION
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
         HOOK_POLICY.store(POLICY_UNKNOWN, Ordering::SeqCst);
     }
 
     let modifiers = capture_modifiers();
     let caps = GetKeyState(VK_CAPITAL as i32) & 1 != 0;
     if invalidates_context(event.vkCode as u16, modifiers) {
-        generation = CONTEXT_GENERATION.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        generation = CONTEXT_GENERATION
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
     }
 
     let ready = focus != 0
         && HOOK_POLICY.load(Ordering::SeqCst) == POLICY_READY
         && HOOK_FOCUS.load(Ordering::SeqCst) == focus;
     let hotkey = ready && matches_published_hotkey(event.vkCode as u16, modifiers);
-    let packed = encode_hook_event(
-        event.vkCode as u16,
-        modifiers,
-        caps,
-        generation,
-        hotkey,
-    );
+    let packed = encode_hook_event(event.vkCode as u16, modifiers, caps, generation, hotkey);
     let posted = post_runtime(WM_RUNTIME_KEY_EVENT, packed, focus);
     if !posted {
         DROPPED_EVENTS.fetch_add(1, Ordering::Relaxed);
@@ -566,9 +565,23 @@ fn capture_modifiers() -> Modifiers {
 }
 
 fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
+    // Modifier key-down events are part of our hotkey chords. Invalidating the
+    // generation on Ctrl/Shift/Alt itself would erase the candidate/previous
+    // token before the actual hotkey key arrives.
+    if is_modifier_vk(vk) {
+        return false;
+    }
     matches!(
         vk,
-        VK_LEFT | VK_RIGHT | VK_UP | VK_DOWN | VK_HOME | VK_END | VK_PRIOR | VK_NEXT | VK_DELETE
+        VK_LEFT
+            | VK_RIGHT
+            | VK_UP
+            | VK_DOWN
+            | VK_HOME
+            | VK_END
+            | VK_PRIOR
+            | VK_NEXT
+            | VK_DELETE
             | VK_INSERT
     ) || ((modifiers.ctrl || modifiers.alt) && !matches_published_hotkey(vk, modifiers))
 }
@@ -819,24 +832,20 @@ impl Engine {
                 event.caps,
                 event.generation,
             ),
-            VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => {
-                self.handle_punctuation(
+            VK_OEM_COMMA | VK_OEM_PERIOD if target.language == Language::English => self
+                .handle_punctuation(
                     target,
                     event.vk,
                     allow_auto,
                     event.modifiers.shift,
                     event.caps,
                     event.generation,
-                )
-            }
+                ),
             _ => {
                 self.previous = None;
-                if let Some(ch) = visible_char(
-                    event.vk,
-                    target.language,
-                    event.modifiers.shift,
-                    event.caps,
-                ) {
+                if let Some(ch) =
+                    visible_char(event.vk, target.language, event.modifiers.shift, event.caps)
+                {
                     self.candidate.push(ch);
                     self.strokes.push(Stroke {
                         vk: event.vk,
@@ -1320,12 +1329,7 @@ impl Engine {
         sound::play_correction(&settings::runtime_settings());
     }
 
-    fn try_undo(
-        &mut self,
-        target: FocusTarget,
-        modifiers: Modifiers,
-        generation: u32,
-    ) -> bool {
+    fn try_undo(&mut self, target: FocusTarget, modifiers: Modifiers, generation: u32) -> bool {
         if let Some(undo) = self.selection_undo.take() {
             if undo.focus != target.hwnd as isize
                 || undo.process_id != target.process_id
@@ -1919,11 +1923,26 @@ mod tests {
 
     #[test]
     fn visible_char_includes_technical_sequence_keys() {
-        assert_eq!(visible_char(b'1' as u16, Language::English, false, false), Some('1'));
-        assert_eq!(visible_char(b'2' as u16, Language::English, true, false), Some('@'));
-        assert_eq!(visible_char(VK_OEM_MINUS, Language::English, true, false), Some('_'));
-        assert_eq!(visible_char(VK_OEM_5, Language::English, false, false), Some('\\'));
-        assert_eq!(visible_char(VK_OEM_1, Language::English, true, false), Some(':'));
+        assert_eq!(
+            visible_char(b'1' as u16, Language::English, false, false),
+            Some('1')
+        );
+        assert_eq!(
+            visible_char(b'2' as u16, Language::English, true, false),
+            Some('@')
+        );
+        assert_eq!(
+            visible_char(VK_OEM_MINUS, Language::English, true, false),
+            Some('_')
+        );
+        assert_eq!(
+            visible_char(VK_OEM_5, Language::English, false, false),
+            Some('\\')
+        );
+        assert_eq!(
+            visible_char(VK_OEM_1, Language::English, true, false),
+            Some(':')
+        );
     }
 
     #[test]
