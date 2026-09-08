@@ -1860,6 +1860,9 @@ fn wide(value: &str) -> Vec<u16> {
 }
 
 #[cfg(test)]
+#[path = "windows_runtime/cross_process_e2e.rs"]
+mod cross_process_e2e;
+#[cfg(test)]
 #[path = "windows_runtime/e2e_tests.rs"]
 mod e2e_tests;
 
