@@ -23,8 +23,11 @@ pub struct EditSnapshot {
     pub text_before_caret: String,
 }
 
+/// Returns true only for controls where the classic system Edit messages are a
+/// documented supported path. The name is kept for compatibility with the
+/// 2.0.0 runtime while 2.0.1 also accepts the RichEdit family.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
-    class_name(hwnd).is_some_and(|name| name.eq_ignore_ascii_case("Edit"))
+    class_name(hwnd).is_some_and(|name| is_message_text_class(&name))
 }
 
 pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
@@ -165,6 +168,13 @@ fn class_name(hwnd: HWND) -> Option<String> {
     Some(String::from_utf16_lossy(&buffer[..length as usize]))
 }
 
+fn is_message_text_class(class_name: &str) -> bool {
+    let normalized = class_name.trim().to_ascii_lowercase();
+    normalized == "edit"
+        || normalized.starts_with("richedit")
+        || normalized.starts_with("rich edit")
+}
+
 fn send_timeout(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
     let mut result = 0usize;
     let ok = unsafe {
@@ -202,5 +212,15 @@ mod tests {
         let suffix = "привет ";
         assert_eq!(utf16_len(prefix), 5);
         assert_eq!(utf16_len(suffix), 7);
+    }
+
+    #[test]
+    fn message_adapter_is_limited_to_edit_and_richedit_families() {
+        for class_name in ["Edit", "RICHEDIT50W", "RichEditD2DPT", "Rich Edit 20W"] {
+            assert!(is_message_text_class(class_name), "missed {class_name}");
+        }
+        for class_name in ["Chrome_RenderWidgetHostHWND", "Windows.UI.Core.CoreWindow"] {
+            assert!(!is_message_text_class(class_name), "unsafe class {class_name}");
+        }
     }
 }
