@@ -22,9 +22,8 @@ pub struct EditSnapshot {
     pub text_before_caret: String,
 }
 
-/// Returns true only for controls where the classic system Edit messages are a
-/// documented supported path. The name is kept for compatibility with the
-/// 2.0.0 runtime while 2.0.1 also accepts the RichEdit family.
+/// Returns true only for controls where the classic Edit/RichEdit message path
+/// is deliberately supported and every mutation can be synchronously verified.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     class_name(hwnd).is_some_and(|name| is_message_text_class(&name))
 }
@@ -38,9 +37,9 @@ pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
         return None;
     }
     let text = read_control_text(hwnd)?;
-    let start_index = (start as usize).min(text.len());
-    let end_index = (end as usize).min(text.len());
-    if end_index <= start_index {
+    let start_index = start as usize;
+    let end_index = end as usize;
+    if end_index > text.len() || end_index <= start_index {
         return None;
     }
 
@@ -60,7 +59,10 @@ pub fn snapshot_caret(hwnd: HWND) -> Option<EditSnapshot> {
         return None;
     }
     let text = read_control_text(hwnd)?;
-    let caret = (end as usize).min(text.len());
+    let caret = end as usize;
+    if caret > text.len() {
+        return None;
+    }
     Some(EditSnapshot {
         caret: end,
         text_before_caret: String::from_utf16_lossy(&text[..caret]),
@@ -83,29 +85,76 @@ pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) ->
     }
     let expected_units = utf16_len(expected);
     let start = snapshot.caret.saturating_sub(expected_units);
-    if !replace_range(hwnd, start, snapshot.caret, replacement) {
-        return false;
-    }
-
-    let Some(after) = snapshot_caret(hwnd) else {
-        return false;
-    };
-    after.text_before_caret.ends_with(replacement)
+    replace_range_if_matches(hwnd, start, snapshot.caret, expected, replacement)
 }
 
-pub fn replace_range(hwnd: HWND, start: u32, end: u32, text: &str) -> bool {
+/// Replaces the requested range only if it still contains `expected`.
+/// The full control text is captured before mutation, verified after mutation,
+/// and the original range is restored if the result is not exactly what was
+/// planned. This is the message-adapter atomicity boundary used by 2.0.1.
+pub fn replace_range_if_matches(
+    hwnd: HWND,
+    start: u32,
+    end: u32,
+    expected: &str,
+    replacement: &str,
+) -> bool {
     if end < start || !is_standard_edit(hwnd) {
         return false;
     }
-    if send_timeout(hwnd, EM_SETSEL_VALUE, start as usize, end as isize).is_none() {
+
+    let before = match read_control_text(hwnd) {
+        Some(value) => value,
+        None => return false,
+    };
+    let start_index = start as usize;
+    let end_index = end as usize;
+    if end_index > before.len() || start_index > end_index {
         return false;
     }
 
-    let text = wide(text);
-    if send_timeout(hwnd, EM_REPLACESEL_VALUE, 1, text.as_ptr() as isize).is_none() {
+    let expected_units = expected.encode_utf16().collect::<Vec<_>>();
+    if before[start_index..end_index] != expected_units {
         return false;
     }
-    true
+    let replacement_units = replacement.encode_utf16().collect::<Vec<_>>();
+
+    let mut planned = before.clone();
+    planned.splice(start_index..end_index, replacement_units.iter().copied());
+
+    if !replace_range_raw(hwnd, start, end, replacement) {
+        return false;
+    }
+    if read_control_text(hwnd).is_some_and(|after| after == planned) {
+        return true;
+    }
+
+    let replacement_end = start.saturating_add(replacement_units.len().min(u32::MAX as usize) as u32);
+    let rollback_end = read_control_text(hwnd)
+        .map(|current| (replacement_end as usize).min(current.len()) as u32)
+        .unwrap_or(replacement_end);
+    let _ = replace_range_raw(hwnd, start, rollback_end, expected);
+    false
+}
+
+/// Generic verified replacement used only when the current range itself is the
+/// source of truth. Callers with an expected source value should use
+/// `replace_range_if_matches`.
+pub fn replace_range(hwnd: HWND, start: u32, end: u32, replacement: &str) -> bool {
+    if end < start || !is_standard_edit(hwnd) {
+        return false;
+    }
+    let before = match read_control_text(hwnd) {
+        Some(value) => value,
+        None => return false,
+    };
+    let start_index = start as usize;
+    let end_index = end as usize;
+    if end_index > before.len() || start_index > end_index {
+        return false;
+    }
+    let expected = String::from_utf16_lossy(&before[start_index..end_index]);
+    replace_range_if_matches(hwnd, start, end, &expected, replacement)
 }
 
 pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
@@ -144,6 +193,14 @@ pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
 
 pub fn utf16_len(value: &str) -> u32 {
     value.encode_utf16().count().min(u32::MAX as usize) as u32
+}
+
+fn replace_range_raw(hwnd: HWND, start: u32, end: u32, text: &str) -> bool {
+    if send_timeout(hwnd, EM_SETSEL_VALUE, start as usize, end as isize).is_none() {
+        return false;
+    }
+    let text = wide(text);
+    send_timeout(hwnd, EM_REPLACESEL_VALUE, 1, text.as_ptr() as isize).is_some()
 }
 
 fn class_name(hwnd: HWND) -> Option<String> {
