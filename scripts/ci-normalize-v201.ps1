@@ -7,6 +7,115 @@ $updated = $text.Replace(
     'const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";'
 )
 
+$selectionModule = @'
+#[path = "windows_runtime/selection.rs"]
+mod selection;
+'@
+$dispatchModule = @'
+#[path = "windows_runtime/selection.rs"]
+mod selection;
+#[path = "windows_runtime/runtime_dispatch.rs"]
+mod runtime_dispatch;
+'@
+if ($updated -notmatch 'mod runtime_dispatch;') {
+    if (-not $updated.Contains($selectionModule)) {
+        throw 'Could not locate selection module marker for runtime dispatch.'
+    }
+    $updated = $updated.Replace($selectionModule, $dispatchModule)
+}
+
+$updated = $updated.Replace(
+    'static RUNTIME_THREAD_ID: OnceLock<u32> = OnceLock::new();',
+    'static RUNTIME_WINDOW: AtomicIsize = AtomicIsize::new(0);'
+)
+$runtimeThreadInit = @'
+    let runtime_thread = unsafe { GetCurrentThreadId() };
+    let _ = RUNTIME_THREAD_ID.set(runtime_thread);
+'@
+$updated = $updated.Replace($runtimeThreadInit, '')
+
+$oldHookStruct = @'
+struct KeyboardHook {
+    thread_id: u32,
+    join: Option<JoinHandle<()>>,
+}
+
+impl KeyboardHook {
+    fn install() -> Result<Self> {
+        let runtime_thread = unsafe { GetCurrentThreadId() };
+        let _ = RUNTIME_THREAD_ID.set(runtime_thread);
+        publish_hotkeys(&settings::runtime_settings());
+
+        let (ready_tx, ready_rx) = mpsc::sync_channel::<std::result::Result<u32, String>>(1);
+        let join = thread::spawn(move || hook_thread_main(ready_tx));
+        let thread_id = ready_rx
+            .recv()
+            .map_err(|_| anyhow!("hook thread exited before initialization"))?
+            .map_err(|message| anyhow!(message))?;
+        Ok(Self {
+            thread_id,
+            join: Some(join),
+        })
+    }
+}
+'@
+$newHookStruct = @'
+struct KeyboardHook {
+    thread_id: u32,
+    join: Option<JoinHandle<()>>,
+    _dispatch: runtime_dispatch::RuntimeDispatchWindow,
+}
+
+impl KeyboardHook {
+    fn install() -> Result<Self> {
+        publish_hotkeys(&settings::runtime_settings());
+        let dispatch = runtime_dispatch::RuntimeDispatchWindow::install()?;
+
+        let (ready_tx, ready_rx) = mpsc::sync_channel::<std::result::Result<u32, String>>(1);
+        let join = thread::spawn(move || hook_thread_main(ready_tx));
+        let thread_id = ready_rx
+            .recv()
+            .map_err(|_| anyhow!("hook thread exited before initialization"))?
+            .map_err(|message| anyhow!(message))?;
+        Ok(Self {
+            thread_id,
+            join: Some(join),
+            _dispatch: dispatch,
+        })
+    }
+}
+'@
+if ($updated.Contains($oldHookStruct)) {
+    $updated = $updated.Replace($oldHookStruct, $newHookStruct)
+}
+if ($updated -notmatch '_dispatch: runtime_dispatch::RuntimeDispatchWindow') {
+    throw 'Could not wire runtime dispatch lifetime into KeyboardHook.'
+}
+
+$oldPostRuntime = @'
+fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
+    let Some(thread_id) = RUNTIME_THREAD_ID.get().copied() else {
+        return false;
+    };
+    unsafe { PostThreadMessageW(thread_id, message, wparam, lparam) != 0 }
+}
+'@
+$newPostRuntime = @'
+fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
+    let hwnd = RUNTIME_WINDOW.load(Ordering::SeqCst) as HWND;
+    if hwnd.is_null() {
+        return false;
+    }
+    unsafe { PostMessageW(hwnd, message, wparam, lparam) != 0 }
+}
+'@
+if ($updated.Contains($oldPostRuntime)) {
+    $updated = $updated.Replace($oldPostRuntime, $newPostRuntime)
+}
+if ($updated -notmatch 'RUNTIME_WINDOW\.load\(Ordering::SeqCst\)') {
+    throw 'Could not replace thread-message runtime dispatch.'
+}
+
 $pattern = 'fn invalidates_context\(vk: u16, modifiers: Modifiers\) -> bool \{\s*matches!\('
 $replacement = @'
 fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
