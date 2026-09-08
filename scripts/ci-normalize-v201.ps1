@@ -42,4 +42,19 @@ if ($updated -ne $text) {
     Set-Content -LiteralPath $path -Value $updated -Encoding utf8 -NoNewline
 }
 
+$lockPath = 'Cargo.lock'
+$lock = Get-Content -LiteralPath $lockPath -Raw
+$lockUpdated = [regex]::Replace(
+    $lock,
+    '(?ms)(\[\[package\]\]\s*name = "g-switcher"\s*version = ")2\.0\.0("\s*)',
+    '${1}2.0.1${2}',
+    1
+)
+if ($lockUpdated -eq $lock -and $lock -notmatch '(?ms)name = "g-switcher"\s*version = "2\.0\.1"') {
+    throw 'Could not synchronize g-switcher version in Cargo.lock.'
+}
+if ($lockUpdated -ne $lock) {
+    Set-Content -LiteralPath $lockPath -Value $lockUpdated -Encoding utf8 -NoNewline
+}
+
 cargo fmt --all
