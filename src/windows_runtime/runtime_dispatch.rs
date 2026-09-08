@@ -1,4 +1,3 @@
-use std::mem::zeroed;
 use std::ptr::{null, null_mut};
 use std::sync::atomic::Ordering;
 
