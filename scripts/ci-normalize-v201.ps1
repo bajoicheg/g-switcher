@@ -76,7 +76,9 @@ impl Engine {
         let cache_matches = self.uia_cache.checked
             && self.uia_cache.generation == generation
             && self.uia_cache.process_id == target.process_id
-            && self.uia_cache.focus == target.hwnd as isize;
+            && self.uia_cache.focus == target.hwnd as isize
+            && (self.uia_cache.native_hwnd == 0
+                || self.uia_cache.native_hwnd == target.hwnd as isize);
         if cache_matches {
             return self.uia_cache.is_password;
         }
@@ -99,6 +101,27 @@ impl Engine {
         throw 'Could not locate Engine implementation marker for UIA state.'
     }
     $runtime = $runtime.Replace($implMarker, $implReplacement)
+}
+
+if ($runtime -notmatch 'self\.uia_cache\.native_hwnd == 0') {
+    $cacheMatchOld = @'
+        let cache_matches = self.uia_cache.checked
+            && self.uia_cache.generation == generation
+            && self.uia_cache.process_id == target.process_id
+            && self.uia_cache.focus == target.hwnd as isize;
+'@
+    $cacheMatchNew = @'
+        let cache_matches = self.uia_cache.checked
+            && self.uia_cache.generation == generation
+            && self.uia_cache.process_id == target.process_id
+            && self.uia_cache.focus == target.hwnd as isize
+            && (self.uia_cache.native_hwnd == 0
+                || self.uia_cache.native_hwnd == target.hwnd as isize);
+'@
+    if (-not $runtime.Contains($cacheMatchOld)) {
+        throw 'Could not locate UIA cache match block.'
+    }
+    $runtime = $runtime.Replace($cacheMatchOld, $cacheMatchNew)
 }
 
 if ($runtime -notmatch 'uia_password_state\(target, event\.generation\)') {
@@ -223,6 +246,54 @@ if ($cross -notmatch 'UIA password field was not recognized') {
         throw 'Could not locate password cross-process E2E marker for UIA probe.'
     }
     $cross = $cross.Replace($passwordMarker, $passwordProbe)
+}
+
+if ($cross -notmatch 'focused_hwnd_fast\(\) == edit') {
+    $waitOld = @'
+            GetKeyboardLayout(ui_thread_id) as isize == hkl && GetForegroundWindow() == window
+'@
+    $waitNew = @'
+            GetKeyboardLayout(ui_thread_id) as isize == hkl
+                && GetForegroundWindow() == window
+                && focused_hwnd_fast() == edit
+'@
+    if (-not $cross.Contains($waitOld)) {
+        throw 'Could not locate cross-process focus wait condition.'
+    }
+    $cross = $cross.Replace($waitOld, $waitNew)
+    $foregroundAssert = '    assert_eq!(unsafe { GetForegroundWindow() }, window);'
+    $focusAssert = @'
+    assert_eq!(unsafe { GetForegroundWindow() }, window);
+    assert_eq!(focused_hwnd_fast(), edit, "helper child focus was not established");
+'@
+    $cross = $cross.Replace($foregroundAssert, $focusAssert.TrimEnd("`r", "`n"))
+}
+
+if ($cross -notmatch 'RichEdit selection adapter did not read') {
+    $richSelectionMarker = @'
+    set_text(helper.rich_edit, "ghbdtn rfr ltkf");
+    assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
+    prime_policy();
+'@
+    $richSelectionProbe = @'
+    set_text(helper.rich_edit, "ghbdtn rfr ltkf");
+    assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
+    let rich_selected = selection::read_selected_text(helper.rich_edit)
+        .expect("RichEdit selection adapter did not read the selected text");
+    assert_eq!(rich_selected.text, "ghbdtn rfr ltkf");
+    assert!(
+        !secure_input::is_secure_input(helper.rich_edit, &process_name),
+        "ordinary RichEdit was classified as protected"
+    );
+    let rich_probe = uia_secure::probe_focused(helper.process_id)
+        .expect("UIA RichEdit probe failed");
+    assert!(!rich_probe.is_password, "ordinary RichEdit must not be password");
+    prime_policy();
+'@
+    if (-not $cross.Contains($richSelectionMarker)) {
+        throw 'Could not locate RichEdit selection probe marker.'
+    }
+    $cross = $cross.Replace($richSelectionMarker, $richSelectionProbe)
 }
 Set-Content -LiteralPath $crossPath -Value $cross -Encoding utf8 -NoNewline
 
