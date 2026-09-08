@@ -138,26 +138,6 @@ pub fn replace_range_if_matches(
     false
 }
 
-/// Generic verified replacement used only when the current range itself is the
-/// source of truth. Callers with an expected source value should use
-/// `replace_range_if_matches`.
-pub fn replace_range(hwnd: HWND, start: u32, end: u32, replacement: &str) -> bool {
-    if end < start || !is_standard_edit(hwnd) {
-        return false;
-    }
-    let before = match read_control_text(hwnd) {
-        Some(value) => value,
-        None => return false,
-    };
-    let start_index = start as usize;
-    let end_index = end as usize;
-    if end_index > before.len() || start_index > end_index {
-        return false;
-    }
-    let expected = String::from_utf16_lossy(&before[start_index..end_index]);
-    replace_range_if_matches(hwnd, start, end, &expected, replacement)
-}
-
 pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
     if !is_standard_edit(hwnd) {
         return None;
