@@ -119,9 +119,6 @@ if ($updated -notmatch 'RUNTIME_WINDOW\.load\(Ordering::SeqCst\)') {
 $pattern = 'fn invalidates_context\(vk: u16, modifiers: Modifiers\) -> bool \{\s*matches!\('
 $replacement = @'
 fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
-    // Modifier key-down events are part of our hotkey chords. Invalidating the
-    // generation on Ctrl/Shift/Alt itself would erase the candidate/previous
-    // token before the actual hotkey key arrives.
     if is_modifier_vk(vk) {
         return false;
     }
@@ -199,10 +196,46 @@ if ($selectionUpdated -ne $selection) {
 
 $crossPath = 'src/windows_runtime/cross_process_e2e.rs'
 $cross = Get-Content -LiteralPath $crossPath -Raw
-$crossUpdated = $cross.Replace('await_text(helper.edit, "user_ghbdtn ");', 'await_text(helper.edit, "user-ghbdtn ");')
-if ($crossUpdated -ne $cross) {
-    Set-Content -LiteralPath $crossPath -Value $crossUpdated -Encoding utf8 -NoNewline
+$cross = $cross.Replace('    password: HWND,', "    rich_edit: HWND,`n    password: HWND,")
+$cross = $cross.Replace('assert_eq!(fields.len(), 5, "bad helper handle line: {line:?}");', 'assert_eq!(fields.len(), 6, "bad helper handle line: {line:?}");')
+$cross = $cross.Replace(
+    @'
+            password: parse(fields[3]) as HWND,
+            process_id: fields[4].parse().expect("invalid helper pid"),
+'@,
+    @'
+            rich_edit: parse(fields[3]) as HWND,
+            password: parse(fields[4]) as HWND,
+            process_id: fields[5].parse().expect("invalid helper pid"),
+'@
+)
+$richMarker = @'
+    inject_hotkey(false, VK_BACK);
+    await_text(helper.edit, "ghbdtn rfr ltkf");
+
+    eprintln!("G-switcher cross-process E2E: code-safe token");
+'@
+$richBlock = @'
+    inject_hotkey(false, VK_BACK);
+    await_text(helper.edit, "ghbdtn rfr ltkf");
+
+    eprintln!("G-switcher cross-process E2E: RichEdit selected text + undo");
+    prepare_cross_process_case(helper.window, helper.rich_edit, ui_thread_id, Language::English);
+    set_text(helper.rich_edit, "ghbdtn rfr ltkf");
+    assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
+    prime_policy();
+    inject_hotkey(true, VK_F9_VALUE);
+    await_text(helper.rich_edit, "привет как дела");
+    inject_hotkey(false, VK_BACK);
+    await_text(helper.rich_edit, "ghbdtn rfr ltkf");
+
+    eprintln!("G-switcher cross-process E2E: code-safe token");
+'@
+if ($cross.Contains($richMarker)) {
+    $cross = $cross.Replace($richMarker, $richBlock)
 }
+$cross = $cross.Replace('await_text(helper.edit, "user_ghbdtn ");', 'await_text(helper.edit, "user-ghbdtn ");')
+Set-Content -LiteralPath $crossPath -Value $cross -Encoding utf8 -NoNewline
 
 $e2ePath = 'src/windows_runtime/e2e_tests.rs'
 $e2e = Get-Content -LiteralPath $e2ePath -Raw
@@ -216,9 +249,6 @@ $selectedPrimed = @'
     unsafe {
         SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
     }
-    // The preceding disabled-mode case deliberately leaves the hook policy
-    // denied. A harmless modifier event forces the worker to re-evaluate the
-    // now-restored application mode before testing the suppressing hotkey.
     inject_strokes(&[key(VK_SHIFT as u8)]);
     inject_ctrl_shift_hotkey(VK_F9_VALUE);
 '@
