@@ -2,6 +2,10 @@ $ErrorActionPreference = 'Stop'
 
 $path = 'src/windows_runtime_v201.rs'
 $text = Get-Content -LiteralPath $path -Raw
+$updated = $text.Replace(
+    'const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v2.0.1";',
+    'const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";'
+)
 
 $pattern = 'fn invalidates_context\(vk: u16, modifiers: Modifiers\) -> bool \{\s*matches!\('
 $replacement = @'
@@ -15,8 +19,8 @@ fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
     matches!(
 '@
 
-$updated = [regex]::Replace($text, $pattern, $replacement, 1)
-if ($updated -eq $text -and $text -notmatch 'if is_modifier_vk\(vk\)') {
+$updated = [regex]::Replace($updated, $pattern, $replacement, 1)
+if ($updated -eq $text -and $updated -notmatch 'if is_modifier_vk\(vk\)') {
     throw 'Could not locate invalidates_context() for the 2.0.1 hotkey fix.'
 }
 
