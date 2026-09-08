@@ -55,7 +55,7 @@ if ($updated -notmatch 'selection::replace_range_if_matches') {
     throw 'Could not wire verified selected-text replacement.'
 }
 
-$queuePattern = '(?s)(fn queue_correction_parts\(.*?\n\s*\) -> bool \{\n)(\s*let Some\(target_hkl\))'
+$queuePattern = '(?s)(fn queue_correction_parts\(.*?\) -> bool \{\r?\n)(\s*let Some\(target_hkl\))'
 $queueInsert = @'
 $1        // 2.0.1 fails open for controls without a synchronously verifiable
         // Edit/RichEdit message adapter. UI Automation support is added as a
