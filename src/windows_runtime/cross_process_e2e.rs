@@ -46,7 +46,6 @@ struct CrossProcessHelper {
     window: HWND,
     edit: HWND,
     rich_edit: HWND,
-    rich_edit: HWND,
     password: HWND,
     process_id: u32,
 }
