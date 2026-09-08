@@ -729,16 +729,27 @@ impl Engine {
             return;
         }
 
-        // UIA is queried only on the runtime worker and only for metadata. The
-        // first event in a new context was already passed through while policy
-        // was UNKNOWN; after the probe, protected elements remain fail-open.
+        // Never suppress a hotkey or accumulate an automatic-correction
+        // candidate for a control that has no synchronously verifiable text
+        // adapter. Unsupported modern controls fail open: original input is
+        // left untouched and the application can be placed in Disabled mode.
+        if !selection::is_standard_edit(target.hwnd) {
+            HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
+            self.reset_transient();
+            return;
+        }
+
+        // UIA is queried only on the runtime worker and only for metadata. A
+        // plain Edit remains protected by its native password/style checks if
+        // UIA is unavailable. RichEdit requires a successful non-password UIA
+        // probe because its verified text adapter is UIA-backed.
         match self.uia_password_state(target, event.generation) {
             Some(true) => {
                 HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
                 self.reset_transient();
                 return;
             }
-            None if !selection::is_standard_edit(target.hwnd) => {
+            None if !selection::is_plain_edit(target.hwnd) => {
                 HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
                 self.reset_transient();
                 return;
@@ -1119,8 +1130,14 @@ impl Engine {
         let runtime_settings = settings::runtime_settings();
         if runtime_settings.app_mode(&self.process_name) == AppMode::Disabled
             || secure_input::is_secure_input(target.hwnd, &self.process_name)
+            || !selection::is_standard_edit(target.hwnd)
         {
             return;
+        }
+        match self.uia_password_state(target, pending.generation) {
+            Some(true) => return,
+            None if !selection::is_plain_edit(target.hwnd) => return,
+            _ => {}
         }
 
         let Some(selected) = selection::read_selected_text(target.hwnd) else {
@@ -1336,7 +1353,14 @@ impl Engine {
             return;
         }
 
-        if selection::is_standard_edit(hwnd) {
+        // Cache the adapter decision once. If it is unavailable now, leave the
+        // user's text untouched. Do not fall through to the legacy SendInput
+        // mutation path if adapter availability changes during the operation.
+        let verified_adapter = selection::is_standard_edit(hwnd);
+        if !verified_adapter {
+            return;
+        }
+        if verified_adapter {
             if !wait_for_edit_suffix(hwnd, &pending.original_text, pending.generation) {
                 return;
             }
@@ -1408,8 +1432,14 @@ impl Engine {
                 || undo.generation != generation
                 || current_generation() != generation
                 || secure_input::is_secure_input(target.hwnd, &self.process_name)
+                || !selection::is_standard_edit(target.hwnd)
             {
                 return false;
+            }
+            match self.uia_password_state(target, generation) {
+                Some(true) => return false,
+                None if !selection::is_plain_edit(target.hwnd) => return false,
+                _ => {}
             }
             if !switch_layout(target.hwnd, target.thread_id, undo.source_hkl) {
                 return false;
@@ -1438,7 +1468,14 @@ impl Engine {
             return false;
         }
 
-        if selection::is_standard_edit(target.hwnd) {
+        // Undo is also fail-open. A stale operation may not switch to raw
+        // SendInput merely because the verified adapter disappeared.
+        let verified_adapter = selection::is_standard_edit(target.hwnd);
+        if !verified_adapter {
+            let _ = switch_layout(target.hwnd, target.thread_id, undo.target_hkl);
+            return false;
+        }
+        if verified_adapter {
             if selection::replace_suffix_at_caret(
                 target.hwnd,
                 &undo.corrected_text,

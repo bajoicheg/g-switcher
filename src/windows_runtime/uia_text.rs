@@ -131,8 +131,8 @@ pub fn replace_range_if_matches(
 
         // A partial or unexpected mutation is never accepted. Re-select the
         // replacement span through UIA and restore the verified original text.
-        let replacement_end = start
-            .saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
+        let replacement_end =
+            start.saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
         if let Some(current_document) = unsafe { pattern.DocumentRange().ok() } {
             if let Some(rollback_range) =
                 range_for_char_offsets(&current_document, start, replacement_end)

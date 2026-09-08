@@ -38,6 +38,13 @@ pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }
 
+/// Plain system Edit controls have a native password/style check and a
+/// marshalled cross-process message adapter. Other supported text controls
+/// require successful UIA metadata verification before mutation.
+pub fn is_plain_edit(hwnd: HWND) -> bool {
+    class_name(hwnd).is_some_and(|name| is_plain_edit_class(&name))
+}
+
 pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => read_selected_text_messages(hwnd),
