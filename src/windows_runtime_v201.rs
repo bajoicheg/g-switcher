@@ -1,3 +1,5 @@
+#[path = "windows_runtime/runtime_dispatch.rs"]
+mod runtime_dispatch;
 #[path = "windows_runtime/secure_input.rs"]
 mod secure_input;
 #[path = "windows_runtime/selection.rs"]
@@ -70,7 +72,7 @@ const POLICY_READY: u8 = 1;
 const POLICY_DENY: u8 = 2;
 
 static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
-static RUNTIME_THREAD_ID: OnceLock<u32> = OnceLock::new();
+static RUNTIME_WINDOW: AtomicIsize = AtomicIsize::new(0);
 static HOOK_FOCUS: AtomicIsize = AtomicIsize::new(0);
 static HOOK_POLICY: AtomicU8 = AtomicU8::new(POLICY_UNKNOWN);
 static CONTEXT_GENERATION: AtomicU32 = AtomicU32::new(1);
@@ -235,8 +237,6 @@ pub fn run() -> Result<()> {
         settings::mark_first_run_completed()?;
     }
 
-    let runtime_thread = unsafe { GetCurrentThreadId() };
-    let _ = RUNTIME_THREAD_ID.set(runtime_thread);
     unsafe {
         let mut message: MSG = zeroed();
         PeekMessageW(&mut message, null_mut(), 0, 0, PM_NOREMOVE);
@@ -355,13 +355,13 @@ impl Drop for SingleInstance {
 struct KeyboardHook {
     thread_id: u32,
     join: Option<JoinHandle<()>>,
+    _dispatch: runtime_dispatch::RuntimeDispatchWindow,
 }
 
 impl KeyboardHook {
     fn install() -> Result<Self> {
-        let runtime_thread = unsafe { GetCurrentThreadId() };
-        let _ = RUNTIME_THREAD_ID.set(runtime_thread);
         publish_hotkeys(&settings::runtime_settings());
+        let dispatch = runtime_dispatch::RuntimeDispatchWindow::install()?;
 
         let (ready_tx, ready_rx) = mpsc::sync_channel::<std::result::Result<u32, String>>(1);
         let join = thread::spawn(move || hook_thread_main(ready_tx));
@@ -372,6 +372,7 @@ impl KeyboardHook {
         Ok(Self {
             thread_id,
             join: Some(join),
+            _dispatch: dispatch,
         })
     }
 }
@@ -525,10 +526,11 @@ fn focused_hwnd_fast() -> HWND {
 }
 
 fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
-    let Some(thread_id) = RUNTIME_THREAD_ID.get().copied() else {
+    let hwnd = RUNTIME_WINDOW.load(Ordering::SeqCst) as HWND;
+    if hwnd.is_null() {
         return false;
-    };
-    unsafe { PostThreadMessageW(thread_id, message, wparam, lparam) != 0 }
+    }
+    unsafe { PostMessageW(hwnd, message, wparam, lparam) != 0 }
 }
 
 fn invalidate_context(policy_unknown: bool) {

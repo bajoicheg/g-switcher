@@ -122,7 +122,10 @@ fn main() {
             module,
             null(),
         );
-        assert!(!rich_edit.is_null(), "failed to create helper RichEdit control");
+        assert!(
+            !rich_edit.is_null(),
+            "failed to create helper RichEdit control"
+        );
 
         let password = CreateWindowExW(
             0,

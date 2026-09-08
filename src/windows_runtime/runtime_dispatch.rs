@@ -3,10 +3,12 @@ use std::ptr::{null, null_mut};
 use std::sync::atomic::Ordering;
 
 use anyhow::{anyhow, Result};
-use windows_sys::Win32::Foundation::{GetLastError, HWND, LPARAM, LRESULT, WPARAM, ERROR_CLASS_ALREADY_EXISTS};
+use windows_sys::Win32::Foundation::{
+    GetLastError, ERROR_CLASS_ALREADY_EXISTS, HWND, LPARAM, LRESULT, WPARAM,
+};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, RegisterClassW, WNDCLASSW, HWND_MESSAGE,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, RegisterClassW, HWND_MESSAGE, WNDCLASSW,
 };
 
 use super::{
@@ -91,7 +93,9 @@ unsafe extern "system" fn runtime_proc(
 
     match message {
         WM_RUNTIME_KEY_EVENT => {
-            engine.lock().on_key_event(decode_hook_event(wparam, lparam));
+            engine
+                .lock()
+                .on_key_event(decode_hook_event(wparam, lparam));
             0
         }
         WM_RUNTIME_CORRECTION => {

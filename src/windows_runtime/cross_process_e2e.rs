@@ -45,6 +45,7 @@ struct CrossProcessHelper {
     child: Child,
     window: HWND,
     edit: HWND,
+    rich_edit: HWND,
     password: HWND,
     process_id: u32,
 }
@@ -71,14 +72,15 @@ impl CrossProcessHelper {
             Some("GSE2E"),
             "bad helper banner: {line:?}"
         );
-        assert_eq!(fields.len(), 5, "bad helper handle line: {line:?}");
+        assert_eq!(fields.len(), 6, "bad helper handle line: {line:?}");
         let parse = |value: &str| value.parse::<usize>().expect("invalid helper handle");
         Self {
             child,
             window: parse(fields[1]) as HWND,
             edit: parse(fields[2]) as HWND,
-            password: parse(fields[3]) as HWND,
-            process_id: fields[4].parse().expect("invalid helper pid"),
+            rich_edit: parse(fields[3]) as HWND,
+            password: parse(fields[4]) as HWND,
+            process_id: fields[5].parse().expect("invalid helper pid"),
         }
     }
 }
@@ -171,6 +173,21 @@ fn real_cross_process_edit_e2e_release_gate() {
     await_text(helper.edit, "привет как дела");
     inject_hotkey(false, VK_BACK);
     await_text(helper.edit, "ghbdtn rfr ltkf");
+
+    eprintln!("G-switcher cross-process E2E: RichEdit selected text + undo");
+    prepare_cross_process_case(
+        helper.window,
+        helper.rich_edit,
+        ui_thread_id,
+        Language::English,
+    );
+    set_text(helper.rich_edit, "ghbdtn rfr ltkf");
+    assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
+    prime_policy();
+    inject_hotkey(true, VK_F9_VALUE);
+    await_text(helper.rich_edit, "привет как дела");
+    inject_hotkey(false, VK_BACK);
+    await_text(helper.rich_edit, "ghbdtn rfr ltkf");
 
     eprintln!("G-switcher cross-process E2E: code-safe token");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
