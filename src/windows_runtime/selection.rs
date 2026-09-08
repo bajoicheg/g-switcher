@@ -3,6 +3,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetClassNameW, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT, WM_GETTEXTLENGTH,
 };
 
+use super::uia_text;
+
 const EM_GETSEL_VALUE: u32 = 0x00B0;
 const EM_SETSEL_VALUE: u32 = 0x00B1;
 const EM_REPLACESEL_VALUE: u32 = 0x00C2;
@@ -22,51 +24,44 @@ pub struct EditSnapshot {
     pub text_before_caret: String,
 }
 
-/// Returns true only for controls where the classic Edit/RichEdit message path
-/// is deliberately supported and every mutation can be synchronously verified.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TextAdapter {
+    EditMessages,
+    RichEditUia,
+}
+
+/// Returns true only for controls with a synchronous, verifiable 2.0.1 text
+/// adapter. Plain Edit uses marshalled system messages; RichEdit uses UIA
+/// TextPattern for range state and a range-local documented replacement.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
-    class_name(hwnd).is_some_and(|name| is_message_text_class(&name))
+    adapter(hwnd).is_some()
 }
 
 pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
-    if !is_standard_edit(hwnd) {
-        return None;
+    match adapter(hwnd)? {
+        TextAdapter::EditMessages => read_selected_text_messages(hwnd),
+        TextAdapter::RichEditUia => {
+            let selected = uia_text::read_selected_text(hwnd)?;
+            Some(SelectedText {
+                start: selected.start,
+                end: selected.end,
+                text: selected.text,
+            })
+        }
     }
-    let (start, end) = read_selection_range(hwnd)?;
-    if end <= start {
-        return None;
-    }
-    let text = read_control_text(hwnd)?;
-    let start_index = start as usize;
-    let end_index = end as usize;
-    if end_index > text.len() || end_index <= start_index {
-        return None;
-    }
-
-    Some(SelectedText {
-        start,
-        end,
-        text: String::from_utf16_lossy(&text[start_index..end_index]),
-    })
 }
 
 pub fn snapshot_caret(hwnd: HWND) -> Option<EditSnapshot> {
-    if !is_standard_edit(hwnd) {
-        return None;
+    match adapter(hwnd)? {
+        TextAdapter::EditMessages => snapshot_caret_messages(hwnd),
+        TextAdapter::RichEditUia => {
+            let snapshot = uia_text::snapshot_caret(hwnd)?;
+            Some(EditSnapshot {
+                caret: snapshot.caret,
+                text_before_caret: snapshot.text_before_caret,
+            })
+        }
     }
-    let (start, end) = read_selection_range(hwnd)?;
-    if start != end {
-        return None;
-    }
-    let text = read_control_text(hwnd)?;
-    let caret = end as usize;
-    if caret > text.len() {
-        return None;
-    }
-    Some(EditSnapshot {
-        caret: end,
-        text_before_caret: String::from_utf16_lossy(&text[..caret]),
-    })
 }
 
 pub fn suffix_matches_at_caret(hwnd: HWND, expected: &str) -> bool {
@@ -77,21 +72,26 @@ pub fn suffix_matches_at_caret(hwnd: HWND, expected: &str) -> bool {
 }
 
 pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) -> bool {
+    let Some(control_adapter) = adapter(hwnd) else {
+        return false;
+    };
     let Some(snapshot) = snapshot_caret(hwnd) else {
         return false;
     };
     if !snapshot.text_before_caret.ends_with(expected) {
         return false;
     }
-    let expected_units = utf16_len(expected);
+    let expected_units = match control_adapter {
+        TextAdapter::EditMessages => utf16_len(expected),
+        TextAdapter::RichEditUia => expected.chars().count().min(u32::MAX as usize) as u32,
+    };
     let start = snapshot.caret.saturating_sub(expected_units);
     replace_range_if_matches(hwnd, start, snapshot.caret, expected, replacement)
 }
 
-/// Replaces the requested range only if it still contains `expected`.
-/// The full control text is captured before mutation, verified after mutation,
-/// and the original range is restored if the result is not exactly what was
-/// planned. This is the message-adapter atomicity boundary used by 2.0.1.
+/// Replaces the requested range only if it still contains `expected` and the
+/// selected adapter can verify the exact post-state. RichEdit does not use raw
+/// cross-process pointer reads: UIA supplies its text/range state.
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -99,11 +99,87 @@ pub fn replace_range_if_matches(
     expected: &str,
     replacement: &str,
 ) -> bool {
-    if end < start || !is_standard_edit(hwnd) {
+    if end < start {
         return false;
     }
+    match adapter(hwnd) {
+        Some(TextAdapter::EditMessages) => {
+            replace_range_if_matches_messages(hwnd, start, end, expected, replacement)
+        }
+        Some(TextAdapter::RichEditUia) => {
+            uia_text::replace_range_if_matches(hwnd, start, end, expected, replacement)
+        }
+        None => false,
+    }
+}
 
-    let before = match read_control_text(hwnd) {
+pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
+    match adapter(hwnd)? {
+        TextAdapter::EditMessages => read_selection_range_messages(hwnd),
+        TextAdapter::RichEditUia => {
+            if let Some(selected) = uia_text::read_selected_text(hwnd) {
+                Some((selected.start, selected.end))
+            } else {
+                let caret = uia_text::snapshot_caret(hwnd)?.caret;
+                Some((caret, caret))
+            }
+        }
+    }
+}
+
+pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
+    match adapter(hwnd)? {
+        TextAdapter::EditMessages => read_control_text_messages(hwnd),
+        TextAdapter::RichEditUia => Some(uia_text::read_document_text(hwnd)?.encode_utf16().collect()),
+    }
+}
+
+pub fn utf16_len(value: &str) -> u32 {
+    value.encode_utf16().count().min(u32::MAX as usize) as u32
+}
+
+fn read_selected_text_messages(hwnd: HWND) -> Option<SelectedText> {
+    let (start, end) = read_selection_range_messages(hwnd)?;
+    if end <= start {
+        return None;
+    }
+    let text = read_control_text_messages(hwnd)?;
+    let start_index = start as usize;
+    let end_index = end as usize;
+    if end_index > text.len() || end_index <= start_index {
+        return None;
+    }
+    Some(SelectedText {
+        start,
+        end,
+        text: String::from_utf16_lossy(&text[start_index..end_index]),
+    })
+}
+
+fn snapshot_caret_messages(hwnd: HWND) -> Option<EditSnapshot> {
+    let (start, end) = read_selection_range_messages(hwnd)?;
+    if start != end {
+        return None;
+    }
+    let text = read_control_text_messages(hwnd)?;
+    let caret = end as usize;
+    if caret > text.len() {
+        return None;
+    }
+    Some(EditSnapshot {
+        caret: end,
+        text_before_caret: String::from_utf16_lossy(&text[..caret]),
+    })
+}
+
+fn replace_range_if_matches_messages(
+    hwnd: HWND,
+    start: u32,
+    end: u32,
+    expected: &str,
+    replacement: &str,
+) -> bool {
+    let before = match read_control_text_messages(hwnd) {
         Some(value) => value,
         None => return false,
     };
@@ -118,30 +194,26 @@ pub fn replace_range_if_matches(
         return false;
     }
     let replacement_units = replacement.encode_utf16().collect::<Vec<_>>();
-
     let mut planned = before.clone();
     planned.splice(start_index..end_index, replacement_units.iter().copied());
 
-    if !replace_range_raw(hwnd, start, end, replacement) {
+    if !replace_range_raw_messages(hwnd, start, end, replacement) {
         return false;
     }
-    if read_control_text(hwnd).is_some_and(|after| after == planned) {
+    if read_control_text_messages(hwnd).is_some_and(|after| after == planned) {
         return true;
     }
 
     let replacement_end =
         start.saturating_add(replacement_units.len().min(u32::MAX as usize) as u32);
-    let rollback_end = read_control_text(hwnd)
+    let rollback_end = read_control_text_messages(hwnd)
         .map(|current| (replacement_end as usize).min(current.len()) as u32)
         .unwrap_or(replacement_end);
-    let _ = replace_range_raw(hwnd, start, rollback_end, expected);
+    let _ = replace_range_raw_messages(hwnd, start, rollback_end, expected);
     false
 }
 
-pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
-    if !is_standard_edit(hwnd) {
-        return None;
-    }
+fn read_selection_range_messages(hwnd: HWND) -> Option<(u32, u32)> {
     let mut start = 0u32;
     let mut end = 0u32;
     send_timeout(
@@ -153,10 +225,7 @@ pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
     Some((start, end))
 }
 
-pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
-    if !is_standard_edit(hwnd) {
-        return None;
-    }
+fn read_control_text_messages(hwnd: HWND) -> Option<Vec<u16>> {
     let length = send_timeout(hwnd, WM_GETTEXTLENGTH, 0, 0)?;
     if length < 0 || length as usize > MAX_CONTROL_TEXT_UNITS {
         return None;
@@ -172,16 +241,23 @@ pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
     Some(buffer)
 }
 
-pub fn utf16_len(value: &str) -> u32 {
-    value.encode_utf16().count().min(u32::MAX as usize) as u32
-}
-
-fn replace_range_raw(hwnd: HWND, start: u32, end: u32, text: &str) -> bool {
+fn replace_range_raw_messages(hwnd: HWND, start: u32, end: u32, text: &str) -> bool {
     if send_timeout(hwnd, EM_SETSEL_VALUE, start as usize, end as isize).is_none() {
         return false;
     }
     let text = wide(text);
     send_timeout(hwnd, EM_REPLACESEL_VALUE, 1, text.as_ptr() as isize).is_some()
+}
+
+fn adapter(hwnd: HWND) -> Option<TextAdapter> {
+    let name = class_name(hwnd)?;
+    if is_plain_edit_class(&name) {
+        Some(TextAdapter::EditMessages)
+    } else if is_rich_edit_class(&name) && uia_text::has_rich_text_adapter(hwnd) {
+        Some(TextAdapter::RichEditUia)
+    } else {
+        None
+    }
 }
 
 fn class_name(hwnd: HWND) -> Option<String> {
@@ -193,11 +269,13 @@ fn class_name(hwnd: HWND) -> Option<String> {
     Some(String::from_utf16_lossy(&buffer[..length as usize]))
 }
 
-fn is_message_text_class(class_name: &str) -> bool {
+fn is_plain_edit_class(class_name: &str) -> bool {
+    class_name.trim().eq_ignore_ascii_case("edit")
+}
+
+fn is_rich_edit_class(class_name: &str) -> bool {
     let normalized = class_name.trim().to_ascii_lowercase();
-    normalized == "edit"
-        || normalized.starts_with("richedit")
-        || normalized.starts_with("rich edit")
+    normalized.starts_with("richedit") || normalized.starts_with("rich edit")
 }
 
 fn send_timeout(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
@@ -232,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn suffix_math_is_utf16_based() {
+    fn suffix_math_is_utf16_based_for_plain_edit() {
         let prefix = "abc😀";
         let suffix = "привет ";
         assert_eq!(utf16_len(prefix), 5);
@@ -240,15 +318,14 @@ mod tests {
     }
 
     #[test]
-    fn message_adapter_is_limited_to_edit_and_richedit_families() {
-        for class_name in ["Edit", "RICHEDIT50W", "RichEditD2DPT", "Rich Edit 20W"] {
-            assert!(is_message_text_class(class_name), "missed {class_name}");
+    fn adapters_are_limited_to_edit_and_richedit_class_families() {
+        assert!(is_plain_edit_class("Edit"));
+        for class_name in ["RICHEDIT50W", "RichEditD2DPT", "Rich Edit 20W"] {
+            assert!(is_rich_edit_class(class_name), "missed {class_name}");
         }
         for class_name in ["Chrome_RenderWidgetHostHWND", "Windows.UI.Core.CoreWindow"] {
-            assert!(
-                !is_message_text_class(class_name),
-                "unsafe class {class_name}"
-            );
+            assert!(!is_plain_edit_class(class_name));
+            assert!(!is_rich_edit_class(class_name));
         }
     }
 }
