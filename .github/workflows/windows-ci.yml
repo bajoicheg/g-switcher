@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: windows-rust-ci-${{ github.ref }}
@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.head_ref || github.ref_name }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Rust toolchain
         shell: pwsh
@@ -34,7 +34,7 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Normalize 2.0.1 source
+      - name: Verify normalized 2.0.1 source
         if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
         shell: pwsh
         run: |
@@ -42,11 +42,11 @@ jobs:
           ./scripts/safety-hardening-v201.ps1
           $changes = git status --porcelain
           if ($changes) {
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add Cargo.toml Cargo.lock src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/uia_secure.rs src/windows_runtime/uia_text.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs
-            git commit -m "Format and normalize 2.0.1 runtime [skip ci]"
-            git push origin HEAD:release/2.0.1
+            Write-Host '2.0.1 source is not reproducibly normalized. Commit these changes instead of letting CI mutate the branch:'
+            git status --short
+            git diff --check
+            git diff -- Cargo.toml Cargo.lock src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/uia_secure.rs src/windows_runtime/uia_text.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs
+            throw 'Normalization changed tracked source.'
           }
 
       - name: Format
@@ -93,6 +93,7 @@ jobs:
           Copy-Item -LiteralPath README.md -Destination $packageRoot
           Copy-Item -LiteralPath CHANGELOG.md -Destination $packageRoot
           Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
+          Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $packageRoot
           $zip = "target/release/g-switcher-2.0.1-windows-x64.zip"
           Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
