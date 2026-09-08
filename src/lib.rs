@@ -13,6 +13,7 @@ pub mod state;
 pub mod undo;
 
 #[cfg(windows)]
+#[path = "windows_runtime_v201.rs"]
 pub mod windows_runtime;
 
 pub const PRODUCT_NAME: &str = "G-switcher";
