@@ -671,7 +671,9 @@ impl Engine {
         let cache_matches = self.uia_cache.checked
             && self.uia_cache.generation == generation
             && self.uia_cache.process_id == target.process_id
-            && self.uia_cache.focus == target.hwnd as isize;
+            && self.uia_cache.focus == target.hwnd as isize
+            && (self.uia_cache.native_hwnd == 0
+                || self.uia_cache.native_hwnd == target.hwnd as isize);
         if cache_matches {
             return self.uia_cache.is_password;
         }

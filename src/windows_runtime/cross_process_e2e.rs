@@ -195,6 +195,19 @@ fn real_cross_process_edit_e2e_release_gate() {
     );
     set_text(helper.rich_edit, "ghbdtn rfr ltkf");
     assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
+    let rich_selected = selection::read_selected_text(helper.rich_edit)
+        .expect("RichEdit selection adapter did not read the selected text");
+    assert_eq!(rich_selected.text, "ghbdtn rfr ltkf");
+    assert!(
+        !secure_input::is_secure_input(helper.rich_edit, &process_name),
+        "ordinary RichEdit was classified as protected"
+    );
+    let rich_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA RichEdit probe failed");
+    assert!(
+        !rich_probe.is_password,
+        "ordinary RichEdit must not be password"
+    );
     prime_policy();
     inject_hotkey(true, VK_F9_VALUE);
     await_text(helper.rich_edit, "привет как дела");
@@ -349,11 +362,18 @@ fn prepare_cross_process_case(window: HWND, edit: HWND, ui_thread_id: u32, langu
     wait_until(Duration::from_secs(3), || {
         pump_runtime();
         unsafe {
-            GetKeyboardLayout(ui_thread_id) as isize == hkl && GetForegroundWindow() == window
+            GetKeyboardLayout(ui_thread_id) as isize == hkl
+                && GetForegroundWindow() == window
+                && focused_hwnd_fast() == edit
         }
     });
     assert_eq!(unsafe { GetKeyboardLayout(ui_thread_id) } as isize, hkl);
     assert_eq!(unsafe { GetForegroundWindow() }, window);
+    assert_eq!(
+        focused_hwnd_fast(),
+        edit,
+        "helper child focus was not established"
+    );
     prime_policy();
 }
 
