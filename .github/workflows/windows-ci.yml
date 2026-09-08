@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: windows-rust-ci-${{ github.ref }}
@@ -22,7 +22,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          persist-credentials: false
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
 
       - name: Rust toolchain
         shell: pwsh
@@ -33,9 +34,23 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Normalize 2.0.1 source
+        if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
+        shell: pwsh
+        run: |
+          ./scripts/ci-normalize-v201.ps1
+          $changes = git status --porcelain
+          if ($changes) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs
+            git commit -m "Format and normalize 2.0.1 runtime"
+            git push origin HEAD:release/2.0.1
+          }
+
       - name: Format
         shell: pwsh
-        run: cargo fmt --all
+        run: cargo fmt --all -- --check
 
       - name: Unit tests
         shell: pwsh
