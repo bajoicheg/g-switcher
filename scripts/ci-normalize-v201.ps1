@@ -77,6 +77,13 @@ if ($updated -ne $text) {
     Set-Content -LiteralPath $path -Value $updated -Encoding utf8 -NoNewline
 }
 
+$crossPath = 'src/windows_runtime/cross_process_e2e.rs'
+$cross = Get-Content -LiteralPath $crossPath -Raw
+$crossUpdated = $cross.Replace('await_text(helper.edit, "user_ghbdtn ");', 'await_text(helper.edit, "user-ghbdtn ");')
+if ($crossUpdated -ne $cross) {
+    Set-Content -LiteralPath $crossPath -Value $crossUpdated -Encoding utf8 -NoNewline
+}
+
 $lockPath = 'Cargo.lock'
 $lock = Get-Content -LiteralPath $lockPath -Raw
 $lockUpdated = [regex]::Replace(
