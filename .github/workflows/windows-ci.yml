@@ -43,7 +43,7 @@ jobs:
           if ($changes) {
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs Cargo.lock
+            git add src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs Cargo.lock
             git commit -m "Format and normalize 2.0.1 runtime [skip ci]"
             git push origin HEAD:release/2.0.1
           }
