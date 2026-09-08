@@ -71,7 +71,10 @@ fn main() {
             module,
             null(),
         );
-        assert!(!window.is_null(), "failed to create helper top-level window");
+        assert!(
+            !window.is_null(),
+            "failed to create helper top-level window"
+        );
 
         let edit_class = wide("EDIT");
         let empty = wide("");
@@ -123,7 +126,9 @@ fn main() {
             password as usize,
             std::process::id()
         );
-        io::stdout().flush().expect("failed to flush helper handles");
+        io::stdout()
+            .flush()
+            .expect("failed to flush helper handles");
 
         let mut message = zeroed();
         while GetMessageW(&mut message, null_mut(), 0, 0) > 0 {

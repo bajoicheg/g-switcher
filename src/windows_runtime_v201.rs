@@ -59,7 +59,7 @@ use crate::model::Language;
 use settings::AppMode;
 
 const MAGIC_EXTRA_INFO: usize = 0x4753_5749_5443_4845;
-const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v2.0.1";
+const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";
 const WM_RUNTIME_KEY_EVENT: u32 = WM_APP + 0x60;
 const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
 const WM_RUNTIME_SELECTION: u32 = WM_APP + 0x62;
@@ -1089,7 +1089,13 @@ impl Engine {
             let _ = switch_layout(target.hwnd, target.thread_id, target.hkl);
             return;
         }
-        if !selection::replace_range(target.hwnd, selected.start, selected.end, &corrected) {
+        if !selection::replace_range_if_matches(
+            target.hwnd,
+            selected.start,
+            selected.end,
+            &selected.text,
+            &corrected,
+        ) {
             let _ = switch_layout(target.hwnd, target.thread_id, target.hkl);
             return;
         }
@@ -1200,6 +1206,13 @@ impl Engine {
         held_modifiers: Modifiers,
         generation: u32,
     ) -> bool {
+        // 2.0.1 fails open for controls without a synchronously verifiable
+        // Edit/RichEdit message adapter. UI Automation support is added as a
+        // separate adapter; raw SendInput mutation is not allowed to guess.
+        if !selection::is_standard_edit(source.hwnd) {
+            return false;
+        }
+
         let Some(target_hkl) = select_layout(target_language) else {
             return false;
         };

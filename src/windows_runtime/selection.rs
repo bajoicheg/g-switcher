@@ -129,7 +129,8 @@ pub fn replace_range_if_matches(
         return true;
     }
 
-    let replacement_end = start.saturating_add(replacement_units.len().min(u32::MAX as usize) as u32);
+    let replacement_end =
+        start.saturating_add(replacement_units.len().min(u32::MAX as usize) as u32);
     let rollback_end = read_control_text(hwnd)
         .map(|current| (replacement_end as usize).min(current.len()) as u32)
         .unwrap_or(replacement_end);

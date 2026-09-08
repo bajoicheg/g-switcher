@@ -66,7 +66,11 @@ impl CrossProcessHelper {
             .read_line(&mut line)
             .expect("failed to read helper handle line");
         let fields = line.split_whitespace().collect::<Vec<_>>();
-        assert_eq!(fields.first().copied(), Some("GSE2E"), "bad helper banner: {line:?}");
+        assert_eq!(
+            fields.first().copied(),
+            Some("GSE2E"),
+            "bad helper banner: {line:?}"
+        );
         assert_eq!(fields.len(), 5, "bad helper handle line: {line:?}");
         let parse = |value: &str| value.parse::<usize>().expect("invalid helper handle");
         Self {
@@ -111,8 +115,12 @@ fn real_cross_process_edit_e2e_release_gate() {
     let mut resolved_pid = 0u32;
     let ui_thread_id = unsafe { GetWindowThreadProcessId(helper.edit, &mut resolved_pid) };
     assert_ne!(ui_thread_id, 0, "failed to resolve helper EDIT thread");
-    assert_eq!(resolved_pid, helper.process_id, "helper PID/EDIT PID mismatch");
-    let process_name = process_name_for_pid(helper.process_id).expect("helper process name missing");
+    assert_eq!(
+        resolved_pid, helper.process_id,
+        "helper PID/EDIT PID mismatch"
+    );
+    let process_name =
+        process_name_for_pid(helper.process_id).expect("helper process name missing");
 
     let engine = ENGINE.get_or_init(|| Mutex::new(Engine::default()));
     *engine.lock() = Engine::default();
@@ -181,7 +189,7 @@ fn real_cross_process_edit_e2e_release_gate() {
         b'N' as u16,
         0x20,
     ]);
-    await_text(helper.edit, "user_ghbdtn ");
+    await_text(helper.edit, "user-ghbdtn ");
 
     eprintln!("G-switcher cross-process E2E: password field fail-open");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
@@ -201,7 +209,11 @@ fn real_cross_process_edit_e2e_release_gate() {
         0x20,
     ]);
     wait_until(Duration::from_secs(3), || text_len(helper.password) == 7);
-    assert_eq!(text_len(helper.password), 7, "password input length changed unexpectedly");
+    assert_eq!(
+        text_len(helper.password),
+        7,
+        "password input length changed unexpectedly"
+    );
     assert_eq!(
         language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
         Some(Language::English),
@@ -211,7 +223,11 @@ fn real_cross_process_edit_e2e_release_gate() {
     prime_policy();
     inject_hotkey(true, VK_F9_VALUE);
     pump_for(Duration::from_millis(150));
-    assert_eq!(text_len(helper.password), 7, "selected-text hotkey modified password field");
+    assert_eq!(
+        text_len(helper.password),
+        7,
+        "selected-text hotkey modified password field"
+    );
     assert_eq!(
         language_from_hkl(unsafe { GetKeyboardLayout(ui_thread_id) } as isize),
         Some(Language::English),
@@ -243,12 +259,23 @@ fn real_cross_process_edit_e2e_release_gate() {
             0
         );
     }
-    wait_until(Duration::from_secs(3), || unsafe { GetForegroundWindow() } == helper.window);
+    wait_until(
+        Duration::from_secs(3),
+        || unsafe { GetForegroundWindow() } == helper.window,
+    );
     prime_policy();
     inject_strokes(&[0x20]);
     pump_for(Duration::from_millis(100));
-    assert_eq!(read_text(helper.edit), "ghbdtn", "focus race rewrote old EDIT content");
-    assert_eq!(text_len(helper.password), 1, "delimiter did not go to new focus target");
+    assert_eq!(
+        read_text(helper.edit),
+        "ghbdtn",
+        "focus race rewrote old EDIT content"
+    );
+    assert_eq!(
+        text_len(helper.password),
+        1,
+        "delimiter did not go to new focus target"
+    );
 
     settings::replace_runtime_settings_for_test(original_runtime);
     settings::set_paused(false);
@@ -256,12 +283,7 @@ fn real_cross_process_edit_e2e_release_gate() {
     drop(helper);
 }
 
-fn prepare_cross_process_case(
-    window: HWND,
-    edit: HWND,
-    ui_thread_id: u32,
-    language: Language,
-) {
+fn prepare_cross_process_case(window: HWND, edit: HWND, ui_thread_id: u32, language: Language) {
     *ENGINE.get_or_init(|| Mutex::new(Engine::default())).lock() = Engine::default();
     set_text(edit, "");
     let hkl = select_layout(language).expect("required RU/EN keyboard layout is unavailable");
@@ -279,7 +301,9 @@ fn prepare_cross_process_case(
     }
     wait_until(Duration::from_secs(3), || {
         pump_runtime();
-        unsafe { GetKeyboardLayout(ui_thread_id) as isize == hkl && GetForegroundWindow() == window }
+        unsafe {
+            GetKeyboardLayout(ui_thread_id) as isize == hkl && GetForegroundWindow() == window
+        }
     });
     assert_eq!(unsafe { GetKeyboardLayout(ui_thread_id) } as isize, hkl);
     assert_eq!(unsafe { GetForegroundWindow() }, window);
@@ -287,10 +311,7 @@ fn prepare_cross_process_case(
 }
 
 fn prime_policy() {
-    inject_raw(&[
-        (VK_SHIFT, 0),
-        (VK_SHIFT, KEYEVENTF_KEYUP),
-    ]);
+    inject_raw(&[(VK_SHIFT, 0), (VK_SHIFT, KEYEVENTF_KEYUP)]);
     pump_for(Duration::from_millis(30));
 }
 
@@ -342,7 +363,10 @@ fn inject_raw(events: &[(u16, u32)]) {
     loop {
         pump_runtime();
         if let Ok(sent) = done_rx.try_recv() {
-            assert_eq!(sent, expected, "SendInput did not deliver the complete sequence");
+            assert_eq!(
+                sent, expected,
+                "SendInput did not deliver the complete sequence"
+            );
             break;
         }
         assert!(Instant::now() < deadline, "SendInput timed out");
@@ -393,7 +417,10 @@ fn read_text(edit: HWND) -> String {
 }
 
 fn set_text(edit: HWND, value: &str) {
-    let text = value.encode_utf16().chain(std::iter::once(0)).collect::<Vec<_>>();
+    let text = value
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
     assert!(
         send_timeout(edit, WM_SETTEXT, 0, text.as_ptr() as isize).is_some(),
         "cross-process WM_SETTEXT failed"
@@ -401,8 +428,8 @@ fn set_text(edit: HWND, value: &str) {
 }
 
 fn text_len(edit: HWND) -> usize {
-    send_timeout(edit, WM_GETTEXTLENGTH, 0, 0)
-        .expect("cross-process WM_GETTEXTLENGTH failed") as usize
+    send_timeout(edit, WM_GETTEXTLENGTH, 0, 0).expect("cross-process WM_GETTEXTLENGTH failed")
+        as usize
 }
 
 fn send_timeout(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
