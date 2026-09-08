@@ -131,7 +131,9 @@ pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
 pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => read_control_text_messages(hwnd),
-        TextAdapter::RichEditUia => Some(uia_text::read_document_text(hwnd)?.encode_utf16().collect()),
+        TextAdapter::RichEditUia => {
+            Some(uia_text::read_document_text(hwnd)?.encode_utf16().collect())
+        }
     }
 }
 
