@@ -26,7 +26,7 @@ pub fn probe_focused(expected_process_id: u32) -> Option<UiaSecurityProbe> {
     AUTOMATION.with(|slot| {
         if slot.borrow().is_none() {
             unsafe {
-                CoInitializeEx(None, COINIT_MULTITHREADED).ok()?;
+                CoInitializeEx(None, COINIT_MULTITHREADED).ok().ok()?;
                 let automation: IUIAutomation =
                     CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()?;
                 *slot.borrow_mut() = Some(automation);
