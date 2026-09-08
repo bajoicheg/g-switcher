@@ -85,6 +85,7 @@ static HOTKEY_UNDO: AtomicU32 = AtomicU32::new(0);
 static HOTKEY_PAUSE: AtomicU32 = AtomicU32::new(0);
 static CALLBACK_COUNT: AtomicU64 = AtomicU64::new(0);
 static CALLBACK_MAX_NS: AtomicU64 = AtomicU64::new(0);
+static CALLBACK_OVER_10MS: AtomicU64 = AtomicU64::new(0);
 static DROPPED_EVENTS: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(test)]
@@ -555,6 +556,9 @@ fn invalidate_context(policy_unknown: bool) {
 
 fn record_callback_time(elapsed_ns: u64) {
     CALLBACK_COUNT.fetch_add(1, Ordering::Relaxed);
+    if elapsed_ns > 10_000_000 {
+        CALLBACK_OVER_10MS.fetch_add(1, Ordering::Relaxed);
+    }
     let mut current = CALLBACK_MAX_NS.load(Ordering::Relaxed);
     while elapsed_ns > current {
         match CALLBACK_MAX_NS.compare_exchange_weak(

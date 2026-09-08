@@ -337,6 +337,45 @@ fn real_cross_process_edit_e2e_release_gate() {
         "delimiter did not go to new focus target"
     );
 
+    eprintln!("G-switcher cross-process E2E: 100k callback stress gate");
+    settings::set_paused(true);
+    prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    let callback_before = CALLBACK_COUNT.load(Ordering::Relaxed);
+    let slow_before = CALLBACK_OVER_10MS.load(Ordering::Relaxed);
+    let dropped_before = DROPPED_EVENTS.load(Ordering::Relaxed);
+    inject_stress_callbacks(100_000);
+    pump_for(Duration::from_millis(250));
+    let callback_delta = CALLBACK_COUNT
+        .load(Ordering::Relaxed)
+        .saturating_sub(callback_before);
+    let slow_delta = CALLBACK_OVER_10MS
+        .load(Ordering::Relaxed)
+        .saturating_sub(slow_before);
+    let dropped_delta = DROPPED_EVENTS
+        .load(Ordering::Relaxed)
+        .saturating_sub(dropped_before);
+    let max_ns = CALLBACK_MAX_NS.load(Ordering::Relaxed);
+    eprintln!(
+        "G-switcher callback stress: callbacks={callback_delta} over_10ms={slow_delta} dropped={dropped_delta} max_ns={max_ns}"
+    );
+    assert!(
+        callback_delta >= 100_000,
+        "hook did not observe all 100k stress events: {callback_delta}"
+    );
+    assert!(
+        slow_delta.saturating_mul(100) <= callback_delta,
+        "callback p99 exceeded 10 ms: {slow_delta}/{callback_delta} callbacks were slower"
+    );
+    assert_eq!(dropped_delta, 0, "runtime dispatch dropped stress events");
+
+    let alive_before = CALLBACK_COUNT.load(Ordering::Relaxed);
+    inject_stress_callbacks(2);
+    pump_for(Duration::from_millis(30));
+    assert!(
+        CALLBACK_COUNT.load(Ordering::Relaxed) >= alive_before + 2,
+        "keyboard hook stopped receiving events after stress"
+    );
+
     settings::replace_runtime_settings_for_test(original_runtime);
     settings::set_paused(false);
     drop(hook);
@@ -438,6 +477,60 @@ fn inject_raw(events: &[(u16, u32)]) {
         }
         assert!(Instant::now() < deadline, "SendInput timed out");
         thread::sleep(Duration::from_millis(1));
+    }
+}
+
+fn inject_stress_callbacks(total_events: usize) {
+    const VK_F24_VALUE: u16 = 0x87;
+    const CHUNK_EVENTS: usize = 512;
+    assert_eq!(total_events % 2, 0, "stress event count must be even");
+
+    let key_down = INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VK_F24_VALUE,
+                wScan: 0,
+                dwFlags: 0,
+                time: 0,
+                dwExtraInfo: TEST_USER_EXTRA_INFO,
+            },
+        },
+    };
+    let key_up = INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VK_F24_VALUE,
+                wScan: 0,
+                dwFlags: KEYEVENTF_KEYUP,
+                time: 0,
+                dwExtraInfo: TEST_USER_EXTRA_INFO,
+            },
+        },
+    };
+
+    let mut remaining = total_events;
+    while remaining > 0 {
+        let count = remaining.min(CHUNK_EVENTS);
+        let mut batch = Vec::with_capacity(count);
+        for index in 0..count {
+            batch.push(if index % 2 == 0 { key_down } else { key_up });
+        }
+        let sent = unsafe {
+            SendInput(
+                batch.len() as u32,
+                batch.as_ptr(),
+                size_of::<INPUT>() as i32,
+            )
+        } as usize;
+        assert_eq!(
+            sent,
+            batch.len(),
+            "SendInput truncated the callback stress batch"
+        );
+        remaining -= count;
+        pump_for(Duration::from_millis(1));
     }
 }
 
