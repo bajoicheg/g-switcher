@@ -18,9 +18,8 @@ fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
     }
     matches!(
 '@
-
 $updated = [regex]::Replace($updated, $pattern, $replacement, 1)
-if ($updated -eq $text -and $updated -notmatch 'if is_modifier_vk\(vk\)') {
+if ($updated -notmatch 'if is_modifier_vk\(vk\)') {
     throw 'Could not locate invalidates_context() for the 2.0.1 hotkey fix.'
 }
 
@@ -81,11 +80,42 @@ if ($updated -ne $text) {
     Set-Content -LiteralPath $path -Value $updated -Encoding utf8 -NoNewline
 }
 
+$selectionPath = 'src/windows_runtime/selection.rs'
+$selection = Get-Content -LiteralPath $selectionPath -Raw
+$obsoleteWrapper = '(?s)/// Generic verified replacement used only when the current range itself is the\r?\n/// source of truth\..*?\r?\npub fn replace_range\(.*?\r?\n\}\r?\n\r?\n(?=pub fn read_selection_range)'
+$selectionUpdated = [regex]::Replace($selection, $obsoleteWrapper, '', 1)
+if ($selectionUpdated -ne $selection) {
+    Set-Content -LiteralPath $selectionPath -Value $selectionUpdated -Encoding utf8 -NoNewline
+}
+
 $crossPath = 'src/windows_runtime/cross_process_e2e.rs'
 $cross = Get-Content -LiteralPath $crossPath -Raw
 $crossUpdated = $cross.Replace('await_text(helper.edit, "user_ghbdtn ");', 'await_text(helper.edit, "user-ghbdtn ");')
 if ($crossUpdated -ne $cross) {
     Set-Content -LiteralPath $crossPath -Value $crossUpdated -Encoding utf8 -NoNewline
+}
+
+$e2ePath = 'src/windows_runtime/e2e_tests.rs'
+$e2e = Get-Content -LiteralPath $e2ePath -Raw
+$selectedMarker = @'
+    unsafe {
+        SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
+    }
+    inject_ctrl_shift_hotkey(VK_F9_VALUE);
+'@
+$selectedPrimed = @'
+    unsafe {
+        SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
+    }
+    // The preceding disabled-mode case deliberately leaves the hook policy
+    // denied. A harmless modifier event forces the worker to re-evaluate the
+    // now-restored application mode before testing the suppressing hotkey.
+    inject_strokes(&[key(VK_SHIFT as u8)]);
+    inject_ctrl_shift_hotkey(VK_F9_VALUE);
+'@
+if ($e2e.Contains($selectedMarker)) {
+    $e2e = $e2e.Replace($selectedMarker, $selectedPrimed)
+    Set-Content -LiteralPath $e2ePath -Value $e2e -Encoding utf8 -NoNewline
 }
 
 $lockPath = 'Cargo.lock'
