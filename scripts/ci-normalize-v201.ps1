@@ -1,275 +1,69 @@
 $ErrorActionPreference = 'Stop'
 
-$path = 'src/windows_runtime_v201.rs'
-$text = Get-Content -LiteralPath $path -Raw
-$updated = $text.Replace(
-    'const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v2.0.1";',
+$runtimePath = 'src/windows_runtime_v201.rs'
+$runtime = Get-Content -LiteralPath $runtimePath -Raw
+
+$requiredRuntimeMarkers = @(
+    'mod runtime_dispatch;',
+    'static RUNTIME_WINDOW: AtomicIsize',
+    'RUNTIME_WINDOW.load(Ordering::SeqCst)',
+    'if is_modifier_vk(vk)',
+    'selection::replace_range_if_matches',
+    'if !selection::is_standard_edit(source.hwnd)',
+    'mod cross_process_e2e;',
     'const SINGLE_INSTANCE_NAME: &str = "Local\\GSwitcher.SingleInstance.v0.8";'
 )
-
-$selectionModule = @'
-#[path = "windows_runtime/selection.rs"]
-mod selection;
-'@
-$dispatchModule = @'
-#[path = "windows_runtime/selection.rs"]
-mod selection;
-#[path = "windows_runtime/runtime_dispatch.rs"]
-mod runtime_dispatch;
-'@
-if ($updated -notmatch 'mod runtime_dispatch;') {
-    if (-not $updated.Contains($selectionModule)) {
-        throw 'Could not locate selection module marker for runtime dispatch.'
+foreach ($marker in $requiredRuntimeMarkers) {
+    if (-not $runtime.Contains($marker)) {
+        throw "Required hardened runtime marker is missing: $marker"
     }
-    $updated = $updated.Replace($selectionModule, $dispatchModule)
-}
-
-$updated = $updated.Replace(
-    'static RUNTIME_THREAD_ID: OnceLock<u32> = OnceLock::new();',
-    'static RUNTIME_WINDOW: AtomicIsize = AtomicIsize::new(0);'
-)
-$runtimeThreadInit = @'
-    let runtime_thread = unsafe { GetCurrentThreadId() };
-    let _ = RUNTIME_THREAD_ID.set(runtime_thread);
-'@
-$updated = $updated.Replace($runtimeThreadInit, '')
-
-$oldHookStruct = @'
-struct KeyboardHook {
-    thread_id: u32,
-    join: Option<JoinHandle<()>>,
-}
-
-impl KeyboardHook {
-    fn install() -> Result<Self> {
-        let runtime_thread = unsafe { GetCurrentThreadId() };
-        let _ = RUNTIME_THREAD_ID.set(runtime_thread);
-        publish_hotkeys(&settings::runtime_settings());
-
-        let (ready_tx, ready_rx) = mpsc::sync_channel::<std::result::Result<u32, String>>(1);
-        let join = thread::spawn(move || hook_thread_main(ready_tx));
-        let thread_id = ready_rx
-            .recv()
-            .map_err(|_| anyhow!("hook thread exited before initialization"))?
-            .map_err(|message| anyhow!(message))?;
-        Ok(Self {
-            thread_id,
-            join: Some(join),
-        })
-    }
-}
-'@
-$newHookStruct = @'
-struct KeyboardHook {
-    thread_id: u32,
-    join: Option<JoinHandle<()>>,
-    _dispatch: runtime_dispatch::RuntimeDispatchWindow,
-}
-
-impl KeyboardHook {
-    fn install() -> Result<Self> {
-        publish_hotkeys(&settings::runtime_settings());
-        let dispatch = runtime_dispatch::RuntimeDispatchWindow::install()?;
-
-        let (ready_tx, ready_rx) = mpsc::sync_channel::<std::result::Result<u32, String>>(1);
-        let join = thread::spawn(move || hook_thread_main(ready_tx));
-        let thread_id = ready_rx
-            .recv()
-            .map_err(|_| anyhow!("hook thread exited before initialization"))?
-            .map_err(|message| anyhow!(message))?;
-        Ok(Self {
-            thread_id,
-            join: Some(join),
-            _dispatch: dispatch,
-        })
-    }
-}
-'@
-if ($updated.Contains($oldHookStruct)) {
-    $updated = $updated.Replace($oldHookStruct, $newHookStruct)
-}
-if ($updated -notmatch '_dispatch: runtime_dispatch::RuntimeDispatchWindow') {
-    throw 'Could not wire runtime dispatch lifetime into KeyboardHook.'
-}
-
-$oldPostRuntime = @'
-fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
-    let Some(thread_id) = RUNTIME_THREAD_ID.get().copied() else {
-        return false;
-    };
-    unsafe { PostThreadMessageW(thread_id, message, wparam, lparam) != 0 }
-}
-'@
-$newPostRuntime = @'
-fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
-    let hwnd = RUNTIME_WINDOW.load(Ordering::SeqCst) as HWND;
-    if hwnd.is_null() {
-        return false;
-    }
-    unsafe { PostMessageW(hwnd, message, wparam, lparam) != 0 }
-}
-'@
-if ($updated.Contains($oldPostRuntime)) {
-    $updated = $updated.Replace($oldPostRuntime, $newPostRuntime)
-}
-if ($updated -notmatch 'RUNTIME_WINDOW\.load\(Ordering::SeqCst\)') {
-    throw 'Could not replace thread-message runtime dispatch.'
-}
-
-$pattern = 'fn invalidates_context\(vk: u16, modifiers: Modifiers\) -> bool \{\s*matches!\('
-$replacement = @'
-fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
-    if is_modifier_vk(vk) {
-        return false;
-    }
-    matches!(
-'@
-$updated = [regex]::Replace($updated, $pattern, $replacement, 1)
-if ($updated -notmatch 'if is_modifier_vk\(vk\)') {
-    throw 'Could not locate invalidates_context() for the 2.0.1 hotkey fix.'
-}
-
-$e2eMarker = @'
-#[cfg(test)]
-#[path = "windows_runtime/e2e_tests.rs"]
-mod e2e_tests;
-'@
-$crossProcessModule = @'
-
-#[cfg(test)]
-#[path = "windows_runtime/cross_process_e2e.rs"]
-mod cross_process_e2e;
-'@
-if ($updated -notmatch 'mod cross_process_e2e;') {
-    if (-not $updated.Contains($e2eMarker)) {
-        throw 'Could not locate E2E module marker for cross-process gate.'
-    }
-    $updated = $updated.Replace($e2eMarker, $e2eMarker + $crossProcessModule)
-}
-
-$oldSelectionReplace = 'if !selection::replace_range(target.hwnd, selected.start, selected.end, &corrected) {'
-$newSelectionReplace = @'
-if !selection::replace_range_if_matches(
-            target.hwnd,
-            selected.start,
-            selected.end,
-            &selected.text,
-            &corrected,
-        ) {
-'@
-if ($updated.Contains($oldSelectionReplace)) {
-    $updated = $updated.Replace($oldSelectionReplace, $newSelectionReplace.TrimEnd("`r", "`n"))
-}
-if ($updated -notmatch 'selection::replace_range_if_matches') {
-    throw 'Could not wire verified selected-text replacement.'
-}
-
-$queuePattern = '(?s)(fn queue_correction_parts\(.*?\) -> bool \{\r?\n)(\s*let Some\(target_hkl\))'
-$queueInsert = @'
-$1        // 2.0.1 fails open for controls without a synchronously verifiable
-        // Edit/RichEdit message adapter. UI Automation support is added as a
-        // separate adapter; raw SendInput mutation is not allowed to guess.
-        if !selection::is_standard_edit(source.hwnd) {
-            return false;
-        }
-
-$2
-'@
-if ($updated -notmatch 'raw SendInput mutation is not allowed to guess') {
-    $updated = [regex]::Replace($updated, $queuePattern, $queueInsert, 1)
-}
-if ($updated -notmatch 'if !selection::is_standard_edit\(source\.hwnd\)') {
-    throw 'Could not install fail-open mutation gate.'
-}
-
-if ($updated -ne $text) {
-    Set-Content -LiteralPath $path -Value $updated -Encoding utf8 -NoNewline
-}
-
-$selectionPath = 'src/windows_runtime/selection.rs'
-$selection = Get-Content -LiteralPath $selectionPath -Raw
-$obsoleteWrapper = '(?s)/// Generic verified replacement used only when the current range itself is the\r?\n/// source of truth\..*?\r?\npub fn replace_range\(.*?\r?\n\}\r?\n\r?\n(?=pub fn read_selection_range)'
-$selectionUpdated = [regex]::Replace($selection, $obsoleteWrapper, '', 1)
-if ($selectionUpdated -ne $selection) {
-    Set-Content -LiteralPath $selectionPath -Value $selectionUpdated -Encoding utf8 -NoNewline
 }
 
 $crossPath = 'src/windows_runtime/cross_process_e2e.rs'
 $cross = Get-Content -LiteralPath $crossPath -Raw
-$cross = $cross.Replace('    password: HWND,', "    rich_edit: HWND,`n    password: HWND,")
-$cross = $cross.Replace('assert_eq!(fields.len(), 5, "bad helper handle line: {line:?}");', 'assert_eq!(fields.len(), 6, "bad helper handle line: {line:?}");')
-$cross = $cross.Replace(
-    @'
-            password: parse(fields[3]) as HWND,
-            process_id: fields[4].parse().expect("invalid helper pid"),
-'@,
-    @'
-            rich_edit: parse(fields[3]) as HWND,
-            password: parse(fields[4]) as HWND,
-            process_id: fields[5].parse().expect("invalid helper pid"),
-'@
+# Repair any residue from earlier bring-up transforms and keep this step idempotent.
+$cross = [regex]::Replace(
+    $cross,
+    '(?m)^(\s*rich_edit: HWND,\r?\n)(?:\s*rich_edit: HWND,\r?\n)+',
+    '$1'
 )
-$richMarker = @'
-    inject_hotkey(false, VK_BACK);
-    await_text(helper.edit, "ghbdtn rfr ltkf");
-
-    eprintln!("G-switcher cross-process E2E: code-safe token");
-'@
-$richBlock = @'
-    inject_hotkey(false, VK_BACK);
-    await_text(helper.edit, "ghbdtn rfr ltkf");
-
-    eprintln!("G-switcher cross-process E2E: RichEdit selected text + undo");
-    prepare_cross_process_case(helper.window, helper.rich_edit, ui_thread_id, Language::English);
-    set_text(helper.rich_edit, "ghbdtn rfr ltkf");
-    assert!(send_timeout(helper.rich_edit, EM_SETSEL_VALUE, 0, -1).is_some());
-    prime_policy();
-    inject_hotkey(true, VK_F9_VALUE);
-    await_text(helper.rich_edit, "привет как дела");
-    inject_hotkey(false, VK_BACK);
-    await_text(helper.rich_edit, "ghbdtn rfr ltkf");
-
-    eprintln!("G-switcher cross-process E2E: code-safe token");
-'@
-if ($cross.Contains($richMarker)) {
-    $cross = $cross.Replace($richMarker, $richBlock)
+if ($cross -notmatch 'assert_eq!\(fields\.len\(\), 6') {
+    throw 'Cross-process helper parser is not using the six-field Edit/RichEdit/password banner.'
+}
+if ($cross -notmatch 'rich_edit: parse\(fields\[3\]\) as HWND') {
+    throw 'Cross-process RichEdit handle is not parsed.'
+}
+if ($cross -notmatch 'RichEdit selected text \+ undo') {
+    throw 'Cross-process RichEdit selected-text/Undo gate is missing.'
 }
 $cross = $cross.Replace('await_text(helper.edit, "user_ghbdtn ");', 'await_text(helper.edit, "user-ghbdtn ");')
 Set-Content -LiteralPath $crossPath -Value $cross -Encoding utf8 -NoNewline
 
 $e2ePath = 'src/windows_runtime/e2e_tests.rs'
 $e2e = Get-Content -LiteralPath $e2ePath -Raw
-$selectedMarker = @'
+if ($e2e -notmatch '(?s)SendMessageW\(edit, EM_SETSEL_VALUE, 0, -1\);.*?inject_strokes\(&\[key\(VK_SHIFT as u8\)\]\);.*?inject_ctrl_shift_hotkey\(VK_F9_VALUE\);') {
+    $selectedMarker = @'
     unsafe {
         SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
     }
     inject_ctrl_shift_hotkey(VK_F9_VALUE);
 '@
-$selectedPrimed = @'
+    $selectedPrimed = @'
     unsafe {
         SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
     }
+    // Force the worker to re-evaluate policy after the preceding disabled-mode case.
     inject_strokes(&[key(VK_SHIFT as u8)]);
     inject_ctrl_shift_hotkey(VK_F9_VALUE);
 '@
-if ($e2e.Contains($selectedMarker)) {
+    if (-not $e2e.Contains($selectedMarker)) {
+        throw 'Could not locate same-process selected-text E2E marker.'
+    }
     $e2e = $e2e.Replace($selectedMarker, $selectedPrimed)
     Set-Content -LiteralPath $e2ePath -Value $e2e -Encoding utf8 -NoNewline
 }
 
-$lockPath = 'Cargo.lock'
-$lock = Get-Content -LiteralPath $lockPath -Raw
-$lockUpdated = [regex]::Replace(
-    $lock,
-    '(?ms)(\[\[package\]\]\s*name = "g-switcher"\s*version = ")2\.0\.0("\s*)',
-    '${1}2.0.1${2}',
-    1
-)
-if ($lockUpdated -eq $lock -and $lock -notmatch '(?ms)name = "g-switcher"\s*version = "2\.0\.1"') {
-    throw 'Could not synchronize g-switcher version in Cargo.lock.'
-}
-if ($lockUpdated -ne $lock) {
-    Set-Content -LiteralPath $lockPath -Value $lockUpdated -Encoding utf8 -NoNewline
-}
-
+# Cargo.toml may gain Windows-only bindings during the 2.0.1 hardening work.
+# Generate the lockfile before any --locked gate and commit the deterministic result.
+cargo generate-lockfile
 cargo fmt --all
