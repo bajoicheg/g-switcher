@@ -10,7 +10,7 @@ use std::ptr::{null, null_mut};
 #[cfg(windows)]
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 #[cfg(windows)]
-use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, LoadLibraryW};
 #[cfg(windows)]
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ActivateKeyboardLayout, SetFocus};
 #[cfg(windows)]
@@ -65,7 +65,7 @@ fn main() {
             60,
             60,
             700,
-            280,
+            360,
             null_mut(),
             null_mut(),
             module,
@@ -91,7 +91,7 @@ fn main() {
             20,
             20,
             640,
-            110,
+            100,
             window,
             null_mut(),
             module,
@@ -99,13 +99,38 @@ fn main() {
         );
         assert!(!edit.is_null(), "failed to create helper EDIT control");
 
+        let msftedit = wide("Msftedit.dll");
+        let rich_library = LoadLibraryW(msftedit.as_ptr());
+        assert!(!rich_library.is_null(), "failed to load Msftedit.dll");
+        let rich_class = wide("RICHEDIT50W");
+        let rich_edit = CreateWindowExW(
+            0,
+            rich_class.as_ptr(),
+            empty.as_ptr(),
+            WS_CHILD
+                | WS_VISIBLE
+                | WS_BORDER_STYLE
+                | ES_MULTILINE_STYLE
+                | ES_AUTOHSCROLL_STYLE
+                | ES_WANTRETURN_STYLE,
+            20,
+            135,
+            640,
+            90,
+            window,
+            null_mut(),
+            module,
+            null(),
+        );
+        assert!(!rich_edit.is_null(), "failed to create helper RichEdit control");
+
         let password = CreateWindowExW(
             0,
             edit_class.as_ptr(),
             empty.as_ptr(),
             WS_CHILD | WS_VISIBLE | WS_BORDER_STYLE | ES_AUTOHSCROLL_STYLE | ES_PASSWORD_STYLE,
             20,
-            160,
+            245,
             640,
             32,
             window,
@@ -120,9 +145,10 @@ fn main() {
         SetFocus(edit);
 
         println!(
-            "GSE2E {} {} {} {}",
+            "GSE2E {} {} {} {} {}",
             window as usize,
             edit as usize,
+            rich_edit as usize,
             password as usize,
             std::process::id()
         );
