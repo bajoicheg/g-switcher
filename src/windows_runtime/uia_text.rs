@@ -72,6 +72,7 @@ pub fn snapshot_caret(hwnd: HWND) -> Option<UiaCaretSnapshot> {
     })
 }
 
+#[cfg(test)]
 pub fn read_document_text(hwnd: HWND) -> Option<String> {
     with_focused_text_pattern(hwnd, |pattern| {
         let document = unsafe { pattern.DocumentRange().ok()? };
