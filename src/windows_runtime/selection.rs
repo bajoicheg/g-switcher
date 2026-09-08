@@ -3,7 +3,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetClassNameW, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT, WM_GETTEXTLENGTH,
 };
 
-use super::uia_text;
+#[path = "uia_text.rs"]
+mod uia_text;
 
 const EM_GETSEL_VALUE: u32 = 0x00B0;
 const EM_SETSEL_VALUE: u32 = 0x00B1;
