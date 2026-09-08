@@ -121,20 +121,7 @@ pub fn replace_range_if_matches(
     }
 }
 
-pub fn read_selection_range(hwnd: HWND) -> Option<(u32, u32)> {
-    match adapter(hwnd)? {
-        TextAdapter::EditMessages => read_selection_range_messages(hwnd),
-        TextAdapter::RichEditUia => {
-            if let Some(selected) = uia_text::read_selected_text(hwnd) {
-                Some((selected.start, selected.end))
-            } else {
-                let caret = uia_text::snapshot_caret(hwnd)?.caret;
-                Some((caret, caret))
-            }
-        }
-    }
-}
-
+#[cfg(test)]
 pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => read_control_text_messages(hwnd),
