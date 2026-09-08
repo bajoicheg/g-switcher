@@ -12,6 +12,8 @@ mod sound;
 mod tray_status;
 #[path = "windows_runtime/ui.rs"]
 mod ui;
+#[path = "windows_runtime/uia_secure.rs"]
+mod uia_secure;
 
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut};
@@ -202,6 +204,16 @@ struct PendingSelection {
     generation: u32,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct UiaSecurityCache {
+    generation: u32,
+    process_id: u32,
+    focus: isize,
+    native_hwnd: isize,
+    checked: bool,
+    is_password: Option<bool>,
+}
+
 #[derive(Default)]
 struct Engine {
     candidate: String,
@@ -216,6 +228,7 @@ struct Engine {
     process_id: u32,
     process_name: String,
     generation: u32,
+    uia_cache: UiaSecurityCache,
 }
 
 pub fn run() -> Result<()> {
@@ -654,6 +667,27 @@ fn decode_hook_event(wparam: WPARAM, lparam: LPARAM) -> HookEvent {
 }
 
 impl Engine {
+    fn uia_password_state(&mut self, target: FocusTarget, generation: u32) -> Option<bool> {
+        let cache_matches = self.uia_cache.checked
+            && self.uia_cache.generation == generation
+            && self.uia_cache.process_id == target.process_id
+            && self.uia_cache.focus == target.hwnd as isize;
+        if cache_matches {
+            return self.uia_cache.is_password;
+        }
+
+        let probe = uia_secure::probe_focused(target.process_id);
+        self.uia_cache = UiaSecurityCache {
+            generation,
+            process_id: target.process_id,
+            focus: target.hwnd as isize,
+            native_hwnd: probe.map(|value| value.native_hwnd).unwrap_or_default(),
+            checked: true,
+            is_password: probe.map(|value| value.is_password),
+        };
+        self.uia_cache.is_password
+    }
+
     fn on_key_event(&mut self, event: HookEvent) {
         let runtime_settings = settings::runtime_settings();
         publish_hotkeys(&runtime_settings);
@@ -687,6 +721,23 @@ impl Engine {
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
             return;
+        }
+
+        // UIA is queried only on the runtime worker and only for metadata. The
+        // first event in a new context was already passed through while policy
+        // was UNKNOWN; after the probe, protected elements remain fail-open.
+        match self.uia_password_state(target, event.generation) {
+            Some(true) => {
+                HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
+                self.reset_transient();
+                return;
+            }
+            None if !selection::is_standard_edit(target.hwnd) => {
+                HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
+                self.reset_transient();
+                return;
+            }
+            _ => {}
         }
         HOOK_FOCUS.store(target.hwnd as isize, Ordering::SeqCst);
         HOOK_POLICY.store(POLICY_READY, Ordering::SeqCst);

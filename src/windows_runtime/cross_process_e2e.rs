@@ -131,6 +131,12 @@ fn real_cross_process_edit_e2e_release_gate() {
     eprintln!("G-switcher cross-process E2E: automatic correction + undo");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
     prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    let ordinary_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA ordinary Edit probe failed");
+    assert!(
+        !ordinary_probe.is_password,
+        "UIA ordinary field must not be password"
+    );
     inject_strokes(&[
         b'G' as u16,
         b'H' as u16,
@@ -149,6 +155,12 @@ fn real_cross_process_edit_e2e_release_gate() {
     manual_only.manual_only_apps.push(process_name.clone());
     settings::replace_runtime_settings_for_test(manual_only);
     prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    let ordinary_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA ordinary Edit probe failed");
+    assert!(
+        !ordinary_probe.is_password,
+        "UIA ordinary field must not be password"
+    );
     inject_strokes(&[
         b'G' as u16,
         b'H' as u16,
@@ -192,6 +204,12 @@ fn real_cross_process_edit_e2e_release_gate() {
     eprintln!("G-switcher cross-process E2E: code-safe token");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
     prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    let ordinary_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA ordinary Edit probe failed");
+    assert!(
+        !ordinary_probe.is_password,
+        "UIA ordinary field must not be password"
+    );
     inject_strokes(&[
         b'U' as u16,
         b'S' as u16,
@@ -215,6 +233,12 @@ fn real_cross_process_edit_e2e_release_gate() {
         helper.password,
         unsafe { GetWindowThreadProcessId(helper.password, null_mut()) },
         Language::English,
+    );
+    let password_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA password Edit probe failed");
+    assert!(
+        password_probe.is_password,
+        "UIA password field was not recognized"
     );
     inject_strokes(&[
         b'G' as u16,
@@ -254,6 +278,12 @@ fn real_cross_process_edit_e2e_release_gate() {
     eprintln!("G-switcher cross-process E2E: focus race invalidates candidate");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
     prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    let ordinary_probe =
+        uia_secure::probe_focused(helper.process_id).expect("UIA ordinary Edit probe failed");
+    assert!(
+        !ordinary_probe.is_password,
+        "UIA ordinary field must not be password"
+    );
     inject_strokes(&[
         b'G' as u16,
         b'H' as u16,
