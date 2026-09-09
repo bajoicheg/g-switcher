@@ -6,6 +6,8 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# Keep this script ASCII-only so it parses correctly in Windows PowerShell 5.1
+# when the repository/artifact file is UTF-8 without a BOM.
 $CoreInteractiveResults = @(
     "PASS",
     "FAIL",
@@ -214,14 +216,14 @@ function Read-ExplicitVersion {
     }
 
     while ($true) {
-        $answer = (Read-Host "Версию $ApplicationName определить автоматически не удалось. Введите точную версию приложения").Trim()
+        $answer = (Read-Host "Could not detect $ApplicationName version. Enter the exact tested application version").Trim()
         if (
             -not [string]::IsNullOrWhiteSpace($answer) -and
             $answer -notmatch '^(?i:PENDING|UNKNOWN|N/A|NOT INSTALLED|UNAVAILABLE)$'
         ) {
             return $answer
         }
-        Write-Host "Нужна реальная версия протестированного приложения; UNKNOWN/N/A/NOT INSTALLED не принимаются release gate." -ForegroundColor Yellow
+        Write-Host "A real tested application version is required; UNKNOWN/N/A/NOT INSTALLED cannot pass the release gate." -ForegroundColor Yellow
     }
 }
 
@@ -248,7 +250,7 @@ function Read-ValidatedResult {
             return $match
         }
 
-        Write-Host "Допустимые значения для этого поля: $($Allowed -join ', ')" -ForegroundColor Yellow
+        Write-Host "Allowed values for this field: $($Allowed -join ', ')" -ForegroundColor Yellow
     }
 }
 
@@ -257,7 +259,7 @@ function Read-Notes {
         return ""
     }
 
-    return (Read-Host "Result / notes (одна строка)").Trim()
+    return (Read-Host "Result / notes (one line)").Trim()
 }
 
 function Escape-MarkdownCell {
@@ -276,10 +278,10 @@ $rows = @()
 Write-Host "G-switcher 2.0.1 manual compatibility gate" -ForegroundColor Cyan
 Write-Host "Windows build: $windowsBuild"
 Write-Host ""
-Write-Host "Перед фиксацией результата для каждого приложения выполните 8 кейсов из COMPATIBILITY_2.0.1.md." -ForegroundColor Yellow
-Write-Host "Не используйте реальные пароли, PIN, OTP или другие секреты." -ForegroundColor Yellow
-Write-Host "Auto/Manual/Selected не допускают N/A: используйте PASS, FAIL или UNSUPPORTED/FAIL-OPEN." -ForegroundColor Yellow
-Write-Host "N/A допустим только для Undo и Password/sensitive fields, когда проверка действительно неприменима." -ForegroundColor Yellow
+Write-Host "Before recording a result for each application, complete the 8 cases in COMPATIBILITY_2.0.1.md." -ForegroundColor Yellow
+Write-Host "Do not use real passwords, PINs, OTPs, API keys, or other secrets." -ForegroundColor Yellow
+Write-Host "Auto/Manual/Selected do not allow N/A: use PASS, FAIL, or UNSUPPORTED/FAIL-OPEN." -ForegroundColor Yellow
+Write-Host "N/A is allowed only for Undo and Password/sensitive fields when the check is genuinely not applicable." -ForegroundColor Yellow
 Write-Host ""
 
 foreach ($application in $Applications) {
@@ -310,7 +312,7 @@ foreach ($application in $Applications) {
 }
 
 $lines = @(
-    "# G-switcher 2.0.1 — manual compatibility results",
+    "# G-switcher 2.0.1 - manual compatibility results",
     "",
     "Generated locally: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')",
     "",
