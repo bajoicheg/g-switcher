@@ -123,13 +123,9 @@ pub fn replace_range_if_matches(
         Some(TextAdapter::RichEditUia) => {
             uia_text::replace_range_if_matches(hwnd, start, end, expected, replacement)
         }
-        Some(TextAdapter::ModernUiaValue) => uia_text::replace_range_if_matches_value(
-            hwnd,
-            start,
-            end,
-            expected,
-            replacement,
-        ),
+        Some(TextAdapter::ModernUiaValue) => {
+            uia_text::replace_range_if_matches_value(hwnd, start, end, expected, replacement)
+        }
         None => false,
     }
 }
