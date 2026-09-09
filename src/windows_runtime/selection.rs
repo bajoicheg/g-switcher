@@ -1,6 +1,7 @@
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetClassNameW, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT, WM_GETTEXTLENGTH,
+    WM_NULL,
 };
 
 #[path = "uia_text.rs"]
@@ -31,9 +32,10 @@ enum TextAdapter {
     RichEditUia,
 }
 
-/// Returns true only for controls with a synchronous, verifiable 2.0.1 text
-/// adapter. Plain Edit uses marshalled system messages; RichEdit uses UIA
-/// TextPattern for range state and a range-local documented replacement.
+/// Returns true only for responsive controls with a synchronous, verifiable
+/// 2.0.1 text adapter. Plain Edit uses marshalled system messages; RichEdit
+/// uses UIA TextPattern for range state and a range-local documented
+/// replacement. A hung or closing target fails open before any mutation path.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }
@@ -247,6 +249,11 @@ fn replace_range_raw_messages(hwnd: HWND, start: u32, end: u32, text: &str) -> b
 }
 
 fn adapter(hwnd: HWND) -> Option<TextAdapter> {
+    // The liveness ping is intentionally part of adapter selection. It keeps
+    // every caller fail-open when a target UI thread is hung or disappears,
+    // instead of entering a message/UIA mutation path against stale state.
+    send_timeout(hwnd, WM_NULL, 0, 0)?;
+
     let name = class_name(hwnd)?;
     if is_plain_edit_class(&name) {
         Some(TextAdapter::EditMessages)
