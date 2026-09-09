@@ -60,8 +60,24 @@ jobs:
       - name: Manual compatibility tooling smoke test
         shell: pwsh
         run: |
+          $windowsPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          if (-not (Test-Path -LiteralPath $windowsPowerShell -PathType Leaf)) {
+            throw 'Windows PowerShell 5.1 executable is missing from the runner.'
+          }
+
+          # The recorder is intentionally ASCII-only. Windows PowerShell 5.1
+          # treats a UTF-8 file without BOM as the legacy ANSI code page; keeping
+          # executable script bytes ASCII avoids locale-dependent parser failures.
+          $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
+          if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
+            throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
+          }
+
           $output = Join-Path $env:RUNNER_TEMP "compatibility-results-2.0.1.md"
-          ./scripts/manual-compatibility-v201.ps1 -ScaffoldOnly -OutputPath $output
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-compatibility-v201.ps1 -ScaffoldOnly -OutputPath $output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows PowerShell 5.1 recorder smoke test failed with exit code $LASTEXITCODE."
+          }
           if (-not (Test-Path -LiteralPath $output -PathType Leaf)) {
             throw 'Manual compatibility recorder did not create its result file.'
           }
@@ -73,14 +89,14 @@ jobs:
           # A synthetic PENDING scaffold must be rejected. Do not couple this
           # smoke test to the checked-in release matrix: after human testing the
           # canonical matrix is expected to become complete and valid.
-          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $output
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
           if ($LASTEXITCODE -eq 0) {
             throw 'Compatibility verifier unexpectedly accepted a PENDING scaffold.'
           }
           $global:LASTEXITCODE = 0
 
           $valid = @'
-          # G-switcher 2.0.1 — compatibility verifier fixture
+          # G-switcher 2.0.1 - compatibility verifier fixture
 
           ## Manual application matrix
 
@@ -98,7 +114,7 @@ jobs:
           '@
           $validPath = Join-Path $env:RUNNER_TEMP "compatibility-valid-2.0.1.md"
           Set-Content -LiteralPath $validPath -Value $valid -Encoding UTF8
-          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $validPath
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $validPath
           if ($LASTEXITCODE -ne 0) {
             throw 'Compatibility verifier rejected a complete non-blocking matrix.'
           }
@@ -111,7 +127,7 @@ jobs:
           )
           $invalidCorePath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-core-2.0.1.md"
           Set-Content -LiteralPath $invalidCorePath -Value $invalidCore -Encoding UTF8
-          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $invalidCorePath
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidCorePath
           if ($LASTEXITCODE -eq 0) {
             throw 'Compatibility verifier unexpectedly accepted N/A for a core text-operation column.'
           }
@@ -123,7 +139,7 @@ jobs:
           )
           $invalidMetadataPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-metadata-2.0.1.md"
           Set-Content -LiteralPath $invalidMetadataPath -Value $invalidMetadata -Encoding UTF8
-          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $invalidMetadataPath
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidMetadataPath
           if ($LASTEXITCODE -eq 0) {
             throw 'Compatibility verifier unexpectedly accepted UNKNOWN application metadata.'
           }
