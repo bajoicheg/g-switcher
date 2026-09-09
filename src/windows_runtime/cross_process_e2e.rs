@@ -189,7 +189,8 @@ fn real_cross_process_edit_e2e_release_gate() {
     // Simulate Windows Ctrl+Shift language-switch behavior occurring before
     // the final manual-hotkey keydown. The typed candidate was English and
     // must still convert to Russian rather than silently doing nothing.
-    request_layout(helper.edit, Language::Russian);
+    let russian_hkl = select_layout(Language::Russian).expect("Russian HKL unavailable");
+    assert!(switch_layout(helper.edit, ui_thread_id, russian_hkl));
     wait_until(Duration::from_secs(2), || unsafe {
         language_from_hkl(GetKeyboardLayout(ui_thread_id) as isize) == Some(Language::Russian)
     });
