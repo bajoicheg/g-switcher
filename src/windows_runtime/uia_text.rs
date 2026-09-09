@@ -1,13 +1,14 @@
 use std::cell::RefCell;
 
-use windows::core::Interface;
+use windows::core::{BSTR, Interface};
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
 };
 use windows::Win32::UI::Accessibility::{
-    CUIAutomation, IUIAutomation, IUIAutomationTextPattern, IUIAutomationTextRange,
-    TextPatternRangeEndpoint, TextPatternRangeEndpoint_End, TextPatternRangeEndpoint_Start,
-    TextUnit_Character, UIA_TextPatternId,
+    CUIAutomation, IUIAutomation, IUIAutomationElement, IUIAutomationTextPattern,
+    IUIAutomationTextRange, IUIAutomationValuePattern, TextPatternRangeEndpoint,
+    TextPatternRangeEndpoint_End, TextPatternRangeEndpoint_Start, TextUnit_Character,
+    UIA_TextPatternId, UIA_ValuePatternId,
 };
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -80,6 +81,8 @@ pub fn read_document_text(hwnd: HWND) -> Option<String> {
     })
 }
 
+/// RichEdit adapter: UIA owns range discovery/verification, while the actual
+/// range-local mutation uses documented EM_REPLACESEL for the native control.
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -112,8 +115,7 @@ pub fn replace_range_if_matches(
 
         let range = range_for_char_offsets(&document, start, end)?;
         unsafe { range.Select().ok()? };
-        let confirmed = current_selected_text(pattern)?;
-        if confirmed != expected {
+        if current_selected_text(pattern)? != expected {
             return None;
         }
 
@@ -130,8 +132,6 @@ pub fn replace_range_if_matches(
             }
         }
 
-        // A partial or unexpected mutation is never accepted. Re-select the
-        // replacement span through UIA and restore the verified original text.
         let replacement_end =
             start.saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
         if let Some(current_document) = unsafe { pattern.DocumentRange().ok() } {
@@ -150,13 +150,114 @@ pub fn replace_range_if_matches(
     .unwrap_or(false)
 }
 
-/// Returns true when the focused RichEdit-like UIA provider exposes TextPattern.
-/// The exact class-family check remains in selection.rs; range mutation itself
-/// uses a UIA-verified selection plus documented RichEdit EM_REPLACESEL.
+/// Modern-control adapter for Chromium/WebView2/Electron-style editable UIA
+/// elements. TextPattern provides exact caret/selection state; ValuePattern
+/// performs a documented whole-value update. The full value is verified both
+/// before and after mutation and the caret is restored to the end of the
+/// replacement. No clipboard or blind SendInput fallback is used.
+pub fn replace_range_if_matches_value(
+    hwnd: HWND,
+    start: u32,
+    end: u32,
+    expected: &str,
+    replacement: &str,
+) -> bool {
+    if end < start {
+        return false;
+    }
+
+    with_focused_text_and_value(hwnd, |text_pattern, value_pattern| {
+        if unsafe { value_pattern.CurrentIsReadOnly().ok()? }.as_bool() {
+            return None;
+        }
+
+        let document = unsafe { text_pattern.DocumentRange().ok()? };
+        let before_text = text_of(&document)?;
+        let before_value = value_of(value_pattern)?;
+        if before_text != before_value {
+            return None;
+        }
+
+        let original_selection = selection_offsets(text_pattern, &document)?;
+        let start_index = byte_index_for_char(&before_text, start as usize)?;
+        let end_index = byte_index_for_char(&before_text, end as usize)?;
+        if end_index < start_index || before_text.get(start_index..end_index)? != expected {
+            return None;
+        }
+
+        let mut planned = String::with_capacity(
+            before_text
+                .len()
+                .saturating_sub(expected.len())
+                .saturating_add(replacement.len()),
+        );
+        planned.push_str(&before_text[..start_index]);
+        planned.push_str(replacement);
+        planned.push_str(&before_text[end_index..]);
+
+        let target_range = range_for_char_offsets(&document, start, end)?;
+        unsafe { target_range.Select().ok()? };
+        if current_selected_text(text_pattern)? != expected || value_of(value_pattern)? != before_value {
+            let _ = select_offsets(text_pattern, original_selection.0, original_selection.1);
+            return None;
+        }
+
+        let planned_bstr = BSTR::from(planned.as_str());
+        if unsafe { value_pattern.SetValue(&planned_bstr).is_err() } {
+            let _ = select_offsets(text_pattern, original_selection.0, original_selection.1);
+            return None;
+        }
+
+        let replacement_end =
+            start.saturating_add(replacement.chars().count().min(u32::MAX as usize) as u32);
+        let verified = value_of(value_pattern).as_deref() == Some(planned.as_str())
+            && unsafe { text_pattern.DocumentRange().ok() }
+                .and_then(|range| text_of(&range))
+                .as_deref()
+                == Some(planned.as_str())
+            && select_offsets(text_pattern, replacement_end, replacement_end)
+            && snapshot_caret_from_pattern(text_pattern)
+                .is_some_and(|snapshot| snapshot.caret == replacement_end);
+        if verified {
+            return Some(true);
+        }
+
+        let before_bstr = BSTR::from(before_value.as_str());
+        if unsafe { value_pattern.SetValue(&before_bstr).is_ok() }
+            && value_of(value_pattern).as_deref() == Some(before_value.as_str())
+        {
+            let _ = select_offsets(text_pattern, original_selection.0, original_selection.1);
+        }
+        Some(false)
+    })
+    .unwrap_or(false)
+}
+
+/// Native RichEdit still uses its documented EM_REPLACESEL path, but UIA must
+/// expose TextPattern first so range state can be verified across processes.
 pub fn has_rich_text_adapter(hwnd: HWND) -> bool {
     with_focused_element(hwnd, |element| {
         let text = unsafe { element.GetCurrentPattern(UIA_TextPatternId).ok()? };
         let _: IUIAutomationTextPattern = text.cast().ok()?;
+        Some(true)
+    })
+    .unwrap_or(false)
+}
+
+/// Modern editable controls are accepted only when the same focused,
+/// non-password UIA element exposes both TextPattern and a writable
+/// ValuePattern and both patterns report the same bounded document value.
+pub fn has_modern_value_adapter(hwnd: HWND) -> bool {
+    with_focused_text_and_value(hwnd, |text_pattern, value_pattern| {
+        if unsafe { value_pattern.CurrentIsReadOnly().ok()? }.as_bool() {
+            return None;
+        }
+        let value = value_of(value_pattern)?;
+        let document = unsafe { text_pattern.DocumentRange().ok()? };
+        let text = text_of(&document)?;
+        if text != value || current_selection_range(text_pattern).is_none() {
+            return None;
+        }
         Some(true)
     })
     .unwrap_or(false)
@@ -173,9 +274,22 @@ fn with_focused_text_pattern<T>(
     })
 }
 
+fn with_focused_text_and_value<T>(
+    hwnd: HWND,
+    action: impl FnOnce(&IUIAutomationTextPattern, &IUIAutomationValuePattern) -> Option<T>,
+) -> Option<T> {
+    with_focused_element(hwnd, |element| {
+        let text_unknown = unsafe { element.GetCurrentPattern(UIA_TextPatternId).ok()? };
+        let text_pattern: IUIAutomationTextPattern = text_unknown.cast().ok()?;
+        let value_unknown = unsafe { element.GetCurrentPattern(UIA_ValuePatternId).ok()? };
+        let value_pattern: IUIAutomationValuePattern = value_unknown.cast().ok()?;
+        action(&text_pattern, &value_pattern)
+    })
+}
+
 fn with_focused_element<T>(
     hwnd: HWND,
-    action: impl FnOnce(&windows::Win32::UI::Accessibility::IUIAutomationElement) -> Option<T>,
+    action: impl FnOnce(&IUIAutomationElement) -> Option<T>,
 ) -> Option<T> {
     let mut expected_process_id = 0u32;
     let thread_id = unsafe { GetWindowThreadProcessId(hwnd, &mut expected_process_id) };
@@ -183,10 +297,6 @@ fn with_focused_element<T>(
         return None;
     }
 
-    // UIA calls can otherwise wait on the target provider. Refuse to enter COM
-    // when the target UI thread is already hung or disappearing. This is a
-    // fail-open preflight only; all exact range/post-state checks still happen
-    // after the UIA provider is acquired.
     send_timeout(hwnd, WM_NULL, 0, 0)?;
 
     AUTOMATION.with(|slot| {
@@ -203,10 +313,22 @@ fn with_focused_element<T>(
         let automation = automation.as_ref()?;
         let element = unsafe { automation.GetFocusedElement().ok()? };
         let process_id = unsafe { element.CurrentProcessId().ok()? } as u32;
-        let native_hwnd = unsafe { element.CurrentNativeWindowHandle().ok()? }.0 as HWND;
-        let is_password = unsafe { element.CurrentIsPassword().ok()? }.as_bool();
-        if process_id != expected_process_id || native_hwnd != hwnd || is_password {
+        if process_id != expected_process_id || unsafe { element.CurrentIsPassword().ok()? }.as_bool() {
             return None;
+        }
+
+        // Chromium/WebView2 descendants commonly expose NativeWindowHandle=0
+        // or a descendant HWND rather than the GUITHREADINFO focus HWND. Bind
+        // them by process; if a native HWND is supplied, verify that it belongs
+        // to the same process instead of requiring exact HWND identity.
+        let native_hwnd = unsafe { element.CurrentNativeWindowHandle().ok()? }.0 as HWND;
+        if !native_hwnd.is_null() && native_hwnd != hwnd {
+            let mut native_process_id = 0u32;
+            if unsafe { GetWindowThreadProcessId(native_hwnd, &mut native_process_id) } == 0
+                || native_process_id != expected_process_id
+            {
+                return None;
+            }
         }
         action(&element)
     })
@@ -231,6 +353,39 @@ fn current_selection_range(pattern: &IUIAutomationTextPattern) -> Option<IUIAuto
 
 fn current_selected_text(pattern: &IUIAutomationTextPattern) -> Option<String> {
     text_of(&current_selection_range(pattern)?)
+}
+
+fn selection_offsets(
+    pattern: &IUIAutomationTextPattern,
+    document: &IUIAutomationTextRange,
+) -> Option<(u32, u32)> {
+    let selection = current_selection_range(pattern)?;
+    let prefix_start =
+        prefix_to_endpoint(document, &selection, TextPatternRangeEndpoint_Start)?;
+    let prefix_end = prefix_to_endpoint(document, &selection, TextPatternRangeEndpoint_End)?;
+    Some((char_count_u32(&prefix_start)?, char_count_u32(&prefix_end)?))
+}
+
+fn snapshot_caret_from_pattern(pattern: &IUIAutomationTextPattern) -> Option<UiaCaretSnapshot> {
+    let (selection, document) = selected_and_document(pattern)?;
+    if !text_of(&selection)?.is_empty() {
+        return None;
+    }
+    let prefix = prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_Start)?;
+    Some(UiaCaretSnapshot {
+        caret: char_count_u32(&prefix)?,
+        text_before_caret: prefix,
+    })
+}
+
+fn select_offsets(pattern: &IUIAutomationTextPattern, start: u32, end: u32) -> bool {
+    let Some(document) = (unsafe { pattern.DocumentRange().ok() }) else {
+        return false;
+    };
+    let Some(range) = range_for_char_offsets(&document, start, end) else {
+        return false;
+    };
+    unsafe { range.Select().is_ok() }
 }
 
 fn prefix_to_endpoint(
@@ -298,6 +453,11 @@ fn range_for_char_offsets(
 fn text_of(range: &IUIAutomationTextRange) -> Option<String> {
     let text = unsafe { range.GetText(-1).ok()? }.to_string();
     (text.chars().count() <= MAX_UIA_TEXT_CHARS).then_some(text)
+}
+
+fn value_of(pattern: &IUIAutomationValuePattern) -> Option<String> {
+    let value = unsafe { pattern.CurrentValue().ok()? }.to_string();
+    (value.chars().count() <= MAX_UIA_TEXT_CHARS).then_some(value)
 }
 
 fn char_count_u32(value: &str) -> Option<u32> {
