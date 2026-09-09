@@ -202,6 +202,8 @@ $lines = @(
     "",
     "Generated locally: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')",
     "",
+    "## Manual application matrix",
+    "",
     "| Application | Version tested | Windows build | Auto | Manual current word | Selected text | Undo | Password/sensitive fields | Result / notes |",
     "|---|---|---|---|---|---|---|---|---|"
 )
