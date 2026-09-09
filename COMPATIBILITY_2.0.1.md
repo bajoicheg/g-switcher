@@ -30,7 +30,13 @@ Record the exact application version and Windows build used for the check. Test 
 | Visual Studio Code | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
 | Windows Terminal | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
 
-Allowed result values: `PASS`, `FAIL`, `UNSUPPORTED/FAIL-OPEN`, `N/A`. Never convert `PENDING` into an implied pass.
+Result semantics are intentionally strict:
+
+- `Auto`, `Manual current word`, `Selected text`: final release values are only `PASS` or `UNSUPPORTED/FAIL-OPEN`. `N/A` is not accepted for these text-operation columns.
+- `Undo`, `Password/sensitive fields`: final release values are `PASS`, `UNSUPPORTED/FAIL-OPEN`, or `N/A` when the case is genuinely not applicable.
+- `FAIL` and `PENDING` always block publication.
+- `UNSUPPORTED/FAIL-OPEN` means the operation is unsupported **and was verified to preserve original input / avoid swallowing the action**; it is not a synonym for “not tested”.
+- Application version and Windows build must identify the actual tested environment; `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders do not satisfy the release gate.
 
 ## Required manual cases
 
