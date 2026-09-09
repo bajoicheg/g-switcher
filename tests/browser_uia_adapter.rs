@@ -72,7 +72,10 @@ fn required_browsers() -> Vec<BrowserSpec> {
             executable: find_browser(
                 "msedge.exe",
                 &[
-                    ("PROGRAMFILES(X86)", "Microsoft\\Edge\\Application\\msedge.exe"),
+                    (
+                        "PROGRAMFILES(X86)",
+                        "Microsoft\\Edge\\Application\\msedge.exe",
+                    ),
                     ("PROGRAMFILES", "Microsoft\\Edge\\Application\\msedge.exe"),
                     ("LOCALAPPDATA", "Microsoft\\Edge\\Application\\msedge.exe"),
                 ],
@@ -84,7 +87,10 @@ fn required_browsers() -> Vec<BrowserSpec> {
                 "chrome.exe",
                 &[
                     ("PROGRAMFILES", "Google\\Chrome\\Application\\chrome.exe"),
-                    ("PROGRAMFILES(X86)", "Google\\Chrome\\Application\\chrome.exe"),
+                    (
+                        "PROGRAMFILES(X86)",
+                        "Google\\Chrome\\Application\\chrome.exe",
+                    ),
                     ("LOCALAPPDATA", "Google\\Chrome\\Application\\chrome.exe"),
                 ],
             ),
@@ -178,7 +184,11 @@ fn exercise_browser(browser: &BrowserSpec) {
     wait_for_adapter_text(ordinary_hwnd, "ghbdtn ", Duration::from_secs(10));
     let snapshot = selection::snapshot_caret(ordinary_hwnd)
         .unwrap_or_else(|| panic!("{} caret snapshot unavailable", browser.label));
-    assert_eq!(snapshot.caret, 7, "{} initial caret mismatch", browser.label);
+    assert_eq!(
+        snapshot.caret, 7,
+        "{} initial caret mismatch",
+        browser.label
+    );
     assert_eq!(snapshot.text_before_caret, "ghbdtn ");
 
     assert!(
@@ -195,21 +205,11 @@ fn exercise_browser(browser: &BrowserSpec) {
     wait_for_adapter_text(ordinary_hwnd, "ghbdtn ", Duration::from_secs(5));
 
     assert!(
-        selection::replace_range_if_matches(
-            ordinary_hwnd,
-            0,
-            7,
-            "ghbdtn ",
-            "ghbdtn rfr ltkf"
-        ),
+        selection::replace_range_if_matches(ordinary_hwnd, 0, 7, "ghbdtn ", "ghbdtn rfr ltkf"),
         "{} failed to seed selection scenario through verified UIA mutation",
         browser.label
     );
-    wait_for_adapter_text(
-        ordinary_hwnd,
-        "ghbdtn rfr ltkf",
-        Duration::from_secs(5),
-    );
+    wait_for_adapter_text(ordinary_hwnd, "ghbdtn rfr ltkf", Duration::from_secs(5));
     send_ctrl_a();
     let selected = wait_for_selection(ordinary_hwnd, Duration::from_secs(5));
     assert_eq!(selected.text, "ghbdtn rfr ltkf");
@@ -230,11 +230,7 @@ fn exercise_browser(browser: &BrowserSpec) {
         "{} selected-text Undo failed",
         browser.label
     );
-    wait_for_adapter_text(
-        ordinary_hwnd,
-        "ghbdtn rfr ltkf",
-        Duration::from_secs(5),
-    );
+    wait_for_adapter_text(ordinary_hwnd, "ghbdtn rfr ltkf", Duration::from_secs(5));
 
     send_key(VK_TAB);
     let (password_hwnd, password_probe) = wait_for_password_focus(Duration::from_secs(8));
@@ -430,7 +426,11 @@ fn send_inputs(inputs: &[INPUT]) {
             size_of::<INPUT>() as i32,
         )
     };
-    assert_eq!(sent as usize, inputs.len(), "SendInput did not deliver browser test chord");
+    assert_eq!(
+        sent as usize,
+        inputs.len(),
+        "SendInput did not deliver browser test chord"
+    );
     thread::sleep(Duration::from_millis(80));
 }
 
