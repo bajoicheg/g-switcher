@@ -29,42 +29,52 @@ $Applications = @(
         Commands = @("notepad.exe")
         RegistryPatterns = @("Windows Notepad", "Notepad")
         PackagePatterns = @("Microsoft.WindowsNotepad")
+        RegistryFirst = $false
     },
     [pscustomobject]@{
         Name = "Microsoft Word"
         Commands = @("WINWORD.EXE")
         RegistryPatterns = @("Microsoft 365", "Microsoft Office", "Microsoft Word")
         PackagePatterns = @()
+        RegistryFirst = $false
     },
     [pscustomobject]@{
         Name = "Microsoft Edge"
         Commands = @("msedge.exe")
         RegistryPatterns = @("Microsoft Edge")
         PackagePatterns = @()
+        RegistryFirst = $false
     },
     [pscustomobject]@{
         Name = "Google Chrome"
         Commands = @("chrome.exe")
         RegistryPatterns = @("Google Chrome")
         PackagePatterns = @()
+        RegistryFirst = $false
     },
     [pscustomobject]@{
         Name = "Telegram Desktop"
         Commands = @("Telegram.exe")
         RegistryPatterns = @("Telegram Desktop")
         PackagePatterns = @("TelegramMessengerLLP.TelegramDesktop")
+        RegistryFirst = $false
     },
     [pscustomobject]@{
         Name = "Visual Studio Code"
         Commands = @("Code.exe", "code.cmd")
         RegistryPatterns = @("Microsoft Visual Studio Code", "Visual Studio Code")
         PackagePatterns = @()
+        # A generic Code.exe elsewhere on PATH can belong to another product.
+        # Prefer the uninstall registration, whose DisplayVersion identifies
+        # the actual Visual Studio Code installation under test.
+        RegistryFirst = $true
     },
     [pscustomobject]@{
         Name = "Windows Terminal"
         Commands = @("wt.exe")
         RegistryPatterns = @("Windows Terminal")
         PackagePatterns = @("Microsoft.WindowsTerminal", "Microsoft.WindowsTerminalPreview")
+        RegistryFirst = $false
     }
 )
 
@@ -192,14 +202,23 @@ function Get-AppVersion {
         return $version
     }
 
+    if ($Application.RegistryFirst) {
+        $version = Get-RegistryVersion -Patterns $Application.RegistryPatterns
+        if (-not [string]::IsNullOrWhiteSpace($version)) {
+            return $version
+        }
+    }
+
     $version = Get-ExecutableVersion -Commands $Application.Commands
     if (-not [string]::IsNullOrWhiteSpace($version)) {
         return $version
     }
 
-    $version = Get-RegistryVersion -Patterns $Application.RegistryPatterns
-    if (-not [string]::IsNullOrWhiteSpace($version)) {
-        return $version
+    if (-not $Application.RegistryFirst) {
+        $version = Get-RegistryVersion -Patterns $Application.RegistryPatterns
+        if (-not [string]::IsNullOrWhiteSpace($version)) {
+            return $version
+        }
     }
 
     return "UNKNOWN"
