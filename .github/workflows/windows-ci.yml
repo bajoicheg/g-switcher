@@ -65,9 +65,6 @@ jobs:
             throw 'Windows PowerShell 5.1 executable is missing from the runner.'
           }
 
-          # The recorder is intentionally ASCII-only. Windows PowerShell 5.1
-          # treats a UTF-8 file without BOM as the legacy ANSI code page; keeping
-          # executable script bytes ASCII avoids locale-dependent parser failures.
           $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
           if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
             throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
@@ -86,9 +83,6 @@ jobs:
             throw 'Manual compatibility recorder produced an incomplete scaffold.'
           }
 
-          # A synthetic PENDING scaffold must be rejected. Do not couple this
-          # smoke test to the checked-in release matrix: after human testing the
-          # canonical matrix is expected to become complete and valid.
           & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
           if ($LASTEXITCODE -eq 0) {
             throw 'Compatibility verifier unexpectedly accepted a PENDING scaffold.'
@@ -104,8 +98,8 @@ jobs:
           |---|---|---|---|---|---|---|---|---|
           | Notepad | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
           | Microsoft Word | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
-          | Microsoft Edge | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | fixture |
-          | Google Chrome | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | fixture |
+          | Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
+          | Google Chrome | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
           | Telegram Desktop | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
           | Visual Studio Code | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
           | Windows Terminal | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | N/A | fixture |
@@ -119,8 +113,20 @@ jobs:
             throw 'Compatibility verifier rejected a complete non-blocking matrix.'
           }
 
-          # N/A is permitted only in genuinely optional columns. A core text
-          # operation must be PASS or explicitly UNSUPPORTED/FAIL-OPEN.
+          # Edge/Chrome are required working targets for 2.0.1. Safe no-op is
+          # not sufficient for ordinary browser text controls.
+          $invalidBrowser = $valid.Replace(
+            '| Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS |',
+            '| Microsoft Edge | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | PASS | PASS | PASS | PASS |'
+          )
+          $invalidBrowserPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-browser-2.0.1.md"
+          Set-Content -LiteralPath $invalidBrowserPath -Value $invalidBrowser -Encoding UTF8
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidBrowserPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compatibility verifier unexpectedly accepted unsupported Edge core behavior.'
+          }
+          $global:LASTEXITCODE = 0
+
           $invalidCore = $valid.Replace(
             '| Notepad | 1.0.0 | 26100 | PASS |',
             '| Notepad | 1.0.0 | 26100 | N/A |'
