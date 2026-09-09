@@ -57,7 +57,11 @@ impl CrossProcessHelper {
             .read_line(&mut line)
             .expect("failed to read helper banner");
         let fields = line.split_whitespace().collect::<Vec<_>>();
-        assert_eq!(fields.first().copied(), Some("GSE2E"), "bad banner: {line:?}");
+        assert_eq!(
+            fields.first().copied(),
+            Some("GSE2E"),
+            "bad banner: {line:?}"
+        );
         assert_eq!(fields.len(), 6, "bad helper banner: {line:?}");
         let parse = |value: &str| value.parse::<usize>().expect("invalid helper handle");
         Self {
@@ -113,7 +117,9 @@ fn main() {
         "hung-target mutation did not fail within the bounded timeout: {elapsed:?}"
     );
 
-    wait_until(Duration::from_secs(2), || harness_send(hung.window, WM_NULL, 0, 0).is_some());
+    wait_until(Duration::from_secs(2), || {
+        harness_send(hung.window, WM_NULL, 0, 0).is_some()
+    });
     assert_eq!(
         read_text(hung.edit),
         "ghbdtn",
@@ -212,13 +218,8 @@ fn read_text(hwnd: HWND) -> String {
     let length = harness_send(hwnd, WM_GETTEXTLENGTH, 0, 0).expect("WM_GETTEXTLENGTH failed");
     assert!(length >= 0, "negative text length");
     let mut buffer = vec![0u16; length as usize + 1];
-    let copied = harness_send(
-        hwnd,
-        WM_GETTEXT,
-        buffer.len(),
-        buffer.as_mut_ptr() as isize,
-    )
-    .expect("WM_GETTEXT failed");
+    let copied = harness_send(hwnd, WM_GETTEXT, buffer.len(), buffer.as_mut_ptr() as isize)
+        .expect("WM_GETTEXT failed");
     assert!(copied >= 0, "negative WM_GETTEXT result");
     buffer.truncate((copied as usize).min(buffer.len()));
     String::from_utf16_lossy(&buffer)
