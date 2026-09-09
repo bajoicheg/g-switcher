@@ -18,17 +18,21 @@ The dedicated failure-path E2E deliberately blocks the helper UI thread and, in 
 
 ## Manual application matrix
 
-Record the exact application version and Windows build used for the check. Test with ordinary editable text; do not enter real credentials or secrets.
+The table below records the first real Windows 11 compatibility pass (build 22631) plus the focused Notepad retest of the corrected CI #325 release candidate. A required row remains `PENDING` when the original observation does not prove the exact required application/control.
 
 | Application | Version tested | Windows build | Auto | Manual current word | Selected text | Undo | Password/sensitive fields | Result / notes |
 |---|---|---|---|---|---|---|---|---|
-| Notepad | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Microsoft Word | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Microsoft Edge | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Google Chrome | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Telegram Desktop | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Visual Studio Code | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
-| Windows Terminal | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | release blocker until checked |
+| Notepad | 11.2607.14.0 | 22631 | PASS | PASS | PASS | PASS | UNSUPPORTED/FAIL-OPEN | Initial Auto/Selected/Undo passed; CI #325 focused retest confirmed Manual, Undo and Auto all PASS. No destructive behavior in the tested protected-field case. |
+| Microsoft Word | PENDING | 22631 | PENDING | PENDING | PENDING | PENDING | PENDING | Required desktop Word is not yet tested. The first pass used Microsoft 365 Word PWA in Chrome and therefore cannot satisfy the desktop Word row. |
+| Microsoft Edge | 152.0.4191.66 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | User confirmed ordinary text remained unchanged for Auto/Manual/Selected; password/sensitive test was also an unchanged safe no-op with no G-switcher action. |
+| Google Chrome | 152.0.7977.77 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | User confirmed ordinary text remained unchanged for Auto/Manual/Selected; password/sensitive test was also an unchanged safe no-op with no G-switcher action. |
+| Telegram Desktop | 7.2.5 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged; protected-field applicability/result was not separately confirmed. |
+| Visual Studio Code | PENDING | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged. Recorder reported 18.5.0, which is not accepted as verified VS Code version evidence; tooling now prefers the VS Code uninstall registration to avoid an unrelated Code.exe on PATH. |
+| Windows Terminal | 1.24.11911.0 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged; protected-input scenario was not separately confirmed. |
+
+### Supplemental observation — Word PWA
+
+The first pass also exercised **Microsoft 365 Word PWA in Chrome** on Windows build 22631. Its ordinary Auto/Manual/Selected operations were observed as unchanged safe no-ops. This is evidence about the Chrome-hosted web control only and is intentionally **not** substituted for the required Microsoft Word desktop row.
 
 Result semantics are intentionally strict and are based on the **observed safety behavior**, not simply on whether a conversion happened:
 
@@ -53,6 +57,16 @@ For every application above where a writable text control is available:
 6. Open a password/PIN/credential field when one exists; verify automatic, manual, selected-text and Undo actions do not modify the field and do not change its layout.
 7. Exercise Pause/Resume and application modes (`Auto`, `Manual only`, `Disabled`).
 8. For unsupported controls, confirm original input is preserved and no destructive action occurs; record `UNSUPPORTED/FAIL-OPEN` rather than `PASS` or `FAIL`.
+
+## Remaining manual blockers
+
+Before public promotion, the following evidence is still required:
+
+1. Microsoft Word **desktop** version + functional row.
+2. Exact Visual Studio Code version for the already observed safe fail-open behavior.
+3. Telegram Desktop protected-field result, or `N/A` with confirmation that no applicable protected field was available in the tested scenario.
+4. Visual Studio Code protected-field result, or `N/A` when genuinely not applicable.
+5. Windows Terminal protected-input result, or `N/A` when genuinely not applicable.
 
 ## Release rule
 
