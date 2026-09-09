@@ -11,7 +11,7 @@ use windows::Win32::UI::Accessibility::{
 };
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetWindowThreadProcessId, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK,
+    GetWindowThreadProcessId, SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_NULL,
 };
 
 const EM_REPLACESEL_VALUE: u32 = 0x00C2;
@@ -182,6 +182,12 @@ fn with_focused_element<T>(
     if thread_id == 0 || expected_process_id == 0 {
         return None;
     }
+
+    // UIA calls can otherwise wait on the target provider. Refuse to enter COM
+    // when the target UI thread is already hung or disappearing. This is a
+    // fail-open preflight only; all exact range/post-state checks still happen
+    // after the UIA provider is acquired.
+    send_timeout(hwnd, WM_NULL, 0, 0)?;
 
     AUTOMATION.with(|slot| {
         if slot.borrow().is_none() {
