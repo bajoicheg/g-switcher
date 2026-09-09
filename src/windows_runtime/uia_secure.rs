@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::mem::{size_of, zeroed};
-use std::ptr::null_mut;
 
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
