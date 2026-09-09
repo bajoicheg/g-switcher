@@ -6,7 +6,14 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$AllowedResults = @(
+$CoreInteractiveResults = @(
+    "PASS",
+    "FAIL",
+    "UNSUPPORTED/FAIL-OPEN",
+    "PENDING"
+)
+
+$OptionalInteractiveResults = @(
     "PASS",
     "FAIL",
     "UNSUPPORTED/FAIL-OPEN",
@@ -116,9 +123,32 @@ function Get-AppVersion {
     return "UNKNOWN"
 }
 
+function Read-ExplicitVersion {
+    param(
+        [string]$ApplicationName,
+        [string]$DetectedVersion
+    )
+
+    if ($ScaffoldOnly -or $DetectedVersion -ne "UNKNOWN") {
+        return $DetectedVersion
+    }
+
+    while ($true) {
+        $answer = (Read-Host "Версию $ApplicationName определить автоматически не удалось. Введите точную версию приложения").Trim()
+        if (
+            -not [string]::IsNullOrWhiteSpace($answer) -and
+            $answer -notmatch '^(?i:PENDING|UNKNOWN|N/A|NOT INSTALLED|UNAVAILABLE)$'
+        ) {
+            return $answer
+        }
+        Write-Host "Нужна реальная версия протестированного приложения; UNKNOWN/N/A/NOT INSTALLED не принимаются release gate." -ForegroundColor Yellow
+    }
+}
+
 function Read-ValidatedResult {
     param(
         [string]$Label,
+        [string[]]$Allowed,
         [string]$Default = "PENDING"
     )
 
@@ -133,12 +163,12 @@ function Read-ValidatedResult {
         }
 
         $normalized = $answer.Trim().ToUpperInvariant()
-        $match = $AllowedResults | Where-Object { $_ -eq $normalized } | Select-Object -First 1
+        $match = $Allowed | Where-Object { $_ -eq $normalized } | Select-Object -First 1
         if ($null -ne $match) {
             return $match
         }
 
-        Write-Host "Допустимые значения: $($AllowedResults -join ', ')" -ForegroundColor Yellow
+        Write-Host "Допустимые значения для этого поля: $($Allowed -join ', ')" -ForegroundColor Yellow
     }
 }
 
@@ -168,19 +198,21 @@ Write-Host "Windows build: $windowsBuild"
 Write-Host ""
 Write-Host "Перед фиксацией результата для каждого приложения выполните 8 кейсов из COMPATIBILITY_2.0.1.md." -ForegroundColor Yellow
 Write-Host "Не используйте реальные пароли, PIN, OTP или другие секреты." -ForegroundColor Yellow
-Write-Host "Для неподдерживаемого контрола фиксируйте UNSUPPORTED/FAIL-OPEN, а не PASS." -ForegroundColor Yellow
+Write-Host "Auto/Manual/Selected не допускают N/A: используйте PASS, FAIL или UNSUPPORTED/FAIL-OPEN." -ForegroundColor Yellow
+Write-Host "N/A допустим только для Undo и Password/sensitive fields, когда проверка действительно неприменима." -ForegroundColor Yellow
 Write-Host ""
 
 foreach ($application in $Applications) {
-    $version = Get-AppVersion -Application $application
+    $detectedVersion = Get-AppVersion -Application $application
+    $version = Read-ExplicitVersion -ApplicationName $application.Name -DetectedVersion $detectedVersion
     Write-Host "=== $($application.Name) ===" -ForegroundColor Cyan
-    Write-Host "Detected version: $version"
+    Write-Host "Version tested: $version"
 
-    $auto = Read-ValidatedResult -Label "Auto"
-    $manual = Read-ValidatedResult -Label "Manual current word"
-    $selected = Read-ValidatedResult -Label "Selected text"
-    $undo = Read-ValidatedResult -Label "Undo"
-    $sensitive = Read-ValidatedResult -Label "Password/sensitive fields"
+    $auto = Read-ValidatedResult -Label "Auto" -Allowed $CoreInteractiveResults
+    $manual = Read-ValidatedResult -Label "Manual current word" -Allowed $CoreInteractiveResults
+    $selected = Read-ValidatedResult -Label "Selected text" -Allowed $CoreInteractiveResults
+    $undo = Read-ValidatedResult -Label "Undo" -Allowed $OptionalInteractiveResults
+    $sensitive = Read-ValidatedResult -Label "Password/sensitive fields" -Allowed $OptionalInteractiveResults
     $notes = Read-Notes
 
     $rows += [pscustomobject]@{
@@ -214,9 +246,10 @@ foreach ($row in $rows) {
 
 $lines += @(
     "",
-    "Allowed result values: PASS, FAIL, UNSUPPORTED/FAIL-OPEN, N/A, PENDING.",
+    "Core columns (Auto, Manual current word, Selected text): PASS, FAIL, UNSUPPORTED/FAIL-OPEN, PENDING.",
+    "Undo and Password/sensitive fields: PASS, FAIL, UNSUPPORTED/FAIL-OPEN, N/A, PENDING.",
     "",
-    "Release rule: any PENDING row or any failure that can corrupt text or touch a protected field keeps 2.0.1 blocked."
+    "Release rule: any PENDING or FAIL blocks 2.0.1 publication. N/A is accepted only in the optional columns; unsupported text controls must be explicitly verified as fail-open."
 )
 
 $directory = Split-Path -Parent $OutputPath
@@ -228,5 +261,5 @@ $lines | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 Write-Host "Saved: $OutputPath" -ForegroundColor Green
 
 if ($ScaffoldOnly) {
-    Write-Host "Scaffold-only mode: all result fields remain PENDING." -ForegroundColor Yellow
+    Write-Host "Scaffold-only mode: all result fields remain PENDING; undetected versions remain UNKNOWN by design." -ForegroundColor Yellow
 }
