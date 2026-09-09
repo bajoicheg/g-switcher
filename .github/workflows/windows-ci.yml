@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: windows-rust-ci-${{ github.ref }}
@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.head_ref || github.ref_name }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Rust toolchain
         shell: pwsh
@@ -33,23 +33,6 @@ jobs:
           rustup default stable
           rustc --version
           cargo --version
-
-      - name: Apply manual hotkey layout-drift fix once
-        if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
-        shell: pwsh
-        run: |
-          $marker = 'potentially hotkey-shifted current HKL'
-          if (-not (Select-String -LiteralPath src/windows_runtime_v201.rs -SimpleMatch $marker -Quiet)) {
-            ./scripts/apply-manual-layout-drift-fix-v201.ps1
-            git config user.name 'g-switcher-ci'
-            git config user.email 'actions@github.com'
-            git add src/windows_runtime_v201.rs src/windows_runtime/cross_process_e2e.rs
-            git diff --cached --check
-            git commit -m 'Fix manual conversion when Ctrl+Shift changes layout'
-            git push origin HEAD:release/2.0.1
-          } else {
-            Write-Host 'Manual hotkey layout-drift fix is already present.'
-          }
 
       - name: Verify normalized 2.0.1 source
         if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
@@ -82,6 +65,9 @@ jobs:
             throw 'Windows PowerShell 5.1 executable is missing from the runner.'
           }
 
+          # The recorder is intentionally ASCII-only. Windows PowerShell 5.1
+          # treats a UTF-8 file without BOM as the legacy ANSI code page; keeping
+          # executable script bytes ASCII avoids locale-dependent parser failures.
           $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
           if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
             throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
@@ -100,6 +86,9 @@ jobs:
             throw 'Manual compatibility recorder produced an incomplete scaffold.'
           }
 
+          # A synthetic PENDING scaffold must be rejected. Do not couple this
+          # smoke test to the checked-in release matrix: after human testing the
+          # canonical matrix is expected to become complete and valid.
           & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
           if ($LASTEXITCODE -eq 0) {
             throw 'Compatibility verifier unexpectedly accepted a PENDING scaffold.'
@@ -130,6 +119,8 @@ jobs:
             throw 'Compatibility verifier rejected a complete non-blocking matrix.'
           }
 
+          # N/A is permitted only in genuinely optional columns. A core text
+          # operation must be PASS or explicitly UNSUPPORTED/FAIL-OPEN.
           $invalidCore = $valid.Replace(
             '| Notepad | 1.0.0 | 26100 | PASS |',
             '| Notepad | 1.0.0 | 26100 | N/A |'
