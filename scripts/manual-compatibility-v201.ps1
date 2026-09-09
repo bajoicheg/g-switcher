@@ -22,13 +22,48 @@ $OptionalInteractiveResults = @(
 )
 
 $Applications = @(
-    [pscustomobject]@{ Name = "Notepad"; Commands = @("notepad.exe"); RegistryPatterns = @("Windows Notepad", "Notepad") },
-    [pscustomobject]@{ Name = "Microsoft Word"; Commands = @("WINWORD.EXE"); RegistryPatterns = @("Microsoft 365", "Microsoft Office", "Microsoft Word") },
-    [pscustomobject]@{ Name = "Microsoft Edge"; Commands = @("msedge.exe"); RegistryPatterns = @("Microsoft Edge") },
-    [pscustomobject]@{ Name = "Google Chrome"; Commands = @("chrome.exe"); RegistryPatterns = @("Google Chrome") },
-    [pscustomobject]@{ Name = "Telegram Desktop"; Commands = @("Telegram.exe"); RegistryPatterns = @("Telegram Desktop") },
-    [pscustomobject]@{ Name = "Visual Studio Code"; Commands = @("Code.exe", "code.cmd"); RegistryPatterns = @("Microsoft Visual Studio Code", "Visual Studio Code") },
-    [pscustomobject]@{ Name = "Windows Terminal"; Commands = @("wt.exe"); RegistryPatterns = @("Windows Terminal") }
+    [pscustomobject]@{
+        Name = "Notepad"
+        Commands = @("notepad.exe")
+        RegistryPatterns = @("Windows Notepad", "Notepad")
+        PackagePatterns = @("Microsoft.WindowsNotepad")
+    },
+    [pscustomobject]@{
+        Name = "Microsoft Word"
+        Commands = @("WINWORD.EXE")
+        RegistryPatterns = @("Microsoft 365", "Microsoft Office", "Microsoft Word")
+        PackagePatterns = @()
+    },
+    [pscustomobject]@{
+        Name = "Microsoft Edge"
+        Commands = @("msedge.exe")
+        RegistryPatterns = @("Microsoft Edge")
+        PackagePatterns = @()
+    },
+    [pscustomobject]@{
+        Name = "Google Chrome"
+        Commands = @("chrome.exe")
+        RegistryPatterns = @("Google Chrome")
+        PackagePatterns = @()
+    },
+    [pscustomobject]@{
+        Name = "Telegram Desktop"
+        Commands = @("Telegram.exe")
+        RegistryPatterns = @("Telegram Desktop")
+        PackagePatterns = @("TelegramMessengerLLP.TelegramDesktop")
+    },
+    [pscustomobject]@{
+        Name = "Visual Studio Code"
+        Commands = @("Code.exe", "code.cmd")
+        RegistryPatterns = @("Microsoft Visual Studio Code", "Visual Studio Code")
+        PackagePatterns = @()
+    },
+    [pscustomobject]@{
+        Name = "Windows Terminal"
+        Commands = @("wt.exe")
+        RegistryPatterns = @("Windows Terminal")
+        PackagePatterns = @("Microsoft.WindowsTerminal", "Microsoft.WindowsTerminalPreview")
+    }
 )
 
 function Get-WindowsBuild {
@@ -43,6 +78,43 @@ function Get-WindowsBuild {
     }
 
     return [string][Environment]::OSVersion.Version.Build
+}
+
+function Get-AppxVersion {
+    param([string[]]$Patterns)
+
+    if ($Patterns.Count -eq 0) {
+        return $null
+    }
+
+    try {
+        $command = Get-Command Get-AppxPackage -ErrorAction Stop
+        if ($null -eq $command) {
+            return $null
+        }
+    }
+    catch {
+        return $null
+    }
+
+    foreach ($pattern in $Patterns) {
+        try {
+            $package = Get-AppxPackage -Name $pattern -ErrorAction SilentlyContinue |
+                Sort-Object -Property Version -Descending |
+                Select-Object -First 1
+            if ($null -ne $package -and $null -ne $package.Version) {
+                $version = [string]$package.Version
+                if (-not [string]::IsNullOrWhiteSpace($version)) {
+                    return $version.Trim()
+                }
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    return $null
 }
 
 function Get-ExecutableVersion {
@@ -109,6 +181,14 @@ function Get-RegistryVersion {
 
 function Get-AppVersion {
     param($Application)
+
+    # Prefer the package version for Store/MSIX applications. In particular,
+    # modern Notepad and Windows Terminal may expose an execution alias whose
+    # file version describes the Windows stub rather than the app under test.
+    $version = Get-AppxVersion -Patterns $Application.PackagePatterns
+    if (-not [string]::IsNullOrWhiteSpace($version)) {
+        return $version
+    }
 
     $version = Get-ExecutableVersion -Commands $Application.Commands
     if (-not [string]::IsNullOrWhiteSpace($version)) {
