@@ -1204,8 +1204,28 @@ impl Engine {
         {
             return false;
         }
-        let target = opposite_language(source.language);
-        let corrected = opposite_layout_text(&self.candidate, source.language);
+        // The default manual hotkeys use Ctrl+Shift. On Windows installations
+        // where Ctrl+Shift is also configured as an input-language shortcut,
+        // the OS may change the focused thread HKL before F12/F10 reaches us.
+        // The candidate itself still records the alphabet that was typed, so
+        // derive the manual source language from that text instead of trusting
+        // the potentially hotkey-shifted current HKL.
+        let source_language = infer_language(&self.candidate).unwrap_or(source.language);
+        let source_hkl = if source_language == source.language {
+            source.hkl
+        } else {
+            let Some(hkl) = select_layout(source_language) else {
+                return false;
+            };
+            hkl
+        };
+        let source = FocusTarget {
+            hkl: source_hkl,
+            language: source_language,
+            ..source
+        };
+        let target = opposite_language(source_language);
+        let corrected = opposite_layout_text(&self.candidate, source_language);
         self.previous = None;
         self.selection_undo = None;
         self.queue_correction_parts(
@@ -1341,10 +1361,19 @@ impl Engine {
         let Some(now) = focused_target() else {
             return;
         };
+        // Explicit manual actions carry their held modifiers. Allow only those
+        // actions to tolerate HKL drift caused by the hotkey chord itself. Focus,
+        // process, UI thread, generation and exact source suffix are still
+        // revalidated before mutation, so unrelated/stale operations remain
+        // fail-open.
+        let manual_layout_drift = pending.held_modifiers.ctrl
+            || pending.held_modifiers.shift
+            || pending.held_modifiers.alt;
+        let pre_operation_hkl = now.hkl;
         if now.hwnd as isize != pending.focus
             || now.process_id != pending.process_id
             || now.thread_id != pending.thread_id
-            || now.hkl != pending.source_hkl
+            || (!manual_layout_drift && now.hkl != pending.source_hkl)
         {
             return;
         }
@@ -1374,7 +1403,7 @@ impl Engine {
                     &pending.replacement_text,
                 )
             {
-                let _ = switch_layout(hwnd, pending.thread_id, pending.source_hkl);
+                let _ = switch_layout(hwnd, pending.thread_id, pre_operation_hkl);
                 return;
             }
         } else {
@@ -1392,7 +1421,7 @@ impl Engine {
             if !append_text_for_layout(&mut inputs, &pending.corrected, pending.target_hkl)
                 || !append_optional_delimiter(&mut inputs, pending.delimiter, pending.target_hkl)
             {
-                let _ = switch_layout(hwnd, pending.thread_id, pending.source_hkl);
+                let _ = switch_layout(hwnd, pending.thread_id, pre_operation_hkl);
                 return;
             }
             append_modifier_presses(&mut inputs, active_modifiers);

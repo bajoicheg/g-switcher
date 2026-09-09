@@ -175,6 +175,30 @@ fn real_cross_process_edit_e2e_release_gate() {
     inject_hotkey(false, VK_BACK);
     await_text(helper.edit, "ghbdtn");
 
+    eprintln!("G-switcher cross-process E2E: manual current word survives HKL drift");
+    prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
+    inject_strokes(&[
+        b'G' as u16,
+        b'H' as u16,
+        b'B' as u16,
+        b'D' as u16,
+        b'T' as u16,
+        b'N' as u16,
+    ]);
+    await_text(helper.edit, "ghbdtn");
+    // Simulate Windows Ctrl+Shift language-switch behavior occurring before
+    // the final manual-hotkey keydown. The typed candidate was English and
+    // must still convert to Russian rather than silently doing nothing.
+    request_layout(helper.edit, Language::Russian);
+    wait_until(Duration::from_secs(2), || unsafe {
+        language_from_hkl(GetKeyboardLayout(ui_thread_id) as isize) == Some(Language::Russian)
+    });
+    prime_policy();
+    inject_hotkey(true, VK_F12_VALUE);
+    await_text(helper.edit, "привет");
+    inject_hotkey(false, VK_BACK);
+    await_text(helper.edit, "ghbdtn");
+
     eprintln!("G-switcher cross-process E2E: selected text + undo");
     settings::replace_runtime_settings_for_test(settings::RuntimeSettings::default());
     prepare_cross_process_case(helper.window, helper.edit, ui_thread_id, Language::English);
