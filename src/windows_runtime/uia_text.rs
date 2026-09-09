@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use windows::core::{BSTR, Interface};
+use windows::core::{Interface, BSTR};
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
 };
@@ -197,7 +197,9 @@ pub fn replace_range_if_matches_value(
 
         let target_range = range_for_char_offsets(&document, start, end)?;
         unsafe { target_range.Select().ok()? };
-        if current_selected_text(text_pattern)? != expected || value_of(value_pattern)? != before_value {
+        if current_selected_text(text_pattern)? != expected
+            || value_of(value_pattern)? != before_value
+        {
             let _ = select_offsets(text_pattern, original_selection.0, original_selection.1);
             return None;
         }
@@ -313,7 +315,9 @@ fn with_focused_element<T>(
         let automation = automation.as_ref()?;
         let element = unsafe { automation.GetFocusedElement().ok()? };
         let process_id = unsafe { element.CurrentProcessId().ok()? } as u32;
-        if process_id != expected_process_id || unsafe { element.CurrentIsPassword().ok()? }.as_bool() {
+        if process_id != expected_process_id
+            || unsafe { element.CurrentIsPassword().ok()? }.as_bool()
+        {
             return None;
         }
 
@@ -360,8 +364,7 @@ fn selection_offsets(
     document: &IUIAutomationTextRange,
 ) -> Option<(u32, u32)> {
     let selection = current_selection_range(pattern)?;
-    let prefix_start =
-        prefix_to_endpoint(document, &selection, TextPatternRangeEndpoint_Start)?;
+    let prefix_start = prefix_to_endpoint(document, &selection, TextPatternRangeEndpoint_Start)?;
     let prefix_end = prefix_to_endpoint(document, &selection, TextPatternRangeEndpoint_End)?;
     Some((char_count_u32(&prefix_start)?, char_count_u32(&prefix_end)?))
 }
