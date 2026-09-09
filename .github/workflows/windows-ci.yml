@@ -45,7 +45,7 @@ jobs:
             Write-Host '2.0.1 source is not reproducibly normalized. Commit these changes instead of letting CI mutate the branch:'
             git status --short
             git diff --check
-            git diff -- Cargo.toml Cargo.lock src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/uia_secure.rs src/windows_runtime/uia_text.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs
+            git diff -- Cargo.toml Cargo.lock src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/uia_secure.rs src/windows_runtime/uia_text.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs src/bin/g-switcher-failure-e2e.rs
             throw 'Normalization changed tracked source.'
           }
 
@@ -70,6 +70,12 @@ jobs:
         run: |
           $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
           cargo test --locked --lib real_cross_process_edit_e2e_release_gate -- --ignored --test-threads=1 --nocapture
+
+      - name: Windows hung and closing target E2E
+        shell: pwsh
+        run: |
+          $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
+          cargo run --locked --bin g-switcher-failure-e2e
 
       - name: Clippy
         shell: pwsh
