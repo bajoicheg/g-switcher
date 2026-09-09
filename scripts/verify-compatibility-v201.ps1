@@ -15,18 +15,24 @@ $RequiredApplications = @(
     "Windows Terminal"
 )
 
-# Core text-operation columns must be either demonstrated working or explicitly
-# unsupported while preserving the user's original input. N/A is not meaningful
-# for these capabilities because every required application is being assessed as
-# a text-input target.
+# These are product-critical targets for 2.0.1. A safe no-op is not enough:
+# Auto, manual current-word conversion, selected-text conversion and Undo must
+# actually work in ordinary editable fields. Password/sensitive fields are
+# evaluated separately and must remain protected.
+$FullSupportApplications = @(
+    "Notepad",
+    "Microsoft Edge",
+    "Google Chrome"
+)
+
+# Other required applications may still be explicitly documented as unsupported
+# if their ordinary input remains unchanged. N/A is never valid for a core text
+# operation because every row represents a text-input target.
 $CoreResults = @(
     "PASS",
     "UNSUPPORTED/FAIL-OPEN"
 )
 
-# Undo can be inapplicable when the corresponding operation is unsupported;
-# sensitive-field testing can be inapplicable when an application exposes no
-# password/PIN/credential field in the tested surface.
 $OptionalResults = @(
     "PASS",
     "N/A",
@@ -93,10 +99,17 @@ foreach ($application in $RequiredApplications) {
         }
     }
 
-    Assert-Result -Application $application -Column "Auto" -Value $cells[3] -Allowed $CoreResults
-    Assert-Result -Application $application -Column "Manual current word" -Value $cells[4] -Allowed $CoreResults
-    Assert-Result -Application $application -Column "Selected text" -Value $cells[5] -Allowed $CoreResults
-    Assert-Result -Application $application -Column "Undo" -Value $cells[6] -Allowed $OptionalResults
+    $coreAllowed = $CoreResults
+    $undoAllowed = $OptionalResults
+    if ($FullSupportApplications -contains $application) {
+        $coreAllowed = @("PASS")
+        $undoAllowed = @("PASS")
+    }
+
+    Assert-Result -Application $application -Column "Auto" -Value $cells[3] -Allowed $coreAllowed
+    Assert-Result -Application $application -Column "Manual current word" -Value $cells[4] -Allowed $coreAllowed
+    Assert-Result -Application $application -Column "Selected text" -Value $cells[5] -Allowed $coreAllowed
+    Assert-Result -Application $application -Column "Undo" -Value $cells[6] -Allowed $undoAllowed
     Assert-Result -Application $application -Column "Password/sensitive fields" -Value $cells[7] -Allowed $OptionalResults
 }
 
