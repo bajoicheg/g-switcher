@@ -102,7 +102,7 @@ impl Drop for CrossProcessHelper {
 #[cfg(windows)]
 fn main() {
     eprintln!("G-switcher failure E2E: hung target must fail open");
-    let mut hung = CrossProcessHelper::spawn();
+    let hung = CrossProcessHelper::spawn();
     set_text(hung.edit, "ghbdtn");
     select_all(hung.edit);
     block_ui(hung.window, 900);
