@@ -79,13 +79,12 @@ fn responsive_focused_hwnd(expected_process_id: u32) -> Option<HWND> {
 
         let mut info: GUITHREADINFO = zeroed();
         info.cbSize = size_of::<GUITHREADINFO>() as u32;
-        let focused = if GetGUIThreadInfo(foreground_thread, &mut info) != 0
-            && !info.hwndFocus.is_null()
-        {
-            info.hwndFocus
-        } else {
-            foreground
-        };
+        let focused =
+            if GetGUIThreadInfo(foreground_thread, &mut info) != 0 && !info.hwndFocus.is_null() {
+                info.hwndFocus
+            } else {
+                foreground
+            };
 
         let mut focused_process_id = 0u32;
         if GetWindowThreadProcessId(focused, &mut focused_process_id as *mut u32) == 0
