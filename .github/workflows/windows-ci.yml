@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
         run: cargo test --locked --all-targets
 
-      - name: Manual compatibility helper smoke test
+      - name: Manual compatibility tooling smoke test
         shell: pwsh
         run: |
           $output = Join-Path $env:RUNNER_TEMP "compatibility-results-2.0.1.md"
@@ -68,6 +68,38 @@ jobs:
           $text = Get-Content -LiteralPath $output -Raw
           if ($text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
             throw 'Manual compatibility recorder produced an incomplete scaffold.'
+          }
+
+          # The checked-in matrix is deliberately PENDING before human testing;
+          # the strict publication verifier must reject it.
+          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path COMPATIBILITY_2.0.1.md
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compatibility verifier unexpectedly accepted the PENDING release matrix.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $valid = @'
+          # G-switcher 2.0.1 — compatibility verifier fixture
+
+          ## Manual application matrix
+
+          | Application | Version tested | Windows build | Auto | Manual current word | Selected text | Undo | Password/sensitive fields | Result / notes |
+          |---|---|---|---|---|---|---|---|---|
+          | Notepad | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Microsoft Word | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Microsoft Edge | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | fixture |
+          | Google Chrome | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PASS | fixture |
+          | Telegram Desktop | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Visual Studio Code | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Windows Terminal | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | N/A | fixture |
+
+          ## End fixture
+          '@
+          $validPath = Join-Path $env:RUNNER_TEMP "compatibility-valid-2.0.1.md"
+          Set-Content -LiteralPath $validPath -Value $valid -Encoding UTF8
+          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $validPath
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Compatibility verifier rejected a complete non-blocking matrix.'
           }
 
       - name: Build cross-process E2E helper
