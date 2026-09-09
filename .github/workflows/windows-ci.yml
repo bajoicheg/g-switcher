@@ -98,6 +98,7 @@ jobs:
           Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $packageRoot
           Copy-Item -LiteralPath README.md -Destination $packageRoot
           Copy-Item -LiteralPath CHANGELOG.md -Destination $packageRoot
+          Copy-Item -LiteralPath RELEASE_NOTES_2.0.1.md -Destination $packageRoot
           Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $packageRoot
           $zip = "target/release/g-switcher-2.0.1-windows-x64.zip"
