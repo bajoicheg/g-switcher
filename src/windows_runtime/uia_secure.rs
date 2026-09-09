@@ -1,9 +1,18 @@
 use std::cell::RefCell;
+use std::mem::{size_of, zeroed};
+use std::ptr::null_mut;
 
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
 };
 use windows::Win32::UI::Accessibility::{CUIAutomation, IUIAutomation};
+use windows_sys::Win32::Foundation::HWND;
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    GetForegroundWindow, GetGUIThreadInfo, GetWindowThreadProcessId, SendMessageTimeoutW,
+    GUITHREADINFO, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_NULL,
+};
+
+const UIA_PREFLIGHT_TIMEOUT_MS: u32 = 75;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UiaSecurityProbe {
@@ -21,8 +30,12 @@ thread_local! {
 /// Queries only metadata needed to decide whether the currently focused UIA
 /// element is protected. No text-bearing UI Automation property or pattern is
 /// requested. Failure is returned as None so the caller can fail open (leave
-/// user input unchanged) for unsupported controls.
+/// user input unchanged) for unsupported, hung, or disappearing controls.
 pub fn probe_focused(expected_process_id: u32) -> Option<UiaSecurityProbe> {
+    // Avoid entering a potentially blocking UIA provider when the Win32 focus
+    // thread is already unresponsive. This does not read any user text.
+    let _responsive_hwnd = responsive_focused_hwnd(expected_process_id)?;
+
     AUTOMATION.with(|slot| {
         if slot.borrow().is_none() {
             unsafe {
@@ -49,6 +62,51 @@ pub fn probe_focused(expected_process_id: u32) -> Option<UiaSecurityProbe> {
             is_password,
         })
     })
+}
+
+fn responsive_focused_hwnd(expected_process_id: u32) -> Option<HWND> {
+    unsafe {
+        let foreground = GetForegroundWindow();
+        if foreground.is_null() {
+            return None;
+        }
+
+        let mut foreground_process_id = 0u32;
+        let foreground_thread =
+            GetWindowThreadProcessId(foreground, &mut foreground_process_id as *mut u32);
+        if foreground_thread == 0 || foreground_process_id != expected_process_id {
+            return None;
+        }
+
+        let mut info: GUITHREADINFO = zeroed();
+        info.cbSize = size_of::<GUITHREADINFO>() as u32;
+        let focused = if GetGUIThreadInfo(foreground_thread, &mut info) != 0
+            && !info.hwndFocus.is_null()
+        {
+            info.hwndFocus
+        } else {
+            foreground
+        };
+
+        let mut focused_process_id = 0u32;
+        if GetWindowThreadProcessId(focused, &mut focused_process_id as *mut u32) == 0
+            || focused_process_id != expected_process_id
+        {
+            return None;
+        }
+
+        let mut result = 0usize;
+        let ok = SendMessageTimeoutW(
+            focused,
+            WM_NULL,
+            0,
+            0,
+            SMTO_ABORTIFHUNG | SMTO_BLOCK,
+            UIA_PREFLIGHT_TIMEOUT_MS,
+            &mut result,
+        );
+        (ok != 0).then_some(focused)
+    }
 }
 
 #[cfg(test)]
