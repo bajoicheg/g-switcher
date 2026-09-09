@@ -103,6 +103,32 @@ jobs:
             throw 'Compatibility verifier rejected a complete non-blocking matrix.'
           }
 
+          # N/A is permitted only in genuinely optional columns. A core text
+          # operation must be PASS or explicitly UNSUPPORTED/FAIL-OPEN.
+          $invalidCore = $valid.Replace(
+            '| Notepad | 1.0.0 | 26100 | PASS |',
+            '| Notepad | 1.0.0 | 26100 | N/A |'
+          )
+          $invalidCorePath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-core-2.0.1.md"
+          Set-Content -LiteralPath $invalidCorePath -Value $invalidCore -Encoding UTF8
+          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $invalidCorePath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compatibility verifier unexpectedly accepted N/A for a core text-operation column.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $invalidMetadata = $valid.Replace(
+            '| Microsoft Word | 1.0.0 | 26100 |',
+            '| Microsoft Word | UNKNOWN | 26100 |'
+          )
+          $invalidMetadataPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-metadata-2.0.1.md"
+          Set-Content -LiteralPath $invalidMetadataPath -Value $invalidMetadata -Encoding UTF8
+          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $invalidMetadataPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compatibility verifier unexpectedly accepted UNKNOWN application metadata.'
+          }
+          $global:LASTEXITCODE = 0
+
       - name: Build cross-process E2E helper
         shell: pwsh
         run: cargo build --locked --bin g-switcher-e2e-helper
