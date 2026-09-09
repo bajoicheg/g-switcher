@@ -20,13 +20,21 @@ The executable under test must come from the same CI run as the scripts and docu
 2. Verify `g-switcher.exe` against `g-switcher.exe.sha256`.
 3. Start `g-switcher.exe` normally, without Administrator elevation unless the application being tested is itself elevated.
 4. Keep the default 2.0.1 settings unless a test case explicitly asks for Manual-only, Disabled, Pause, or a hotkey action.
-5. Open a PowerShell terminal in the extracted kit directory and start the recorder:
+5. If Windows marked the downloaded ZIP/files as Internet-originated and your policy is `RemoteSigned`, unblock the trusted test-kit files after inspection. For an already extracted kit:
 
 ```powershell
-pwsh -NoProfile -File .\manual-compatibility-v201.ps1
+Get-ChildItem -File | Unblock-File
 ```
 
-If PowerShell refuses to run the downloaded script because Windows marked the ZIP as originating from the Internet, inspect the files first and then use Windows' normal file-unblock mechanism for this extracted test kit. Do not change machine-wide execution policy.
+Do not change machine-wide execution policy.
+
+6. Open Windows PowerShell in the extracted kit directory and start the recorder. PowerShell 7 (`pwsh`) is not required:
+
+```powershell
+powershell.exe -NoProfile -File .\manual-compatibility-v201.ps1
+```
+
+The recorder is intentionally kept compatible with Windows PowerShell 5.1 and is exercised by that exact host in CI.
 
 ## Required applications
 
@@ -75,7 +83,7 @@ For `Undo` and `Password/sensitive fields`, `N/A` is additionally permitted when
 The recorder writes `compatibility-results-2.0.1.md`. Validate it locally:
 
 ```powershell
-pwsh -NoProfile -File .\verify-compatibility-v201.ps1 -Path .\compatibility-results-2.0.1.md
+powershell.exe -NoProfile -File .\verify-compatibility-v201.ps1 -Path .\compatibility-results-2.0.1.md
 ```
 
 A successful validator run means the matrix contains no publication-blocking values. Keep the generated result file; it is the evidence used to update the canonical `COMPATIBILITY_2.0.1.md` before the PR is taken out of Draft and merged.
