@@ -57,6 +57,19 @@ jobs:
         shell: pwsh
         run: cargo test --locked --all-targets
 
+      - name: Manual compatibility helper smoke test
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "compatibility-results-2.0.1.md"
+          ./scripts/manual-compatibility-v201.ps1 -ScaffoldOnly -OutputPath $output
+          if (-not (Test-Path -LiteralPath $output -PathType Leaf)) {
+            throw 'Manual compatibility recorder did not create its result file.'
+          }
+          $text = Get-Content -LiteralPath $output -Raw
+          if ($text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
+            throw 'Manual compatibility recorder produced an incomplete scaffold.'
+          }
+
       - name: Build cross-process E2E helper
         shell: pwsh
         run: cargo build --locked --bin g-switcher-e2e-helper
