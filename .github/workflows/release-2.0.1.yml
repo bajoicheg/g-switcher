@@ -31,6 +31,79 @@ jobs:
           }
           $global:LASTEXITCODE = 0
 
+      - name: Checkout exact release commit
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Verify manual compatibility gate
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: |
+          $path = "COMPATIBILITY_2.0.1.md"
+          if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing $path on the exact release commit."
+          }
+
+          $lines = @(Get-Content -LiteralPath $path)
+          $start = [Array]::IndexOf($lines, "## Manual application matrix")
+          if ($start -lt 0) {
+            throw "Manual application matrix section is missing from $path."
+          }
+
+          $table = @()
+          for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s+') {
+              break
+            }
+            if ($lines[$i] -match '^\|') {
+              $table += $lines[$i]
+            }
+          }
+
+          $requiredApps = @(
+            "Notepad",
+            "Microsoft Word",
+            "Microsoft Edge",
+            "Google Chrome",
+            "Telegram Desktop",
+            "Visual Studio Code",
+            "Windows Terminal"
+          )
+          $allowed = @("PASS", "N/A", "UNSUPPORTED/FAIL-OPEN")
+
+          foreach ($app in $requiredApps) {
+            $pattern = '^\|\s*' + [regex]::Escape($app) + '\s*\|'
+            $matches = @($table | Where-Object { $_ -match $pattern })
+            if ($matches.Count -ne 1) {
+              throw "Expected exactly one manual compatibility row for $app, found $($matches.Count)."
+            }
+
+            $cells = @($matches[0].Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+            if ($cells.Count -lt 9) {
+              throw "Malformed compatibility row for $app."
+            }
+
+            $version = $cells[1]
+            $windowsBuild = $cells[2]
+            foreach ($metadata in @($version, $windowsBuild)) {
+              if ([string]::IsNullOrWhiteSpace($metadata) -or $metadata -match '^(?i:PENDING|UNKNOWN)$') {
+                throw "Compatibility metadata is incomplete for $app."
+              }
+            }
+
+            foreach ($index in 3..7) {
+              $result = $cells[$index].ToUpperInvariant()
+              if ($allowed -notcontains $result) {
+                throw "Compatibility gate for $app contains blocking result '$($cells[$index])'. Allowed: $($allowed -join ', ')."
+              }
+            }
+          }
+
+          Write-Host "Manual compatibility gate passed for all required applications."
+
       - name: Download checked Windows artifact
         if: steps.existing.outputs.exists != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -55,17 +128,38 @@ jobs:
             if ($actual -ne $expected) {
               throw "SHA-256 mismatch for $($file.Path): expected $expected, got $actual"
             }
+            Write-Host "SHA-256 verified for $($file.Path): $actual"
           }
 
-      - name: Verify packaged executable
+      - name: Verify packaged executable and release documents
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: |
           Expand-Archive -LiteralPath release/g-switcher-2.0.1-windows-x64.zip -DestinationPath release/package-check
+
           $standalone = (Get-FileHash -LiteralPath release/g-switcher.exe -Algorithm SHA256).Hash
           $packaged = (Get-FileHash -LiteralPath release/package-check/g-switcher.exe -Algorithm SHA256).Hash
           if ($standalone -ne $packaged) {
             throw "Packaged executable differs from the checked standalone executable"
+          }
+
+          $requiredDocs = @(
+            "README.md",
+            "CHANGELOG.md",
+            "RELEASE_NOTES_2.0.1.md",
+            "COMPATIBILITY_2.0.1.md",
+            "THIRD_PARTY_DATA.md"
+          )
+          foreach ($doc in $requiredDocs) {
+            $packagedDoc = Join-Path "release/package-check" $doc
+            if (-not (Test-Path -LiteralPath $packagedDoc -PathType Leaf)) {
+              throw "Release package is missing $doc"
+            }
+            $sourceHash = (Get-FileHash -LiteralPath $doc -Algorithm SHA256).Hash
+            $packageHash = (Get-FileHash -LiteralPath $packagedDoc -Algorithm SHA256).Hash
+            if ($sourceHash -ne $packageHash) {
+              throw "Packaged $doc differs from the exact release commit"
+            }
           }
 
       - name: Create v2.0.1 release
@@ -83,4 +177,4 @@ jobs:
             --repo $env:GITHUB_REPOSITORY `
             --target $env:TARGET_SHA `
             --title "G-switcher 2.0.1" `
-            --notes "G-switcher 2.0.1 is a safety-hardening release. It moves low-level hooks onto a dedicated lightweight thread, invalidates stale correction and Undo contexts on focus/navigation changes, verifies Edit/RichEdit mutations and rolls them back on mismatch, bounds cross-process control messages with timeouts, hardens password-field fail-open behavior, preserves code-safe technical tokens, and adds a mandatory separate-process Win32 E2E gate for automatic correction, manual conversion, selected text, Undo, password fields and focus races. Unsupported mutation paths fail open until a verifiable adapter is available. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
+            --notes-file RELEASE_NOTES_2.0.1.md
