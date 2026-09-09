@@ -10,8 +10,11 @@ This matrix is part of the 2.0.1 release gate. A blank or `PENDING` manual resul
 | Separate-process `RICHEDIT50W` | not claimed | not claimed | CI | CI | UIA metadata checked | mandatory |
 | Separate-process password `Edit` | blocked | blocked | blocked | blocked | CI: native + UIA `IsPassword` | mandatory |
 | Same-process Win32 `Edit` regression fixture | CI | CI | CI | CI | CI | mandatory |
+| Hung/closing separate-process text target | mutation adapter fails open | mutation adapter fails open | mutation adapter fails open | N/A | bounded liveness preflight | mandatory |
 
 `CI` means the behavior is exercised by an automated Windows release-gate test. It does not imply compatibility with every control implemented by an application.
+
+The dedicated failure-path E2E deliberately blocks the helper UI thread and, in a separate case, terminates the helper process during a verified mutation attempt. Both cases must return without changing the target text within a bounded timeout, and a fresh target must remain writable afterward. This gate covers the verified text-mutation adapter itself; it does not claim full application-level Auto/Manual/Undo compatibility for arbitrary hung controls.
 
 ## Manual application matrix
 
