@@ -66,15 +66,16 @@ jobs:
             throw 'Manual compatibility recorder did not create its result file.'
           }
           $text = Get-Content -LiteralPath $output -Raw
-          if ($text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
+          if ($text -notmatch '## Manual application matrix' -or $text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
             throw 'Manual compatibility recorder produced an incomplete scaffold.'
           }
 
-          # The checked-in matrix is deliberately PENDING before human testing;
-          # the strict publication verifier must reject it.
-          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path COMPATIBILITY_2.0.1.md
+          # A synthetic PENDING scaffold must be rejected. Do not couple this
+          # smoke test to the checked-in release matrix: after human testing the
+          # canonical matrix is expected to become complete and valid.
+          & pwsh -NoProfile -File ./scripts/verify-compatibility-v201.ps1 -Path $output
           if ($LASTEXITCODE -eq 0) {
-            throw 'Compatibility verifier unexpectedly accepted the PENDING release matrix.'
+            throw 'Compatibility verifier unexpectedly accepted a PENDING scaffold.'
           }
           $global:LASTEXITCODE = 0
 
