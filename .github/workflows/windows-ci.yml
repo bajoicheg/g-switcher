@@ -178,6 +178,18 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -LiteralPath "$zip.sha256" -Value "$hash  g-switcher-2.0.1-windows-x64.zip" -Encoding ascii -NoNewline
 
+      - name: Prepare manual compatibility kit
+        shell: pwsh
+        run: |
+          $kitRoot = "target/manual-compatibility/g-switcher-2.0.1"
+          New-Item -ItemType Directory -Path $kitRoot -Force | Out-Null
+          Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $kitRoot
+          Copy-Item -LiteralPath scripts/manual-compatibility-v201.ps1 -Destination $kitRoot
+          Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
+          Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
+          Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+
       - name: Upload checked Windows artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -187,6 +199,14 @@ jobs:
             target/release/g-switcher.exe.sha256
             target/release/g-switcher-2.0.1-windows-x64.zip
             target/release/g-switcher-2.0.1-windows-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload manual compatibility kit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g-switcher-2.0.1-manual-compatibility-kit
+          path: target/manual-compatibility/g-switcher-2.0.1
           if-no-files-found: error
           retention-days: 30
 
