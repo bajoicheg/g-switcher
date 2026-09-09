@@ -6,6 +6,8 @@ use std::io::{self, Write};
 use std::mem::zeroed;
 #[cfg(windows)]
 use std::ptr::{null, null_mut};
+#[cfg(windows)]
+use std::time::Duration;
 
 #[cfg(windows)]
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -22,6 +24,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 #[cfg(windows)]
 const WM_TEST_SET_LAYOUT_AND_FOCUS: u32 = WM_APP + 0x51;
+#[cfg(windows)]
+const WM_TEST_BLOCK_UI: u32 = WM_APP + 0x52;
 #[cfg(windows)]
 const WS_BORDER_STYLE: u32 = 0x0080_0000;
 #[cfg(windows)]
@@ -179,6 +183,13 @@ unsafe extern "system" fn window_proc(
             ActivateKeyboardLayout(wparam as *mut core::ffi::c_void, 0);
             SetForegroundWindow(hwnd);
             SetFocus(lparam as HWND);
+            0
+        }
+        WM_TEST_BLOCK_UI => {
+            // Test-only controlled hang. This intentionally blocks the helper
+            // UI thread so the parent can verify that G-switcher times out and
+            // leaves text unchanged rather than waiting indefinitely.
+            std::thread::sleep(Duration::from_millis(wparam as u64));
             0
         }
         WM_CLOSE => {
