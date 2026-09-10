@@ -130,7 +130,9 @@ fn record(path: &Path, resume: bool) -> Result<(), String> {
                     println!("{application}: existing passing row kept.");
                     continue;
                 }
-                println!("{application}: existing row is incomplete/blocking and will be retested.");
+                println!(
+                    "{application}: existing row is incomplete/blocking and will be retested."
+                );
             }
         }
 
@@ -419,7 +421,10 @@ fn verify_rows(rows: &[Row]) -> Result<(), String> {
     let mut by_app = HashMap::new();
     for row in rows {
         if by_app.insert(row.application.as_str(), row).is_some() {
-            return Err(format!("duplicate compatibility row for {}", row.application));
+            return Err(format!(
+                "duplicate compatibility row for {}",
+                row.application
+            ));
         }
     }
 
@@ -528,8 +533,7 @@ fn detect_application_version(application: &str) -> Option<String> {
 }
 
 fn query_first_registry_value(keys: &[&str], name: &str) -> Option<String> {
-    keys.iter()
-        .find_map(|key| query_registry_value(key, name))
+    keys.iter().find_map(|key| query_registry_value(key, name))
 }
 
 fn query_registry_value(key: &str, name: &str) -> Option<String> {
