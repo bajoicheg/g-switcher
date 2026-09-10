@@ -128,20 +128,14 @@ fn find_browser(executable_name: &str, candidates: &[(&str, &str)]) -> PathBuf {
 }
 
 fn exercise_browser(browser: &BrowserSpec) {
-    if let Ok(version) = Command::new(&browser.executable).arg("--version").output() {
-        let stdout = String::from_utf8_lossy(&version.stdout);
-        let stderr = String::from_utf8_lossy(&version.stderr);
-        let text = if stdout.trim().is_empty() {
-            stderr
-        } else {
-            stdout
-        };
-        eprintln!(
-            "G-switcher browser UIA E2E: {} version {}",
-            browser.label,
-            text.trim()
-        );
-    }
+    // Do not launch Chromium with --version here. On Windows it can delegate to
+    // an already-running browser process and keep the parent waiting forever.
+    // Version capture belongs to the separate compatibility recorder, which
+    // reads installer-maintained registry metadata without starting a GUI app.
+    eprintln!(
+        "G-switcher browser UIA E2E executable: {}",
+        browser.executable.display()
+    );
 
     let root = std::env::temp_dir().join(format!(
         "g-switcher-browser-uia-{}-{}",
