@@ -15,17 +15,20 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: true
-      - name: Export as single-line base64 text
+      - name: Export as deterministic base64 chunks
         shell: bash
         run: |
-          mkdir -p .asset-export
-          base64 -w0 assets/g-shield.png > .asset-export/g-shield.png.b64
-          base64 -w0 assets/app-icon-src.png > .asset-export/app-icon-src.png.b64
+          rm -rf .asset-export
+          mkdir -p .asset-export/g-shield .asset-export/app-icon
+          base64 -w0 assets/g-shield.png | split -b 6000 -d -a 2 - .asset-export/g-shield/part-
+          base64 -w0 assets/app-icon-src.png | split -b 6000 -d -a 2 - .asset-export/app-icon/part-
           printf '%s\n' "$(git hash-object assets/g-shield.png)" > .asset-export/g-shield.blob-sha
           printf '%s\n' "$(git hash-object assets/app-icon-src.png)" > .asset-export/app-icon-src.blob-sha
+          printf '%s\n' "$(stat -c%s assets/g-shield.png)" > .asset-export/g-shield.size
+          printf '%s\n' "$(stat -c%s assets/app-icon-src.png)" > .asset-export/app-icon-src.size
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add .asset-export
+          git add -A .asset-export
           git diff --cached --quiet && exit 0
-          git commit -m 'Export branding assets as base64 text'
+          git commit -m 'Export branding assets as chunked base64 text'
           git push
