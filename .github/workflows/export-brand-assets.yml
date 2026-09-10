@@ -1,0 +1,31 @@
+name: Export brand assets
+
+on:
+  push:
+    branches: [ asset-export-pc-health ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Export as single-line base64 text
+        shell: bash
+        run: |
+          mkdir -p .asset-export
+          base64 -w0 assets/g-shield.png > .asset-export/g-shield.png.b64
+          base64 -w0 assets/app-icon-src.png > .asset-export/app-icon-src.png.b64
+          printf '%s\n' "$(git hash-object assets/g-shield.png)" > .asset-export/g-shield.blob-sha
+          printf '%s\n' "$(git hash-object assets/app-icon-src.png)" > .asset-export/app-icon-src.blob-sha
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .asset-export
+          git diff --cached --quiet && exit 0
+          git commit -m 'Export branding assets as base64 text'
+          git push
