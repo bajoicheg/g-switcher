@@ -54,7 +54,14 @@ fn run() -> Result<(), String> {
                 .next()
                 .map(PathBuf::from)
                 .unwrap_or_else(|| DEFAULT_OUTPUT.into());
-            record(&path)
+            record(&path, false)
+        }
+        "resume" => {
+            let path = args
+                .next()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| DEFAULT_OUTPUT.into());
+            record(&path, true)
         }
         "verify" => {
             let path = args
@@ -75,7 +82,7 @@ fn run() -> Result<(), String> {
             Ok(())
         }
         other => Err(format!(
-            "unknown command '{other}'. Use record, verify, scaffold, or --help."
+            "unknown command '{other}'. Use record, resume, verify, scaffold, or --help."
         )),
     }
 }
@@ -83,25 +90,50 @@ fn run() -> Result<(), String> {
 fn print_help() {
     println!("G-switcher 2.0.1 compatibility tool");
     println!("  g-switcher-compatibility.exe record [output.md]");
+    println!("  g-switcher-compatibility.exe resume [output.md]");
     println!("  g-switcher-compatibility.exe verify [matrix.md]");
     println!("  g-switcher-compatibility.exe scaffold [output.md]");
     println!();
+    println!(
+        "The recorder saves after every application. Resume keeps rows that already satisfy the strict release gate."
+    );
     println!(
         "This executable does not change PowerShell execution policy and does not require PowerShell."
     );
 }
 
-fn record(path: &Path) -> Result<(), String> {
+fn record(path: &Path, resume: bool) -> Result<(), String> {
     let windows_build = detect_windows_build().unwrap_or_else(|| "UNKNOWN".to_owned());
+    let mut completed = if resume && path.is_file() {
+        let text = fs::read_to_string(path)
+            .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+        parse_matrix(&text)?
+            .into_iter()
+            .map(|row| (row.application.clone(), row))
+            .collect::<HashMap<_, _>>()
+    } else {
+        HashMap::new()
+    };
+
     println!("G-switcher 2.0.1 manual compatibility gate");
     println!("Windows build: {windows_build}");
     println!("Do not use real passwords, PINs, OTPs, API keys, or other secrets.");
     println!("Core results: PASS / UNSUPPORTED/FAIL-OPEN / FAIL.");
     println!("Edge and Chrome ordinary editable fields require PASS for public 2.0.1.");
-    println!("Undo/password may also be N/A only when genuinely not applicable.\n");
+    println!("Undo/password may also be N/A only when genuinely not applicable.");
+    println!("Progress is saved after every application.\n");
 
-    let mut rows = Vec::new();
     for application in REQUIRED_APPLICATIONS {
+        if resume {
+            if let Some(existing) = completed.get(application) {
+                if row_passes_release_gate(existing) {
+                    println!("{application}: existing passing row kept.");
+                    continue;
+                }
+                println!("{application}: existing row is incomplete/blocking and will be retested.");
+            }
+        }
+
         println!("============================================================");
         println!("{application}");
         println!("Complete these checks in the actual application before answering:");
@@ -120,7 +152,12 @@ fn record(path: &Path) -> Result<(), String> {
         if let Some(value) = &detected {
             println!("Detected version: {value}");
         }
-        let version = prompt_text("Version tested", detected.as_deref().unwrap_or(""), false)?;
+        let existing_version = completed
+            .get(application)
+            .map(|row| row.version.as_str())
+            .filter(|value| !metadata_is_blocking(value));
+        let version_default = detected.as_deref().or(existing_version).unwrap_or("");
+        let version = prompt_text("Version tested", version_default, false)?;
         let build = prompt_text("Windows build", &windows_build, false)?;
         let auto = prompt_result("Auto", false)?;
         let manual = prompt_result("Manual current word", false)?;
@@ -129,23 +166,27 @@ fn record(path: &Path) -> Result<(), String> {
         let password = prompt_result("Password/sensitive fields", true)?;
         let notes = prompt_text("Result / notes", "", true)?;
 
-        rows.push(Row {
-            application: application.to_owned(),
-            version,
-            windows_build: build,
-            auto,
-            manual,
-            selected,
-            undo,
-            password,
-            notes,
-        });
+        completed.insert(
+            application.to_owned(),
+            Row {
+                application: application.to_owned(),
+                version,
+                windows_build: build,
+                auto,
+                manual,
+                selected,
+                undo,
+                password,
+                notes,
+            },
+        );
+        save_progress(path, &completed, &windows_build)?;
+        println!("Progress saved: {}\n", path.display());
     }
 
-    let markdown = render_matrix(&rows);
-    fs::write(path, markdown)
-        .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
-    println!("\nSaved: {}", path.display());
+    let rows = ordered_rows(&completed, &windows_build);
+    save_rows(path, &rows)?;
+    println!("Saved final matrix: {}", path.display());
     match verify_rows(&rows) {
         Ok(()) => {
             println!("G-switcher 2.0.1 manual compatibility gate PASSED.");
@@ -162,23 +203,57 @@ fn scaffold(path: &Path) -> Result<(), String> {
     let windows_build = detect_windows_build().unwrap_or_else(|| "UNKNOWN".to_owned());
     let rows = REQUIRED_APPLICATIONS
         .iter()
-        .map(|application| Row {
-            application: (*application).to_owned(),
-            version: detect_application_version(application)
-                .unwrap_or_else(|| "UNKNOWN".to_owned()),
-            windows_build: windows_build.clone(),
-            auto: "PENDING".to_owned(),
-            manual: "PENDING".to_owned(),
-            selected: "PENDING".to_owned(),
-            undo: "PENDING".to_owned(),
-            password: "PENDING".to_owned(),
-            notes: String::new(),
-        })
+        .map(|application| pending_row(application, &windows_build))
         .collect::<Vec<_>>();
-    fs::write(path, render_matrix(&rows))
-        .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+    save_rows(path, &rows)?;
     println!("Saved scaffold: {}", path.display());
     Ok(())
+}
+
+fn save_progress(
+    path: &Path,
+    completed: &HashMap<String, Row>,
+    windows_build: &str,
+) -> Result<(), String> {
+    save_rows(path, &ordered_rows(completed, windows_build))
+}
+
+fn save_rows(path: &Path, rows: &[Row]) -> Result<(), String> {
+    let temporary = path.with_extension("md.tmp");
+    fs::write(&temporary, render_matrix(rows))
+        .map_err(|error| format!("cannot write {}: {error}", temporary.display()))?;
+    if path.exists() {
+        fs::remove_file(path)
+            .map_err(|error| format!("cannot replace {}: {error}", path.display()))?;
+    }
+    fs::rename(&temporary, path)
+        .map_err(|error| format!("cannot finalize {}: {error}", path.display()))
+}
+
+fn ordered_rows(completed: &HashMap<String, Row>, windows_build: &str) -> Vec<Row> {
+    REQUIRED_APPLICATIONS
+        .iter()
+        .map(|application| {
+            completed
+                .get(*application)
+                .cloned()
+                .unwrap_or_else(|| pending_row(application, windows_build))
+        })
+        .collect()
+}
+
+fn pending_row(application: &str, windows_build: &str) -> Row {
+    Row {
+        application: application.to_owned(),
+        version: "UNKNOWN".to_owned(),
+        windows_build: windows_build.to_owned(),
+        auto: "PENDING".to_owned(),
+        manual: "PENDING".to_owned(),
+        selected: "PENDING".to_owned(),
+        undo: "PENDING".to_owned(),
+        password: "PENDING".to_owned(),
+        notes: String::new(),
+    }
 }
 
 fn verify_path(path: &Path) -> Result<(), String> {
@@ -325,11 +400,28 @@ fn split_markdown_row(line: &str) -> Vec<String> {
     cells
 }
 
+fn row_passes_release_gate(row: &Row) -> bool {
+    let allowed_core: &[&str] = if CORE_PASS_ONLY.contains(&row.application.as_str()) {
+        &["PASS"]
+    } else {
+        &CORE_RESULTS
+    };
+    !metadata_is_blocking(&row.version)
+        && !metadata_is_blocking(&row.windows_build)
+        && result_allowed(&row.auto, allowed_core)
+        && result_allowed(&row.manual, allowed_core)
+        && result_allowed(&row.selected, allowed_core)
+        && result_allowed(&row.undo, &OPTIONAL_RESULTS)
+        && result_allowed(&row.password, &OPTIONAL_RESULTS)
+}
+
 fn verify_rows(rows: &[Row]) -> Result<(), String> {
-    let by_app = rows
-        .iter()
-        .map(|row| (row.application.as_str(), row))
-        .collect::<HashMap<_, _>>();
+    let mut by_app = HashMap::new();
+    for row in rows {
+        if by_app.insert(row.application.as_str(), row).is_some() {
+            return Err(format!("duplicate compatibility row for {}", row.application));
+        }
+    }
 
     for application in REQUIRED_APPLICATIONS {
         let row = by_app
@@ -362,20 +454,29 @@ fn verify_rows(rows: &[Row]) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_metadata(application: &str, column: &str, value: &str) -> Result<(), String> {
+fn metadata_is_blocking(value: &str) -> bool {
     let normalized = value.trim().to_ascii_uppercase();
-    let blocked = [
+    [
         "",
         "PENDING",
         "UNKNOWN",
         "N/A",
         "NOT INSTALLED",
         "UNAVAILABLE",
-    ];
-    if blocked.contains(&normalized.as_str()) {
+    ]
+    .contains(&normalized.as_str())
+}
+
+fn validate_metadata(application: &str, column: &str, value: &str) -> Result<(), String> {
+    if metadata_is_blocking(value) {
         return Err(format!("{application} / {column} is incomplete: '{value}'"));
     }
     Ok(())
+}
+
+fn result_allowed(value: &str, allowed: &[&str]) -> bool {
+    let normalized = value.trim().to_ascii_uppercase();
+    allowed.contains(&normalized.as_str())
 }
 
 fn validate_result(
@@ -384,8 +485,7 @@ fn validate_result(
     value: &str,
     allowed: &[&str],
 ) -> Result<(), String> {
-    let normalized = value.trim().to_ascii_uppercase();
-    if !allowed.contains(&normalized.as_str()) {
+    if !result_allowed(value, allowed) {
         return Err(format!(
             "{application} / {column} contains blocking result '{value}'. Allowed: {}",
             allowed.join(", ")
@@ -395,76 +495,52 @@ fn validate_result(
 }
 
 fn detect_windows_build() -> Option<String> {
-    let output = Command::new("reg.exe")
-        .args([
-            "query",
-            r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion",
-            "/v",
-            "CurrentBuildNumber",
-        ])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    parse_reg_value(
-        &String::from_utf8_lossy(&output.stdout),
+    query_registry_value(
+        r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion",
         "CurrentBuildNumber",
     )
 }
 
 fn detect_application_version(application: &str) -> Option<String> {
     match application {
-        "Microsoft Edge" => command_version(&[
-            (
-                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-                "--version",
-            ),
-            (
-                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-                "--version",
-            ),
-        ]),
-        "Google Chrome" => command_version(&[
-            (
-                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                "--version",
-            ),
-            (
-                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                "--version",
-            ),
-        ]),
-        "Visual Studio Code" => {
-            command_version(&[("code.cmd", "--version"), ("code.exe", "--version")])
-        }
-        "Windows Terminal" => command_version(&[("wt.exe", "--version")]),
+        // Do not launch GUI applications merely to ask for their version. Some
+        // Chromium builds delegate to a long-lived browser process, which can
+        // hang a recorder or CI smoke test. BLBeacon is read-only registry
+        // metadata maintained by Chromium installers/updaters.
+        "Microsoft Edge" => query_first_registry_value(
+            &[
+                r"HKCU\Software\Microsoft\Edge\BLBeacon",
+                r"HKLM\Software\Microsoft\Edge\BLBeacon",
+                r"HKLM\Software\WOW6432Node\Microsoft\Edge\BLBeacon",
+            ],
+            "version",
+        ),
+        "Google Chrome" => query_first_registry_value(
+            &[
+                r"HKCU\Software\Google\Chrome\BLBeacon",
+                r"HKLM\Software\Google\Chrome\BLBeacon",
+                r"HKLM\Software\WOW6432Node\Google\Chrome\BLBeacon",
+            ],
+            "version",
+        ),
         _ => None,
     }
 }
 
-fn command_version(candidates: &[(&str, &str)]) -> Option<String> {
-    for (program, arg) in candidates {
-        let output = Command::new(program).arg(arg).output();
-        let Ok(output) = output else {
-            continue;
-        };
-        if !output.status.success() {
-            continue;
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let text = if stdout.trim().is_empty() {
-            stderr.trim()
-        } else {
-            stdout.trim()
-        };
-        let first = text.lines().next().unwrap_or("").trim();
-        if !first.is_empty() {
-            return Some(first.to_owned());
-        }
+fn query_first_registry_value(keys: &[&str], name: &str) -> Option<String> {
+    keys.iter()
+        .find_map(|key| query_registry_value(key, name))
+}
+
+fn query_registry_value(key: &str, name: &str) -> Option<String> {
+    let output = Command::new("reg.exe")
+        .args(["query", key, "/v", name])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
     }
-    None
+    parse_reg_value(&String::from_utf8_lossy(&output.stdout), name)
 }
 
 fn parse_reg_value(output: &str, name: &str) -> Option<String> {
@@ -533,6 +609,7 @@ mod tests {
         terminal.undo = "N/A".to_owned();
         terminal.password = "N/A".to_owned();
         assert!(verify_rows(&rows).is_ok());
+        assert!(row_passes_release_gate(terminal));
     }
 
     #[test]
@@ -546,6 +623,13 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_application_rows_block() {
+        let mut rows = valid_rows();
+        rows.push(rows[0].clone());
+        assert!(verify_rows(&rows).is_err());
+    }
+
+    #[test]
     fn markdown_roundtrip_preserves_escaped_notes() {
         let mut rows = valid_rows();
         rows[0].notes = "left | right".to_owned();
@@ -554,6 +638,16 @@ mod tests {
         assert_eq!(parsed.len(), REQUIRED_APPLICATIONS.len());
         assert_eq!(parsed[0].notes, "left | right");
         assert!(verify_rows(&parsed).is_ok());
+    }
+
+    #[test]
+    fn progress_matrix_keeps_pending_rows() {
+        let mut completed = HashMap::new();
+        completed.insert("Notepad".to_owned(), valid_rows()[0].clone());
+        let rows = ordered_rows(&completed, "26100");
+        assert_eq!(rows.len(), REQUIRED_APPLICATIONS.len());
+        assert_eq!(rows[0].auto, "PASS");
+        assert_eq!(rows[1].auto, "PENDING");
     }
 
     #[test]
