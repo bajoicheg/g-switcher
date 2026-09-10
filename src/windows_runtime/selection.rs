@@ -4,7 +4,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_NULL,
 };
 
-#[path = "uia_legacy.rs"]
+#[path = "uia_legacy_v2.rs"]
 mod uia_legacy;
 #[path = "uia_modern.rs"]
 mod uia_modern;
