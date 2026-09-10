@@ -7,12 +7,12 @@ This guide is for the final pre-release compatibility pass on a normal Windows w
 Use the checked CI artifact named `g-switcher-2.0.1-manual-compatibility-kit`. It contains:
 
 - `g-switcher.exe` and its SHA-256 sidecar;
-- `manual-compatibility-v201.ps1` — interactive result recorder;
-- `verify-compatibility-v201.ps1` — strict release-gate validator;
+- `g-switcher-compatibility.exe` — compiled interactive recorder and strict validator; it does not require PowerShell and does not change execution policy;
+- `manual-compatibility-v201.ps1` and `verify-compatibility-v201.ps1` — developer/CI fallback tooling;
 - `COMPATIBILITY_2.0.1.md` — detailed test cases and result semantics;
 - this guide.
 
-The executable under test must come from the same CI run as the scripts and documentation in the kit.
+The executable under test and the compatibility recorder must come from the same CI run as the documentation in the kit.
 
 ## Before testing
 
@@ -20,21 +20,13 @@ The executable under test must come from the same CI run as the scripts and docu
 2. Verify `g-switcher.exe` against `g-switcher.exe.sha256`.
 3. Start `g-switcher.exe` normally, without Administrator elevation unless the application being tested is itself elevated.
 4. Keep the default 2.0.1 settings unless a test case explicitly asks for Manual-only, Disabled, Pause, or a hotkey action.
-5. If Windows marked the downloaded ZIP/files as Internet-originated and your policy is `RemoteSigned`, unblock the trusted test-kit files after inspection. For an already extracted kit:
+5. Open Command Prompt, Windows PowerShell, or Windows Terminal in the extracted kit directory and start the compiled recorder:
 
-```powershell
-Get-ChildItem -File | Unblock-File
+```text
+.\g-switcher-compatibility.exe record
 ```
 
-Do not change machine-wide execution policy.
-
-6. Open Windows PowerShell in the extracted kit directory and start the recorder. PowerShell 7 (`pwsh`) is not required:
-
-```powershell
-powershell.exe -NoProfile -File .\manual-compatibility-v201.ps1
-```
-
-The recorder is intentionally kept compatible with Windows PowerShell 5.1 and is exercised by that exact host in CI.
+No PowerShell script execution is required. In particular, do not weaken machine or corporate execution-policy settings just to run the compatibility test.
 
 ## Required applications
 
@@ -48,11 +40,11 @@ Test the following applications on the same Windows build:
 - Visual Studio Code
 - Windows Terminal
 
-The recorder attempts to determine application versions automatically. If it cannot, it asks for the exact version manually. `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders cannot pass the release gate.
+The recorder determines the Windows build automatically and attempts version detection for applications that expose a stable command-line version. If it cannot determine an application version, enter the exact version manually. `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders cannot pass the release gate.
 
 ## What to check in each application
 
-Follow the eight cases in `COMPATIBILITY_2.0.1.md`. The essential checks are:
+The compiled recorder repeats the eight cases before each application. The essential checks are:
 
 1. Auto correction: `ghbdtn ` under English layout must become `привет ` without changing adjacent text.
 2. Manual current word: in Manual-only mode convert `ghbdtn`; then Undo must restore both exact text and source layout.
@@ -70,9 +62,8 @@ For `Auto`, `Manual current word`, and `Selected text`, record one of:
 - `PASS`
 - `FAIL`
 - `UNSUPPORTED/FAIL-OPEN`
-- `PENDING`
 
-`N/A` is intentionally not accepted for these core text operations.
+`N/A` is intentionally not accepted for these core text operations. For Microsoft Edge and Google Chrome ordinary editable fields, public 2.0.1 requires actual `PASS`; `UNSUPPORTED/FAIL-OPEN` is still a release blocker there.
 
 For `Undo` and `Password/sensitive fields`, `N/A` is additionally permitted when genuinely not applicable.
 
@@ -80,10 +71,12 @@ For `Undo` and `Password/sensitive fields`, `N/A` is additionally permitted when
 
 ## Finish
 
-The recorder writes `compatibility-results-2.0.1.md`. Validate it locally:
+The recorder writes `compatibility-results-2.0.1.md` and immediately applies the same strict gate to the collected rows. You can run the validator again at any time:
 
-```powershell
-powershell.exe -NoProfile -File .\verify-compatibility-v201.ps1 -Path .\compatibility-results-2.0.1.md
+```text
+.\g-switcher-compatibility.exe verify .\compatibility-results-2.0.1.md
 ```
 
 A successful validator run means the matrix contains no publication-blocking values. Keep the generated result file; it is the evidence used to update the canonical `COMPATIBILITY_2.0.1.md` before the PR is taken out of Draft and merged.
+
+The PowerShell recorder/verifier remain in the kit only as a developer fallback. They are not required for human testing and should not be used to bypass a corporate `AllSigned` or other enforced execution policy.
