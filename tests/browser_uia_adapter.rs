@@ -10,7 +10,8 @@ use std::time::{Duration, Instant};
 
 use windows_sys::Win32::Foundation::{BOOL, HWND, LPARAM};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_CONTROL, VK_TAB,
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_CONTROL, VK_END,
+    VK_TAB,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetForegroundWindow, GetGUIThreadInfo, GetWindowTextLengthW, GetWindowTextW,
@@ -243,8 +244,19 @@ fn exercise_browser(browser: &BrowserSpec) {
 
     // A second editable DOM control under the same Chromium host HWND exercises
     // RuntimeId separation and multiline ValuePattern/TextPattern behavior.
+    // Chromium may place a tab-focused textarea caret at either edge depending
+    // on provider/browser state, so put it at the line end explicitly before
+    // testing suffix semantics. This is test setup, not adapter-side mutation.
     send_key(VK_TAB);
     let textarea_hwnd = wait_for_editable_focus("rfr ltkf", Duration::from_secs(8));
+    send_key(VK_END);
+    let textarea_snapshot = wait_until(Duration::from_secs(5), || {
+        selection::snapshot_caret(textarea_hwnd)
+            .filter(|snapshot| snapshot.caret == 8 && snapshot.text_before_caret == "rfr ltkf")
+    })
+    .unwrap_or_else(|| panic!("{} textarea caret did not move to the verified line end", browser.label));
+    assert_eq!(textarea_snapshot.caret, 8);
+
     let textarea_probe = security_probe(textarea_hwnd, browser.label, "textarea");
     assert_ne!(
         ordinary_probe.element_id, textarea_probe.element_id,
