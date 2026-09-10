@@ -254,7 +254,12 @@ fn exercise_browser(browser: &BrowserSpec) {
         selection::snapshot_caret(textarea_hwnd)
             .filter(|snapshot| snapshot.caret == 8 && snapshot.text_before_caret == "rfr ltkf")
     })
-    .unwrap_or_else(|| panic!("{} textarea caret did not move to the verified line end", browser.label));
+    .unwrap_or_else(|| {
+        panic!(
+            "{} textarea caret did not move to the verified line end",
+            browser.label
+        )
+    });
     assert_eq!(textarea_snapshot.caret, 8);
 
     let textarea_probe = security_probe(textarea_hwnd, browser.label, "textarea");
