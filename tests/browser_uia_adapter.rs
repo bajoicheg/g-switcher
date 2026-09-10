@@ -131,8 +131,16 @@ fn exercise_browser(browser: &BrowserSpec) {
     if let Ok(version) = Command::new(&browser.executable).arg("--version").output() {
         let stdout = String::from_utf8_lossy(&version.stdout);
         let stderr = String::from_utf8_lossy(&version.stderr);
-        let text = if stdout.trim().is_empty() { stderr } else { stdout };
-        eprintln!("G-switcher browser UIA E2E: {} version {}", browser.label, text.trim());
+        let text = if stdout.trim().is_empty() {
+            stderr
+        } else {
+            stdout
+        };
+        eprintln!(
+            "G-switcher browser UIA E2E: {} version {}",
+            browser.label,
+            text.trim()
+        );
     }
 
     let root = std::env::temp_dir().join(format!(
