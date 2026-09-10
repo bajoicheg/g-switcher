@@ -104,8 +104,10 @@ fn runtime_id(element: &IUIAutomationElement) -> Option<UiaElementId> {
             return None;
         }
 
-        let mut id = UiaElementId::default();
-        id.len = count as u8;
+        let mut id = UiaElementId {
+            len: count as u8,
+            ..Default::default()
+        };
         for (slot, index) in (lower..=upper).enumerate() {
             let mut value = 0i32;
             unsafe {
@@ -176,8 +178,10 @@ mod tests {
 
     #[test]
     fn security_probe_contains_identity_but_no_text_payload() {
-        let mut element_id = UiaElementId::default();
-        element_id.len = 2;
+        let mut element_id = UiaElementId {
+            len: 2,
+            ..Default::default()
+        };
         element_id.parts[0] = 42;
         element_id.parts[1] = 7;
         let probe = UiaSecurityProbe {
