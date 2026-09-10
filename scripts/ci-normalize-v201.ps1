@@ -16,6 +16,7 @@ $requiredFiles = @(
     'src/bin/g-switcher-failure-e2e.rs',
     'src/bin/g-switcher-compatibility.rs',
     'tests/browser_uia_adapter.rs',
+    'manual-browser-test-2.0.1.html',
     'COMPATIBILITY_2.0.1.md',
     'MANUAL_TESTING_2.0.1.md'
 )
@@ -30,6 +31,7 @@ $selection = Get-Content -LiteralPath 'src/windows_runtime/selection.rs' -Raw
 $uiaSecure = Get-Content -LiteralPath 'src/windows_runtime/uia_secure.rs' -Raw
 $uiaModern = Get-Content -LiteralPath 'src/windows_runtime/uia_modern.rs' -Raw
 $browserTest = Get-Content -LiteralPath 'tests/browser_uia_adapter.rs' -Raw
+$manualBrowserPage = Get-Content -LiteralPath 'manual-browser-test-2.0.1.html' -Raw
 $compatTool = Get-Content -LiteralPath 'src/bin/g-switcher-compatibility.rs' -Raw
 
 $requiredRuntimeMarkers = @(
@@ -88,7 +90,16 @@ foreach ($marker in @('--force-renderer-accessibility=complete', '--enable-featu
     }
 }
 
-foreach ($marker in @('"record"', '"verify"', 'CORE_PASS_ONLY', 'Microsoft Edge', 'Google Chrome')) {
+foreach ($marker in @('id="auto"', 'id="manual"', 'id="selected"', 'id="race-a"', 'id="race-b"', 'type="password"')) {
+    if (-not $manualBrowserPage.Contains($marker)) {
+        throw "Required offline manual-browser test marker is missing: $marker"
+    }
+}
+if ($manualBrowserPage -match '(?i)<script\b' -or $manualBrowserPage -match '(?i)https?://') {
+    throw 'Offline manual-browser test page must contain no JavaScript or HTTP(S) dependency.'
+}
+
+foreach ($marker in @('"record"', '"resume"', '"verify"', 'CORE_PASS_ONLY', 'Microsoft Edge', 'Google Chrome')) {
     if (-not $compatTool.Contains($marker)) {
         throw "Required compiled compatibility-tool marker is missing: $marker"
     }
