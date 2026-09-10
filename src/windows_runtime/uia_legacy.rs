@@ -184,22 +184,11 @@ pub fn replace_range_if_matches(
         return true;
     }
 
-    rollback_if_exact(
-        hwnd,
-        original_id,
-        &planned,
-        &before,
-        original_selection,
-    );
+    rollback_if_exact(hwnd, original_id, &planned, &before, original_selection);
     false
 }
 
-fn verify_exact_post_state(
-    hwnd: HWND,
-    expected_id: RuntimeId,
-    planned: &str,
-    caret: u32,
-) -> bool {
+fn verify_exact_post_state(hwnd: HWND, expected_id: RuntimeId, planned: &str, caret: u32) -> bool {
     let deadline = Instant::now() + POST_MUTATION_VERIFY_TIMEOUT;
     loop {
         let Some(context) = focused_context(hwnd) else {
@@ -210,7 +199,8 @@ fn verify_exact_post_state(
             trace("RuntimeId changed after mutation");
             return false;
         }
-        let current = unsafe { context.text.DocumentRange().ok() }.and_then(|range| text_of(&range));
+        let current =
+            unsafe { context.text.DocumentRange().ok() }.and_then(|range| text_of(&range));
         if current.as_deref() == Some(planned) {
             if select_offsets(&context.text, caret, caret) {
                 drop(context);
