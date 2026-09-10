@@ -42,10 +42,11 @@ enum TextAdapter {
 /// 2.0.1 text adapter. Plain Edit uses marshalled system messages; RichEdit
 /// uses UIA TextPattern plus native range-local replacement. Modern Chromium/
 /// WebView2/Electron-style controls use exact TextPattern state and prefer the
-/// fresh-context ValuePattern path, with documented LegacyIAccessible SetValue
-/// as a second verified accessibility path. Both modern paths bind mutations to
-/// one RuntimeId and never use clipboard or blind SendInput. A hung, closing,
-/// password, disabled, read-only or unverifiable target fails open.
+/// documented LegacyIAccessible SetValue path when it is exposed; ValuePattern
+/// remains the verified fallback for modern controls without LegacyIAccessible.
+/// Both paths bind mutations to one RuntimeId and never use clipboard or blind
+/// SendInput. A hung, closing, password, disabled, read-only or unverifiable
+/// target fails open.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }
@@ -142,11 +143,11 @@ pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) ->
 }
 
 /// Replaces the requested range only if it still contains `expected` and the
-/// selected adapter can verify the exact post-state. For a modern ValuePattern
-/// target, the documented LegacyIAccessible path is attempted only after the
-/// ValuePattern path returns without a verified mutation; the fallback performs
-/// its own exact source/RuntimeId/password/read-only checks before writing.
-/// There is never a clipboard or blind SendInput fallback.
+/// selected adapter can verify the exact post-state. Chromium controls that
+/// expose LegacyIAccessible use that documented mutation interface directly,
+/// avoiding a failed ValuePattern attempt from disturbing the provider's
+/// selection state before Undo. There is never a clipboard or blind SendInput
+/// fallback.
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -166,7 +167,6 @@ pub fn replace_range_if_matches(
         }
         Some(TextAdapter::ModernUiaValue) => {
             uia_modern::replace_range_if_matches(hwnd, start, end, expected, replacement)
-                || uia_legacy::replace_range_if_matches(hwnd, start, end, expected, replacement)
         }
         Some(TextAdapter::ModernUiaLegacy) => {
             uia_legacy::replace_range_if_matches(hwnd, start, end, expected, replacement)
@@ -318,10 +318,10 @@ fn adapter(hwnd: HWND) -> Option<TextAdapter> {
         Some(TextAdapter::EditMessages)
     } else if is_rich_edit_class(&name) && uia_text::has_rich_text_adapter(hwnd) {
         Some(TextAdapter::RichEditUia)
-    } else if uia_modern::has_adapter(hwnd) {
-        Some(TextAdapter::ModernUiaValue)
     } else if uia_legacy::has_adapter(hwnd) {
         Some(TextAdapter::ModernUiaLegacy)
+    } else if uia_modern::has_adapter(hwnd) {
+        Some(TextAdapter::ModernUiaValue)
     } else {
         None
     }
