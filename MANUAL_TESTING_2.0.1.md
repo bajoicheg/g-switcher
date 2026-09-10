@@ -26,6 +26,12 @@ The executable under test and the compatibility recorder must come from the same
 .\g-switcher-compatibility.exe record
 ```
 
+The recorder writes `compatibility-results-2.0.1.md` after **every application**, using a temporary file plus rename so an interruption does not lose the completed rows. To continue an interrupted or blocking pass without repeating rows that already satisfy the strict gate, run:
+
+```text
+.\g-switcher-compatibility.exe resume .\compatibility-results-2.0.1.md
+```
+
 No PowerShell script execution is required. In particular, do not weaken machine or corporate execution-policy settings just to run the compatibility test.
 
 ## Required applications
@@ -40,7 +46,7 @@ Test the following applications on the same Windows build:
 - Visual Studio Code
 - Windows Terminal
 
-The recorder determines the Windows build automatically and attempts version detection for applications that expose a stable command-line version. If it cannot determine an application version, enter the exact version manually. `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders cannot pass the release gate.
+The recorder determines the Windows build automatically. For Edge and Chrome it reads installer/updater version metadata from the registry rather than launching the browsers merely to ask their version. If it cannot safely determine an application version, enter the exact version manually. `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders cannot pass the release gate.
 
 ## What to check in each application
 
@@ -71,7 +77,7 @@ For `Undo` and `Password/sensitive fields`, `N/A` is additionally permitted when
 
 ## Finish
 
-The recorder writes `compatibility-results-2.0.1.md` and immediately applies the same strict gate to the collected rows. You can run the validator again at any time:
+The recorder applies the strict gate to the collected rows at the end. You can run the validator again at any time:
 
 ```text
 .\g-switcher-compatibility.exe verify .\compatibility-results-2.0.1.md
