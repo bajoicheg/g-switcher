@@ -7,7 +7,8 @@ This guide is for the final pre-release compatibility pass on a normal Windows w
 Use the checked CI artifact named `g-switcher-2.0.1-manual-compatibility-kit`. It contains:
 
 - `g-switcher.exe` and its SHA-256 sidecar;
-- `g-switcher-compatibility.exe` — compiled interactive recorder and strict validator; it does not require PowerShell and does not change execution policy;
+- `g-switcher-compatibility.exe` and its SHA-256 sidecar — compiled interactive recorder and strict validator; it does not require PowerShell and does not change execution policy;
+- `manual-browser-test-2.0.1.html` — static local page for deterministic Edge/Chrome input, textarea, focus-race and password-field checks; it has no external resources, JavaScript or network dependency;
 - `manual-compatibility-v201.ps1` and `verify-compatibility-v201.ps1` — developer/CI fallback tooling;
 - `COMPATIBILITY_2.0.1.md` — detailed test cases and result semantics;
 - this guide.
@@ -17,7 +18,7 @@ The executable under test and the compatibility recorder must come from the same
 ## Before testing
 
 1. Close any older G-switcher instance from the tray.
-2. Verify `g-switcher.exe` against `g-switcher.exe.sha256`.
+2. Verify `g-switcher.exe` against `g-switcher.exe.sha256` and `g-switcher-compatibility.exe` against `g-switcher-compatibility.exe.sha256`.
 3. Start `g-switcher.exe` normally, without Administrator elevation unless the application being tested is itself elevated.
 4. Keep the default 2.0.1 settings unless a test case explicitly asks for Manual-only, Disabled, Pause, or a hotkey action.
 5. Open Command Prompt, Windows PowerShell, or Windows Terminal in the extracted kit directory and start the compiled recorder:
@@ -47,6 +48,8 @@ Test the following applications on the same Windows build:
 - Windows Terminal
 
 The recorder determines the Windows build automatically. For Edge and Chrome it reads installer/updater version metadata from the registry rather than launching the browsers merely to ask their version. If it cannot safely determine an application version, enter the exact version manually. `UNKNOWN`, `N/A`, `NOT INSTALLED`, and similar placeholders cannot pass the release gate.
+
+For **Microsoft Edge and Google Chrome**, open `manual-browser-test-2.0.1.html` from the extracted kit by normal user action, without special command-line flags. Use that page for the ordinary text input, textarea/selection, caret/focus race and dummy password tests. Test Edge and Chrome separately. The page is deliberately offline so the result does not depend on a real website, browser extension, authentication session or network state.
 
 ## What to check in each application
 
