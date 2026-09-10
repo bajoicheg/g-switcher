@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $requiredFiles = @(
     'Cargo.toml',
     'Cargo.lock',
+    'rust-toolchain.toml',
     'src/windows_runtime_v201.rs',
     'src/windows_runtime/selection.rs',
     'src/windows_runtime/uia_secure.rs',
@@ -24,6 +25,11 @@ foreach ($path in $requiredFiles) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required 2.0.1 source/release file is missing: $path"
     }
+}
+
+$toolchain = Get-Content -LiteralPath 'rust-toolchain.toml' -Raw
+if ($toolchain -notmatch 'channel\s*=\s*"1\.98\.1"' -or $toolchain -notmatch '"rustfmt"' -or $toolchain -notmatch '"clippy"') {
+    throw 'rust-toolchain.toml must pin Rust 1.98.1 with rustfmt and clippy for the 2.0.1 release candidate.'
 }
 
 $runtime = Get-Content -LiteralPath 'src/windows_runtime_v201.rs' -Raw
