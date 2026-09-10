@@ -612,8 +612,8 @@ mod tests {
         terminal.selected = "UNSUPPORTED/FAIL-OPEN".to_owned();
         terminal.undo = "N/A".to_owned();
         terminal.password = "N/A".to_owned();
-        assert!(verify_rows(&rows).is_ok());
         assert!(row_passes_release_gate(terminal));
+        assert!(verify_rows(&rows).is_ok());
     }
 
     #[test]
