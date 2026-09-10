@@ -186,7 +186,21 @@ jobs:
 
       - name: Real Edge and Chrome UIA adapter E2E
         shell: pwsh
-        run: cargo test --locked --test browser_uia_adapter -- --ignored --test-threads=1 --nocapture
+        run: |
+          $arguments = @(
+            'test', '--locked', '--test', 'browser_uia_adapter', '--',
+            '--ignored', '--test-threads=1', '--nocapture'
+          )
+          $process = Start-Process -FilePath 'cargo.exe' -ArgumentList $arguments -PassThru -NoNewWindow
+          if (-not $process.WaitForExit(240000)) {
+            Write-Host 'Browser UIA E2E exceeded 240 seconds; terminating cargo and descendants.'
+            & taskkill.exe /PID $process.Id /T /F | Out-Host
+            throw 'Real Edge/Chrome UIA adapter E2E timed out.'
+          }
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Real Edge/Chrome UIA adapter E2E failed with exit code $($process.ExitCode)."
+          }
 
       - name: Windows hung and closing target E2E
         shell: pwsh
@@ -258,10 +272,19 @@ jobs:
           Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $kitRoot
           Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe -Destination $kitRoot
           Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe.sha256 -Destination $kitRoot
+          Copy-Item -LiteralPath manual-browser-test-2.0.1.html -Destination $kitRoot
           Copy-Item -LiteralPath scripts/manual-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
           Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+
+          $manifest = Get-ChildItem -LiteralPath $kitRoot -File |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          Set-Content -LiteralPath (Join-Path $kitRoot 'SHA256SUMS.txt') -Value $manifest -Encoding ascii
 
       - name: Upload checked Windows artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
