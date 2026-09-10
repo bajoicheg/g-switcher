@@ -9,16 +9,18 @@ Use the checked CI artifact named `g-switcher-2.0.1-manual-compatibility-kit`. I
 - `g-switcher.exe` and its SHA-256 sidecar;
 - `g-switcher-compatibility.exe` and its SHA-256 sidecar — compiled interactive recorder and strict validator; it does not require PowerShell and does not change execution policy;
 - `manual-browser-test-2.0.1.html` — static local page for deterministic Edge/Chrome input, textarea, focus-race and password-field checks; it has no external resources, JavaScript or network dependency;
+- `BUILD_PROVENANCE.txt` — exact Git commit, CI run, pinned Rust/Cargo versions, Cargo.lock hash and executable hashes for the kit;
+- `SHA256SUMS.txt` — SHA-256 manifest for every file placed in the kit before the manifest itself is written;
 - `manual-compatibility-v201.ps1` and `verify-compatibility-v201.ps1` — developer/CI fallback tooling;
 - `COMPATIBILITY_2.0.1.md` — detailed test cases and result semantics;
 - this guide.
 
-The executable under test and the compatibility recorder must come from the same CI run as the documentation in the kit.
+The executable under test and the compatibility recorder must come from the same CI run as the documentation in the kit. `BUILD_PROVENANCE.txt` is the authoritative link between the human test and that exact release-candidate commit.
 
 ## Before testing
 
 1. Close any older G-switcher instance from the tray.
-2. Verify `g-switcher.exe` against `g-switcher.exe.sha256` and `g-switcher-compatibility.exe` against `g-switcher-compatibility.exe.sha256`.
+2. Verify `g-switcher.exe` against `g-switcher.exe.sha256` and `g-switcher-compatibility.exe` against `g-switcher-compatibility.exe.sha256`. Keep `BUILD_PROVENANCE.txt` and `SHA256SUMS.txt` with the result file as release evidence.
 3. Start `g-switcher.exe` normally, without Administrator elevation unless the application being tested is itself elevated.
 4. Keep the default 2.0.1 settings unless a test case explicitly asks for Manual-only, Disabled, Pause, or a hotkey action.
 5. Open Command Prompt, Windows PowerShell, or Windows Terminal in the extracted kit directory and start the compiled recorder:
@@ -86,6 +88,6 @@ The recorder applies the strict gate to the collected rows at the end. You can r
 .\g-switcher-compatibility.exe verify .\compatibility-results-2.0.1.md
 ```
 
-A successful validator run means the matrix contains no publication-blocking values. Keep the generated result file; it is the evidence used to update the canonical `COMPATIBILITY_2.0.1.md` before the PR is taken out of Draft and merged.
+A successful validator run means the matrix contains no publication-blocking values. Keep the generated result file together with `BUILD_PROVENANCE.txt` and `SHA256SUMS.txt`; these are the evidence used to update the canonical `COMPATIBILITY_2.0.1.md` before the PR is taken out of Draft and merged.
 
 The PowerShell recorder/verifier remain in the kit only as a developer fallback. They are not required for human testing and should not be used to bypass a corporate `AllSigned` or other enforced execution policy.
