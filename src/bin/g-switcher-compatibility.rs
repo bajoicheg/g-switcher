@@ -50,15 +50,24 @@ fn run() -> Result<(), String> {
     let command = args.next().unwrap_or_else(|| "record".to_owned());
     match command.to_ascii_lowercase().as_str() {
         "record" => {
-            let path = args.next().map(PathBuf::from).unwrap_or_else(|| DEFAULT_OUTPUT.into());
+            let path = args
+                .next()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| DEFAULT_OUTPUT.into());
             record(&path)
         }
         "verify" => {
-            let path = args.next().map(PathBuf::from).unwrap_or_else(|| DEFAULT_OUTPUT.into());
+            let path = args
+                .next()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| DEFAULT_OUTPUT.into());
             verify_path(&path)
         }
         "scaffold" => {
-            let path = args.next().map(PathBuf::from).unwrap_or_else(|| DEFAULT_OUTPUT.into());
+            let path = args
+                .next()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| DEFAULT_OUTPUT.into());
             scaffold(&path)
         }
         "--help" | "-h" | "help" => {
@@ -77,7 +86,9 @@ fn print_help() {
     println!("  g-switcher-compatibility.exe verify [matrix.md]");
     println!("  g-switcher-compatibility.exe scaffold [output.md]");
     println!();
-    println!("This executable does not change PowerShell execution policy and does not require PowerShell.");
+    println!(
+        "This executable does not change PowerShell execution policy and does not require PowerShell."
+    );
 }
 
 fn record(path: &Path) -> Result<(), String> {
@@ -95,7 +106,9 @@ fn record(path: &Path) -> Result<(), String> {
         println!("{application}");
         println!("Complete these checks in the actual application before answering:");
         println!("  1. Auto: type ghbdtn<space> under EN -> привет<space>, adjacent text intact.");
-        println!("  2. Manual-only: ghbdtn + current-word hotkey -> привет; Undo restores exactly.");
+        println!(
+            "  2. Manual-only: ghbdtn + current-word hotkey -> привет; Undo restores exactly."
+        );
         println!("  3. Select ghbdtn rfr ltkf -> selected-text conversion -> привет как дела; Undo exact.");
         println!("  4. Move caret with mouse/arrows before a pending boundary; stale correction must not fire.");
         println!("  5. Switch focus while correction could be pending; neither old nor new field may be corrupted.");
@@ -107,11 +120,7 @@ fn record(path: &Path) -> Result<(), String> {
         if let Some(value) = &detected {
             println!("Detected version: {value}");
         }
-        let version = prompt_text(
-            "Version tested",
-            detected.as_deref().unwrap_or(""),
-            false,
-        )?;
+        let version = prompt_text("Version tested", detected.as_deref().unwrap_or(""), false)?;
         let build = prompt_text("Windows build", &windows_build, false)?;
         let auto = prompt_result("Auto", false)?;
         let manual = prompt_result("Manual current word", false)?;
@@ -134,7 +143,8 @@ fn record(path: &Path) -> Result<(), String> {
     }
 
     let markdown = render_matrix(&rows);
-    fs::write(path, markdown).map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+    fs::write(path, markdown)
+        .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
     println!("\nSaved: {}", path.display());
     match verify_rows(&rows) {
         Ok(()) => {
@@ -154,7 +164,8 @@ fn scaffold(path: &Path) -> Result<(), String> {
         .iter()
         .map(|application| Row {
             application: (*application).to_owned(),
-            version: detect_application_version(application).unwrap_or_else(|| "UNKNOWN".to_owned()),
+            version: detect_application_version(application)
+                .unwrap_or_else(|| "UNKNOWN".to_owned()),
             windows_build: windows_build.clone(),
             auto: "PENDING".to_owned(),
             manual: "PENDING".to_owned(),
@@ -188,7 +199,9 @@ fn prompt_text(label: &str, default: &str, allow_empty: bool) -> Result<String, 
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
         let mut input = String::new();
-        io::stdin().read_line(&mut input).map_err(|error| error.to_string())?;
+        io::stdin()
+            .read_line(&mut input)
+            .map_err(|error| error.to_string())?;
         let value = input.trim();
         let value = if value.is_empty() { default } else { value };
         if allow_empty || !value.trim().is_empty() {
@@ -207,7 +220,9 @@ fn prompt_result(label: &str, optional: bool) -> Result<String, String> {
         }
         io::stdout().flush().map_err(|error| error.to_string())?;
         let mut input = String::new();
-        io::stdin().read_line(&mut input).map_err(|error| error.to_string())?;
+        io::stdin()
+            .read_line(&mut input)
+            .map_err(|error| error.to_string())?;
         match input.trim().to_ascii_uppercase().as_str() {
             "1" | "PASS" => return Ok("PASS".to_owned()),
             "2" | "UNSUPPORTED/FAIL-OPEN" => return Ok("UNSUPPORTED/FAIL-OPEN".to_owned()),
@@ -243,7 +258,10 @@ fn render_matrix(rows: &[Row]) -> String {
 }
 
 fn escape_cell(value: &str) -> String {
-    value.replace('|', "\\|").replace('\r', " ").replace('\n', " ")
+    value
+        .replace('|', "\\|")
+        .replace('\r', " ")
+        .replace('\n', " ")
 }
 
 fn parse_matrix(text: &str) -> Result<Vec<Row>, String> {
@@ -257,7 +275,10 @@ fn parse_matrix(text: &str) -> Result<Vec<Row>, String> {
         if line.starts_with("## ") {
             break;
         }
-        if !line.trim_start().starts_with('|') || line.contains("|---") || line.contains("| Application |") {
+        if !line.trim_start().starts_with('|')
+            || line.contains("|---")
+            || line.contains("| Application |")
+        {
             continue;
         }
         let cells = split_markdown_row(line);
@@ -323,7 +344,12 @@ fn verify_rows(rows: &[Row]) -> Result<(), String> {
             &CORE_RESULTS
         };
         validate_result(application, "Auto", &row.auto, allowed_core)?;
-        validate_result(application, "Manual current word", &row.manual, allowed_core)?;
+        validate_result(
+            application,
+            "Manual current word",
+            &row.manual,
+            allowed_core,
+        )?;
         validate_result(application, "Selected text", &row.selected, allowed_core)?;
         validate_result(application, "Undo", &row.undo, &OPTIONAL_RESULTS)?;
         validate_result(
@@ -338,7 +364,14 @@ fn verify_rows(rows: &[Row]) -> Result<(), String> {
 
 fn validate_metadata(application: &str, column: &str, value: &str) -> Result<(), String> {
     let normalized = value.trim().to_ascii_uppercase();
-    let blocked = ["", "PENDING", "UNKNOWN", "N/A", "NOT INSTALLED", "UNAVAILABLE"];
+    let blocked = [
+        "",
+        "PENDING",
+        "UNKNOWN",
+        "N/A",
+        "NOT INSTALLED",
+        "UNAVAILABLE",
+    ];
     if blocked.contains(&normalized.as_str()) {
         return Err(format!("{application} / {column} is incomplete: '{value}'"));
     }
@@ -374,20 +407,37 @@ fn detect_windows_build() -> Option<String> {
     if !output.status.success() {
         return None;
     }
-    parse_reg_value(&String::from_utf8_lossy(&output.stdout), "CurrentBuildNumber")
+    parse_reg_value(
+        &String::from_utf8_lossy(&output.stdout),
+        "CurrentBuildNumber",
+    )
 }
 
 fn detect_application_version(application: &str) -> Option<String> {
     match application {
         "Microsoft Edge" => command_version(&[
-            (r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", "--version"),
-            (r"C:\Program Files\Microsoft\Edge\Application\msedge.exe", "--version"),
+            (
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                "--version",
+            ),
+            (
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                "--version",
+            ),
         ]),
         "Google Chrome" => command_version(&[
-            (r"C:\Program Files\Google\Chrome\Application\chrome.exe", "--version"),
-            (r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "--version"),
+            (
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                "--version",
+            ),
+            (
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                "--version",
+            ),
         ]),
-        "Visual Studio Code" => command_version(&[("code.cmd", "--version"), ("code.exe", "--version")]),
+        "Visual Studio Code" => {
+            command_version(&[("code.cmd", "--version"), ("code.exe", "--version")])
+        }
         "Windows Terminal" => command_version(&[("wt.exe", "--version")]),
         _ => None,
     }
@@ -404,7 +454,11 @@ fn command_version(candidates: &[(&str, &str)]) -> Option<String> {
         }
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let text = if stdout.trim().is_empty() { stderr.trim() } else { stdout.trim() };
+        let text = if stdout.trim().is_empty() {
+            stderr.trim()
+        } else {
+            stdout.trim()
+        };
         let first = text.lines().next().unwrap_or("").trim();
         if !first.is_empty() {
             return Some(first.to_owned());
@@ -416,7 +470,10 @@ fn command_version(candidates: &[(&str, &str)]) -> Option<String> {
 fn parse_reg_value(output: &str, name: &str) -> Option<String> {
     output.lines().find_map(|line| {
         let trimmed = line.trim();
-        if !trimmed.to_ascii_lowercase().starts_with(&name.to_ascii_lowercase()) {
+        if !trimmed
+            .to_ascii_lowercase()
+            .starts_with(&name.to_ascii_lowercase())
+        {
             return None;
         }
         let mut parts = trimmed.split_whitespace();
@@ -502,6 +559,9 @@ mod tests {
     #[test]
     fn registry_parser_extracts_value() {
         let sample = "    CurrentBuildNumber    REG_SZ    26100\r\n";
-        assert_eq!(parse_reg_value(sample, "CurrentBuildNumber"), Some("26100".to_owned()));
+        assert_eq!(
+            parse_reg_value(sample, "CurrentBuildNumber"),
+            Some("26100".to_owned())
+        );
     }
 }
