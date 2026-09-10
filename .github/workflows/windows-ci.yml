@@ -34,28 +34,26 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Verify normalized 2.0.1 source
+      - name: Read-only 2.0.1 source and privacy gate
         if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
         shell: pwsh
-        run: |
-          ./scripts/ci-normalize-v201.ps1
-          ./scripts/safety-hardening-v201.ps1
-          $changes = git status --porcelain
-          if ($changes) {
-            Write-Host '2.0.1 source is not reproducibly normalized. Commit these changes instead of letting CI mutate the branch:'
-            git status --short
-            git diff --check
-            git diff -- Cargo.toml Cargo.lock src/windows_runtime_v201.rs src/windows_runtime/selection.rs src/windows_runtime/secure_input.rs src/windows_runtime/uia_secure.rs src/windows_runtime/uia_text.rs src/windows_runtime/runtime_dispatch.rs src/windows_runtime/cross_process_e2e.rs src/windows_runtime/e2e_tests.rs src/bin/g-switcher-e2e-helper.rs src/bin/g-switcher-failure-e2e.rs tests/browser_uia_adapter.rs
-            throw 'Normalization changed tracked source.'
-          }
+        run: ./scripts/ci-normalize-v201.ps1
 
       - name: Format
         shell: pwsh
         run: cargo fmt --all -- --check
 
+      - name: Locked dependency graph
+        shell: pwsh
+        run: cargo metadata --locked --no-deps --format-version 1 > $null
+
       - name: Unit tests
         shell: pwsh
         run: cargo test --locked --all-targets
+
+      - name: Build compiled compatibility tool
+        shell: pwsh
+        run: cargo build --locked --bin g-switcher-compatibility
 
       - name: Manual compatibility tooling smoke test
         shell: pwsh
@@ -65,6 +63,8 @@ jobs:
             throw 'Windows PowerShell 5.1 executable is missing from the runner.'
           }
 
+          # Keep the legacy developer recorder compatible with Windows PowerShell
+          # 5.1, but human testing no longer depends on unsigned script execution.
           $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
           if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
             throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
@@ -85,7 +85,18 @@ jobs:
 
           & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
           if ($LASTEXITCODE -eq 0) {
-            throw 'Compatibility verifier unexpectedly accepted a PENDING scaffold.'
+            throw 'PowerShell compatibility verifier unexpectedly accepted a PENDING scaffold.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $compiledScaffold = Join-Path $env:RUNNER_TEMP "compatibility-compiled-scaffold-2.0.1.md"
+          & .\target\debug\g-switcher-compatibility.exe scaffold $compiledScaffold
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $compiledScaffold -PathType Leaf)) {
+            throw 'Compiled compatibility recorder failed to create a scaffold.'
+          }
+          & .\target\debug\g-switcher-compatibility.exe verify $compiledScaffold
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled compatibility verifier unexpectedly accepted a PENDING scaffold.'
           }
           $global:LASTEXITCODE = 0
 
@@ -108,9 +119,14 @@ jobs:
           '@
           $validPath = Join-Path $env:RUNNER_TEMP "compatibility-valid-2.0.1.md"
           Set-Content -LiteralPath $validPath -Value $valid -Encoding UTF8
+
           & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $validPath
           if ($LASTEXITCODE -ne 0) {
-            throw 'Compatibility verifier rejected a complete non-blocking matrix.'
+            throw 'PowerShell compatibility verifier rejected a complete non-blocking matrix.'
+          }
+          & .\target\debug\g-switcher-compatibility.exe verify $validPath
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Compiled compatibility verifier rejected a complete non-blocking matrix.'
           }
 
           $invalidBrowser = $valid.Replace(
@@ -121,7 +137,12 @@ jobs:
           Set-Content -LiteralPath $invalidBrowserPath -Value $invalidBrowser -Encoding UTF8
           & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidBrowserPath
           if ($LASTEXITCODE -eq 0) {
-            throw 'Compatibility verifier unexpectedly accepted unsupported Edge core behavior.'
+            throw 'PowerShell verifier unexpectedly accepted unsupported Edge core behavior.'
+          }
+          $global:LASTEXITCODE = 0
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidBrowserPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled verifier unexpectedly accepted unsupported Edge core behavior.'
           }
           $global:LASTEXITCODE = 0
 
@@ -131,9 +152,9 @@ jobs:
           )
           $invalidCorePath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-core-2.0.1.md"
           Set-Content -LiteralPath $invalidCorePath -Value $invalidCore -Encoding UTF8
-          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidCorePath
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidCorePath
           if ($LASTEXITCODE -eq 0) {
-            throw 'Compatibility verifier unexpectedly accepted N/A for a core text-operation column.'
+            throw 'Compiled verifier unexpectedly accepted N/A for a core text-operation column.'
           }
           $global:LASTEXITCODE = 0
 
@@ -143,9 +164,9 @@ jobs:
           )
           $invalidMetadataPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-metadata-2.0.1.md"
           Set-Content -LiteralPath $invalidMetadataPath -Value $invalidMetadata -Encoding UTF8
-          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidMetadataPath
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidMetadataPath
           if ($LASTEXITCODE -eq 0) {
-            throw 'Compatibility verifier unexpectedly accepted UNKNOWN application metadata.'
+            throw 'Compiled verifier unexpectedly accepted UNKNOWN application metadata.'
           }
           $global:LASTEXITCODE = 0
 
@@ -179,11 +200,37 @@ jobs:
 
       - name: Release build
         shell: pwsh
-        run: cargo build --locked --release --bin g-switcher
+        run: cargo build --locked --release --bin g-switcher --bin g-switcher-compatibility
 
       - name: Release and branding checks
         shell: pwsh
-        run: ./scripts/release-check.ps1
+        run: |
+          ./scripts/release-check.ps1
+          $compat = "target/release/g-switcher-compatibility.exe"
+          if (-not (Test-Path -LiteralPath $compat -PathType Leaf)) {
+            throw 'Compiled compatibility executable is missing from the release build.'
+          }
+          $compatHash = (Get-FileHash -LiteralPath $compat -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath "$compat.sha256" -Value "$compatHash  g-switcher-compatibility.exe" -Encoding ascii -NoNewline
+          Write-Host "Compatibility tool SHA256: $compatHash"
+
+      - name: Microsoft Defender scan
+        shell: pwsh
+        run: |
+          $mpCmd = @(
+            "$env:ProgramFiles\Windows Defender\MpCmdRun.exe",
+            "$env:ProgramData\Microsoft\Windows Defender\Platform\*\MpCmdRun.exe"
+          ) | ForEach-Object { Get-Item $_ -ErrorAction SilentlyContinue } | Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $mpCmd) {
+            Write-Warning 'Microsoft Defender command-line scanner is unavailable on this runner; other release gates continue.'
+            exit 0
+          }
+          foreach ($path in @('target/release/g-switcher.exe', 'target/release/g-switcher-compatibility.exe')) {
+            & $mpCmd.FullName -Scan -ScanType 3 -File (Resolve-Path $path).Path -DisableRemediation
+            if ($LASTEXITCODE -ne 0) {
+              throw "Microsoft Defender scan failed or detected a threat for $path (exit $LASTEXITCODE)."
+            }
+          }
 
       - name: Prepare public release package
         shell: pwsh
@@ -209,6 +256,8 @@ jobs:
           New-Item -ItemType Directory -Path $kitRoot -Force | Out-Null
           Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $kitRoot
           Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe.sha256 -Destination $kitRoot
           Copy-Item -LiteralPath scripts/manual-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
