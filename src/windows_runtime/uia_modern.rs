@@ -79,8 +79,7 @@ pub fn read_selected_text(hwnd: HWND) -> Option<ModernSelectedText> {
     if selected.is_empty() {
         return None;
     }
-    let prefix_start =
-        prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_Start)?;
+    let prefix_start = prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_Start)?;
     let prefix_end = prefix_to_endpoint(&document, &selection, TextPatternRangeEndpoint_End)?;
     let start = char_count_u32(&prefix_start)?;
     let end = char_count_u32(&prefix_end)?;
@@ -196,8 +195,8 @@ pub fn replace_range_if_matches(
         }
 
         let current_value = value_of(&after.value);
-        let current_text = unsafe { after.text.DocumentRange().ok() }
-            .and_then(|range| text_of(&range));
+        let current_text =
+            unsafe { after.text.DocumentRange().ok() }.and_then(|range| text_of(&range));
         if current_value.as_deref() == Some(planned.as_str())
             && current_text.as_deref() == Some(planned.as_str())
         {
@@ -275,11 +274,7 @@ fn rollback_if_exact(
                 .as_deref()
                 == Some(original)
         {
-            let _ = select_offsets(
-                &restored.text,
-                original_selection.0,
-                original_selection.1,
-            );
+            let _ = select_offsets(&restored.text, original_selection.0, original_selection.1);
             return;
         }
         if Instant::now() >= deadline {
