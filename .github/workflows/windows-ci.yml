@@ -28,9 +28,13 @@ jobs:
       - name: Rust toolchain
         shell: pwsh
         run: |
-          rustup set profile minimal
-          rustup toolchain install stable --component rustfmt --component clippy
-          rustup default stable
+          rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+          rustup override set 1.98.1
+          $active = rustup show active-toolchain
+          Write-Host $active
+          if (-not $active.StartsWith('1.98.1')) {
+            throw "Unexpected Rust toolchain: $active"
+          }
           rustc --version
           cargo --version
 
@@ -258,6 +262,24 @@ jobs:
           Copy-Item -LiteralPath RELEASE_NOTES_2.0.1.md -Destination $packageRoot
           Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $packageRoot
+
+          $head = (git rev-parse HEAD).Trim()
+          $rustVersion = (rustc --version).Trim()
+          $cargoVersion = (cargo --version).Trim()
+          $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $provenance = @(
+            'G-switcher 2.0.1 build provenance',
+            "commit=$head",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+            "rust=$rustVersion",
+            "cargo=$cargoVersion",
+            "cargo_lock_sha256=$lockHash",
+            "g-switcher.exe_sha256=$exeHash"
+          )
+          Set-Content -LiteralPath (Join-Path $packageRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
+
           $zip = "target/release/g-switcher-2.0.1-windows-x64.zip"
           Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -277,6 +299,25 @@ jobs:
           Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
           Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+
+          $head = (git rev-parse HEAD).Trim()
+          $rustVersion = (rustc --version).Trim()
+          $cargoVersion = (cargo --version).Trim()
+          $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $compatHash = (Get-FileHash -LiteralPath target/release/g-switcher-compatibility.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $provenance = @(
+            'G-switcher 2.0.1 manual compatibility kit provenance',
+            "commit=$head",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+            "rust=$rustVersion",
+            "cargo=$cargoVersion",
+            "cargo_lock_sha256=$lockHash",
+            "g-switcher.exe_sha256=$exeHash",
+            "g-switcher-compatibility.exe_sha256=$compatHash"
+          )
+          Set-Content -LiteralPath (Join-Path $kitRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
 
           $manifest = Get-ChildItem -LiteralPath $kitRoot -File |
             Sort-Object Name |
