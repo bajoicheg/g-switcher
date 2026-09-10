@@ -4,6 +4,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_NULL,
 };
 
+#[path = "uia_legacy.rs"]
+mod uia_legacy;
 #[path = "uia_modern.rs"]
 mod uia_modern;
 #[path = "uia_text.rs"]
@@ -33,15 +35,17 @@ enum TextAdapter {
     EditMessages,
     RichEditUia,
     ModernUiaValue,
+    ModernUiaLegacy,
 }
 
 /// Returns true only for responsive controls with a synchronous, verifiable
 /// 2.0.1 text adapter. Plain Edit uses marshalled system messages; RichEdit
-/// uses UIA TextPattern plus native range-local replacement; modern Chromium/
-/// WebView2/Electron-style controls use the fresh-context UIA adapter, which
-/// binds every mutation to one RuntimeId and reacquires provider objects after
-/// ValuePattern SetValue. A hung, closing, password, read-only or unverifiable
-/// target fails open.
+/// uses UIA TextPattern plus native range-local replacement. Modern Chromium/
+/// WebView2/Electron-style controls use exact TextPattern state and prefer the
+/// fresh-context ValuePattern path, with documented LegacyIAccessible SetValue
+/// as a second verified accessibility path. Both modern paths bind mutations to
+/// one RuntimeId and never use clipboard or blind SendInput. A hung, closing,
+/// password, disabled, read-only or unverifiable target fails open.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }
@@ -72,6 +76,14 @@ pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
                 text: selected.text,
             })
         }
+        TextAdapter::ModernUiaLegacy => {
+            let selected = uia_legacy::read_selected_text(hwnd)?;
+            Some(SelectedText {
+                start: selected.start,
+                end: selected.end,
+                text: selected.text,
+            })
+        }
     }
 }
 
@@ -87,6 +99,13 @@ pub fn snapshot_caret(hwnd: HWND) -> Option<EditSnapshot> {
         }
         TextAdapter::ModernUiaValue => {
             let snapshot = uia_modern::snapshot_caret(hwnd)?;
+            Some(EditSnapshot {
+                caret: snapshot.caret,
+                text_before_caret: snapshot.text_before_caret,
+            })
+        }
+        TextAdapter::ModernUiaLegacy => {
+            let snapshot = uia_legacy::snapshot_caret(hwnd)?;
             Some(EditSnapshot {
                 caret: snapshot.caret,
                 text_before_caret: snapshot.text_before_caret,
@@ -114,7 +133,7 @@ pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) ->
     }
     let expected_units = match control_adapter {
         TextAdapter::EditMessages => utf16_len(expected),
-        TextAdapter::RichEditUia | TextAdapter::ModernUiaValue => {
+        TextAdapter::RichEditUia | TextAdapter::ModernUiaValue | TextAdapter::ModernUiaLegacy => {
             expected.chars().count().min(u32::MAX as usize) as u32
         }
     };
@@ -123,9 +142,11 @@ pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) ->
 }
 
 /// Replaces the requested range only if it still contains `expected` and the
-/// selected adapter can verify the exact post-state. Modern controls use the
-/// RuntimeId-bound fresh-context UIA adapter and never fall back to clipboard
-/// or blind SendInput.
+/// selected adapter can verify the exact post-state. For a modern ValuePattern
+/// target, the documented LegacyIAccessible path is attempted only after the
+/// ValuePattern path returns without a verified mutation; the fallback performs
+/// its own exact source/RuntimeId/password/read-only checks before writing.
+/// There is never a clipboard or blind SendInput fallback.
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -145,6 +166,10 @@ pub fn replace_range_if_matches(
         }
         Some(TextAdapter::ModernUiaValue) => {
             uia_modern::replace_range_if_matches(hwnd, start, end, expected, replacement)
+                || uia_legacy::replace_range_if_matches(hwnd, start, end, expected, replacement)
+        }
+        Some(TextAdapter::ModernUiaLegacy) => {
+            uia_legacy::replace_range_if_matches(hwnd, start, end, expected, replacement)
         }
         None => false,
     }
@@ -159,6 +184,11 @@ pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
         }
         TextAdapter::ModernUiaValue => Some(
             uia_modern::read_document_text(hwnd)?
+                .encode_utf16()
+                .collect(),
+        ),
+        TextAdapter::ModernUiaLegacy => Some(
+            uia_legacy::read_document_text(hwnd)?
                 .encode_utf16()
                 .collect(),
         ),
@@ -290,6 +320,8 @@ fn adapter(hwnd: HWND) -> Option<TextAdapter> {
         Some(TextAdapter::RichEditUia)
     } else if uia_modern::has_adapter(hwnd) {
         Some(TextAdapter::ModernUiaValue)
+    } else if uia_legacy::has_adapter(hwnd) {
+        Some(TextAdapter::ModernUiaLegacy)
     } else {
         None
     }
