@@ -15,20 +15,81 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: true
-      - name: Export as deterministic base64 chunks
+
+      - name: Generate green PC Health Check icon from G-switcher source
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet pillow==11.3.0
+          python3 - <<'PY'
+          from PIL import Image
+          import colorsys
+          from pathlib import Path
+
+          source = Image.open('assets/app-icon-src.png').convert('RGBA')
+          px = source.load()
+          for y in range(source.height):
+              for x in range(source.width):
+                  r, g, b, a = px[x, y]
+                  if a == 0:
+                      continue
+                  h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+                  # Keep white/neutral details intact; remap colored brand areas to green shades.
+                  if s >= 0.12 and v >= 0.10:
+                      h = 0.37
+                      s = max(s, 0.58)
+                      r2, g2, b2 = colorsys.hsv_to_rgb(h, min(s, 1.0), v)
+                      px[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
+
+          # Put the non-square source on a transparent square canvas before ICO generation.
+          canvas = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+          work = source.copy()
+          work.thumbnail((224, 224), Image.Resampling.LANCZOS)
+          pos = ((256 - work.width) // 2, (256 - work.height) // 2)
+          canvas.alpha_composite(work, pos)
+
+          Path('.asset-build').mkdir(exist_ok=True)
+          canvas.save('.asset-build/gpchc-green-preview.png', optimize=True)
+          canvas.save(
+              '.asset-build/gpchc-green.ico',
+              format='ICO',
+              sizes=[(16,16),(20,20),(24,24),(32,32),(40,40),(48,48),(64,64),(128,128),(256,256)]
+          )
+          PY
+
+      - name: Export deterministic source and generated assets
         shell: bash
         run: |
           rm -rf .asset-export
-          mkdir -p .asset-export/g-shield .asset-export/app-icon
+          mkdir -p .asset-export/g-shield .asset-export/app-icon .asset-export/gpchc-green-icon .asset-export/gpchc-green-preview
           base64 -w0 assets/g-shield.png | split -b 3000 -d -a 2 - .asset-export/g-shield/part-
           base64 -w0 assets/app-icon-src.png | split -b 3000 -d -a 2 - .asset-export/app-icon/part-
+          base64 -w0 .asset-build/gpchc-green.ico | split -b 3000 -d -a 2 - .asset-export/gpchc-green-icon/part-
+          base64 -w0 .asset-build/gpchc-green-preview.png | split -b 3000 -d -a 2 - .asset-export/gpchc-green-preview/part-
           printf '%s\n' "$(git hash-object assets/g-shield.png)" > .asset-export/g-shield.blob-sha
           printf '%s\n' "$(git hash-object assets/app-icon-src.png)" > .asset-export/app-icon-src.blob-sha
+          printf '%s\n' "$(git hash-object .asset-build/gpchc-green.ico)" > .asset-export/gpchc-green-icon.blob-sha
+          printf '%s\n' "$(git hash-object .asset-build/gpchc-green-preview.png)" > .asset-export/gpchc-green-preview.blob-sha
           printf '%s\n' "$(stat -c%s assets/g-shield.png)" > .asset-export/g-shield.size
           printf '%s\n' "$(stat -c%s assets/app-icon-src.png)" > .asset-export/app-icon-src.size
+          printf '%s\n' "$(stat -c%s .asset-build/gpchc-green.ico)" > .asset-export/gpchc-green-icon.size
+          printf '%s\n' "$(stat -c%s .asset-build/gpchc-green-preview.png)" > .asset-export/gpchc-green-preview.size
+
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add -A .asset-export
-          git diff --cached --quiet && exit 0
-          git commit -m 'Export branding assets as 3 KB base64 chunks'
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m 'Export G-switcher branding and green PC Health Check icon'
+            git push
+          fi
+
+      - name: Upload raw brand asset bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pc-health-check-brand-assets
+          path: |
+            assets/g-shield.png
+            assets/app-icon-src.png
+            .asset-build/gpchc-green.ico
+            .asset-build/gpchc-green-preview.png
+          if-no-files-found: error
+          retention-days: 1
