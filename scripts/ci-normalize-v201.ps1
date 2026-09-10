@@ -12,6 +12,7 @@ $requiredFiles = @(
     'src/windows_runtime/uia_secure.rs',
     'src/windows_runtime/uia_text.rs',
     'src/windows_runtime/uia_modern.rs',
+    'src/windows_runtime/uia_legacy.rs',
     'src/windows_runtime/cross_process_e2e.rs',
     'src/bin/g-switcher-e2e-helper.rs',
     'src/bin/g-switcher-failure-e2e.rs',
@@ -36,6 +37,7 @@ $runtime = Get-Content -LiteralPath 'src/windows_runtime_v201.rs' -Raw
 $selection = Get-Content -LiteralPath 'src/windows_runtime/selection.rs' -Raw
 $uiaSecure = Get-Content -LiteralPath 'src/windows_runtime/uia_secure.rs' -Raw
 $uiaModern = Get-Content -LiteralPath 'src/windows_runtime/uia_modern.rs' -Raw
+$uiaLegacy = Get-Content -LiteralPath 'src/windows_runtime/uia_legacy.rs' -Raw
 $browserTest = Get-Content -LiteralPath 'tests/browser_uia_adapter.rs' -Raw
 $manualBrowserPage = Get-Content -LiteralPath 'manual-browser-test-2.0.1.html' -Raw
 $compatTool = Get-Content -LiteralPath 'src/bin/g-switcher-compatibility.rs' -Raw
@@ -56,9 +58,13 @@ foreach ($marker in $requiredRuntimeMarkers) {
 
 $requiredSelectionMarkers = @(
     '#[path = "uia_modern.rs"]',
+    '#[path = "uia_legacy.rs"]',
     'uia_modern::has_adapter(hwnd)',
     'uia_modern::replace_range_if_matches',
-    'TextAdapter::ModernUiaValue'
+    'uia_legacy::has_adapter(hwnd)',
+    'uia_legacy::replace_range_if_matches',
+    'TextAdapter::ModernUiaValue',
+    'TextAdapter::ModernUiaLegacy'
 )
 foreach ($marker in $requiredSelectionMarkers) {
     if (-not $selection.Contains($marker)) {
@@ -87,6 +93,23 @@ $requiredModernMarkers = @(
 foreach ($marker in $requiredModernMarkers) {
     if (-not $uiaModern.Contains($marker)) {
         throw "Required fresh-context modern UIA marker is missing: $marker"
+    }
+}
+
+$requiredLegacyMarkers = @(
+    'IUIAutomationLegacyIAccessiblePattern',
+    'UIA_LegacyIAccessiblePatternId',
+    'context.legacy.SetValue',
+    'context.runtime_id != expected_id',
+    'element.CurrentIsPassword()',
+    'element.CurrentIsEnabled()',
+    'element.CurrentIsKeyboardFocusable()',
+    'value.CurrentIsReadOnly()',
+    'rollback_if_exact'
+)
+foreach ($marker in $requiredLegacyMarkers) {
+    if (-not $uiaLegacy.Contains($marker)) {
+        throw "Required verified LegacyIAccessible fallback marker is missing: $marker"
     }
 }
 
