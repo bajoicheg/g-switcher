@@ -4,6 +4,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_NULL,
 };
 
+#[path = "uia_modern.rs"]
+mod uia_modern;
 #[path = "uia_text.rs"]
 mod uia_text;
 
@@ -36,8 +38,10 @@ enum TextAdapter {
 /// Returns true only for responsive controls with a synchronous, verifiable
 /// 2.0.1 text adapter. Plain Edit uses marshalled system messages; RichEdit
 /// uses UIA TextPattern plus native range-local replacement; modern Chromium/
-/// WebView2/Electron-style controls use TextPattern + writable ValuePattern.
-/// A hung, closing, password, read-only or unverifiable target fails open.
+/// WebView2/Electron-style controls use the fresh-context UIA adapter, which
+/// binds every mutation to one RuntimeId and reacquires provider objects after
+/// ValuePattern SetValue. A hung, closing, password, read-only or unverifiable
+/// target fails open.
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }
@@ -52,8 +56,16 @@ pub fn is_plain_edit(hwnd: HWND) -> bool {
 pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => read_selected_text_messages(hwnd),
-        TextAdapter::RichEditUia | TextAdapter::ModernUiaValue => {
+        TextAdapter::RichEditUia => {
             let selected = uia_text::read_selected_text(hwnd)?;
+            Some(SelectedText {
+                start: selected.start,
+                end: selected.end,
+                text: selected.text,
+            })
+        }
+        TextAdapter::ModernUiaValue => {
+            let selected = uia_modern::read_selected_text(hwnd)?;
             Some(SelectedText {
                 start: selected.start,
                 end: selected.end,
@@ -66,8 +78,15 @@ pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
 pub fn snapshot_caret(hwnd: HWND) -> Option<EditSnapshot> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => snapshot_caret_messages(hwnd),
-        TextAdapter::RichEditUia | TextAdapter::ModernUiaValue => {
+        TextAdapter::RichEditUia => {
             let snapshot = uia_text::snapshot_caret(hwnd)?;
+            Some(EditSnapshot {
+                caret: snapshot.caret,
+                text_before_caret: snapshot.text_before_caret,
+            })
+        }
+        TextAdapter::ModernUiaValue => {
+            let snapshot = uia_modern::snapshot_caret(hwnd)?;
             Some(EditSnapshot {
                 caret: snapshot.caret,
                 text_before_caret: snapshot.text_before_caret,
@@ -104,8 +123,9 @@ pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) ->
 }
 
 /// Replaces the requested range only if it still contains `expected` and the
-/// selected adapter can verify the exact post-state. Modern controls use UIA
-/// TextPattern + ValuePattern and never fall back to clipboard/blind SendInput.
+/// selected adapter can verify the exact post-state. Modern controls use the
+/// RuntimeId-bound fresh-context UIA adapter and never fall back to clipboard
+/// or blind SendInput.
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -124,7 +144,7 @@ pub fn replace_range_if_matches(
             uia_text::replace_range_if_matches(hwnd, start, end, expected, replacement)
         }
         Some(TextAdapter::ModernUiaValue) => {
-            uia_text::replace_range_if_matches_value(hwnd, start, end, expected, replacement)
+            uia_modern::replace_range_if_matches(hwnd, start, end, expected, replacement)
         }
         None => false,
     }
@@ -134,8 +154,11 @@ pub fn replace_range_if_matches(
 pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
     match adapter(hwnd)? {
         TextAdapter::EditMessages => read_control_text_messages(hwnd),
-        TextAdapter::RichEditUia | TextAdapter::ModernUiaValue => {
+        TextAdapter::RichEditUia => {
             Some(uia_text::read_document_text(hwnd)?.encode_utf16().collect())
+        }
+        TextAdapter::ModernUiaValue => {
+            Some(uia_modern::read_document_text(hwnd)?.encode_utf16().collect())
         }
     }
 }
@@ -263,7 +286,7 @@ fn adapter(hwnd: HWND) -> Option<TextAdapter> {
         Some(TextAdapter::EditMessages)
     } else if is_rich_edit_class(&name) && uia_text::has_rich_text_adapter(hwnd) {
         Some(TextAdapter::RichEditUia)
-    } else if uia_text::has_modern_value_adapter(hwnd) {
+    } else if uia_modern::has_adapter(hwnd) {
         Some(TextAdapter::ModernUiaValue)
     } else {
         None
