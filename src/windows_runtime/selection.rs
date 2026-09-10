@@ -157,9 +157,11 @@ pub fn read_control_text(hwnd: HWND) -> Option<Vec<u16>> {
         TextAdapter::RichEditUia => {
             Some(uia_text::read_document_text(hwnd)?.encode_utf16().collect())
         }
-        TextAdapter::ModernUiaValue => {
-            Some(uia_modern::read_document_text(hwnd)?.encode_utf16().collect())
-        }
+        TextAdapter::ModernUiaValue => Some(
+            uia_modern::read_document_text(hwnd)?
+                .encode_utf16()
+                .collect(),
+        ),
     }
 }
 
