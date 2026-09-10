@@ -18,6 +18,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     SW_RESTORE,
 };
 
+#[allow(dead_code)]
 #[path = "../src/windows_runtime/selection.rs"]
 mod selection;
 #[path = "../src/windows_runtime/uia_secure.rs"]
@@ -127,6 +128,13 @@ fn find_browser(executable_name: &str, candidates: &[(&str, &str)]) -> PathBuf {
 }
 
 fn exercise_browser(browser: &BrowserSpec) {
+    if let Ok(version) = Command::new(&browser.executable).arg("--version").output() {
+        let stdout = String::from_utf8_lossy(&version.stdout);
+        let stderr = String::from_utf8_lossy(&version.stderr);
+        let text = if stdout.trim().is_empty() { stderr } else { stdout };
+        eprintln!("G-switcher browser UIA E2E: {} version {}", browser.label, text.trim());
+    }
+
     let root = std::env::temp_dir().join(format!(
         "g-switcher-browser-uia-{}-{}",
         std::process::id(),
@@ -139,6 +147,11 @@ fn exercise_browser(browser: &BrowserSpec) {
     write_test_page(&html, &marker);
     let url = file_url(&html);
 
+    // Chromium can lazily activate its accessibility tree. The adapter test is
+    // deliberately deterministic: force the complete renderer accessibility
+    // mode and native UIA provider so CI validates the mutation/identity logic,
+    // while the separate human compatibility pass still checks a normal browser
+    // launch without test-only flags.
     let child = Command::new(&browser.executable)
         .arg(format!("--user-data-dir={}", profile.display()))
         .args([
@@ -149,6 +162,8 @@ fn exercise_browser(browser: &BrowserSpec) {
             "--disable-background-networking",
             "--disable-component-update",
             "--disable-popup-blocking",
+            "--force-renderer-accessibility=complete",
+            "--enable-features=UiaProvider",
         ])
         .arg(format!("--app={url}"))
         .stdout(Stdio::null())
@@ -166,22 +181,14 @@ fn exercise_browser(browser: &BrowserSpec) {
         SetForegroundWindow(top);
     }
 
-    let ordinary_hwnd = wait_for_editable_focus(Duration::from_secs(15));
-    let mut ordinary_pid = 0u32;
-    assert_ne!(
-        unsafe { GetWindowThreadProcessId(ordinary_hwnd, &mut ordinary_pid) },
-        0,
-        "failed to resolve browser focused thread"
-    );
-    let ordinary_probe = uia_secure::probe_focused(ordinary_pid)
-        .unwrap_or_else(|| panic!("{} ordinary UIA security probe failed", browser.label));
+    let ordinary_hwnd = wait_for_editable_focus("ghbdtn ", Duration::from_secs(20));
+    let ordinary_probe = security_probe(ordinary_hwnd, browser.label, "ordinary input");
     assert!(
         !ordinary_probe.is_password,
         "{} ordinary text field was classified as password",
         browser.label
     );
 
-    wait_for_adapter_text(ordinary_hwnd, "ghbdtn ", Duration::from_secs(10));
     let snapshot = selection::snapshot_caret(ordinary_hwnd)
         .unwrap_or_else(|| panic!("{} caret snapshot unavailable", browser.label));
     assert_eq!(
@@ -232,11 +239,34 @@ fn exercise_browser(browser: &BrowserSpec) {
     );
     wait_for_adapter_text(ordinary_hwnd, "ghbdtn rfr ltkf", Duration::from_secs(5));
 
+    // A second editable DOM control under the same Chromium host HWND exercises
+    // RuntimeId separation and multiline ValuePattern/TextPattern behavior.
+    send_key(VK_TAB);
+    let textarea_hwnd = wait_for_editable_focus("rfr ltkf", Duration::from_secs(8));
+    let textarea_probe = security_probe(textarea_hwnd, browser.label, "textarea");
+    assert_ne!(
+        ordinary_probe.element_id, textarea_probe.element_id,
+        "{} UIA RuntimeId did not distinguish input and textarea DOM fields",
+        browser.label
+    );
+    assert!(
+        selection::replace_suffix_at_caret(textarea_hwnd, "rfr ltkf", "как дела"),
+        "{} textarea verified replacement failed",
+        browser.label
+    );
+    wait_for_adapter_text(textarea_hwnd, "как дела", Duration::from_secs(5));
+    assert!(
+        selection::replace_suffix_at_caret(textarea_hwnd, "как дела", "rfr ltkf"),
+        "{} textarea Undo replacement failed",
+        browser.label
+    );
+    wait_for_adapter_text(textarea_hwnd, "rfr ltkf", Duration::from_secs(5));
+
     send_key(VK_TAB);
     let (password_hwnd, password_probe) = wait_for_password_focus(Duration::from_secs(8));
     assert_ne!(
-        ordinary_probe.element_id, password_probe.element_id,
-        "{} UIA RuntimeId did not distinguish ordinary and password DOM fields",
+        textarea_probe.element_id, password_probe.element_id,
+        "{} UIA RuntimeId did not distinguish textarea and password DOM fields",
         browser.label
     );
     assert!(password_probe.is_password);
@@ -247,9 +277,20 @@ fn exercise_browser(browser: &BrowserSpec) {
     );
 
     eprintln!(
-        "G-switcher browser UIA E2E: {} PASS (verified mutation, selection, Undo, password guard)",
+        "G-switcher browser UIA E2E: {} PASS (input + textarea mutation, selection, Undo, RuntimeId separation, password guard)",
         browser.label
     );
+}
+
+fn security_probe(hwnd: HWND, browser: &str, field: &str) -> uia_secure::UiaSecurityProbe {
+    let mut process_id = 0u32;
+    assert_ne!(
+        unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) },
+        0,
+        "failed to resolve {browser} {field} process"
+    );
+    uia_secure::probe_focused(process_id)
+        .unwrap_or_else(|| panic!("{browser} {field} UIA security probe failed"))
 }
 
 fn write_test_page(path: &Path, marker: &str) {
@@ -259,9 +300,11 @@ fn write_test_page(path: &Path, marker: &str) {
 <title>{marker}</title>
 <style>
 body {{ font-family: sans-serif; padding: 40px; }}
-input {{ display:block; width:700px; font-size:24px; margin:20px 0; }}
+input, textarea {{ display:block; width:700px; font-size:24px; margin:20px 0; }}
+textarea {{ height:120px; }}
 </style>
 <label>ordinary<input id="ordinary" type="text" value="ghbdtn " autofocus></label>
+<label>textarea<textarea id="multiline">rfr ltkf</textarea></label>
 <label>password<input id="password" type="password" value=""></label>
 <script>
 addEventListener('load', () => {{
@@ -346,15 +389,17 @@ fn focused_hwnd() -> HWND {
     }
 }
 
-fn wait_for_editable_focus(timeout: Duration) -> HWND {
+fn wait_for_editable_focus(expected: &str, timeout: Duration) -> HWND {
     wait_until(timeout, || {
         let hwnd = focused_hwnd();
         if hwnd.is_null() || !selection::is_standard_edit(hwnd) {
             return None;
         }
-        (adapter_text(hwnd).as_deref() == Some("ghbdtn ")).then_some(hwnd)
+        (adapter_text(hwnd).as_deref() == Some(expected)).then_some(hwnd)
     })
-    .expect("browser ordinary editable field did not expose TextPattern + writable ValuePattern")
+    .unwrap_or_else(|| {
+        panic!("browser editable field did not expose a verified modern adapter with value {expected:?}")
+    })
 }
 
 fn wait_for_password_focus(timeout: Duration) -> (HWND, uia_secure::UiaSecurityProbe) {
