@@ -2,8 +2,8 @@ title = "G-switcher secret scanning"
 [extend]
 useDefault = true
 
-# Preserve every default detector. Only two documented keyboard chords in two
-# documentation files are known false positives of the generic credential rule.
+# Preserve every default detector. Exceptions require an exact synthetic value
+# AND one explicitly named documentation or scanner regression-fixture path.
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
@@ -12,3 +12,17 @@ condition = "AND"
 paths = ['''(^|/)docs/(FUNCTIONAL_SPEC|ACCEPTANCE_TESTS)\.md$''']
 regexTarget = "secret"
 regexes = ['''^Ctrl\+Shift\+F(10|12)$''']
+
+[[rules.allowlists]]
+description = "Exact synthetic keyboard-chord regression fixture"
+condition = "AND"
+paths = ['''(^|/)scripts/security/verify_secret_rules\.py$''']
+regexTarget = "secret"
+regexes = ['''^Ctrl\+Shift\+F(10|12)$''']
+
+[[rules.allowlists]]
+description = "Exact synthetic rule-classification regression fixture"
+condition = "AND"
+paths = ['''(^|/)scripts/security/test_repository_hygiene\.py$''']
+regexTarget = "secret"
+regexes = ['''^(Ctrl\+Shift\+F12|docs/FUNCTIONAL_SPEC\.md|generic-api-key)$''']

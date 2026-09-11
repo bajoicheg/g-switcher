@@ -10,7 +10,7 @@ Use fake input and an isolated test account to reproduce keyboard-layout problem
 
 ## Contribution checks
 
-All pull requests run secret scanning and current-tree publication checks. Gitleaks retains its default detectors; two exact documented keyboard shortcuts are narrowly excepted for the generic credential rule in the relevant documentation paths only. No directories, historical commits, or broad token patterns are exempted.
+All pull requests run secret scanning and current-tree publication checks. Gitleaks retains its default detectors. Exact documented keyboard shortcuts and their synthetic scanner-regression representations are narrowly excepted for the generic credential rule in explicitly named paths only. No directories, historical commits, or broad token patterns are exempted. Negative regression checks prove credential-shaped values in documentation and source are still detected.
 
 Private material and diagnostic outputs are excluded by `.gitignore`. Ignoring a file is not access control and does not remove a previously committed version. Never force-add real signing keys, environment files, credential stores, packet captures, or memory dumps.
 
