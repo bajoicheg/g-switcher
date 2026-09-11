@@ -22,8 +22,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Verify exact source revision before building
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/verify_build_revision.py --require-clean
+
+      - name: Source provenance regression tests
+        run: python -m unittest discover -s scripts -p 'test_build_revision.py' -v
 
       - name: Rust toolchain
         shell: pwsh
@@ -50,6 +58,10 @@ jobs:
       - name: Locked dependency graph
         shell: pwsh
         run: cargo metadata --locked --no-deps --format-version 1 > $null
+
+      - name: Clippy
+        shell: pwsh
+        run: cargo clippy --locked --all-targets -- -D warnings
 
       - name: Unit tests
         shell: pwsh
@@ -212,10 +224,6 @@ jobs:
           $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
           cargo run --locked --bin g-switcher-failure-e2e
 
-      - name: Clippy
-        shell: pwsh
-        run: cargo clippy --locked --all-targets -- -D warnings
-
       - name: Release build
         shell: pwsh
         run: cargo build --locked --release --bin g-switcher --bin g-switcher-compatibility
@@ -249,6 +257,11 @@ jobs:
               throw "Microsoft Defender scan failed or detected a threat for $path (exit $LASTEXITCODE)."
             }
           }
+
+      - name: Verify exact clean source revision before packaging
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/verify_build_revision.py --require-clean
 
       - name: Prepare public release package
         shell: pwsh
@@ -299,6 +312,7 @@ jobs:
           Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
           Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
           Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+          Copy-Item -LiteralPath BROWSER_QUICK_TEST_2.0.1_RU.md -Destination $kitRoot
 
           $head = (git rev-parse HEAD).Trim()
           $rustVersion = (rustc --version).Trim()

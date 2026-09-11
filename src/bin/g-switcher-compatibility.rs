@@ -335,10 +335,7 @@ fn render_matrix(rows: &[Row]) -> String {
 }
 
 fn escape_cell(value: &str) -> String {
-    value
-        .replace('|', "\\|")
-        .replace('\r', " ")
-        .replace('\n', " ")
+    value.replace('|', "\\|").replace(['\r', '\n'], " ")
 }
 
 fn parse_matrix(text: &str) -> Result<Vec<Row>, String> {
@@ -642,6 +639,14 @@ mod tests {
         assert_eq!(parsed.len(), REQUIRED_APPLICATIONS.len());
         assert_eq!(parsed[0].notes, "left | right");
         assert!(verify_rows(&parsed).is_ok());
+    }
+
+    #[test]
+    fn markdown_cell_normalizes_line_breaks_without_losing_separators() {
+        assert_eq!(
+            escape_cell("left\r\nmiddle\rright\n|"),
+            "left  middle right \\|"
+        );
     }
 
     #[test]
