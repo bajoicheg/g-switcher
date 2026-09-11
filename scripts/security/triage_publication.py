@@ -20,8 +20,14 @@ DOCS = {'docs/FUNCTIONAL_SPEC.md', 'docs/ACCEPTANCE_TESTS.md'}
 def classify(finding: dict) -> dict:
     source = finding.get('File', '')
     known_doc = any(source == p or source.endswith('/' + p) for p in DOCS)
-    benign = finding.get('RuleID') == 'generic-api-key' and known_doc and finding.get('Secret') in HOTKEYS
-    return {'classification': 'documented-hotkey' if benign else 'requires-review',
+    value = finding.get('Secret')
+    benign = finding.get('RuleID') == 'generic-api-key' and known_doc and value in HOTKEYS
+    fixture = finding.get('RuleID') == 'generic-api-key' and (
+        (source.endswith('scripts/security/verify_secret_rules.py') and value in HOTKEYS)
+        or (source.endswith('scripts/security/test_repository_hygiene.py')
+            and value in {'Ctrl+Shift+F12', 'docs/FUNCTIONAL_SPEC.md', 'generic-api-key'}))
+    category = 'documented-hotkey' if benign else 'synthetic-scanner-fixture' if fixture else 'requires-review'
+    return {'classification': category,
             'rule': safe_label(finding.get('RuleID', '')), 'source': safe_label(source),
             'line': finding.get('StartLine', 0), 'commit': finding.get('Commit', '')}
 
@@ -74,7 +80,7 @@ def main() -> None:
             initial = run_scan(args, tmp / (label + '-baseline.json'), default)
             after = run_scan(args, tmp / (label + '-configured.json'), config)
             report['classified'][label] = {'baseline': initial, 'after_narrow_allowlist': after}
-            report['remaining_review_count'] += sum(f['classification'] != 'documented-hotkey' for f in initial) + len(after)
+            report['remaining_review_count'] += sum(f['classification'] == 'requires-review' for f in initial) + len(after)
         identities = {}
         for record in git('log', '--all', '-z', '--format=%H%x1f%ae%x1f%ce%x1f%B').decode(errors='replace').split('\0'):
             parts = record.strip('\n').split('\x1f', 3)
