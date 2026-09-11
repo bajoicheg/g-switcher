@@ -5,3 +5,37 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# Local credentials, signing material and secret stores.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.snk
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+secrets.toml
+secrets.yaml
+secrets.yml
+*.kdbx
+
+# Local diagnostics and human-test output may contain private information.
+*.dmp
+*.pcap
+*.pcapng
+*.rdp
+*.ovpn
+compatibility-results*.md
+publication-audit-redacted*.json
+gitleaks-report*.json
+/audit-output/
+__pycache__/
+*.pyc
