@@ -1,0 +1,93 @@
+name: History privacy maintenance
+
+on:
+  push:
+    branches: ['security/history-privacy-maintenance']
+    paths: ['.github/workflows/history-maintenance.yml']
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: history-privacy-maintenance
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'bajoicheg/g-switcher'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact authorized maintenance revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify pinned tools and maintenance regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          root="$RUNNER_TEMP/history-private"
+          mkdir -p "$root"
+          curl --fail --silent --show-error --location https://raw.githubusercontent.com/newren/git-filter-repo/6f79afc8c90c592a3052e6cc53c2ca8907515bca/git-filter-repo -o "$root/git-filter-repo"
+          echo "67447413e273fc76809289111748870b6f6072f08b17efe94863a92d810b7d94  $root/git-filter-repo" | sha256sum --check --strict
+          curl --fail --silent --show-error --location https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o "$root/gitleaks.tar.gz"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $root/gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf "$root/gitleaks.tar.gz" -C "$root" gitleaks
+          python3 -m unittest discover -s .maintenance -p 'test_*.py' -v
+      - name: Replay audited rewrite and verify every commit before remote writes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .maintenance/apply_history.py prepare
+      - name: Encrypt the exact pre-push backup and full verification map
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/history-private"
+          tar -czf "$root/backup.tar.gz" -C "$root/evidence" .
+          openssl cms -encrypt -binary -aes-256-cbc -in "$root/backup.tar.gz" -out "$root/backup.p7m" -outform DER .maintenance/recipient.pem
+          sha256sum "$root/backup.p7m" > "$root/backup.p7m.sha256"
+      - name: Persist encrypted recovery evidence before publishing
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: history-privacy-pre-push-encrypted
+          path: |
+            ${{ runner.temp }}/history-private/backup.p7m
+            ${{ runner.temp }}/history-private/backup.p7m.sha256
+          if-no-files-found: error
+          retention-days: 1
+      - name: Atomically update only leased branches and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .maintenance/apply_history.py publish
+      - name: Verify fresh clone, reconfirm previous removal, dispatch verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .maintenance/apply_history.py verify
+      - name: Upload aggregate verification evidence without original private values
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: history-privacy-result
+          path: ${{ runner.temp }}/history-private/result.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Encrypt private failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          root="$RUNNER_TEMP/history-private"
+          if test -d "$root/evidence"; then
+            tar -czf "$root/failure.tar.gz" -C "$root/evidence" .
+            openssl cms -encrypt -binary -aes-256-cbc -in "$root/failure.tar.gz" -out "$root/failure.p7m" -outform DER .maintenance/recipient.pem
+          fi
+      - name: Upload encrypted failure diagnostics only
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: history-privacy-failure-encrypted
+          path: ${{ runner.temp }}/history-private/failure.p7m
+          if-no-files-found: warn
+          retention-days: 1
