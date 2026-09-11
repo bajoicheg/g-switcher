@@ -18,7 +18,7 @@ const REQUIRED_APPLICATIONS: [&str; 7] = [
     "Windows Terminal",
 ];
 
-const CORE_PASS_ONLY: [&str; 2] = ["Microsoft Edge", "Google Chrome"];
+const CORE_PASS_ONLY: [&str; 3] = ["Notepad", "Microsoft Edge", "Google Chrome"];
 const CORE_RESULTS: [&str; 2] = ["PASS", "UNSUPPORTED/FAIL-OPEN"];
 const OPTIONAL_RESULTS: [&str; 3] = ["PASS", "N/A", "UNSUPPORTED/FAIL-OPEN"];
 
@@ -399,6 +399,14 @@ fn split_markdown_row(line: &str) -> Vec<String> {
     cells
 }
 
+fn undo_results(application: &str) -> &'static [&'static str] {
+    if CORE_PASS_ONLY.contains(&application) {
+        &["PASS"]
+    } else {
+        &OPTIONAL_RESULTS
+    }
+}
+
 fn row_passes_release_gate(row: &Row) -> bool {
     let allowed_core: &[&str] = if CORE_PASS_ONLY.contains(&row.application.as_str()) {
         &["PASS"]
@@ -410,7 +418,7 @@ fn row_passes_release_gate(row: &Row) -> bool {
         && result_allowed(&row.auto, allowed_core)
         && result_allowed(&row.manual, allowed_core)
         && result_allowed(&row.selected, allowed_core)
-        && result_allowed(&row.undo, &OPTIONAL_RESULTS)
+        && result_allowed(&row.undo, undo_results(&row.application))
         && result_allowed(&row.password, &OPTIONAL_RESULTS)
 }
 
@@ -445,7 +453,7 @@ fn verify_rows(rows: &[Row]) -> Result<(), String> {
             allowed_core,
         )?;
         validate_result(application, "Selected text", &row.selected, allowed_core)?;
-        validate_result(application, "Undo", &row.undo, &OPTIONAL_RESULTS)?;
+        validate_result(application, "Undo", &row.undo, undo_results(application))?;
         validate_result(
             application,
             "Password/sensitive fields",
@@ -595,6 +603,38 @@ mod tests {
             .unwrap()
             .auto = "UNSUPPORTED/FAIL-OPEN".to_owned();
         assert!(verify_rows(&rows).is_err());
+    }
+
+    #[test]
+    fn notepad_requires_actual_core_pass() {
+        let mut rows = valid_rows();
+        for field in 0..3 {
+            let row = &mut rows[0];
+            match field {
+                0 => row.auto = "UNSUPPORTED/FAIL-OPEN".to_owned(),
+                1 => row.manual = "UNSUPPORTED/FAIL-OPEN".to_owned(),
+                _ => row.selected = "UNSUPPORTED/FAIL-OPEN".to_owned(),
+            }
+            assert!(!row_passes_release_gate(row));
+            assert!(verify_rows(&rows).is_err());
+            rows = valid_rows();
+        }
+    }
+
+    #[test]
+    fn supported_targets_require_actual_undo_for_verify_and_resume() {
+        for application in CORE_PASS_ONLY {
+            for result in ["N/A", "UNSUPPORTED/FAIL-OPEN", "FAIL", "PENDING"] {
+                let mut rows = valid_rows();
+                let row = rows
+                    .iter_mut()
+                    .find(|row| row.application == application)
+                    .unwrap();
+                row.undo = result.to_owned();
+                assert!(!row_passes_release_gate(row));
+                assert!(verify_rows(&rows).is_err());
+            }
+        }
     }
 
     #[test]
