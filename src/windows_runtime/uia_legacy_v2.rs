@@ -372,8 +372,10 @@ fn runtime_id(
             return None;
         }
 
-        let mut id = RuntimeId::default();
-        id.len = count as u8;
+        let mut id = RuntimeId {
+            len: count as u8,
+            ..Default::default()
+        };
         for (slot, index) in (lower..=upper).enumerate() {
             let mut value = 0i32;
             unsafe {
