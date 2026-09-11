@@ -704,14 +704,14 @@ mod tests {
             DEFAULT_SOUND_VOLUME,
             "",
             "",
-            "Градиент\nGradient\nГрадиент",
+            "Пример\nExample\nПример",
             "Ctrl+Shift+F9",
             "Ctrl+Shift+F12",
             "Ctrl+Shift+F10",
             "Ctrl+Backspace",
             "Ctrl+Shift+F11",
         );
-        assert_eq!(settings.user_words, ["Градиент", "Gradient"]);
+        assert_eq!(settings.user_words, ["Пример", "Example"]);
     }
 
     #[test]
