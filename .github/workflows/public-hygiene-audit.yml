@@ -1,0 +1,81 @@
+name: Public repository hygiene audit
+on:
+  push:
+    branches: [security/public-hygiene-audit]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: public-hygiene-audit
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prepare one-time public recipient certificate
+        shell: bash
+        run: |
+          umask 077
+          mkdir -p sealed private-evidence
+          cat > recipient.pem <<'CERT'
+          -----BEGIN CERTIFICATE-----
+          MIIEKTCCApGgAwIBAgIUbA15PB2UApKdSM3HfVlaAqrGRl0wDQYJKoZIhvcNAQEL
+          BQAwJDEiMCAGA1UEAwwZT25lLXRpbWUgcmVwb3NpdG9yeSBhdWRpdDAeFw0yNjA5
+          MTExOTE4MTdaFw0yNjA5MTMxOTE4MTdaMCQxIjAgBgNVBAMMGU9uZS10aW1lIHJl
+          cG9zaXRvcnkgYXVkaXQwggGiMA0GCSqGSIb3DQEBAQUAA4IBjwAwggGKAoIBgQCv
+          TnisazuPEBPfqL6DiepvlMOFDjQEi41x6hkRQbundkmTE4H7o2n/JjrXp3SV4Z/O
+          tFumb3d9i48ZoVSaGNo7kmOkHxfRTR1e+hq97I/HVpLYUxDmrIy7AAX6quoZW9mS
+          YH4sriVl+fBye9ij5hsaQA1FYVPiLGNyZJg1mX20SGFs+xW1BKjL1+zuxZ5Vd/uB
+          00VigrQhzv4Z3uHf/HVQYhcLcNLkGoXwYmWjztdEJYF104qd7P+So6qtB/mF5zJ4
+          4c7ZAsc92FzJbfa8w+mn6s+CN8WvId9YmqDgKWvYsEJ/ioSN5XjuB0ahP40rea4a
+          Ut0Ny/X/9cxXmdpGyiSROOvZc9V2dj3/e7Xwbp1ZA4jwlzNj1NvLLZeZKNG5RLBT
+          r/6LvLuXTz46fdj08OAK3PtFDHfUqzzNSdUvTF0s2CiiH0pgyxKyrT+tjM2n5daq
+          RkQaZx7wH9BiM4iNqcVw8WgjxFeIgogQYMXRvTdVhSvaThXEJBmfnsSFNurlGJ0C
+          AwEAAaNTMFEwHQYDVR0OBBYEFDgg5B0dH2wo/alrHH21ucrGEv4yMB8GA1UdIwQY
+          MBaAFDgg5B0dH2wo/alrHH21ucrGEv4yMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZI
+          hvcNAQELBQADggGBAIPR+o88+0rhs/B5QrqZzGlJoHuatePt7R59/FUrazginx9i
+          /e4Q868UcVqu3xsHUOgrfAgcS1p5Z5/UqIpyUQgsPDMwK6niumKDtrPF4QQpUUhF
+          CDIo9ICDD0o1mmjdLu2dgB1HIvtXY28KaazvhrgTb643RFjQN57bM4OBBDDlqKzo
+          AKpakWoIKzc8FMLygTmazwI2+Gr/lqmDTszlqojOqw2eYKA5+x1xcyUs8efbcUqX
+          qtUY/PN84s2uakAeBclXFp5Mw4qYZsM/QxASj4pw5wooJuZw51RFHm9YUhv50N8W
+          lA/JUPINdPQPm4pQr9eyTkicaJ0t0clU3YisFX1tfxfDGhnvVTrjTtJByp1n5MgN
+          O7s8QuHJurOsLSOR/LMvFinvRLemXNNvjG2bw7IQUaaJ3tMe1QEIYlABIvJgDBrq
+          tQhkV0vrPjkoNbnTIUE2cszvs6aGbeFoxjaTJtp4RtCfZcM8b8hw82zz5IoTqUhx
+          6/fX0YL/OCYUoiP8fA==
+          -----END CERTIFICATE-----
+          CERT
+          openssl x509 -in recipient.pem -noout
+      - name: Collect repository and GitHub evidence without logging payloads
+        env:
+          AUDIT_REPOSITORY: ${{ github.repository }}
+          AUDIT_COMMIT: ${{ github.sha }}
+          AUDIT_RUN_ID: ${{ github.run_id }}
+          AUDIT_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          umask 077
+          python3 tools/collect_public_audit.py > private-evidence/collector.log 2>&1
+      - name: Encrypt evidence for offline review
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          umask 077
+          tar --exclude=repo.git --exclude=gitleaks -czf evidence.tgz -C private-evidence .
+          openssl cms -encrypt -binary -aes-256-cbc -in evidence.tgz -out sealed/evidence.cms -outform DER recipient.pem
+          (cd sealed && sha256sum evidence.cms > SHA256SUMS.txt)
+          rm -f evidence.tgz
+      - name: Upload encrypted evidence only
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-hygiene-encrypted-evidence
+          path: sealed/
+          if-no-files-found: error
+          retention-days: 1
