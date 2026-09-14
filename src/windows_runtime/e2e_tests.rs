@@ -593,6 +593,10 @@ fn real_windows_hook_to_edit_e2e() {
     unsafe {
         SendMessageW(edit, EM_SETSEL_VALUE, 0, -1);
     }
+    // The preceding disabled-mode case deliberately leaves the hook policy
+    // denied. A harmless modifier event forces the worker to re-evaluate the
+    // now-restored application mode before testing the suppressing hotkey.
+    inject_strokes(&[key(VK_SHIFT as u8)]);
     inject_ctrl_shift_hotkey(VK_F9_VALUE);
     await_text(edit, "привет как дела");
     assert_eq!(
