@@ -1,5 +1,6 @@
 #![cfg(windows)]
 
+#[allow(dead_code)]
 #[path = "../src/windows_runtime/uia_legacy_v2.rs"]
 mod uia_legacy_v2;
 
