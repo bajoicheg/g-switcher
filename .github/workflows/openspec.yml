@@ -33,6 +33,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Verify pinned Codex workflow generator
+        shell: pwsh
+        run: ./scripts/openspec-refresh-skills.ps1
+
       - name: Verify baseline structure
         run: python scripts/verify_openspec_baseline.py
 
