@@ -59,7 +59,7 @@ try {
         }
     }
 
-    Write-Host "OpenSpec Codex skills refreshed from $package: $($expectedSkills.Count) workflows."
+    Write-Host "OpenSpec Codex skills refreshed from ${package}: $($expectedSkills.Count) workflows."
 }
 finally {
     if ($hadXdgConfigHome) {
