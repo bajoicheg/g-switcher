@@ -194,6 +194,14 @@ pub fn replace_range_if_matches(
     false
 }
 
+pub(crate) fn should_retry_post_state(
+    text_matches: bool,
+    caret_verified: bool,
+    deadline_expired: bool,
+) -> bool {
+    !deadline_expired && (!text_matches || !caret_verified)
+}
+
 fn verify_exact_post_state(hwnd: HWND, expected_id: RuntimeId, planned: &str, caret: u32) -> bool {
     let deadline = Instant::now() + POST_MUTATION_VERIFY_TIMEOUT;
     loop {
@@ -207,27 +215,33 @@ fn verify_exact_post_state(hwnd: HWND, expected_id: RuntimeId, planned: &str, ca
         }
         let current =
             unsafe { context.text.DocumentRange().ok() }.and_then(|range| text_of(&range));
-        if current.as_deref() == Some(planned) {
-            if select_offsets(&context.text, caret, caret) {
-                drop(context);
-                if let Some(final_context) = focused_context(hwnd) {
-                    if final_context.runtime_id == expected_id
-                        && unsafe { final_context.text.DocumentRange().ok() }
-                            .and_then(|range| text_of(&range))
-                            .as_deref()
-                            == Some(planned)
-                        && snapshot_caret_from_pattern(&final_context.text)
-                            .is_some_and(|snapshot| snapshot.caret == caret)
-                    {
-                        return true;
-                    }
-                }
-            }
-            trace("text changed but final caret verification failed");
-            return false;
+        let text_matches = current.as_deref() == Some(planned);
+        let caret_verified = if text_matches && select_offsets(&context.text, caret, caret) {
+            drop(context);
+            focused_context(hwnd).is_some_and(|final_context| {
+                final_context.runtime_id == expected_id
+                    && unsafe { final_context.text.DocumentRange().ok() }
+                        .and_then(|range| text_of(&range))
+                        .as_deref()
+                        == Some(planned)
+                    && snapshot_caret_from_pattern(&final_context.text)
+                        .is_some_and(|snapshot| snapshot.caret == caret)
+            })
+        } else {
+            false
+        };
+
+        if text_matches && caret_verified {
+            return true;
         }
-        if Instant::now() >= deadline {
-            trace("timed out waiting for LegacyIAccessible post-state");
+
+        let deadline_expired = Instant::now() >= deadline;
+        if !should_retry_post_state(text_matches, caret_verified, deadline_expired) {
+            if text_matches {
+                trace("text changed but final caret verification timed out");
+            } else {
+                trace("timed out waiting for LegacyIAccessible post-state");
+            }
             return false;
         }
         thread::sleep(Duration::from_millis(5));
