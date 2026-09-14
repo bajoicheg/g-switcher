@@ -3,8 +3,8 @@
 
 This is intentionally small and dependency-free. OpenSpec itself performs schema
 validation; this guard protects the project-specific capability inventory,
-Codex workflow inventory, and a few non-negotiable invariants against accidental
-deletion or migration drift.
+Codex workflow inventory, repository policy, and a few non-negotiable invariants
+against accidental deletion or migration drift.
 """
 
 from __future__ import annotations
@@ -59,6 +59,15 @@ def fail(message: str) -> None:
 def main() -> int:
     failures: list[str] = []
 
+    policy_path = REPO_ROOT / "AGENTS.md"
+    if not policy_path.is_file():
+        failures.append("missing repository agent policy: AGENTS.md")
+    else:
+        policy_text = policy_path.read_text(encoding="utf-8").casefold()
+        for phrase in ("openspec", "explicit human approval", "fails open", "unsupported/fail-open"):
+            if phrase.casefold() not in policy_text:
+                failures.append(f"AGENTS.md: missing workflow/safety phrase {phrase!r}")
+
     config_path = REPO_ROOT / "openspec/config.yaml"
     if not config_path.is_file():
         failures.append("missing OpenSpec project config: openspec/config.yaml")
@@ -107,7 +116,7 @@ def main() -> int:
 
     print(
         "OpenSpec baseline guard: PASS "
-        f"({len(EXPECTED_SPECS)} capability specs, {len(EXPECTED_SKILLS)} Codex skills)"
+        f"({len(EXPECTED_SPECS)} capability specs, {len(EXPECTED_SKILLS)} Codex skills, AGENTS policy)"
     )
     return 0
 
