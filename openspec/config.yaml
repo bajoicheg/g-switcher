@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  Product: G-switcher 2.0.x, a Rust 2021 Windows desktop utility for RU/EN keyboard-layout correction.
+  Normal runtime is local-only: no network access, cloud service, account, telemetry, remote dictionary, or remote model.
+  Normal operation runs as a standard user and does not require elevation.
+  Ambiguous or unverifiable state fails open: preserve the user's text rather than guess or mutate an unverified target.
+  Password and recognized secure/credential inputs are excluded from processing.
+  Clipboard fallback for text mutation is forbidden.
+  Typed, selected, contextual, pending-correction and Undo text state is volatile and must not be persisted or transmitted.
+  Existing Rust/Windows/security/provenance/Defender/manual compatibility gates may be strengthened but not weakened implicitly.
+  Runtime behavior changes require tests at the lowest practical level plus relevant Windows E2E/manual compatibility evidence.
+  Specs describe behavior; design/tasks hold implementation detail.
+
+rules:
+  proposal:
+    - Include explicit Problem, Goal, Non-goals, User-visible changes, Security impact, Data/privacy impact, Privilege impact, Dependencies, Compatibility impact, Rollback, and Test/acceptance impact coverage.
+    - Explicitly call out any change to network behavior, persistence, secure-input handling, privilege requirements, text-access scope, mutation paths, or release gates.
+    - Do not claim application/control support without corresponding evidence requirements.
+  specs:
+    - Use SHALL/MUST for normative behavior and include explicit success and failure scenarios.
+    - Preserve fail-open behavior unless the approved proposal explicitly changes it.
+    - Security/privacy-sensitive behavior requires negative scenarios describing what G-switcher must not do.
+    - Keep implementation choices out of behavioral requirements.
+  design:
+    - Cover current context, proposed architecture, alternatives, data/control flow, security/privacy, failure modes, fail-open behavior, compatibility/migration, observability/logging impact, test strategy, and rollback when relevant.
+    - Resolve questions that would change scope, requirements, or task breakdown before implementation.
+  tasks:
+    - Prefer test-first ordering for behavior changes.
+    - Separate specification/tests, implementation, verification, and documentation/release-evidence work.
+    - Every checkbox must have an observable completion condition; compiling alone is not completion.
+    - Add unit/integration/E2E/manual verification tasks appropriate to the affected capability.
+
+operations:
+  apply:
+    guidance:
+      - Read affected baseline specs and the active change artifacts before editing code.
+      - Run the relevant tests before marking each implementation task complete.
+      - Surface out-of-scope findings instead of silently expanding scope.
+  archive:
+    guidance:
+      - Run strict OpenSpec validation and openspec-verify-change before archive.
+      - Do not archive while required Windows/manual compatibility evidence is incomplete.
