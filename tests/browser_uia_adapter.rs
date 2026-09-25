@@ -155,6 +155,13 @@ fn exercise_browser(browser: &BrowserSpec) {
     // mode and native UIA provider so CI validates the mutation/identity logic,
     // while the separate human compatibility pass still checks a normal browser
     // launch without test-only flags.
+    // Use an ordinary browser window rather than Chromium app mode. App mode is
+    // not part of the product compatibility claim and has intermittently failed
+    // to surface a top-level Chrome window on hosted Windows runners even when
+    // the same exact source passed previously. A normal isolated window is both
+    // closer to the real compatibility target and avoids that launcher-only
+    // failure mode. Keep the startup wait bounded inside the workflow's outer
+    // 240-second browser gate.
     let child = Command::new(&browser.executable)
         .arg(format!("--user-data-dir={}", profile.display()))
         .args([
@@ -163,12 +170,14 @@ fn exercise_browser(browser: &BrowserSpec) {
             "--disable-extensions",
             "--disable-sync",
             "--disable-background-networking",
+            "--disable-background-mode",
             "--disable-component-update",
             "--disable-popup-blocking",
             "--force-renderer-accessibility=complete",
             "--enable-features=UiaProvider",
+            "--new-window",
         ])
-        .arg(format!("--app={url}"))
+        .arg(&url)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -178,7 +187,7 @@ fn exercise_browser(browser: &BrowserSpec) {
         profile_dir: root,
     };
 
-    let top = wait_for_window(&marker, Duration::from_secs(20));
+    let top = wait_for_window(&marker, Duration::from_secs(45));
     unsafe {
         ShowWindow(top, SW_RESTORE);
         SetForegroundWindow(top);
