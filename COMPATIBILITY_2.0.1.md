@@ -25,7 +25,7 @@ The table below records the first real Windows 11 compatibility pass (build 2263
 | Notepad | 11.2607.14.0 | 22631 | PASS | PASS | PASS | PASS | UNSUPPORTED/FAIL-OPEN | Initial Auto/Selected/Undo passed; CI #325 focused retest confirmed Manual, Undo and Auto all PASS. No destructive behavior in the tested protected-field case. |
 | Microsoft Word | PENDING | 22631 | PENDING | PENDING | PENDING | PENDING | PENDING | Required desktop Word is not yet tested. The first pass used Microsoft 365 Word PWA in Chrome and therefore cannot satisfy the desktop Word row. |
 | Microsoft Edge | 152.0.4191.66 | 22631 | PENDING | PENDING | PENDING | PENDING | PASS | First candidate safely no-op'd ordinary web fields; this is now treated as a release blocker. New Chromium UIA TextPattern + ValuePattern adapter is under validation and must be retested to PASS. Password/sensitive no-op remains expected protection behavior. |
-| Google Chrome | 152.0.7977.77 | 22631 | PENDING | PENDING | PENDING | PENDING | PASS | First candidate safely no-op'd ordinary web fields; this is now treated as a release blocker. New Chromium UIA TextPattern + ValuePattern adapter is under validation and must be retested to PASS. Password/sensitive no-op remains expected protection behavior. |
+| Google Chrome | 152.0.7977.77 | 22631 | PENDING | PENDING | PASS | PENDING | PASS | On runtime candidate `b127b67e98bdaf3fa7b2fd726ce6b91cbf1b3576`, the focused Selected-text retest PASSed after the Chromium post-state stabilization fix, and the dedicated password guard PASSed for Auto/Manual/Selected no-op. Auto, Manual current word, Undo, Focus/caret and Pause still require an exact-current-runtime manual retest before release. Later CDC-only commits do not change runtime behavior. |
 | Telegram Desktop | 7.2.5 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged; protected-field applicability/result was not separately confirmed. This row may be revisited after Chromium/Electron adapter validation. |
 | Visual Studio Code | PENDING | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged. Recorder reported 18.5.0, which is not accepted as verified VS Code version evidence; tooling now prefers the VS Code uninstall registration to avoid an unrelated Code.exe on PATH. Electron compatibility will be retested after the Chromium adapter is proven in browsers. |
 | Windows Terminal | 1.24.11911.0 | 22631 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | PENDING | User confirmed ordinary text remained unchanged; protected-input scenario was not separately confirmed. |
@@ -58,12 +58,16 @@ For every application above where a writable text control is available:
 7. Exercise Pause/Resume and application modes (`Auto`, `Manual only`, `Disabled`).
 8. For a truly unsupported control outside the supported claim, confirm original input is preserved and no destructive action occurs; record `UNSUPPORTED/FAIL-OPEN`.
 
+## Persisted focused Chrome evidence
+
+PR evidence records a manual Chrome retest on Windows 11 / Chrome 152.0.7977.77 for runtime candidate `b127b67e98bdaf3fa7b2fd726ce6b91cbf1b3576`: Selected-text no longer rolls back and the dedicated password test remains unchanged for Auto, Manual and Selected actions. These exact observations are now reflected in the matrix above. Earlier Auto/Manual/Undo/Focus/Pause PASS observations were on an older runtime candidate and are intentionally not promoted to final PASS here without a retest after the Selected-path runtime fix.
+
 ## Remaining manual blockers
 
 Before public promotion, the following evidence is still required:
 
 1. Edge ordinary editable web field: Auto, Manual, Selected and Undo must PASS with the new Chromium adapter.
-2. Chrome ordinary editable web field: Auto, Manual, Selected and Undo must PASS with the new Chromium adapter.
+2. Chrome ordinary editable web field: Selected and password protection are confirmed PASS on runtime candidate `b127b67e98bdaf3fa7b2fd726ce6b91cbf1b3576`; Auto, Manual current word, Undo, Focus/caret and Pause still require exact-current-runtime manual retest.
 3. Microsoft Word **desktop** version + functional row.
 4. Exact Visual Studio Code version and retest after Electron/Chromium adapter validation.
 5. Telegram Desktop protected-field result, or `N/A` with confirmation that no applicable protected field was available in the tested scenario.
