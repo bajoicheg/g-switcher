@@ -3,10 +3,10 @@
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
   "generation": 3,
-  "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
-  "acquired_at_utc": "2026-09-25T19:09:47Z",
-  "heartbeat_at_utc": "2026-09-25T19:23:10Z",
-  "expires_at_utc": "2026-09-25T19:43:10Z",
+  "owner_id": null,
+  "acquired_at_utc": null,
+  "heartbeat_at_utc": null,
+  "expires_at_utc": null,
   "activity_refs": [
     "git:29765d01d8619f0d7af6ba2985ba614290b0b8b5",
     "actions:36178305436:cdc-policy-green",
@@ -14,11 +14,11 @@
   ],
   "external_guard": null,
   "last_release": {
-    "owner_id": "6c6a4f2e-3c9d-4b71-9a46-75f2f8b4e3d1",
-    "generation": 2,
-    "invocation_id": "automation-g-switcher-watchdog-2026-09-25T180625Z-1",
-    "at_utc": "2026-09-25T18:16:00Z",
-    "checkpoint_ref": "COMPATIBILITY_2.0.1.md@fa646c77e77ab4d32e3efa254b73cfeb902b6a1d",
+    "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
+    "generation": 3,
+    "invocation_id": "chat-2026-09-25T190947Z-cdc273-convergence",
+    "at_utc": "2026-09-25T19:23:14Z",
+    "checkpoint_ref": "docs/work-status/current.md@29765d01d8619f0d7af6ba2985ba614290b0b8b5",
     "external_reconciliation": "none",
     "completion_reason": "resumable_blocker"
   },
@@ -60,21 +60,7 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": {
-    "invocation_id": "chat-2026-09-25T190947Z-cdc273-convergence",
-    "automation_id": null,
-    "conversation_id": null,
-    "execution_surface": "chat",
-    "started_at_utc": "2026-09-25T19:09:47Z"
-  },
-  "finalization": {
-    "state": "ready",
-    "pending_shared_writes": false,
-    "checkpoint_ref": "docs/work-status/current.md@29765d01d8619f0d7af6ba2985ba614290b0b8b5",
-    "external_reconciliation": "none",
-    "completion_reason": "resumable_blocker",
-    "updated_at_utc": "2026-09-25T19:23:13Z",
-    "failure": null
-  },
+  "invocation": null,
+  "finalization": null,
   "legacy_migration": null
 }
