@@ -30,5 +30,7 @@
     "confirmed_provider_outage"
   ],
   "portable_wait_instead_of_expensive_fallback": true,
-  "github_actions_requires_reason": true
+  "github_actions_requires_reason": true,
+  "public_github_actions_unmetered": true,
+  "public_github_actions_cost_weight": 0
 }

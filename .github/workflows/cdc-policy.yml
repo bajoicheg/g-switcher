@@ -34,8 +34,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.7.2"
-          test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "6e22d252374634662c95488ba9e7245febf6771a"
+          test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.7.3"
+          test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "806a66cd973954b3d5348ac36d39631717d9fe7b"
 
       - name: Validate CDC package and project adapter
         run: |

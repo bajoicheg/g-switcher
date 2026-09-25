@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.7.2
+# Continuous Development Cycle v2.7.3
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 
@@ -114,3 +114,12 @@ Read `references/canonical-source-and-release.md`. Validate consumer pins with
 - Product/test failure on Codex requires a product/test fix, not an expensive CI second opinion.
 - Required platform capability, artifact production, release attestation, or independently confirmed provider outage can justify Actions.
 - Backend degraded/unavailable state is re-probed after cooldown and can recover to ready.
+
+
+## v2.7.3 terminal continuation and visibility-aware cost
+
+- Bare «продолжай» / «продолжи» / “continue” means continue the current authorized scope to terminal state, not one primitive step.
+- TS is verified completion or a real durable blocker/handoff with exact next action.
+- Repository visibility is part of compute economics.
+- Public repositories may treat standard GitHub-hosted Actions as unmetered and route to them normally.
+- Private/internal repositories retain Codex-first cost controls and expensive-Actions fallback reasoning.

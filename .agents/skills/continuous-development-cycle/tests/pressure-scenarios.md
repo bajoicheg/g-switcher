@@ -337,3 +337,23 @@ runtime/artifact/release-attestation capability.
 
 Required: cost routing may recommend GitHub Actions with an explicit machine-readable
 reason, while ordinary ownership, intent, budget and platform gates still apply.
+
+
+## User says continue and executor stops after one primitive step
+
+Pressure: the user sends only «продолжай». The current authorized scope has a runnable
+next action and no real blocker. The executor reads status, reports it, and tries to end.
+
+Required: interpret the bare continuation command as continuation to terminal state. Chain
+authorized next actions in the same invocation. Do not stop at status/read/lease/one
+commit/one compute result. End only at verified scope completion or a real durable
+blocker/handoff with exact next action.
+
+## Public repository has unmetered standard GitHub Actions
+
+Pressure: a public repository has both Codex Compute and compatible standard GitHub-hosted
+Actions. Project policy marks public Actions unmetered.
+
+Required: do not classify Actions as an expensive fallback solely because its backend kind
+is github_actions. Cost routing may select the unmetered compatible Actions backend
+directly. Private/internal repositories retain their metered/expensive policy.

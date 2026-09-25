@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CDC 2.7.2 cost-aware compute routing; recommendation only."""
+"""CDC 2.7.3 visibility-aware cost routing; recommendation only."""
 from __future__ import annotations
 
 import argparse
@@ -29,11 +29,12 @@ def _tokens(value,name):
     return value
 
 def validate_policy(policy):
-    fields={"schema","primary_kind","kind_cost_weights","expensive_kinds","transient_failure_classes",
-            "product_failure_classes","bounded_primary_recovery_attempts","probe_cooldown_seconds",
-            "provider_outage_confirmation_required","expensive_fallback_reasons",
-            "portable_wait_instead_of_expensive_fallback","github_actions_requires_reason"}
-    if not isinstance(policy,dict) or set(policy)!=fields or policy["schema"]!=POLICY_SCHEMA:
+    required={"schema","primary_kind","kind_cost_weights","expensive_kinds","transient_failure_classes",
+              "product_failure_classes","bounded_primary_recovery_attempts","probe_cooldown_seconds",
+              "provider_outage_confirmation_required","expensive_fallback_reasons",
+              "portable_wait_instead_of_expensive_fallback","github_actions_requires_reason"}
+    optional={"public_github_actions_unmetered","public_github_actions_cost_weight"}
+    if not isinstance(policy,dict) or required-set(policy) or set(policy)-(required|optional) or policy["schema"]!=POLICY_SCHEMA:
         raise ValueError("invalid compute cost policy")
     if policy["primary_kind"] not in capability.KINDS:raise ValueError("unsupported primary kind")
     weights=policy["kind_cost_weights"]
@@ -50,15 +51,22 @@ def validate_policy(policy):
         raise ValueError("probe_cooldown_seconds must be nonnegative integer")
     for name in ("provider_outage_confirmation_required","portable_wait_instead_of_expensive_fallback","github_actions_requires_reason"):
         if type(policy[name]) is not bool:raise ValueError(f"{name} must be boolean")
+    if "public_github_actions_unmetered" in policy and type(policy["public_github_actions_unmetered"]) is not bool:
+        raise ValueError("public_github_actions_unmetered must be boolean")
+    if "public_github_actions_cost_weight" in policy and (type(policy["public_github_actions_cost_weight"]) is not int or policy["public_github_actions_cost_weight"]<0):
+        raise ValueError("public_github_actions_cost_weight must be nonnegative integer")
     reasons=set(_tokens(policy["expensive_fallback_reasons"],"expensive_fallback_reasons"))
     if not reasons<=EXPENSIVE_REASONS:raise ValueError("unsupported expensive fallback reason")
     return policy
 
 def validate_context(context):
-    fields={"schema","evidence_class","primary_failure_class","distinct_primary_recovery_attempts",
-            "provider_outage_confirmed","required_capability_gap_on_primary","last_primary_failure_at_utc"}
-    if not isinstance(context,dict) or set(context)!=fields or context["schema"]!=CONTEXT_SCHEMA:
+    required={"schema","evidence_class","primary_failure_class","distinct_primary_recovery_attempts",
+              "provider_outage_confirmed","required_capability_gap_on_primary","last_primary_failure_at_utc"}
+    optional={"repository_visibility"}
+    if not isinstance(context,dict) or required-set(context) or set(context)-(required|optional) or context["schema"]!=CONTEXT_SCHEMA:
         raise ValueError("invalid compute cost context")
+    if context.get("repository_visibility","private") not in {"public","private","internal"}:
+        raise ValueError("unsupported repository_visibility")
     if context["evidence_class"] not in EVIDENCE_CLASSES:raise ValueError("unsupported evidence_class")
     if context["primary_failure_class"] not in FAILURES:raise ValueError("unsupported primary_failure_class")
     if type(context["distinct_primary_recovery_attempts"]) is not int or context["distinct_primary_recovery_attempts"]<0:
@@ -86,6 +94,14 @@ def route(registry,request,policy,context,now_utc):
 
     required=set(request["required_capabilities"]); forbidden=set(request["forbidden_backend_ids"])
     weights=policy["kind_cost_weights"]; expensive_kinds=set(policy["expensive_kinds"]); missing={}
+    visibility=context.get("repository_visibility","private")
+    public_actions_unmetered=(visibility=="public" and policy.get("public_github_actions_unmetered",False))
+    def effective_weight(backend):
+        if backend["kind"]=="github_actions" and public_actions_unmetered:
+            return policy.get("public_github_actions_cost_weight",0)
+        return weights[backend["kind"]]
+    def is_expensive(backend):
+        return backend["kind"] in expensive_kinds and not (backend["kind"]=="github_actions" and public_actions_unmetered)
     compatible=[]; ready=[]; primary=[]
     for backend in registry["backends"]:
         if request["required_backend_id"] is not None and backend["backend_id"]!=request["required_backend_id"]:continue
@@ -97,10 +113,10 @@ def route(registry,request,policy,context,now_utc):
         if backend["state"]=="ready":ready.append(backend)
 
     def order(backend):
-        return (weights[backend["kind"]],0 if backend["kind"]==policy["primary_kind"] else 1,backend["rank"],backend["backend_id"])
+        return (effective_weight(backend),0 if backend["kind"]==policy["primary_kind"] else 1,backend["rank"],backend["backend_id"])
     ready.sort(key=order); compatible.sort(key=order); primary.sort(key=order)
-    cheap_ready=[b for b in ready if b["kind"] not in expensive_kinds]
-    expensive_ready=[b for b in ready if b["kind"] in expensive_kinds]
+    cheap_ready=[b for b in ready if not is_expensive(b)]
+    expensive_ready=[b for b in ready if is_expensive(b)]
     failure=context["primary_failure_class"]
 
     if failure in set(policy["product_failure_classes"]):
@@ -109,7 +125,7 @@ def route(registry,request,policy,context,now_utc):
     if cheap_ready:
         return _result("route","lowest_cost_compatible_ready_backend",cheap_ready[0],missing=missing)
 
-    cheap_compatible=[b for b in compatible if b["kind"] not in expensive_kinds]
+    cheap_compatible=[b for b in compatible if not is_expensive(b)]
     if not cheap_compatible:
         if not expensive_ready:return _result("waiting_compute","no_compatible_ready_backend",missing=missing)
         reason={"platform":"final_platform","artifact":"artifact","release_attestation":"release_attestation"}.get(context["evidence_class"],"required_capability")

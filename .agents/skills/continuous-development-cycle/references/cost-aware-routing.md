@@ -18,3 +18,13 @@ A product/test failure on Codex is not infrastructure unavailability. Fix the pr
 Expensive fallback requires an explicit machine-readable reason. Normal reasons are: required capability unavailable on cheaper backends, required final platform evidence, required artifact production, release attestation, or independently confirmed primary-provider outage. The request must still pass ordinary ownership, operation-intent, budget, CI and platform gates.
 
 Backend health is recoverable state. `degraded`/`unavailable` should be re-probed after policy cooldown; a successful fresh probe returns it to `ready`. Historical failures must not poison a backend forever.
+
+
+## Repository visibility
+
+Repository visibility is part of marginal-cost policy. A backend kind is not globally
+expensive. When project policy marks standard GitHub-hosted Actions unmetered for a
+public repository, cost routing treats that backend as normal/cheap and may select it
+directly when compatible. Private/internal repositories may keep GitHub Actions metered
+and preserve Codex-first recovery/fallback behavior. Visibility changes cost ranking only;
+it never grants launch, ownership, merge, release or scheduler authority.

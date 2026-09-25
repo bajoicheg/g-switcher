@@ -9,12 +9,12 @@ These instructions apply to development on the active draft PR #28 (`release/2.0
 - GitHub/repository facts are durable truth; chat/UI activity is not execution evidence.
 - Read this file, `.agents/skills/continuous-development-cycle/SKILL.md`, `docs/development-cycle.yaml`, and `docs/work-status/current.md` before shared writes or external starts.
 
-## CDC 2.7.2
+## CDC 2.7.3
 
-This repository vendors immutable canonical CDC 2.7.2 from `bajoicheg/g-cdc`,
-`refs/heads/release/v2.7.2`, release commit
-`9f68f150a46dcd2de6933d0469ab12a07dc1fd74`, exact package tree
-`6e22d252374634662c95488ba9e7245febf6771a`.
+This repository vendors immutable canonical CDC 2.7.3 from `bajoicheg/g-cdc`,
+`refs/heads/release/v2.7.3`, release commit
+`88ee8a209caf562c02fe2ad53e047d7feee0e007`, exact package tree
+`806a66cd973954b3d5348ac36d39631717d9fe7b`.
 Version equality alone is insufficient; `docs/cdc-consumer-lock.json` and the exact subtree bind convergence.
 
 Use invocation-bound `execution-lease/v2`, durable intents/guards, transactional finalization, hard execution continuity, resume capsule, capability routing, deterministic recovery, continuation queue, fleet/SLO/audit and explicit release before final response. Health/router/fleet recommendations never grant product-write, takeover, external-start, merge, release or scheduler authority.
@@ -36,3 +36,12 @@ Preserve the current 2.0.1 security model, fail-open behavior, exact-SHA Windows
 ## Continuous execution
 
 If a runnable next action exists and no real blocker/guard exists, do not finish after status/health/lease/poll only. Continue until meaningful durable progress, a durable external binding, a resumable blocker, or verified completion. Before a final response while owning the lease: drain writes, reconcile external work, checkpoint, pass continuity gate, and explicitly release the exact invocation-bound lease.
+
+
+## Bare continuation means terminal state
+
+A bare user continuation command such as «продолжай», «продолжи» or “continue”
+means continue the already-authorized current scope until terminal state. Do not stop
+after one status read, commit, compute result or intermediate checkpoint. This does not
+expand scope or authority. Terminal state is verified scope completion or a real durable
+terminal blocker/handoff with exact evidence and one executable next action.

@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.7.2
+# Continuous Development Cycle v2.7.3
 
 Durable repository state is the project state. Sessions, agents and schedulers are disposable. Apply the instruction hierarchy, preserve the source/scope of existing user authorization, and reconcile repository policy. Live remote facts override stale checkpoint/chat claims. A spinner, lease or submitted request is not progress evidence.
 
@@ -57,9 +57,9 @@ A missing connector/API method is a capability gap, **not** a manual approval re
 
 Escalate to the human only when the remaining step genuinely requires human judgment/authorization, a secret/credential not available to the authorized runtime, a protected approval/environment gate, or an external system with no authorized automation path. When escalation is unavoidable, persist the exact resumable checkpoint and request one minimal concrete action. Never translate `workflow_dispatch unavailable`, `connector method missing`, or equivalent transport gaps into owner approval.
 
-## CDC 2.7.2 cost-aware compute economics
+## CDC 2.7.3 visibility-aware compute economics
 
-Compute selection is both capability- and cost-aware. Use `scripts/cost_router.py` and `references/cost-aware-routing.md` after capability routing. Project policy expresses relative backend cost; it is not a currency calculator. For eligible portable work, Codex Compute is the default primary low-cost backend. A transient/setup/network/provider/runtime Codex failure does **not** automatically justify GitHub Actions.
+Compute selection is both capability- and cost-aware. Use `scripts/cost_router.py` and `references/cost-aware-routing.md` after capability routing. Project policy expresses relative backend cost; it is not a currency calculator. Repository visibility is part of the cost context. For private/internal repositories, Codex Compute remains the default low-cost primary for eligible portable work and a transient/setup/network/provider/runtime Codex failure does **not** automatically justify metered GitHub Actions. For public repositories where standard GitHub-hosted Actions are configured as unmetered by project policy, Actions are not an expensive fallback and may be selected directly by cost routing when compatible.
 
 Use bounded, information-gaining Codex recovery/probes, respect cooldown, and prefer another cheaper compatible backend. If bounded recovery is exhausted without independently confirmed provider outage, persist `waiting_compute` rather than spending expensive CI for a portable check. A product/test failure is fixed as product/test work; do not buy a second opinion from Actions.
 
@@ -100,6 +100,12 @@ Follow the configured lifecycle, ordinarily:
 Use Codex Compute first for eligible authorized, configured and platform-compatible candidate validation. Apply the cost-aware router before expensive fallback. A local runtime alone does not displace Codex when policy keeps Codex primary. Read `references/codex-compute.md` for actual access/environment/task binding; retain `references/validation-compute-and-ci.md` platform and Actions-budget gates. Small local preflight/RED/debugging loops are useful. On concrete ineligibility or required platform capability, use an authorized valid fallback. On transient/setup/provider unavailability, follow bounded low-cost recovery and cost policy before expensive CI; do not bypass Actions budget or spend Actions merely because one Codex attempt failed.
 
 Use the versioned plan, `scripts/run_checks.py` and `scripts/validate_evidence.py` from `references/command-evidence.md`. Bind evidence to the independently expected plan, exact SHA and environment configuration. Each command reports its own exit and `PASS / EXPECTED_RED / FAIL / NOT_RUN`; a wrapper exit, absent/zero-test report or expected RED is not final GREEN.
+
+## User continuation shorthand means terminal state
+
+When the user sends a bare continuation instruction such as **«продолжай»**, **«продолжи»**, **“continue”** or an equivalent unqualified imperative, interpret it as authorization to continue the already-authorized current scope **until terminal state (TS)**. Do not stop after one primitive step, one commit, one status read, one compute result, or one intermediate checkpoint merely because the continuation request itself was short.
+
+This shorthand does not expand scope, permissions, destructive authority, budget, merge/release authority, or bypass any guard. An explicit narrower qualifier from the user wins. TS means either verified completion of the current scope, or a real durable terminal blocker/handoff with exact evidence and one executable next action. A live external task is supervised to terminal state when the invocation can do so; `waiting_external` is a TS boundary only when no same-invocation useful work remains and the exact external binding/handoff is durably preserved.
 
 ## Close every accepted execution commitment
 

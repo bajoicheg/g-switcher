@@ -5,5 +5,6 @@
   "distinct_primary_recovery_attempts": 0,
   "provider_outage_confirmed": false,
   "required_capability_gap_on_primary": false,
-  "last_primary_failure_at_utc": null
+  "last_primary_failure_at_utc": null,
+  "repository_visibility": "private"
 }

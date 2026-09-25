@@ -89,7 +89,7 @@ REQUIRED = [
     'tests/test_v270_guidance.py', 'tests/test_git_lease_store_v2.py',
     'references/cost-aware-routing.md', 'scripts/cost_router.py',
     'templates/cost-routing-policy.json', 'templates/cost-routing-context.json',
-    'tests/test_cost_router.py', 'tests/test_v272_guidance.py',
+    'tests/test_cost_router.py', 'tests/test_v272_guidance.py', 'tests/test_v273_guidance.py',
 ]
 
 

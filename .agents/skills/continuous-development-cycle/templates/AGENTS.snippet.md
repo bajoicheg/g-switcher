@@ -36,3 +36,8 @@ while preserving budget, validation and audit history.
 
 
 Human interaction is not an execution backend. Missing GitHub/connector/API methods are capability gaps, not implicit approval gates. Prefer durable event triggers, alternate authorized backends or policy-safe workflow changes before asking the owner for a mechanical action. Escalate only for genuine human authorization/judgment, unavailable secrets, protected approvals or external systems with no authorized automation route.
+
+
+Bare user continuation commands such as «продолжай», «продолжи» or “continue” mean continue the current authorized scope to terminal state. Do not stop after one status/read/commit/compute step. Terminal state is verified scope completion or a real durable blocker/handoff with exact evidence and next action. Explicit narrower user qualifiers and all normal guards still apply.
+
+Cost routing is visibility-aware. Public repositories may classify standard GitHub-hosted Actions as unmetered/normal compute; private/internal repositories retain Codex-first economics and expensive-Actions fallback controls.
