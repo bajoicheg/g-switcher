@@ -1,0 +1,51 @@
+name: CDC Policy Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cdc-policy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cdc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install CDC validator dependency
+        run: python -m pip install -r .agents/skills/continuous-development-cycle/scripts/requirements.txt
+
+      - name: Verify canonical CDC package identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.7.2"
+          test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "6e22d252374634662c95488ba9e7245febf6771a"
+
+      - name: Validate CDC package and project adapter
+        run: |
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_package.py
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_adapter.py docs/development-cycle.yaml --json
+          python -B .agents/skills/continuous-development-cycle/scripts/consumer_lock.py docs/cdc-consumer-lock.json
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_checkpoint_24.py docs/work-status/current.md --adapter docs/development-cycle.yaml
+
+      - name: Cost-aware router regression
+        run: python -B -m unittest discover -s .agents/skills/continuous-development-cycle/tests -p 'test_cost_router.py' -v
+
+      - name: Require clean checkout
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
