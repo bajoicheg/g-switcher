@@ -5,10 +5,12 @@
   "generation": 3,
   "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
   "acquired_at_utc": "2026-09-25T19:09:47Z",
-  "heartbeat_at_utc": "2026-09-25T19:12:30Z",
-  "expires_at_utc": "2026-09-25T19:32:30Z",
+  "heartbeat_at_utc": "2026-09-25T19:23:10Z",
+  "expires_at_utc": "2026-09-25T19:43:10Z",
   "activity_refs": [
-    "git:29765d01d8619f0d7af6ba2985ba614290b0b8b5"
+    "git:29765d01d8619f0d7af6ba2985ba614290b0b8b5",
+    "actions:36178305436:cdc-policy-green",
+    "actions:36178305452:attempt2:chrome-window-start-failure"
   ],
   "external_guard": null,
   "last_release": {
@@ -66,12 +68,12 @@
     "started_at_utc": "2026-09-25T19:09:47Z"
   },
   "finalization": {
-    "state": "active",
+    "state": "draining",
     "pending_shared_writes": false,
     "checkpoint_ref": null,
     "external_reconciliation": "none",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-25T19:12:30Z",
+    "updated_at_utc": "2026-09-25T19:23:10Z",
     "failure": null
   },
   "legacy_migration": null
