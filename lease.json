@@ -19,19 +19,19 @@
   "last_release": null,
   "takeover_evidence": null,
   "last_terminal": {
-    "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
-    "intent_digest": "sha256:cdc-adoption-auto-ci-36167861242",
+    "operation_key": "sha256:a86d9d239964b34a051bdc2b48160099beb9a449088cc3bad0c0228ed04e825f",
+    "intent_digest": "sha256:04af20c5b8c0cdf4bce0f6a711da3e97426ee2836f4a672ce4aaa38c5cdba668",
     "intent_reference": "automatic:pull_request@c492f0d208e08e8e0d84244147dbf82bb4ae8499",
     "observation": {
       "schema": "operation-observation/v1",
-      "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
+      "operation_key": "sha256:a86d9d239964b34a051bdc2b48160099beb9a449088cc3bad0c0228ed04e825f",
       "observed_at_utc": "2026-09-25T17:38:00Z",
       "lookup_complete": true,
       "tasks": [
         {
           "task_id": "36167861242",
           "task_url": "https://github.com/bajoicheg/g-switcher/actions/runs/36167861242",
-          "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
+          "operation_key": "sha256:a86d9d239964b34a051bdc2b48160099beb9a449088cc3bad0c0228ed04e825f",
           "attempt_id": "cdc-adoption-exact-head-windows",
           "binding": {
             "repository": "bajoicheg/g-switcher",
