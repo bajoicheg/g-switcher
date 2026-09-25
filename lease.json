@@ -13,18 +13,7 @@
     "actions:36186903679:cdc-policy-green",
     "actions:36186903573:repository-security-green"
   ],
-  "external_guard": {
-    "schema": "operation-intent/v1",
-    "operation_key": "g-switcher-2.0.1-browser-launch-hardening-cbe09e4e",
-    "intent_digest": "sha256:pending-observation-bound",
-    "intent_reference": "automatic:pull_request@cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
-    "repository": "bajoicheg/g-switcher",
-    "source_ref": "refs/heads/release/2.0.1",
-    "candidate_sha": "cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
-    "backend": "github-actions",
-    "mode": "CI_ONLY",
-    "task_id": "36186903615"
-  },
+  "external_guard": null,
   "last_release": {
     "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
     "generation": 3,
