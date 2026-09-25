@@ -2,16 +2,12 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 3,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
-  "activity_refs": [
-    "git:29765d01d8619f0d7af6ba2985ba614290b0b8b5",
-    "actions:36178305436:cdc-policy-green",
-    "actions:36178305452:attempt2:chrome-window-start-failure"
-  ],
+  "generation": 4,
+  "owner_id": "5f4c4a1b-2a1a-4a62-8cd2-9e25a6e2b4c1",
+  "acquired_at_utc": "2026-09-25T20:36:00Z",
+  "heartbeat_at_utc": "2026-09-25T20:36:00Z",
+  "expires_at_utc": "2026-09-25T20:56:00Z",
+  "activity_refs": [],
   "external_guard": null,
   "last_release": {
     "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
@@ -60,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "chat-2026-09-25T203600Z-g-switcher-product-continuation",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "chat",
+    "started_at_utc": "2026-09-25T20:35:30Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "pending",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-25T20:36:00Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
