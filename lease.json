@@ -5,9 +5,11 @@
   "generation": 3,
   "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
   "acquired_at_utc": "2026-09-25T19:09:47Z",
-  "heartbeat_at_utc": "2026-09-25T19:09:47Z",
-  "expires_at_utc": "2026-09-25T19:29:47Z",
-  "activity_refs": [],
+  "heartbeat_at_utc": "2026-09-25T19:12:30Z",
+  "expires_at_utc": "2026-09-25T19:32:30Z",
+  "activity_refs": [
+    "git:29765d01d8619f0d7af6ba2985ba614290b0b8b5"
+  ],
   "external_guard": null,
   "last_release": {
     "owner_id": "6c6a4f2e-3c9d-4b71-9a46-75f2f8b4e3d1",
@@ -69,7 +71,7 @@
     "checkpoint_ref": null,
     "external_reconciliation": "none",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-25T19:09:47Z",
+    "updated_at_utc": "2026-09-25T19:12:30Z",
     "failure": null
   },
   "legacy_migration": null
