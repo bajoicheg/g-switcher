@@ -4,50 +4,51 @@ repository: bajoicheg/g-switcher
 branch: release/2.0.1
 policy_revision: "2026-09-25-cdc-2.7.3-g-switcher-visibility-ts"
 policy_digest: 327dd55cda2223519ce50c0412957bd31f8ed4dc9d9358cc2d36d324b413fff2
-observed_at_utc: "2026-09-25T19:23:20Z"
+observed_at_utc: "2026-09-25T20:45:30Z"
 orchestration_origin: chat
 active_executor: none
 lease_state: released
 executor_heartbeat_at_utc: null
 execution_lease_until_utc: null
-waiting_external_kind: null
-waiting_external_id: null
-waiting_external_sha: null
+waiting_external_kind: manual_compatibility
+waiting_external_id: "COMPATIBILITY_2.0.1.md"
+waiting_external_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
   execution_lease_revision: null
   executor_id: null
-  lease_generation: 3
+  lease_generation: 4
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
-active_change: ""
-current_task: "CDC 2.7.3 converged; G-switcher 2.0.1 release acceptance remains blocked"
+active_change: "2.0.1 release acceptance"
+current_task: "Automated Chrome startup blocker resolved; manual real-application acceptance remains"
 phase: blocked
-implementation_sha: 9469a2e3593c6a5141f00d2a0ebaa25e0bee766d
-candidate_sha: 9469a2e3593c6a5141f00d2a0ebaa25e0bee766d
-last_green_sha: c492f0d208e08e8e0d84244147dbf82bb4ae8499
-last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36167861242
+implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
+candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
+last_green_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
+last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36186903615
 active_compute: ""
 active_ci_run_id: ""
-last_ci_run_id: "36178305452"
-last_ci_status: "completed/failure: Chrome UIA test window did not appear on two bounded attempts"
+last_ci_run_id: "36186903615"
+last_ci_status: "completed/success: Windows Rust CI #408 exact-head GREEN including Edge and Chrome UIA E2E"
 release_version: "2.0.1"
-release_candidate_sha: 36424c5109f1e94ff392068c0a58b0acb7bfc10d
+release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 release_state: "candidate"
-blocker: "CDC 2.7.3 is converged. Product release remains blocked by manual COMPATIBILITY_2.0.1.md completion, explicit final review, and a future exact-head Windows GREEN; current public-runner Chrome UIA gate failed twice because the Chrome test window did not appear."
-next_action: "Resume product release work: complete the manual compatibility matrix and explicit final review; before publication obtain a fresh exact-head Windows Rust CI GREEN. Do not blindly repeat the current Chrome-window startup failure without fresh runner/recovery evidence."
+blocker: "Automated release-gate blocker is resolved. Public promotion remains blocked by completion of the manual COMPATIBILITY_2.0.1.md real-application matrix and explicit final release review; after subsequent release-evidence/checkpoint changes, obtain the required fresh exact-head Windows GREEN before publication."
+next_action: "Run the manual compatibility matrix using Windows CI #408 manual kit artifact 10887351168, persist exact application/version results, perform explicit final review, then obtain the required fresh exact-head Windows Rust CI GREEN before merge/public release."
 resume_capsule_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json"
 execution_continuity:
-  invocation_id: null
+  invocation_id: "chat-2026-09-25T203600Z-g-switcher-product-continuation"
   runnable_next_action: false
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: resumable_blocker
-  last_progress_ref: "actions:36178305436:cdc-policy-green;coordination:generation-3-release"
+  last_progress_ref: "git:cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b;actions:36186903615:green;pr28-comment:5839327813"
 ---
+
 
 # Current work status
 
@@ -128,3 +129,49 @@ Chrome test window did not appear within 20 seconds. This repeated environment/b
 startup signature remains separate from CDC convergence. The manual compatibility
 matrix and explicit final release review remain mandatory, and a fresh exact-head
 Windows GREEN is still required before publication.
+
+## G-switcher 2.0.1 Chrome launch hardening terminal handoff — 2026-09-25
+
+The repeated hosted-Windows Chrome startup blocker is resolved.
+
+Evidence and RCA:
+- the unchanged browser adapter source previously passed Edge and Chrome on
+  `c492f0d208e08e8e0d84244147dbf82bb4ae8499` in Windows Rust CI
+  `36167861242`;
+- after CDC/status-only changes, Windows Rust CI `36178305452` twice reached the
+  browser gate, passed Edge, discovered Chrome, and then failed because the Chrome
+  test window did not appear within the former 20-second startup allowance;
+- no product/runtime change existed between those two signatures, isolating the
+  failure to the hosted-CI Chromium launch harness.
+
+Corrective commit `cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b` changes only
+`tests/browser_uia_adapter.rs`: hosted CI now opens a normal isolated Chromium
+`--new-window`, disables background mode, and uses a bounded 45-second top-level
+window allowance inside the existing 240-second browser gate. Product runtime and
+release behavior are unchanged.
+
+Exact-head evidence on that commit:
+- Windows Rust CI #408 / `36186903615`: GREEN end to end;
+- Edge browser UIA adapter E2E: PASS;
+- Chrome browser UIA adapter E2E: PASS, including input/textarea mutation,
+  selection, Undo, RuntimeId separation and password guard;
+- hung/closing-target E2E, release build, branding checks, Defender scan,
+  clean-source verification, packaging and artifact uploads: PASS;
+- callback stress: `100000` callbacks, `0` over 10 ms, `0` dropped,
+  max `217400 ns`;
+- CDC Policy Validation `36186903679`: GREEN;
+- Repository Security `36186903573`: GREEN.
+
+Artifacts:
+- Windows x64: `10887246344`,
+  `sha256:07e8f4da9274db6cbb56a6a71717c11ffdf8cb563967b0bb112c197fcf7cb44f`;
+- manual compatibility kit: `10887351168`,
+  `sha256:f49dc545ed9f17fafd87c9bc7fa6ba40a213a540c3cad8780b4dfbce665ee4db`;
+- lockfile: `10887425946`,
+  `sha256:82da81aa5f19921ed9f835b16e3c5ccdf278e5e82ff40d13e6e9a1e1b8c046f2`.
+
+PR #28 remains Draft. This invocation cannot legitimately complete the remaining
+real-application matrix without the required Windows/manual observations. The next
+terminal dependency is therefore manual compatibility evidence, followed by explicit
+final review and the policy-required fresh exact-head Windows GREEN before public
+promotion.
