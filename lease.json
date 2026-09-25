@@ -63,12 +63,12 @@
     "started_at_utc": "2026-09-25T17:14:00Z"
   },
   "finalization": {
-    "state": "checkpointed",
+    "state": "reconciled",
     "pending_shared_writes": false,
     "checkpoint_ref": "docs/work-status/current.md@c492f0d208e08e8e0d84244147dbf82bb4ae8499",
-    "external_reconciliation": "pending",
+    "external_reconciliation": "terminal_reconciled",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-25T17:38:10Z",
+    "updated_at_utc": "2026-09-25T17:38:20Z",
     "failure": null
   },
   "legacy_migration": null
