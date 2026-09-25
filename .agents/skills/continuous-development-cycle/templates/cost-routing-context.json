@@ -1,0 +1,9 @@
+{
+  "schema": "compute-cost-context/v1",
+  "evidence_class": "portable",
+  "primary_failure_class": "none",
+  "distinct_primary_recovery_attempts": 0,
+  "provider_outage_confirmed": false,
+  "required_capability_gap_on_primary": false,
+  "last_primary_failure_at_utc": null
+}

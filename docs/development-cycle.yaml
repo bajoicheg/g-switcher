@@ -1,0 +1,252 @@
+schema: continuous-development-cycle/v3
+
+policy:
+  revision: "2026-09-25-cdc-2.7.2-g-switcher-adoption"
+  skill_min_version: "2.7.2"
+  skill_max_version_exclusive: "3.0.0"
+  approved_exceptions: []
+
+repository:
+  name: g-switcher
+  remote: bajoicheg/g-switcher
+  identity_must_match_before_push: true
+  branch_policy: checkpoint_or_discover
+  pr_policy: active_or_discover
+
+planning:
+  active_change_policy: exactly_one
+  specification_root: ""
+  strict_validation_command: ""
+
+checkpoint:
+  path: docs/work-status/current.md
+  schema: development-work-status/v4
+
+validation:
+  quick: "cargo fmt --all -- --check && cargo clippy --locked --all-targets -- -D warnings && cargo test --locked --all-targets"
+  full: "GitHub Actions: .github/workflows/windows-ci.yml on exact candidate SHA"
+  release: "Windows Rust CI GREEN + completed COMPATIBILITY_2.0.1.md + release workflow on main"
+  final_platform: windows
+  final_remote_required: true
+  evidence_schema: command-evidence/v1
+  check_plan: ".github/workflows/windows-ci.yml"
+
+compute:
+  preference: codex_first
+  fallback_order: [correct_local_runtime, other_approved_compute, hosted_platform_ci]
+  codex_backend:
+    # Availability flag; enable after association/settings readback.
+    enabled: false
+    configure_when_authorized: true
+    configuration_status: unconfigured
+    environment_id: null
+    environment_url: null
+    linked_github_user: null
+    channel: active_pr_or_explicit_task
+    runbook: docs/codex-compute.md
+    mode: COMPUTE_ONLY
+    exact_sha_required: true
+    clean_before_after_required: true
+    eligible:
+      - build
+      - unit
+      - regression
+      - lint
+      - schema
+      - deterministic-contract
+    ineligible:
+      - incompatible-platform
+      - device-or-desktop-runtime-without-required-environment
+      - final-release-without-required-platform-evidence
+
+operations:
+  intent_schema: operation-intent/v1
+  store: docs/work-status/operations
+  persist_before_submit: true
+  reconcile_before_resubmit: true
+  unknown_outcome_blocks_resubmit: true
+
+ci:
+  provider: github-actions
+  workflow: ".github/workflows/windows-ci.yml"
+  required_final_green: true
+  actions_budget: normal
+  actions_budget_restore_requires_explicit_confirmation: true
+  max_full_runs_per_task_when_conserve: 1
+  exhausted_forbids_launch_rerun_retry_dispatch_probe: true
+  skip_ci_marker: "[skip ci]"
+  skip_ci_allowed_for:
+    - tests-only-red
+    - intermediate-implementation
+    - corrective-fix
+    - policy-only
+    - status-only
+  skip_ci_forbidden_for:
+    - final-closure
+    - workflow
+    - build
+    - release
+    - dependencies
+
+execution:
+  orchestrator_owns_task_closure: true
+  ordinary_chat:
+    subagents: disabled
+  work:
+    subagents: enabled
+    additional_subagent_approval_required: false
+  codex_orchestrator:
+    subagents: enabled
+    additional_subagent_approval_required: false
+  unknown_runtime:
+    subagents: disabled
+  subagents:
+    delegate_when_useful: true
+    effort_policy: adaptive
+    selection_rule: minimum_sufficient_for_task
+    maximum_effort_is_default: false
+    writer_isolation_required: true
+    parallel_read_only_allowed: true
+  lease:
+    default_ttl_minutes: 20
+    heartbeat_fresh_minutes: 10
+    renew_requires_observable_owner_activity: true
+    external_wait_state: waiting_external
+    external_inflight_is_concurrency_guard: true
+    terminal_external_event_renews_owner: false
+    terminal_external_takeover_without_fresh_heartbeat: false
+    explicit_release_on_handoff: true
+    legacy_long_lease: normalize_at_next_safe_checkpoint
+
+progress:
+  interactive_updates: true
+  update_on_phase_change: true
+  update_on_evidence: true
+  update_on_blocker: true
+  update_on_backend_switch: true
+  anti_silence_minutes: 5
+  do_not_stream_trivial_tool_calls: true
+
+watchdog:
+  enabled: true
+  cadence: hourly
+  idle_guard_minutes: 60
+  explicit_kick_bypasses_idle_guard_only: true
+  inherits_runtime_subagent_policy: true
+  concurrency_guard_always: true
+
+release:
+  enabled: true
+  candidate_sha_required: true
+  version_consistency_required: true
+  artifact_sha_binding_required: true
+  package_smoke_required: true
+  checksum_required: true
+  tag_or_release_evidence_required: false
+  parallel_release_trains: false
+
+migration:
+  verify_repository_identity_on_resume: true
+  verify_default_branch: true
+  verify_pr_refs: true
+  verify_workflow_runner_state: true
+  verify_release_state: true
+  update_checkpoint_remote_identity: true
+
+safety:
+  never_force_push: true
+  destructive_actions_require_explicit_confirmation: true
+  stop_on_unreconciled_external_branch_movement: true
+
+# Optional additive v2.3 controls. Null single-writer assignment is observer-only.
+orchestration:
+  execution_lease:
+    backend: git
+    remote: origin
+    coordination_ref: refs/heads/cdc/coordination
+    designated_executor_id: null
+    assignment_ref: null
+  wait:
+    queued_seconds: 900
+    setup_seconds: 1800
+    running_seconds: 3600
+    unknown_seconds: 300
+    observation_max_age_seconds: 300
+    poll_initial_seconds: 30
+    poll_cap_seconds: 300
+  recovery:
+    max_snapshot_age_seconds: 300
+  budget:
+    task_limits:
+      compute_starts: null
+      ci_starts: 1
+      agent_starts: 4
+    wake_limits:
+      compute_starts: 4
+      status_polls: null  # Observe by backoff/deadlines, not an arbitrary count.
+      tool_calls: 40
+    max_parallel_agents: 2
+    checkpoint_reserve:
+      tokens: 4000
+      tool_calls: 8
+    provider_max_age_seconds: 300
+    actions_budget: normal
+
+# CDC 2.5 deterministic backend selection.
+routing:
+  capability_registry_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/backend-registry.json"
+  request_schema: capability-request/v1
+  backend_kind_preference: [codex_compute, local, other_compute, github_actions]
+  require_fresh_registry: true
+  no_match_state: waiting_external
+  router_authority: recommendation_only
+  max_registry_age_seconds: 900
+  cost_policy_ref: "docs/cdc-cost-routing-policy.json"
+  cost_router_authority: recommendation_only
+  github_actions_requires_reason: true
+  transient_primary_failure_policy: recover_or_wait
+
+recovery_recipes:
+  catalog_ref: ".agents/skills/continuous-development-cycle/templates/recovery-recipes.json"
+  diagnosis_schema: recovery-diagnosis/v1
+  deterministic_selection: true
+  recipe_authority: recommendation_only
+
+continuation:
+  queue_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/continuation-queue.json"
+  event_schema: continuation-event/v1
+  event_wake_is_authority: false
+  scheduler_fallback_required: true
+  dedupe_required: true
+  claim_ttl_seconds: 900
+
+# CDC 2.6 fleet/member observability and convergence controls.
+fleet:
+  snapshot_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/fleet-project-snapshot.json"
+  snapshot_schema: fleet-project-snapshot/v1
+  supervisor_authority: control_plane_only
+  product_write_authority: false
+  takeover_authority: false
+  external_start_authority: false
+  merge_authority: false
+  assessment_max_age_seconds: 900
+
+convergence:
+  target_version: "2.7.2"
+  target_package_fingerprint_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/fleet-target.json"
+  exact_package_fingerprint_required: true
+  safe_boundary_required: true
+
+progress_slo:
+  policy_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/progress-slo-policy.json"
+  degraded_after_seconds: 1200
+  stalled_after_seconds: 3600
+  primitive_activity_is_progress: false
+  blocked_pauses_clock: true
+  waiting_external_pauses_clock: true
+
+audit:
+  log_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/control-plane-audit.json"
+  schema: control-plane-audit-log/v1
+  append_only: true
+  hash_chain_required: true

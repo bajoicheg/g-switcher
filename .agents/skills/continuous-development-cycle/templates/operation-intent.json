@@ -1,0 +1,22 @@
+{
+  "attempt_id": "example-attempt-001",
+  "binding": {
+    "backend": "codex",
+    "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "check_plan_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "check_suite_fingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "environment_fingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "environment_id": "environment-example",
+    "mode": "COMPUTE_ONLY",
+    "repository": "example/project"
+  },
+  "created_at_utc": "2026-09-22T10:00:00Z",
+  "durable_intent": null,
+  "operation_key": "sha256:c64cd9a6d1bafce6a5bc344ef17374a775e450273de2a350b6cc07a32d4634a5",
+  "schema": "operation-intent/v1",
+  "skill_version": "2.3.0",
+  "source_ref": "refs/heads/candidate",
+  "state": "prepared",
+  "task": null,
+  "updated_at_utc": "2026-09-22T10:00:00Z"
+}

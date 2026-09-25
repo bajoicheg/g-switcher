@@ -1,0 +1,34 @@
+{
+  "schema": "compute-cost-policy/v1",
+  "primary_kind": "codex_compute",
+  "kind_cost_weights": {
+    "codex_compute": 1,
+    "local": 1,
+    "other_compute": 5,
+    "github_actions": 100
+  },
+  "expensive_kinds": [
+    "github_actions"
+  ],
+  "transient_failure_classes": [
+    "setup",
+    "network",
+    "provider",
+    "runtime"
+  ],
+  "product_failure_classes": [
+    "product"
+  ],
+  "bounded_primary_recovery_attempts": 2,
+  "probe_cooldown_seconds": 900,
+  "provider_outage_confirmation_required": true,
+  "expensive_fallback_reasons": [
+    "required_capability",
+    "final_platform",
+    "artifact",
+    "release_attestation",
+    "confirmed_provider_outage"
+  ],
+  "portable_wait_instead_of_expensive_fallback": true,
+  "github_actions_requires_reason": true
+}

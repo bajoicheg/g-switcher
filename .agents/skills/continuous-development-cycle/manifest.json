@@ -1,0 +1,7 @@
+{
+  "name": "continuous-development-cycle",
+  "version": "2.7.2",
+  "schema": "continuous-development-cycle/v3",
+  "entrypoint": "SKILL.md",
+  "description": "Cost-aware recoverable development with Codex-first compute economics, schema-aware lease CAS, canonical releases and audited fleet control."
+}

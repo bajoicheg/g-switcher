@@ -1,0 +1,19 @@
+{
+  "schema": "command-check-plan/v1",
+  "checks": [
+    {
+      "id": "build",
+      "kind": "build",
+      "required": true,
+      "argv": [],
+      "timeout_seconds": 600
+    },
+    {
+      "id": "regression",
+      "kind": "test",
+      "required": true,
+      "argv": [],
+      "timeout_seconds": 600
+    }
+  ]
+}

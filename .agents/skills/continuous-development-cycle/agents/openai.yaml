@@ -1,0 +1,16 @@
+name: Continuous Development Cycle
+description: Cost-aware recoverable development with Codex-first compute economics, schema-aware lease CAS and audited fleet control.
+version: 2.7.2
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
+interface:
+  display_name: Continuous Development Cycle
+  short_description: Cost-aware durable development with Codex-first compute routing
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.7.2 cost-aware Codex-first routing, release-lock, fleet and audit controls.
