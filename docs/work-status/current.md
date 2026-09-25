@@ -4,12 +4,12 @@ repository: bajoicheg/g-switcher
 branch: release/2.0.1
 policy_revision: "2026-09-25-cdc-2.7.3-g-switcher-visibility-ts"
 policy_digest: 327dd55cda2223519ce50c0412957bd31f8ed4dc9d9358cc2d36d324b413fff2
-observed_at_utc: "2026-09-25T19:12:23Z"
+observed_at_utc: "2026-09-25T19:23:20Z"
 orchestration_origin: chat
-active_executor: d77ea447-5e63-4f25-91e8-4a36a2c94a91
-lease_state: active
-executor_heartbeat_at_utc: "2026-09-25T19:12:23Z"
-execution_lease_until_utc: "2026-09-25T19:32:23Z"
+active_executor: none
+lease_state: released
+executor_heartbeat_at_utc: null
+execution_lease_until_utc: null
 waiting_external_kind: null
 waiting_external_id: null
 waiting_external_sha: null
@@ -18,35 +18,35 @@ operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
   execution_lease_revision: null
-  executor_id: d77ea447-5e63-4f25-91e8-4a36a2c94a91
+  executor_id: null
   lease_generation: 3
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
 active_change: ""
-current_task: "G-switcher 2.0.1 release line; canonical CDC 2.7.3 convergence validation"
-phase: validation
+current_task: "CDC 2.7.3 converged; G-switcher 2.0.1 release acceptance remains blocked"
+phase: blocked
 implementation_sha: 9469a2e3593c6a5141f00d2a0ebaa25e0bee766d
 candidate_sha: 9469a2e3593c6a5141f00d2a0ebaa25e0bee766d
 last_green_sha: c492f0d208e08e8e0d84244147dbf82bb4ae8499
 last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36167861242
 active_compute: ""
 active_ci_run_id: ""
-last_ci_run_id: "36178146059"
-last_ci_status: "in_progress"
+last_ci_run_id: "36178305452"
+last_ci_status: "completed/failure: Chrome UIA test window did not appear on two bounded attempts"
 release_version: "2.0.1"
 release_candidate_sha: 36424c5109f1e94ff392068c0a58b0acb7bfc10d
 release_state: "candidate"
-blocker: "CDC 2.7.3 exact-head validation in progress; product manual COMPATIBILITY_2.0.1.md matrix and explicit final release review remain required"
-next_action: "Complete exact-head CDC 2.7.3 policy/Windows validation, finalize/release generation 3, then resume the manual compatibility matrix and explicit final release review."
+blocker: "CDC 2.7.3 is converged. Product release remains blocked by manual COMPATIBILITY_2.0.1.md completion, explicit final review, and a future exact-head Windows GREEN; current public-runner Chrome UIA gate failed twice because the Chrome test window did not appear."
+next_action: "Resume product release work: complete the manual compatibility matrix and explicit final review; before publication obtain a fresh exact-head Windows Rust CI GREEN. Do not blindly repeat the current Chrome-window startup failure without fresh runner/recovery evidence."
 resume_capsule_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json"
 execution_continuity:
-  invocation_id: chat-2026-09-25T190947Z-cdc273-convergence
-  runnable_next_action: true
+  invocation_id: null
+  runnable_next_action: false
   meaningful_progress: true
   primitive_steps_since_progress: 0
-  completion_gate: continue
-  last_progress_ref: "git:9469a2e3593c6a5141f00d2a0ebaa25e0bee766d"
+  completion_gate: resumable_blocker
+  last_progress_ref: "actions:36178305436:cdc-policy-green;coordination:generation-3-release"
 ---
 
 # Current work status
@@ -101,3 +101,30 @@ this commit reconciles.
 
 Product runtime behavior is unchanged. The manual real-application compatibility matrix
 and explicit final release review remain the authoritative release gates.
+
+
+## CDC 2.7.3 convergence terminal state
+
+CDC convergence is COMPLETE for this repository:
+- canonical release: `refs/heads/release/v2.7.3`;
+- release commit: `88ee8a209caf562c02fe2ad53e047d7feee0e007`;
+- exact vendored package tree: `806a66cd973954b3d5348ac36d39631717d9fe7b`;
+- policy revision: `2026-09-25-cdc-2.7.3-g-switcher-visibility-ts`;
+- semantic digest: `327dd55cda2223519ce50c0412957bd31f8ed4dc9d9358cc2d36d324b413fff2`;
+- CDC Policy Validation `36178305436`: GREEN on exact checkpoint head
+  `29765d01d8619f0d7af6ba2985ba614290b0b8b5`;
+- execution-lease/v2 generation 3 finalized transactionally and released with null guard.
+
+Public-repository compute economics are explicit: standard GitHub-hosted Actions are
+unmetered/normal by project policy, so the private-repository Actions penalty does not
+apply. CDC 2.7.3 also makes bare «продолжай»/«продолжи»/“continue” mean continue the
+already-authorized current scope to terminal state.
+
+The product release is deliberately NOT declared GREEN by CDC convergence. Windows Rust
+CI run `36178305452` reached and passed provenance, privacy, fmt, locked graph, Clippy,
+unit tests, compatibility tooling, same-process E2E and cross-process E2E. On both
+bounded attempts Edge passed, while Chrome executable discovery succeeded but the
+Chrome test window did not appear within 20 seconds. This repeated environment/browser
+startup signature remains separate from CDC convergence. The manual compatibility
+matrix and explicit final release review remain mandatory, and a fresh exact-head
+Windows GREEN is still required before publication.
