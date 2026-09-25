@@ -10,12 +10,50 @@
   "activity_refs": [
     "actions:36167255217:cdc-green",
     "actions:36167254969:windows-green",
-    "actions:36167254966:security-green"
+    "actions:36167254966:security-green",
+    "actions:36167861239:cdc-green",
+    "actions:36167861242:windows-green",
+    "actions:36167861250:security-green"
   ],
   "external_guard": null,
   "last_release": null,
   "takeover_evidence": null,
-  "last_terminal": null,
+  "last_terminal": {
+    "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
+    "intent_digest": "sha256:cdc-adoption-auto-ci-36167861242",
+    "intent_reference": "automatic:pull_request@c492f0d208e08e8e0d84244147dbf82bb4ae8499",
+    "observation": {
+      "schema": "operation-observation/v1",
+      "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
+      "observed_at_utc": "2026-09-25T17:38:00Z",
+      "lookup_complete": true,
+      "tasks": [
+        {
+          "task_id": "36167861242",
+          "task_url": "https://github.com/bajoicheg/g-switcher/actions/runs/36167861242",
+          "operation_key": "sha256:cdc-adoption-auto-ci-36167861242",
+          "attempt_id": "cdc-adoption-exact-head-windows",
+          "binding": {
+            "repository": "bajoicheg/g-switcher",
+            "candidate_sha": "c492f0d208e08e8e0d84244147dbf82bb4ae8499",
+            "backend": "github-actions",
+            "mode": "CI_ONLY",
+            "environment_id": "windows-latest",
+            "check_suite_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "environment_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "check_plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "state": "terminal",
+          "conclusion": "succeeded",
+          "evidence_refs": [
+            "actions:36167861242"
+          ]
+        }
+      ]
+    },
+    "evidence_reference": "https://github.com/bajoicheg/g-switcher/actions/runs/36167861242",
+    "at_utc": "2026-09-25T17:38:00Z"
+  },
   "submission_claims": [],
   "invocation": {
     "invocation_id": "chat-2026-09-25T171400Z-cdc-adoption",
@@ -25,12 +63,12 @@
     "started_at_utc": "2026-09-25T17:14:00Z"
   },
   "finalization": {
-    "state": "active",
+    "state": "draining",
     "pending_shared_writes": false,
     "checkpoint_ref": null,
-    "external_reconciliation": "none",
+    "external_reconciliation": "pending",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-25T17:32:30Z",
+    "updated_at_utc": "2026-09-25T17:38:00Z",
     "failure": null
   },
   "legacy_migration": null
