@@ -3,10 +3,10 @@
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
   "generation": 1,
-  "owner_id": "f3f9a9d8-84cb-49f1-98fa-4d4d955b9506",
-  "acquired_at_utc": "2026-09-25T17:32:30Z",
-  "heartbeat_at_utc": "2026-09-25T17:32:30Z",
-  "expires_at_utc": "2026-09-25T17:52:30Z",
+  "owner_id": null,
+  "acquired_at_utc": null,
+  "heartbeat_at_utc": null,
+  "expires_at_utc": null,
   "activity_refs": [
     "actions:36167255217:cdc-green",
     "actions:36167254969:windows-green",
@@ -16,7 +16,15 @@
     "actions:36167861250:security-green"
   ],
   "external_guard": null,
-  "last_release": null,
+  "last_release": {
+    "owner_id": "f3f9a9d8-84cb-49f1-98fa-4d4d955b9506",
+    "generation": 1,
+    "invocation_id": "chat-2026-09-25T171400Z-cdc-adoption",
+    "at_utc": "2026-09-25T17:38:40Z",
+    "checkpoint_ref": "docs/work-status/current.md@c492f0d208e08e8e0d84244147dbf82bb4ae8499",
+    "external_reconciliation": "terminal_reconciled",
+    "completion_reason": "resumable_blocker"
+  },
   "takeover_evidence": null,
   "last_terminal": {
     "operation_key": "sha256:a86d9d239964b34a051bdc2b48160099beb9a449088cc3bad0c0228ed04e825f",
@@ -55,21 +63,7 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": {
-    "invocation_id": "chat-2026-09-25T171400Z-cdc-adoption",
-    "automation_id": null,
-    "conversation_id": null,
-    "execution_surface": "chat",
-    "started_at_utc": "2026-09-25T17:14:00Z"
-  },
-  "finalization": {
-    "state": "ready",
-    "pending_shared_writes": false,
-    "checkpoint_ref": "docs/work-status/current.md@c492f0d208e08e8e0d84244147dbf82bb4ae8499",
-    "external_reconciliation": "terminal_reconciled",
-    "completion_reason": "resumable_blocker",
-    "updated_at_utc": "2026-09-25T17:38:30Z",
-    "failure": null
-  },
+  "invocation": null,
+  "finalization": null,
   "legacy_migration": null
 }
