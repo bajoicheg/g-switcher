@@ -5,13 +5,15 @@
   "generation": 4,
   "owner_id": "5f4c4a1b-2a1a-4a62-8cd2-9e25a6e2b4c1",
   "acquired_at_utc": "2026-09-25T20:36:00Z",
-  "heartbeat_at_utc": "2026-09-25T20:39:00Z",
-  "expires_at_utc": "2026-09-25T20:59:00Z",
+  "heartbeat_at_utc": "2026-09-25T20:46:00Z",
+  "expires_at_utc": "2026-09-25T21:06:00Z",
   "activity_refs": [
     "git:cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
-    "actions:36186903615:windows-ci-in-progress",
+    "actions:36186903615:windows-ci-green",
     "actions:36186903679:cdc-policy-green",
-    "actions:36186903573:repository-security-green"
+    "actions:36186903573:repository-security-green",
+    "pr28-comment:5839327813",
+    "git:0711746255ff9bbe3ec937f3e5a0dcec750cce58:terminal-checkpoint"
   ],
   "external_guard": null,
   "last_release": {
@@ -69,12 +71,12 @@
     "started_at_utc": "2026-09-25T20:35:30Z"
   },
   "finalization": {
-    "state": "active",
+    "state": "draining",
     "pending_shared_writes": false,
     "checkpoint_ref": null,
     "external_reconciliation": "pending",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-25T20:36:00Z",
+    "updated_at_utc": "2026-09-25T20:46:00Z",
     "failure": null
   },
   "legacy_migration": null
