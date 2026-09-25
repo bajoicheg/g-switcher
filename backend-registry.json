@@ -1,0 +1,42 @@
+{
+  "schema": "backend-capability-registry/v1",
+  "observed_at_utc": "2026-09-25T17:14:00Z",
+  "backends": [
+    {
+      "backend_id": "github-actions-windows",
+      "kind": "github_actions",
+      "enabled": true,
+      "state": "ready",
+      "rank": 10,
+      "capabilities": [
+        "os:windows",
+        "pwsh:7",
+        "rust:1.98.1",
+        "git",
+        "feature:windows-e2e",
+        "artifact:upload"
+      ],
+      "configuration_digest": "sha256:6a82c08da034fdd527210a236eb9063229626582648cb5918b3807088c4755e1",
+      "last_verified_at_utc": "2026-09-25T17:14:00Z",
+      "evidence_refs": [
+        "workflow:.github/workflows/windows-ci.yml",
+        "repository:public"
+      ]
+    },
+    {
+      "backend_id": "codex-cloud",
+      "kind": "codex_compute",
+      "enabled": false,
+      "state": "unavailable",
+      "rank": 20,
+      "capabilities": [
+        "git"
+      ],
+      "configuration_digest": "sha256:dbdebd66de4772a6a67de6ea58732635161a264594d2864e1076269551ae01d2",
+      "last_verified_at_utc": "2026-09-25T17:14:00Z",
+      "evidence_refs": [
+        "environment:unconfigured"
+      ]
+    }
+  ]
+}

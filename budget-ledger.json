@@ -1,0 +1,34 @@
+{
+  "events": [],
+  "policy": {
+    "actions_budget": "normal",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 6,
+      "ci_starts": null,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 200
+    },
+    "wake_limits": {
+      "agent_starts": 3,
+      "ci_starts": 4,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 60
+    }
+  },
+  "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+  "schema": "budget-ledger/v1",
+  "task_id": "g-switcher/2.0.1",
+  "wake_ids": []
+}

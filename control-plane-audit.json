@@ -1,0 +1,6 @@
+{
+  "schema": "control-plane-audit-log/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "entries": []
+}
