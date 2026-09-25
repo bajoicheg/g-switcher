@@ -2,19 +2,12 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 1,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
-  "activity_refs": [
-    "actions:36167255217:cdc-green",
-    "actions:36167254969:windows-green",
-    "actions:36167254966:security-green",
-    "actions:36167861239:cdc-green",
-    "actions:36167861242:windows-green",
-    "actions:36167861250:security-green"
-  ],
+  "generation": 2,
+  "owner_id": "6c6a4f2e-3c9d-4b71-9a46-75f2f8b4e3d1",
+  "acquired_at_utc": "2026-09-25T18:08:00Z",
+  "heartbeat_at_utc": "2026-09-25T18:08:00Z",
+  "expires_at_utc": "2026-09-25T18:28:00Z",
+  "activity_refs": [],
   "external_guard": null,
   "last_release": {
     "owner_id": "f3f9a9d8-84cb-49f1-98fa-4d4d955b9506",
@@ -63,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "automation-g-switcher-watchdog-2026-09-25T180625Z-1",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "watchdog",
+    "started_at_utc": "2026-09-25T18:06:25Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "pending",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-25T18:08:00Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
