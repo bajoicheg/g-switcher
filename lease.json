@@ -2,11 +2,11 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 2,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
+  "generation": 3,
+  "owner_id": "d77ea447-5e63-4f25-91e8-4a36a2c94a91",
+  "acquired_at_utc": "2026-09-25T19:09:47Z",
+  "heartbeat_at_utc": "2026-09-25T19:09:47Z",
+  "expires_at_utc": "2026-09-25T19:29:47Z",
   "activity_refs": [],
   "external_guard": null,
   "last_release": {
@@ -56,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "chat-2026-09-25T190947Z-cdc273-convergence",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "chat",
+    "started_at_utc": "2026-09-25T19:09:47Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "none",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-25T19:09:47Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
