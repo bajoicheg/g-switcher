@@ -1,0 +1,15 @@
+{
+  "schema": "blocked-state-proof/v1",
+  "dependency_id": "manual-compatibility:COMPATIBILITY_2.0.1.md@cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
+  "category": "human_validation",
+  "observed_at_utc": "2026-09-26T14:42:40Z",
+  "max_age_seconds": 900,
+  "evidence_refs": [
+    "git:db9b91088f7b92c2d35e887c744fcbf48c6b95c3:docs/work-status/current.md",
+    "actions:36186903615:manual-kit-artifact-10887351168",
+    "matrix:COMPATIBILITY_2.0.1.md:remaining-manual-rows"
+  ],
+  "next_action": "Collect the remaining exact-version manual compatibility observations, persist the matrix, perform explicit final review, then obtain the required fresh exact-head Windows GREEN before release.",
+  "recheck_trigger": "owner-provides-manual-compatibility-results",
+  "same_invocation_work_exhausted": true
+}
