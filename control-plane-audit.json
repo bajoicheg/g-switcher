@@ -2,5 +2,17 @@
   "schema": "control-plane-audit-log/v1",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "entries": []
+  "entries": [
+    {
+      "sequence": 1,
+      "occurred_at_utc": "2026-09-26T14:36:52Z",
+      "actor_invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
+      "event_type": "version_convergence",
+      "object_ref": "refs/heads/cdc/coordination:fleet-target.json",
+      "outcome": "target_converged_to_canonical_2.8.2",
+      "details_digest": "sha256:0a16cceae4c5044802892c4ab7a6944b0efe3b0487d6bec0fd67f8760bdc18cb",
+      "previous_hash": null,
+      "event_hash": "sha256:028742dc000bd5c1bde216dad062011edddf806e96d0844234552e9494ae2311"
+    }
+  ]
 }
