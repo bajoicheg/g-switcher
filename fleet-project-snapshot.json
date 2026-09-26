@@ -1,0 +1,36 @@
+{
+  "schema": "fleet-project-snapshot/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "observed_at_utc": "2026-09-26T14:39:18Z",
+  "product_head": "db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+  "cdc_version": "2.8.2",
+  "package_fingerprint": "git-tree:bdf18b8dedb2f0cf62728935d92e6260b4a64ef0",
+  "checkpoint_schema": "development-work-status/v4",
+  "policy_revision": "2026-09-26-cdc-2.8.2-fleet-adoption",
+  "watchdog": {
+    "enabled": true,
+    "last_run_at_utc": null
+  },
+  "coordination": {
+    "lease_schema": "execution-lease/v2",
+    "generation": 5,
+    "owner_active": true,
+    "guard_present": false
+  },
+  "progress": {
+    "schema": "progress-observation/v1",
+    "observed_at_utc": "2026-09-26T14:39:18Z",
+    "last_meaningful_progress_at_utc": "2026-09-26T14:37:19Z",
+    "last_activity_at_utc": "2026-09-26T14:38:46Z",
+    "primitive_steps_since_progress": 1,
+    "blocker": false,
+    "waiting_external": true,
+    "phase": "blocked",
+    "evidence_refs": [
+      "git:db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+      "actions:36235152327:cdc-policy-green",
+      "manual:COMPATIBILITY_2.0.1.md"
+    ]
+  }
+}
