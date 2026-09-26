@@ -5,13 +5,14 @@
   "generation": 5,
   "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
   "acquired_at_utc": "2026-09-26T14:32:46Z",
-  "heartbeat_at_utc": "2026-09-26T14:39:32Z",
-  "expires_at_utc": "2026-09-26T14:59:32Z",
+  "heartbeat_at_utc": "2026-09-26T14:42:56Z",
+  "expires_at_utc": "2026-09-26T15:02:56Z",
   "activity_refs": [
     "git:c6910e35fc99565d34eab6684517baf819ff79cd:fleet-target-converged",
     "git:6a056e52b476f196b8ea7305edbfe87e1ec33a6c:fleet-target-schema-aligned",
     "git:ae86c71d3e50577df8cef47038fc03aa7aa3554c:version-convergence-audited",
-    "git:fd025f6172ca6eef90e350d6c26cb2ef10222dae:fleet-snapshot-materialized"
+    "git:fd025f6172ca6eef90e350d6c26cb2ef10222dae:fleet-snapshot-materialized",
+    "git:f54f4ccba9e19615454772ecaa1687c66a3ee84b:blocker-proof-persisted"
   ],
   "external_guard": null,
   "last_release": {
