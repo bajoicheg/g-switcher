@@ -1,0 +1,12 @@
+{
+  "schema": "policy-migration-request/v1",
+  "expected_source_head": "1111111111111111111111111111111111111111",
+  "observed_source_head": "1111111111111111111111111111111111111111",
+  "current_policy_yaml": "schema: continuous-development-cycle/v3\npolicy:\n  revision: \"1\"\nmaturity:\n  old: true\n",
+  "desired_sections": {
+    "maturity": {
+      "old": true,
+      "transactional_migration": true
+    }
+  }
+}

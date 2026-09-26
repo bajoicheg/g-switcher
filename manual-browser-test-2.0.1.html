@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G-switcher 2.0.1 — offline browser compatibility test</title>
+<style>
+  :root { color-scheme: light dark; font-family: "Segoe UI", Arial, sans-serif; }
+  body { max-width: 920px; margin: 32px auto; padding: 0 20px 48px; line-height: 1.45; }
+  h1 { margin-bottom: 4px; }
+  .muted { opacity: .72; }
+  .warning { border-left: 4px solid currentColor; padding: 8px 12px; margin: 16px 0 24px; }
+  fieldset { margin: 20px 0; padding: 18px; border-radius: 8px; }
+  legend { font-weight: 650; padding: 0 8px; }
+  label { display: block; font-weight: 600; margin: 10px 0 6px; }
+  input, textarea { box-sizing: border-box; width: 100%; max-width: 780px; padding: 10px 12px; font: 18px Consolas, "Cascadia Mono", monospace; }
+  textarea { min-height: 90px; resize: vertical; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>G-switcher 2.0.1 — тест браузера</h1>
+<p class="muted">Локальная страница для ручной проверки Microsoft Edge и Google Chrome. Она не загружает внешние ресурсы, не отправляет данные и не использует сеть.</p>
+<p class="warning"><strong>Не вводите реальные пароли, PIN, OTP, ключи API или другие секреты.</strong> Поле пароля ниже предназначено только для вымышленных тестовых данных.</p>
+
+<fieldset>
+  <legend>1. Auto</legend>
+  <p>Установите английскую раскладку и напечатайте <code>ghbdtn</code>, затем пробел. Ожидается <code>привет </code>. Текст до и после слова не должен повреждаться.</p>
+  <label for="auto">Обычное text-поле</label>
+  <input id="auto" type="text" autocomplete="off" spellcheck="false" placeholder="Тест Auto здесь">
+</fieldset>
+
+<fieldset>
+  <legend>2. Manual current word + Undo</legend>
+  <p>В режиме Manual-only напечатайте <code>ghbdtn</code>, примените hotkey текущего слова, затем Undo. Ожидается точное восстановление исходного текста и раскладки.</p>
+  <label for="manual">Обычное text-поле</label>
+  <input id="manual" type="text" autocomplete="off" spellcheck="false" placeholder="Тест Manual здесь">
+</fieldset>
+
+<fieldset>
+  <legend>3. Selected text + Undo</legend>
+  <p>Выделите только <code>ghbdtn rfr ltkf</code>, выполните преобразование выделения и затем Undo. Ничего за пределами выделения меняться не должно.</p>
+  <label for="selected">Поле с подготовленной строкой</label>
+  <textarea id="selected" autocomplete="off" spellcheck="false">LEFT | ghbdtn rfr ltkf | RIGHT</textarea>
+</fieldset>
+
+<fieldset>
+  <legend>4–5. Caret race и focus race</legend>
+  <p>Создайте ситуацию перед границей слова, затем переместите каретку мышью/стрелками или быстро смените поле. Устаревшая коррекция не должна примениться ни к старому, ни к новому полю.</p>
+  <div class="pair">
+    <div>
+      <label for="race-a">Поле A</label>
+      <input id="race-a" type="text" autocomplete="off" spellcheck="false" value="A: ">
+    </div>
+    <div>
+      <label for="race-b">Поле B</label>
+      <input id="race-b" type="text" autocomplete="off" spellcheck="false" value="B: ">
+    </div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>6. Password / sensitive field</legend>
+  <p>Используйте только вымышленную строку, например <code>ghbdtn123</code>. G-switcher не должен изменять содержимое или переключать раскладку из-за своих действий в этом поле.</p>
+  <label for="password">Password-поле</label>
+  <input id="password" type="password" autocomplete="new-password" spellcheck="false" placeholder="Только тестовые данные">
+</fieldset>
+
+<fieldset>
+  <legend>7–8. Pause / modes / fail-open</legend>
+  <p>На полях выше проверьте Pause/Resume, Auto, Manual-only и Disabled. Если конкретный контрол не поддерживается, исходный ввод и hotkey приложения должны остаться недеструктивными — это фиксируется как <code>UNSUPPORTED/FAIL-OPEN</code>, а не как «не тестировалось».</p>
+</fieldset>
+
+<p class="muted">Страница является статическим локальным артефактом релизного test kit. JavaScript отсутствует.</p>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "schema": "execution-continuity/v1",
+  "invocation_id": "template-recovery",
+  "current_state": "BLOCKED",
+  "requested_terminal_outcome": "blocked",
+  "runnable_next_action": false,
+  "meaningful_progress_refs": [],
+  "primitive_steps": [
+    "status_read"
+  ],
+  "external_binding": null,
+  "blocker": "initial recovery",
+  "checkpoint_ref": "docs/work-status/current.md",
+  "next_action": "Reconcile live repository and coordination state.",
+  "lease_release_required": false,
+  "lease_released": true
+}

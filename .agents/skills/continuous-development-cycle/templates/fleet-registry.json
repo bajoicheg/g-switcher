@@ -1,0 +1,27 @@
+{
+  "schema": "fleet-registry/v1",
+  "target": {
+    "target_version": "2.9.2",
+    "target_package_fingerprint": "git-tree:0000000000000000000000000000000000000000",
+    "checkpoint_schema": "development-work-status/v4",
+    "safe_boundary_required": true,
+    "schema": "version-convergence-target/v1"
+  },
+  "slo_policy": {
+    "schema": "progress-slo-policy/v1",
+    "degraded_after_seconds": 1200,
+    "stalled_after_seconds": 3600,
+    "blocked_pauses_clock": true,
+    "waiting_external_pauses_clock": true,
+    "primitive_activity_is_progress": false
+  },
+  "assessment_max_age_seconds": 900,
+  "projects": [
+    {
+      "repository": "owner/repository",
+      "source_ref": "refs/heads/main",
+      "watchdog_id": "watchdog-example",
+      "required": true
+    }
+  ]
+}

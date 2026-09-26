@@ -1,0 +1,1 @@
+{"schema":"progress-slo-policy/v1","degraded_after_seconds":1200,"stalled_after_seconds":3600,"blocked_pauses_clock":true,"waiting_external_pauses_clock":true,"primitive_activity_is_progress":false}

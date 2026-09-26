@@ -1,0 +1,16 @@
+{
+  "schema": "fleet-improvement-harvest/v1",
+  "run_id": "fleet-run-1",
+  "observations": [
+    "exact convergence evidence required"
+  ],
+  "candidate": {
+    "fix_key": "canonical-convergence-vector",
+    "problem": "Version-only status can overstate convergence.",
+    "fix": "Require exact convergence vector.",
+    "benefit": "Deterministic fleet status."
+  },
+  "existing_fix_keys": [
+    "canonical-convergence-vector"
+  ]
+}

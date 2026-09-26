@@ -1,0 +1,18 @@
+{
+  "schema": "public-export-request/v1",
+  "source_repository": "private/repository",
+  "target_repository": "public/repository",
+  "publication_guard_green": true,
+  "history_clean": true,
+  "control_plane_externalized": true,
+  "allowed_paths": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "excluded_paths": [
+    "coordination/",
+    "authorizations/",
+    "operations/"
+  ]
+}

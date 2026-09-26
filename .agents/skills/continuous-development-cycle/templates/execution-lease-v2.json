@@ -1,0 +1,19 @@
+{
+  "schema": "execution-lease/v2",
+  "repository": "owner/repository",
+  "source_ref": "refs/heads/main",
+  "generation": 0,
+  "owner_id": null,
+  "acquired_at_utc": null,
+  "heartbeat_at_utc": null,
+  "expires_at_utc": null,
+  "activity_refs": [],
+  "external_guard": null,
+  "last_release": null,
+  "takeover_evidence": null,
+  "last_terminal": null,
+  "submission_claims": [],
+  "invocation": null,
+  "finalization": null,
+  "legacy_migration": null
+}

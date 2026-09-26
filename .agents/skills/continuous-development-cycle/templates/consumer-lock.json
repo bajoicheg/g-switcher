@@ -1,0 +1,11 @@
+{
+  "schema": "cdc-consumer-lock/v1",
+  "canonical_repository": "owner/canonical-cdc",
+  "version": "2.9.2",
+  "release_ref": "refs/heads/release/v2.9.2",
+  "release_commit": "0000000000000000000000000000000000000000",
+  "package_tree": "0000000000000000000000000000000000000000",
+  "checkpoint_schema": "development-work-status/v4",
+  "safe_boundary_required": true,
+  "local_core_modifications_allowed": false
+}

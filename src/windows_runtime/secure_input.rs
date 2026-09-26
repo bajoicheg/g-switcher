@@ -1,11 +1,13 @@
 use windows_sys::Win32::Foundation::HWND;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageW, GWL_STYLE,
+    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageTimeoutW, GWL_STYLE, SMTO_ABORTIFHUNG,
+    SMTO_BLOCK,
 };
 
 const ES_PASSWORD_VALUE: isize = 0x0020;
 const EM_GETPASSWORDCHAR_VALUE: u32 = 0x00D2;
 const MAX_PARENT_DEPTH: usize = 4;
+const PASSWORD_PROBE_TIMEOUT_MS: u32 = 50;
 
 pub fn is_secure_input(hwnd: HWND, process_name: &str) -> bool {
     if is_secure_process(process_name) {
@@ -33,7 +35,19 @@ fn has_password_style(hwnd: HWND) -> bool {
 }
 
 fn has_password_character(hwnd: HWND) -> bool {
-    unsafe { SendMessageW(hwnd, EM_GETPASSWORDCHAR_VALUE, 0, 0) != 0 }
+    let mut result = 0usize;
+    let ok = unsafe {
+        SendMessageTimeoutW(
+            hwnd,
+            EM_GETPASSWORDCHAR_VALUE,
+            0,
+            0,
+            SMTO_ABORTIFHUNG | SMTO_BLOCK,
+            PASSWORD_PROBE_TIMEOUT_MS,
+            &mut result,
+        )
+    };
+    ok != 0 && result != 0
 }
 
 fn class_name(hwnd: HWND) -> Option<String> {

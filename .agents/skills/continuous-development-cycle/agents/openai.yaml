@@ -1,0 +1,16 @@
+name: Continuous Development Cycle
+description: Continuous CDC autonomy with exact command timestamps, RCA feedback closure and fleet improvement harvesting.
+version: 2.9.2
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
+interface:
+  display_name: Continuous Development Cycle
+  short_description: Continuous autonomy, timestamps and learning feedback
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.9.2 continuous autonomy and learning controls.
