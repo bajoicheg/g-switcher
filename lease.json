@@ -2,18 +2,12 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 5,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
-  "activity_refs": [
-    "git:c6910e35fc99565d34eab6684517baf819ff79cd:fleet-target-converged",
-    "git:6a056e52b476f196b8ea7305edbfe87e1ec33a6c:fleet-target-schema-aligned",
-    "git:ae86c71d3e50577df8cef47038fc03aa7aa3554c:version-convergence-audited",
-    "git:fd025f6172ca6eef90e350d6c26cb2ef10222dae:fleet-snapshot-materialized",
-    "git:f54f4ccba9e19615454772ecaa1687c66a3ee84b:blocker-proof-persisted"
-  ],
+  "generation": 6,
+  "owner_id": "91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845",
+  "acquired_at_utc": "2026-09-26T17:25:33Z",
+  "heartbeat_at_utc": "2026-09-26T17:25:33Z",
+  "expires_at_utc": "2026-09-26T17:45:33Z",
+  "activity_refs": [],
   "external_guard": null,
   "last_release": {
     "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
@@ -62,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "chat-2026-09-26T172500Z-cdc292-adoption",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "chat",
+    "started_at_utc": "2026-09-26T17:25:00Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "pending",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-26T17:25:33Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
