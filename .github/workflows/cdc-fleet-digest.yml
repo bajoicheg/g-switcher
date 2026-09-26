@@ -1,0 +1,20 @@
+name: CDC Fleet Adapter Digest
+on:
+  push:
+    branches: ["cdc/adopt-2.8.2"]
+    paths: [".github/workflows/cdc-fleet-digest.yml"]
+permissions:
+  contents: read
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r .agents/skills/continuous-development-cycle/scripts/requirements.txt
+      - name: Validate target adapter
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/bajoicheg/g-pc-health-check/957c361b4d6e05ef090edc5aee7267fdcbe70c8f/docs/development-cycle.yaml" -o /tmp/adapter.yaml
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_adapter.py /tmp/adapter.yaml --json
