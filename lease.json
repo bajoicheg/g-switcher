@@ -69,12 +69,12 @@
     "started_at_utc": "2026-09-26T17:25:00Z"
   },
   "finalization": {
-    "state": "draining",
+    "state": "checkpointed",
     "pending_shared_writes": false,
-    "checkpoint_ref": null,
+    "checkpoint_ref": "product@0b6f7e3cff9762f9508c8e42d1fd23298a496306;pr28-comment:5848416125;actions:36259598335:cdc-policy-green;actions:36259598321:security-green;actions:36259598328:windows-green;fleet-target@3325d2a44ef1ec608280557cf244e777c1eb60a1",
     "external_reconciliation": "pending",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-26T17:42:42Z",
+    "updated_at_utc": "2026-09-26T17:42:57Z",
     "failure": null
   },
   "legacy_migration": null
