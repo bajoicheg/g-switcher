@@ -1,0 +1,17 @@
+{
+  "schema": "rca-feedback/v1",
+  "anomaly_id": "anomaly-1",
+  "material": true,
+  "anomaly_class": "execution_channel",
+  "fix_key": "ci-pre-run-classification",
+  "problem": "Provider failure before product validation.",
+  "fix": "Classify as pre-run infrastructure and recover channel.",
+  "invariant": "No source change without product execution.",
+  "existing_fix_keys": [
+    "ci-pre-run-classification"
+  ],
+  "evidence_refs": [
+    "provider:run-1"
+  ],
+  "sensitive_context_detected": false
+}

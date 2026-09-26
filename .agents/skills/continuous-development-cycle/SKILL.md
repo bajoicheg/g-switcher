@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.8.2
+# Continuous Development Cycle v2.9.2
 
 Durable repository state is the project state. Sessions, agents and schedulers are disposable. Apply the instruction hierarchy, preserve the source/scope of existing user authorization, and reconcile repository policy. Live remote facts override stale checkpoint/chat claims. A spinner, lease or submitted request is not progress evidence.
 
@@ -187,3 +187,34 @@ Use the **stuck-state detector** to identify repeated action/result fingerprints
 Use the **sanitized public export** planner for private-to-public publication. The target is a new public history built from allow-listed product paths after publication guard/history/control-plane checks; never turn the internal development repository public as the publication mechanism.
 
 Use **CDC dogfooding** metrics to measure CDC's own development against terminal-state accuracy, No-Idle, exact-SHA validation, recovery diversity, control-plane isolation and consumer evidence. Dogfooding is observability only and never grants release or policy authority. Read `references/fleet-and-publication-maturity.md`.
+
+
+## CDC 2.9.0 Deterministic Distribution & Convergence
+
+Treat released CDC package delivery as a carrier-neutral transport problem. The delivery channel is not trusted merely because it can copy bytes. Use scripts/package_transport.py to validate a transport manifest against an independently trusted release version, release commit and exact package Git tree; then verify transported file content and, after adoption, verify the actual vendored Git subtree. The manifest preserves path, Git file mode and blob identity, so archive/filesystem mode loss cannot silently become a different package tree. Read references/deterministic-distribution-and-convergence.md.
+
+The canonical **convergence vector** is stricter than a version label. Use scripts/convergence_vector.py to bind repository/source ref + exact HEAD, CDC version, exact package tree, consumer-lock release identity, semantic policy digest, checkpoint validity, lease state, guard state and adoption state. A project is integrated only when all required bindings agree on the same source HEAD and ownership/guard state is reconciled. A version string alone is never fleet convergence evidence.
+
+Classify CI evidence before choosing remediation with scripts/ci_evidence_classifier.py. Zero-step or pre-job failures are pre_run_infrastructure; setup that never reaches product validation is setup; executed product checks are product_test; terminal successful product validation is terminal_success. Never prescribe a source correction solely from evidence where product validation did not execute. Classifier output is diagnostic and never grants product writes, external starts, merge or release authority.
+
+
+## CDC 2.9.1 Transactional Migration & Provider Reconciliation
+
+Use scripts/policy_migration.py for idempotent section-aware adoption on a **fresh HEAD**. A moved HEAD requires semantic replanning; strict YAML duplicate keys are rejected, managed sections are replaced by key, and replay of an already-converged policy is a no-op.
+
+Use scripts/checkpoint_builder.py for **schema-typed** checkpoint construction. Typed Boolean/enumerated control fields are explicit inputs, not parsed from display text, and the real v4 checkpoint validator is a mandatory pre-commit gate.
+
+Use scripts/migration_transaction.py for operation-budget-aware Git-object transfer. Batches preserve finalization reserve and produce only **detached tree** checkpoints until every object, exact subtree identity and policy reconciliation are complete. The planner never grants product-write or ref-move authority.
+
+Use **terminal-provider reconciliation** through scripts/provider_reconciliation.py whenever a guarded provider task becomes terminal. Re-enter reconciliation for the exact operation key; provider terminal state or TTL alone never grants takeover. Explicit executor-stopped evidence plus no pending writes/effects may establish a recovery candidate, but normal lease authority remains mandatory. Read references/transactional-migration-and-provider-reconciliation.md.
+
+
+## CDC 2.9.2 Continuous Autonomy & Learning
+
+Enforce **Progress-Is-Not-Terminal** with scripts/continuation_cycle.py. A milestone or progress update is informational only; immediately re-enter observe → reconcile → choose-next → act unless Terminal-State v2 independently permits a real terminal response.
+
+For **every user command in every CDC-managed chat**, read the **actual current Moscow time** from a fresh runtime or authoritative clock observation and emit exactly one timestamp in the format **[HH:MM DD.MM]** before or with the first substantive progress update. Never extrapolate or manually increment from the previous timestamp. Do not add an MSK label or seconds. Timestamp evidence creates no authority.
+
+Close every material anomaly through the **RCA-to-roadmap** feedback contract in scripts/rca_feedback.py: classify, deduplicate by stable fix key, sanitize sensitive context and produce one systemic disposition.
+
+Every Fleet Watcher run must produce **exactly one improvement** result through scripts/fleet_improvement.py: either a new evidence-based proposal or a deduplicated reinforcement. Do not force novelty and do not allow an empty harvest. Read references/continuous-autonomy-and-learning.md.

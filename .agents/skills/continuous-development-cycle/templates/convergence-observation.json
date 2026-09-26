@@ -1,0 +1,26 @@
+{
+  "schema": "cdc-convergence-observation/v1",
+  "repository": "owner/repository",
+  "source_ref": "refs/heads/main",
+  "source_head": "1111111111111111111111111111111111111111",
+  "cdc_version": "2.9.2",
+  "package_tree": "2222222222222222222222222222222222222222",
+  "consumer_lock": {
+    "version": "2.9.2",
+    "release_commit": "3333333333333333333333333333333333333333",
+    "package_tree": "2222222222222222222222222222222222222222"
+  },
+  "policy_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "checkpoint": {
+    "valid": true,
+    "source_head": "1111111111111111111111111111111111111111",
+    "policy_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "lease": {
+    "state": "released"
+  },
+  "guard": {
+    "state": "none"
+  },
+  "adoption_state": "integrated"
+}

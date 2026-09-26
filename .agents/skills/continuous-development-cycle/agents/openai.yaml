@@ -1,6 +1,6 @@
 name: Continuous Development Cycle
-description: Project-independent durable development with stuck-state recovery, sanitized public export and CDC dogfooding.
-version: 2.8.2
+description: Continuous CDC autonomy with exact command timestamps, RCA feedback closure and fleet improvement harvesting.
+version: 2.9.2
 policy:
   products:
   - chatgpt
@@ -10,7 +10,7 @@ policy:
   allow_implicit_invocation: true
 interface:
   display_name: Continuous Development Cycle
-  short_description: Fleet maturity, stuck-state recovery and sanitized public export
+  short_description: Continuous autonomy, timestamps and learning feedback
   icon_small: assets/icon.svg
   icon_large: assets/icon.svg
-  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.8.2 fleet/publication maturity and terminal-state controls.
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.9.2 continuous autonomy and learning controls.

@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.8.2",
+  "version": "2.9.2",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Project-independent durable development with stuck-state recovery, sanitized public export and CDC self-measurement."
+  "description": "Project-independent durable development with continuous no-idle execution, exact command timestamps, RCA feedback closure and fleet improvement harvesting."
 }

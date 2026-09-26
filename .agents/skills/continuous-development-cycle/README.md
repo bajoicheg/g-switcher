@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.8.2
+# Continuous Development Cycle v2.9.2
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 
@@ -152,3 +152,31 @@ Read `references/canonical-source-and-release.md`. Validate consumer pins with
 - Counterfactual recovery requires a new information-gaining strategy.
 - Public publication uses sanitized export into new history, not direct visibility switching of internal development history.
 - Dogfooding metrics measure CDC's own compliance without granting release authority.
+
+
+## v2.9.0 Deterministic Distribution & Convergence
+
+- Carrier-neutral package transport binds an independently trusted release version/commit/tree to path, Git mode and blob identity.
+- Directory verification proves transported bytes; Git-subtree verification proves the consumer's vendored package tree is exactly canonical.
+- The fleet convergence vector binds exact HEAD, package tree, consumer lock, semantic policy digest, checkpoint, lease, guard and adoption state.
+- CI evidence is classified before remediation so pre-run/setup failures cannot be mistaken for product RED.
+- Version equality alone can never produce integrated fleet state.
+
+Read references/deterministic-distribution-and-convergence.md.
+
+
+## v2.9.1 Transactional Migration & Provider Reconciliation
+
+- Fresh-HEAD section-aware migration replaces canonical policy sections instead of appending duplicate keys.
+- Schema-typed checkpoint builders validate v4 state before commit boundaries.
+- Migration transactions reserve tool operations, chunk Git objects through detached trees and keep product refs unchanged until exact convergence.
+- Terminal-provider reconciliation wakes the exact guarded operation while terminal provider state or TTL never grants takeover.
+
+
+## v2.9.2 Continuous Autonomy & Learning
+
+- Progress reports never terminate runnable work; execution continues until Terminal-State v2 permits a real boundary.
+- Every user command in every CDC-managed chat gets one freshly observed Moscow timestamp in exact format `[HH:MM DD.MM]`; timestamps are never extrapolated from previous messages.
+- Material RCA closes through one deduplicated, sanitized systemic fix disposition.
+- Every Fleet Watcher run returns exactly one evidence-based improvement proposal or reinforcement.
+- Dogfooding measures timestamp accuracy, premature-stop avoidance, feedback closure and improvement harvesting without granting authority.

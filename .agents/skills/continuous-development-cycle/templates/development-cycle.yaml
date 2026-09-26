@@ -2,7 +2,7 @@ schema: continuous-development-cycle/v3
 
 policy:
   revision: "1"
-  skill_min_version: "2.8.2"
+  skill_min_version: "2.9.2"
   skill_max_version_exclusive: "3.0.0"
   approved_exceptions: []
 
@@ -233,7 +233,7 @@ fleet:
   assessment_max_age_seconds: 900
 
 convergence:
-  target_version: "2.8.2"
+  target_version: "2.9.2"
   target_package_fingerprint_ref: "coordination:fleet-target.json"
   exact_package_fingerprint_required: true
   safe_boundary_required: true

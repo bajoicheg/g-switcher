@@ -1,8 +1,8 @@
-## CDC 2.8.2 authoritative provenance
+## CDC 2.9.2 authoritative provenance
 
-Current CDC authority is canonical `bajoicheg/g-cdc` **v2.8.2**, immutable `refs/heads/release/v2.8.2`, release commit `d926f98f01017e9c007a6cbb66023f729516eb9a`, package tree `bdf18b8dedb2f0cf62728935d92e6260b4a64ef0`. The complete package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical and must not override this provenance.
+Current CDC authority is canonical `bajoicheg/g-cdc` **v2.9.2**, immutable `refs/heads/release/v2.9.2`, release commit `0dd30a888be852d2820f690be04dbd374d732c06`, package tree `f9087eacbffee774c143eabf854c2cf08d610ec7`. The complete package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical and must not override this provenance.
 
-Before work, validate `docs/development-cycle.yaml` and `docs/work-status/current.md` with the vendored 2.8.2 validators. Terminal-State v2, No-Idle, operational hardening, fleet maturity and sanitized-publication controls are mandatory.
+Before work, validate `docs/development-cycle.yaml` and `docs/work-status/current.md` with the vendored 2.9.2 validators. Deterministic package transport/convergence, transactional migration/provider reconciliation, Progress-Is-Not-Terminal, the one-per-command Moscow timestamp contract, RCA-to-roadmap closure and Fleet Watcher improvement harvesting are mandatory in addition to the existing 2.8 controls.
 
 # G-switcher — CDC development policy
 

@@ -25,6 +25,22 @@
     "consumer_evidence": {
       "pass_count": 1,
       "total_count": 1
+    },
+    "command_timestamp_accuracy": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "premature_milestone_stop_avoidance": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "feedback_loop_closure": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "fleet_improvement_harvest": {
+      "pass_count": 1,
+      "total_count": 1
     }
   }
 }

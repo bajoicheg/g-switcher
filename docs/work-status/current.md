@@ -2,51 +2,51 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: "2026-09-26-cdc-2.8.2-fleet-adoption"
-policy_digest: 8d859aa6a920496a01921aa009eacf49f822df72dcd082248bd135973f9e9527
-observed_at_utc: "2026-09-26T10:10:39Z"
+policy_revision: "2026-09-26-cdc-2.9.2-continuous-autonomy"
+policy_digest: c6e47a61cb6838710a7a49ae4adb6935b80f88989b84bbcef0e7efaad8536d5a
+observed_at_utc: "2026-09-26T17:34:45Z"
 orchestration_origin: chat
-active_executor: none
-lease_state: released
-executor_heartbeat_at_utc: null
-execution_lease_until_utc: null
-waiting_external_kind: manual_compatibility
-waiting_external_id: "COMPATIBILITY_2.0.1.md"
-waiting_external_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
+active_executor: 91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845
+lease_state: active
+executor_heartbeat_at_utc: "2026-09-26T17:34:45Z"
+execution_lease_until_utc: "2026-09-26T17:54:45Z"
+waiting_external_kind: null
+waiting_external_id: null
+waiting_external_sha: null
 operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: null
-  executor_id: null
-  lease_generation: 4
+  execution_lease_revision: 237b3514a578998da2a3f0be57a6f00099b3641a
+  executor_id: 91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845
+  lease_generation: 6
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
-active_change: "2.0.1 release acceptance"
-current_task: "Automated Chrome startup blocker resolved; manual real-application acceptance remains"
-phase: blocked
+active_change: "CDC 2.9.2 adoption"
+current_task: "Transactional adoption and exact-head validation of canonical CDC 2.9.2"
+phase: validation
 implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-last_green_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36186903615
+last_green_sha: db9b91088f7b92c2d35e887c744fcbf48c6b95c3
+last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36235152300
 active_compute: ""
 active_ci_run_id: ""
-last_ci_run_id: "36186903615"
-last_ci_status: "completed/success: Windows Rust CI #408 exact-head GREEN including Edge and Chrome UIA E2E"
+last_ci_run_id: "36235152300"
+last_ci_status: "completed/success: Windows Rust CI #409 exact-head GREEN for CDC 2.8.2 adoption"
 release_version: "2.0.1"
 release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 release_state: "candidate"
-blocker: "Automated release-gate blocker is resolved. Public promotion remains blocked by completion of the manual COMPATIBILITY_2.0.1.md real-application matrix and explicit final release review; after subsequent release-evidence/checkpoint changes, obtain the required fresh exact-head Windows GREEN before publication."
-next_action: "Run the manual compatibility matrix using Windows CI #408 manual kit artifact 10887351168, persist exact application/version results, perform explicit final review, then obtain the required fresh exact-head Windows Rust CI GREEN before merge/public release."
+blocker: "none"
+next_action: "Validate the exact CDC 2.9.2 adoption head with CDC Policy Validation, Repository Security and Windows Rust CI; then converge the control plane and restore the manual compatibility release blocker."
 resume_capsule_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json"
 execution_continuity:
-  invocation_id: "chat-2026-09-25T203600Z-g-switcher-product-continuation"
-  runnable_next_action: false
+  invocation_id: "chat-2026-09-26T172500Z-cdc292-adoption"
+  runnable_next_action: true
   meaningful_progress: true
   primitive_steps_since_progress: 0
-  completion_gate: resumable_blocker
-  last_progress_ref: "git:cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b;actions:36186903615:green;pr28-comment:5839327813"
+  completion_gate: meaningful_progress
+  last_progress_ref: "tree:ffd814d12d195f4ac8c47aaa59aa35ae9c8b113d:exact-package"
 ---
 
 
@@ -184,3 +184,13 @@ Vendored package tree is `bdf18b8dedb2f0cf62728935d92e6260b4a64ef0`; adoption va
 `36234988149` passed package validation (177 files/templates), adapter validation,
 and consumer-lock validation. Product runtime code and the existing manual compatibility
 release blocker are unchanged.
+
+
+## CDC 2.9.2 adoption — 2026-09-26
+
+Transactional process-only migration from canonical CDC 2.8.2 to released CDC 2.9.2.
+Canonical identity: `refs/heads/release/v2.9.2`, release commit
+`0dd30a888be852d2820f690be04dbd374d732c06`, exact package tree
+`f9087eacbffee774c143eabf854c2cf08d610ec7`. The detached package transfer matched that exact tree before the
+product ref move. G-switcher runtime behavior and the existing 2.0.1 manual
+compatibility/final-review release gates remain unchanged. Exact-head validation follows.

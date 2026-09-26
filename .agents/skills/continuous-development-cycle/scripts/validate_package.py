@@ -45,6 +45,17 @@ from stuck_state import detect as detect_stuck
 from counterfactual_recovery import choose as choose_counterfactual
 from public_export_planner import plan as plan_public_export
 from dogfood_metrics import measure as measure_dogfood
+from package_transport import validate_manifest as validate_transport_manifest
+from convergence_vector import normalize as normalize_convergence_vector
+from ci_evidence_classifier import classify as classify_ci_evidence
+from policy_migration import plan as plan_policy_migration
+from checkpoint_builder import build as build_typed_checkpoint
+from migration_transaction import plan as plan_migration_transaction
+from provider_reconciliation import reconcile as reconcile_provider_terminal
+from continuation_cycle import decide as decide_continuation_cycle
+from command_timestamp import render as render_command_timestamp
+from rca_feedback import disposition as disposition_rca_feedback
+from fleet_improvement import harvest as harvest_fleet_improvement
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
@@ -139,6 +150,29 @@ REQUIRED = [
     'tests/test_fleet_controller.py', 'tests/test_stuck_state.py',
     'tests/test_counterfactual_recovery.py', 'tests/test_public_export_planner.py',
     'tests/test_dogfood_metrics.py', 'tests/test_v282_guidance.py',
+    'references/deterministic-distribution-and-convergence.md',
+    'scripts/package_transport.py', 'scripts/convergence_vector.py',
+    'scripts/ci_evidence_classifier.py',
+    'templates/package-transport.json', 'templates/convergence-observation.json',
+    'templates/ci-execution-observation.json',
+    'tests/test_package_transport.py', 'tests/test_convergence_vector.py',
+    'tests/test_ci_evidence_classifier.py', 'tests/test_v290_guidance.py',
+    'references/transactional-migration-and-provider-reconciliation.md',
+    'scripts/policy_migration.py', 'scripts/checkpoint_builder.py',
+    'scripts/migration_transaction.py', 'scripts/provider_reconciliation.py',
+    'templates/policy-migration-request.json', 'templates/typed-checkpoint-build.json',
+    'templates/migration-transaction.json', 'templates/provider-terminal-observation.json',
+    'tests/test_policy_migration.py', 'tests/test_checkpoint_builder.py',
+    'tests/test_migration_transaction.py', 'tests/test_provider_reconciliation.py',
+    'tests/test_v291_guidance.py',
+    'references/continuous-autonomy-and-learning.md',
+    'scripts/continuation_cycle.py', 'scripts/command_timestamp.py',
+    'scripts/rca_feedback.py', 'scripts/fleet_improvement.py',
+    'templates/continuation-cycle.json', 'templates/command-timestamp-request.json',
+    'templates/rca-feedback.json', 'templates/fleet-improvement-harvest.json',
+    'tests/test_continuation_cycle.py', 'tests/test_command_timestamp.py',
+    'tests/test_rca_feedback.py', 'tests/test_fleet_improvement.py',
+    'tests/test_v292_guidance.py',
 ]
 
 
@@ -292,6 +326,44 @@ def validate():
     dogfood = measure_dogfood(json.loads((ROOT / 'templates/cdc-dogfood-input.json').read_text()))
     if dogfood['compliance_percent'] != 100.0 or dogfood['authorizes_release'] or dogfood['authorizes_policy_change']:
         raise ContractError('invalid dogfood metrics template')
+    transport = validate_transport_manifest(json.loads((ROOT / 'templates/package-transport.json').read_text()))
+    if transport['version'] != version:
+        raise ContractError('invalid package transport template version')
+    vector = normalize_convergence_vector(json.loads((ROOT / 'templates/convergence-observation.json').read_text()))
+    if not vector['integrated'] or vector['adoption_state'] != 'integrated' or vector['blockers']:
+        raise ContractError('invalid convergence vector template')
+    ci_class = classify_ci_evidence(json.loads((ROOT / 'templates/ci-execution-observation.json').read_text()))
+    if ci_class['class'] != 'terminal_success' or ci_class['source_change_allowed']:
+        raise ContractError('invalid CI evidence classification template')
+    policy_req = json.loads((ROOT / 'templates/policy-migration-request.json').read_text())
+    policy_plan = plan_policy_migration(policy_req)
+    if policy_plan['action'] != 'APPLY' or policy_plan['authorizes_product_write']:
+        raise ContractError('invalid policy migration template')
+    policy_req['current_policy_yaml'] = policy_plan['rendered_policy_yaml']
+    if plan_policy_migration(policy_req)['action'] != 'NOOP':
+        raise ContractError('policy migration template is not idempotent')
+    built_checkpoint = build_typed_checkpoint(
+        load_yaml(ROOT / 'templates/work-status-v4.md', frontmatter=True),
+        json.loads((ROOT / 'templates/typed-checkpoint-build.json').read_text()), adapter)
+    validate_checkpoint_24(built_checkpoint, adapter)
+    migration_plan = plan_migration_transaction(json.loads((ROOT / 'templates/migration-transaction.json').read_text()))
+    if migration_plan['action'] != 'APPLY_BATCH' or migration_plan['authorizes_ref_move']:
+        raise ContractError('invalid migration transaction template')
+    provider_plan = reconcile_provider_terminal(json.loads((ROOT / 'templates/provider-terminal-observation.json').read_text()))
+    if provider_plan['action'] != 'REENTER_RECONCILIATION' or not provider_plan['wake_required'] or provider_plan['authorizes_takeover']:
+        raise ContractError('invalid provider reconciliation template')
+    continuation = decide_continuation_cycle(json.loads((ROOT / 'templates/continuation-cycle.json').read_text()))
+    if continuation['action'] != 'CONTINUE_NOW' or continuation['final_response_allowed'] or continuation['progress_is_terminal']:
+        raise ContractError('invalid continuation cycle template')
+    timestamp = render_command_timestamp(json.loads((ROOT / 'templates/command-timestamp-request.json').read_text()))
+    if timestamp['action'] != 'EMIT_ONCE' or timestamp['display'] != '[19:31 26.09]' or timestamp['authorizes_anything']:
+        raise ContractError('invalid command timestamp template')
+    rca = disposition_rca_feedback(json.loads((ROOT / 'templates/rca-feedback.json').read_text()))
+    if rca['action'] != 'REINFORCE_EXISTING' or rca['authorizes_roadmap_write']:
+        raise ContractError('invalid RCA feedback template')
+    improvement = harvest_fleet_improvement(json.loads((ROOT / 'templates/fleet-improvement-harvest.json').read_text()))
+    if improvement['proposal_count'] != 1 or improvement['action'] != 'REINFORCE_EXISTING' or improvement['authorizes_roadmap_write']:
+        raise ContractError('invalid fleet improvement template')
     for path in ROOT.rglob('*.md'):
         content = path.read_text()
         # Only portable package paths; repository paths in examples remain project-specific inputs.
