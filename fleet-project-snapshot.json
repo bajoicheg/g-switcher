@@ -2,7 +2,7 @@
   "schema": "fleet-project-snapshot/v1",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "observed_at_utc": "2026-09-26T14:39:18Z",
+  "observed_at_utc": "2026-09-26T14:47:35Z",
   "product_head": "db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
   "cdc_version": "2.8.2",
   "package_fingerprint": "git-tree:bdf18b8dedb2f0cf62728935d92e6260b4a64ef0",
@@ -15,22 +15,23 @@
   "coordination": {
     "lease_schema": "execution-lease/v2",
     "generation": 5,
-    "owner_active": true,
+    "owner_active": false,
     "guard_present": false
   },
   "progress": {
     "schema": "progress-observation/v1",
-    "observed_at_utc": "2026-09-26T14:39:18Z",
-    "last_meaningful_progress_at_utc": "2026-09-26T14:37:19Z",
-    "last_activity_at_utc": "2026-09-26T14:38:46Z",
-    "primitive_steps_since_progress": 1,
+    "observed_at_utc": "2026-09-26T14:47:35Z",
+    "last_meaningful_progress_at_utc": "2026-09-26T14:45:47Z",
+    "last_activity_at_utc": "2026-09-26T14:47:35Z",
+    "primitive_steps_since_progress": 0,
     "blocker": false,
     "waiting_external": true,
     "phase": "blocked",
     "evidence_refs": [
       "git:db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
       "actions:36235152327:cdc-policy-green",
-      "manual:COMPATIBILITY_2.0.1.md"
+      "manual:COMPATIBILITY_2.0.1.md",
+      "coordination:6ba4162a13a25b657199f7fb3b1855fa99195a9e:generation5-ready"
     ]
   }
 }

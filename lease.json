@@ -3,10 +3,10 @@
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
   "generation": 5,
-  "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
-  "acquired_at_utc": "2026-09-26T14:32:46Z",
-  "heartbeat_at_utc": "2026-09-26T14:42:56Z",
-  "expires_at_utc": "2026-09-26T15:02:56Z",
+  "owner_id": null,
+  "acquired_at_utc": null,
+  "heartbeat_at_utc": null,
+  "expires_at_utc": null,
   "activity_refs": [
     "git:c6910e35fc99565d34eab6684517baf819ff79cd:fleet-target-converged",
     "git:6a056e52b476f196b8ea7305edbfe87e1ec33a6c:fleet-target-schema-aligned",
@@ -16,13 +16,13 @@
   ],
   "external_guard": null,
   "last_release": {
-    "owner_id": "5f4c4a1b-2a1a-4a62-8cd2-9e25a6e2b4c1",
-    "generation": 4,
-    "invocation_id": "chat-2026-09-25T203600Z-g-switcher-product-continuation",
-    "at_utc": "2026-09-25T20:46:40Z",
-    "checkpoint_ref": "docs/work-status/current.md@0711746255ff9bbe3ec937f3e5a0dcec750cce58;pr28-comment:5839327813",
+    "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
+    "generation": 5,
+    "invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
+    "at_utc": "2026-09-26T14:47:35Z",
+    "checkpoint_ref": "resume.json@c3240b454ac1f1b6e6333094a737228dfe1ab5ea;blocked-state-proof.json@f54f4ccba9e19615454772ecaa1687c66a3ee84b;fleet-target.json@6a056e52b476f196b8ea7305edbfe87e1ec33a6c;product@db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
     "external_reconciliation": "none",
-    "completion_reason": "resumable_blocker"
+    "completion_reason": "scope_complete"
   },
   "takeover_evidence": null,
   "last_terminal": {
@@ -62,21 +62,7 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": {
-    "invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
-    "automation_id": null,
-    "conversation_id": null,
-    "execution_surface": "chat",
-    "started_at_utc": "2026-09-26T14:32:30Z"
-  },
-  "finalization": {
-    "state": "ready",
-    "pending_shared_writes": false,
-    "checkpoint_ref": "resume.json@c3240b454ac1f1b6e6333094a737228dfe1ab5ea;blocked-state-proof.json@f54f4ccba9e19615454772ecaa1687c66a3ee84b;fleet-target.json@6a056e52b476f196b8ea7305edbfe87e1ec33a6c;product@db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
-    "external_reconciliation": "none",
-    "completion_reason": "scope_complete",
-    "updated_at_utc": "2026-09-26T14:45:39Z",
-    "failure": null
-  },
+  "invocation": null,
+  "finalization": null,
   "legacy_migration": null
 }

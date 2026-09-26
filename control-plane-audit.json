@@ -13,6 +13,17 @@
       "details_digest": "sha256:0a16cceae4c5044802892c4ab7a6944b0efe3b0487d6bec0fd67f8760bdc18cb",
       "previous_hash": null,
       "event_hash": "sha256:028742dc000bd5c1bde216dad062011edddf806e96d0844234552e9494ae2311"
+    },
+    {
+      "sequence": 2,
+      "occurred_at_utc": "2026-09-26T14:47:35Z",
+      "actor_invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
+      "event_type": "lease_release",
+      "object_ref": "refs/heads/cdc/coordination:lease.json",
+      "outcome": "generation_5_scope_complete",
+      "details_digest": "sha256:43b53b9145ac29ffa43cf60b0c7117494c859aa20cbd394c6880a23eb6f18973",
+      "previous_hash": "sha256:028742dc000bd5c1bde216dad062011edddf806e96d0844234552e9494ae2311",
+      "event_hash": "sha256:7728c4cfb904133d9a10c1b159b8df7a97742cd533223d5180a534e87e4b0643"
     }
   ]
 }
