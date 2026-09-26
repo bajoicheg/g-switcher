@@ -14,7 +14,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r .agents/skills/continuous-development-cycle/scripts/requirements.txt
-      - name: Validate target adapter
+      - name: Validate target adapter and checkpoint
         run: |
-          curl -fsSL "https://raw.githubusercontent.com/bajoicheg/g-pc-health-check/957c361b4d6e05ef090edc5aee7267fdcbe70c8f/docs/development-cycle.yaml" -o /tmp/adapter.yaml
+          curl -fsSL "https://raw.githubusercontent.com/bajoicheg/g-pc-health-check/71bae653ffcd66ff5724cd48cfaf12211cc02791/docs/development-cycle.yaml" -o /tmp/adapter.yaml
+          curl -fsSL "https://raw.githubusercontent.com/bajoicheg/g-pc-health-check/71bae653ffcd66ff5724cd48cfaf12211cc02791/docs/work-status/current.md" -o /tmp/checkpoint.md
           python -B .agents/skills/continuous-development-cycle/scripts/validate_adapter.py /tmp/adapter.yaml --json
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_checkpoint_24.py /tmp/checkpoint.md --adapter /tmp/adapter.yaml
