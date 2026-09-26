@@ -5,9 +5,11 @@
   "generation": 6,
   "owner_id": "91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845",
   "acquired_at_utc": "2026-09-26T17:25:33Z",
-  "heartbeat_at_utc": "2026-09-26T17:25:33Z",
-  "expires_at_utc": "2026-09-26T17:45:33Z",
-  "activity_refs": [],
+  "heartbeat_at_utc": "2026-09-26T17:30:32Z",
+  "expires_at_utc": "2026-09-26T17:50:32Z",
+  "activity_refs": [
+    "git:6e5edd69305b6fd97dd586e293b099c67e6e5fc0:adoption-plan-persisted"
+  ],
   "external_guard": null,
   "last_release": {
     "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
@@ -69,7 +71,7 @@
     "checkpoint_ref": null,
     "external_reconciliation": "pending",
     "completion_reason": null,
-    "updated_at_utc": "2026-09-26T17:25:33Z",
+    "updated_at_utc": "2026-09-26T17:30:32Z",
     "failure": null
   },
   "legacy_migration": null
