@@ -1,0 +1,12 @@
+{
+  "schema": "decision-request/v1",
+  "action_id": "example-action",
+  "risk": "low",
+  "reversibility": "reversible",
+  "scope": "existing",
+  "destructive": false,
+  "requires_secret": false,
+  "protected_gate": false,
+  "policy_preapproved": true,
+  "authorization_ref": "policy:example"
+}

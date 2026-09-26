@@ -1,0 +1,6 @@
+{
+  "schema": "channel-supervision/v1",
+  "attempted_backend_ids": [],
+  "failure_classes": {},
+  "max_failovers": 3
+}

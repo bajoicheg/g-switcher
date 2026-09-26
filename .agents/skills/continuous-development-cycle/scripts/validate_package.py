@@ -28,6 +28,23 @@ from version_convergence import validate_target as validate_convergence_target, 
 from control_plane_audit import validate as validate_audit_log, append as append_audit
 from fleet_supervisor import validate_registry as validate_fleet_registry, validate_snapshot as validate_fleet_snapshot, assess_fleet
 from consumer_lock import validate as validate_consumer_lock
+from terminal_state_v2 import evaluate as evaluate_terminal_state
+from execution_channel_supervisor import validate as validate_channel_supervision
+from concurrent_writer import reconcile as reconcile_writer
+from sensitive_context import validate_policy as validate_sensitive_context_policy
+from publication_guard import assess as assess_publication
+from watchdog_self_repair import plan as plan_watchdog_repair
+from ref_hygiene import assess as assess_ref_hygiene
+from coordination_retention import assess as assess_coordination_retention
+from blocker_proof import assess as assess_blocker_proof
+from decision_authority import classify as classify_decision
+from evidence_compactor import compact as compact_evidence
+from progress_enforcer import enforce as enforce_progress
+from fleet_controller import plan as plan_fleet_control
+from stuck_state import detect as detect_stuck
+from counterfactual_recovery import choose as choose_counterfactual
+from public_export_planner import plan as plan_public_export
+from dogfood_metrics import measure as measure_dogfood
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
@@ -90,6 +107,38 @@ REQUIRED = [
     'references/cost-aware-routing.md', 'scripts/cost_router.py',
     'templates/cost-routing-policy.json', 'templates/cost-routing-context.json',
     'tests/test_cost_router.py', 'tests/test_v272_guidance.py', 'tests/test_v273_guidance.py',
+    'references/autonomous-continuity-and-isolation.md', 'references/publication-safety.md',
+    'scripts/terminal_state_v2.py', 'scripts/execution_channel_supervisor.py',
+    'scripts/concurrent_writer.py', 'scripts/sensitive_context.py', 'scripts/publication_guard.py',
+    'templates/terminal-state-v2.json', 'templates/channel-supervision.json',
+    'templates/writer-reconciliation.json', 'templates/sensitive-context-policy.json',
+    'templates/publication-inventory.json',
+    'tests/test_terminal_state_v2.py', 'tests/test_execution_channel_supervisor.py',
+    'tests/test_concurrent_writer.py', 'tests/test_sensitive_context.py',
+    'tests/test_publication_guard.py', 'tests/test_v280_guidance.py',
+    'references/operational-hardening.md', 'references/decision-authority.md',
+    'scripts/watchdog_self_repair.py', 'scripts/ref_hygiene.py',
+    'scripts/coordination_retention.py', 'scripts/blocker_proof.py',
+    'scripts/decision_authority.py', 'scripts/evidence_compactor.py',
+    'scripts/progress_enforcer.py',
+    'templates/watchdog-repair-state.json', 'templates/ref-inventory.json',
+    'templates/coordination-retention.json', 'templates/blocked-state-proof.json',
+    'templates/decision-request.json', 'templates/evidence-stream.json',
+    'templates/progress-enforcement.json',
+    'tests/test_watchdog_self_repair.py', 'tests/test_ref_hygiene.py',
+    'tests/test_coordination_retention.py', 'tests/test_blocker_proof.py',
+    'tests/test_decision_authority.py', 'tests/test_evidence_compactor.py',
+    'tests/test_progress_enforcer.py', 'tests/test_v281_guidance.py',
+    'references/fleet-and-publication-maturity.md',
+    'scripts/fleet_controller.py', 'scripts/stuck_state.py',
+    'scripts/counterfactual_recovery.py', 'scripts/public_export_planner.py',
+    'scripts/dogfood_metrics.py',
+    'templates/fleet-control-input.json', 'templates/stuck-state-input.json',
+    'templates/counterfactual-recovery.json', 'templates/public-export-request.json',
+    'templates/cdc-dogfood-input.json',
+    'tests/test_fleet_controller.py', 'tests/test_stuck_state.py',
+    'tests/test_counterfactual_recovery.py', 'tests/test_public_export_planner.py',
+    'tests/test_dogfood_metrics.py', 'tests/test_v282_guidance.py',
 ]
 
 
@@ -195,6 +244,54 @@ def validate():
     health = assess_watchdog_health(json.loads((ROOT / 'templates/watchdog-health.json').read_text()))
     if health['overall'] != 'HEALTHY' or any(health[name] for name in ('authorizes_takeover', 'authorizes_external_start', 'authorizes_product_write')):
         raise ContractError('invalid watchdog health template/authority contract')
+    terminal = evaluate_terminal_state(json.loads((ROOT / 'templates/terminal-state-v2.json').read_text()))
+    if not terminal['allowed'] or not terminal['final_response_allowed'] or terminal['reason'] != 'proven_resumable_blocker':
+        raise ContractError('invalid CDC 2.8 terminal-state template')
+    validate_channel_supervision(json.loads((ROOT / 'templates/channel-supervision.json').read_text()))
+    writer = reconcile_writer(json.loads((ROOT / 'templates/writer-reconciliation.json').read_text()))
+    if writer['action'] != 'PROCEED' or writer['force_push_allowed']:
+        raise ContractError('invalid concurrent-writer reconciliation template')
+    sensitive = json.loads((ROOT / 'templates/sensitive-context-policy.json').read_text())
+    validate_sensitive_context_policy(sensitive)
+    publication = assess_publication(json.loads((ROOT / 'templates/publication-inventory.json').read_text()), sensitive)
+    if not publication['pass'] or publication['authorizes_visibility_change']:
+        raise ContractError('invalid publication-safety template')
+    watchdog_repair = plan_watchdog_repair(json.loads((ROOT / 'templates/watchdog-repair-state.json').read_text()))
+    if watchdog_repair['action'] != 'HEALTHY' or watchdog_repair['authorizes_scheduler_mutation']:
+        raise ContractError('invalid watchdog self-repair template')
+    ref_plan = assess_ref_hygiene(json.loads((ROOT / 'templates/ref-inventory.json').read_text()))
+    if ref_plan['delete_candidates'] or ref_plan['authorizes_delete']:
+        raise ContractError('invalid ref hygiene template')
+    retention = assess_coordination_retention(json.loads((ROOT / 'templates/coordination-retention.json').read_text()))
+    if retention['delete_candidates'] or retention['archive_candidates'] or retention['authorizes_delete'] or retention['authorizes_archive']:
+        raise ContractError('invalid coordination retention template')
+    blocker = assess_blocker_proof(json.loads((ROOT / 'templates/blocked-state-proof.json').read_text()), '2026-01-01T00:05:00Z')
+    if not blocker['terminal_boundary_valid'] or blocker['state'] != 'BLOCKED':
+        raise ContractError('invalid blocker proof template')
+    decision = classify_decision(json.loads((ROOT / 'templates/decision-request.json').read_text()))
+    if decision['decision'] != 'AUTO_EXECUTE' or decision['creates_authority']:
+        raise ContractError('invalid decision-authority template')
+    compacted = compact_evidence(json.loads((ROOT / 'templates/evidence-stream.json').read_text()))
+    if compacted['source_event_count'] != 1 or compacted['details_retained']:
+        raise ContractError('invalid evidence compaction template')
+    progress_plan = enforce_progress(json.loads((ROOT / 'templates/progress-enforcement.json').read_text()))
+    if progress_plan['action'] != 'NOOP' or not progress_plan['final_response_allowed']:
+        raise ContractError('invalid progress enforcement template')
+    fleet_plan = plan_fleet_control(json.loads((ROOT / 'templates/fleet-control-input.json').read_text()))
+    if fleet_plan['projects'][0]['action'] != 'NOOP' or fleet_plan['project_specific_code_required']:
+        raise ContractError('invalid fleet control template')
+    stuck = detect_stuck(json.loads((ROOT / 'templates/stuck-state-input.json').read_text()))
+    if stuck['stuck']:
+        raise ContractError('invalid stuck-state template')
+    counterfactual = choose_counterfactual(json.loads((ROOT / 'templates/counterfactual-recovery.json').read_text()))
+    if counterfactual['action'] != 'TRY_NEW_STRATEGY' or counterfactual['authorizes_external_start']:
+        raise ContractError('invalid counterfactual recovery template')
+    export = plan_public_export(json.loads((ROOT / 'templates/public-export-request.json').read_text()))
+    if export['action'] != 'EXPORT_NEW_HISTORY' or export['authorizes_visibility_change'] or export['authorizes_push']:
+        raise ContractError('invalid public export template')
+    dogfood = measure_dogfood(json.loads((ROOT / 'templates/cdc-dogfood-input.json').read_text()))
+    if dogfood['compliance_percent'] != 100.0 or dogfood['authorizes_release'] or dogfood['authorizes_policy_change']:
+        raise ContractError('invalid dogfood metrics template')
     for path in ROOT.rglob('*.md'):
         content = path.read_text()
         # Only portable package paths; repository paths in examples remain project-specific inputs.

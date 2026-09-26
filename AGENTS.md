@@ -1,3 +1,9 @@
+## CDC 2.8.2 authoritative provenance
+
+Current CDC authority is canonical `bajoicheg/g-cdc` **v2.8.2**, immutable `refs/heads/release/v2.8.2`, release commit `d926f98f01017e9c007a6cbb66023f729516eb9a`, package tree `bdf18b8dedb2f0cf62728935d92e6260b4a64ef0`. The complete package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical and must not override this provenance.
+
+Before work, validate `docs/development-cycle.yaml` and `docs/work-status/current.md` with the vendored 2.8.2 validators. Terminal-State v2, No-Idle, operational hardening, fleet maturity and sanitized-publication controls are mandatory.
+
 # G-switcher — CDC development policy
 
 These instructions apply to development on the active draft PR #28 (`release/2.0.1`) unless the owner explicitly supersedes them.

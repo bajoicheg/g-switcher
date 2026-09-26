@@ -1,0 +1,15 @@
+{
+  "schema": "evidence-stream/v1",
+  "scope_id": "example-scope",
+  "events": [
+    {
+      "id": "event-1",
+      "kind": "test",
+      "result": "PASS",
+      "ref": "run:example",
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "terminal": true,
+      "detail": "Verbose diagnostics stay outside canonical compact evidence."
+    }
+  ]
+}

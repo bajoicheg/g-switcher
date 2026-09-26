@@ -1,0 +1,30 @@
+{
+  "schema": "cdc-dogfood-input/v1",
+  "window": "release-current",
+  "metrics": {
+    "terminal_state_accuracy": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "no_idle_compliance": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "exact_sha_validation": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "recovery_diversity": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "control_plane_isolation": {
+      "pass_count": 1,
+      "total_count": 1
+    },
+    "consumer_evidence": {
+      "pass_count": 1,
+      "total_count": 1
+    }
+  }
+}

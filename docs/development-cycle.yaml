@@ -1,8 +1,8 @@
 schema: continuous-development-cycle/v3
 
 policy:
-  revision: "2026-09-25-cdc-2.7.3-g-switcher-visibility-ts"
-  skill_min_version: "2.7.3"
+  revision: "2026-09-26-cdc-2.8.2-fleet-adoption"
+  skill_min_version: "2.8.2"
   skill_max_version_exclusive: "3.0.0"
   approved_exceptions: []
 
@@ -233,7 +233,7 @@ fleet:
   assessment_max_age_seconds: 900
 
 convergence:
-  target_version: "2.7.3"
+  target_version: "2.8.2"
   target_package_fingerprint_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/fleet-target.json"
   exact_package_fingerprint_required: true
   safe_boundary_required: true
@@ -251,3 +251,55 @@ audit:
   schema: control-plane-audit-log/v1
   append_only: true
   hash_chain_required: true
+
+# CDC 2.8 autonomous continuity and publication isolation.
+autonomy:
+  terminal_state_schema: terminal-state/v2
+  no_idle_invariant: true
+  execution_channel_supervisor: true
+  max_channel_failovers: 3
+  concurrent_writer_reconciliation: true
+  force_push_on_reconcile: false
+
+publication:
+  inventory_schema: publication-inventory/v1
+  sensitive_context_policy_ref: "templates/sensitive-context-policy.json"
+  scan_all_refs_required: true
+  scan_conversations_required: true
+  scan_artifacts_required: true
+  control_plane_externalized: true
+  direct_visibility_toggle_requires_guard_green: true
+  sanitized_export_on_findings: true
+
+
+# CDC 2.8.1 operational hardening.
+hardening:
+  watchdog_repair_schema: watchdog-repair-state/v1
+  watchdog_self_repair: true
+  ref_inventory_schema: ref-inventory/v1
+  ref_hygiene_authority: plan_only
+  coordination_retention_schema: coordination-retention/v1
+  coordination_retention_authority: plan_only
+  blocker_proof_schema: blocked-state-proof/v1
+  blocker_proof_required: true
+  decision_request_schema: decision-request/v1
+  decision_authority_must_preexist: true
+  evidence_stream_schema: evidence-stream/v1
+  canonical_evidence_schema: canonical-evidence/v1
+  compact_evidence_required: true
+  progress_enforcement_schema: progress-enforcement/v1
+  stalled_requires_recovery_action: true
+
+
+# CDC 2.8.2 fleet/publication maturity.
+maturity:
+  fleet_control_schema: fleet-control-input/v1
+  project_independent_fleet_control: true
+  stuck_state_schema: stuck-state-input/v1
+  stuck_requires_strategy_change: true
+  counterfactual_recovery_schema: counterfactual-recovery/v1
+  repeat_failed_strategy_forbidden: true
+  public_export_schema: public-export-request/v1
+  new_public_history_required: true
+  dogfood_schema: cdc-dogfood-input/v1
+  dogfood_is_authority: false
