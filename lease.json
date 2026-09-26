@@ -2,19 +2,12 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 4,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
-  "activity_refs": [
-    "git:cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
-    "actions:36186903615:windows-ci-green",
-    "actions:36186903679:cdc-policy-green",
-    "actions:36186903573:repository-security-green",
-    "pr28-comment:5839327813",
-    "git:0711746255ff9bbe3ec937f3e5a0dcec750cce58:terminal-checkpoint"
-  ],
+  "generation": 5,
+  "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
+  "acquired_at_utc": "2026-09-26T14:32:46Z",
+  "heartbeat_at_utc": "2026-09-26T14:32:46Z",
+  "expires_at_utc": "2026-09-26T14:52:46Z",
+  "activity_refs": [],
   "external_guard": null,
   "last_release": {
     "owner_id": "5f4c4a1b-2a1a-4a62-8cd2-9e25a6e2b4c1",
@@ -63,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "chat",
+    "started_at_utc": "2026-09-26T14:32:30Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "pending",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-26T14:32:46Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
