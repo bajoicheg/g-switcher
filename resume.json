@@ -1,0 +1,53 @@
+{
+  "schema": "resume-capsule/v1",
+  "updated_at_utc": "2026-09-26T14:43:14Z",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "head_sha": "db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+  "policy_version": "2.8.2",
+  "checkpoint_ref": "docs/work-status/current.md@db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+  "checkpoint_digest": "sha256:204d3bbc4602f1419c50f495a24c3f5307423ef8841cb87aa976b56ce3db6757",
+  "task": {
+    "phase": "blocked",
+    "current_task": "G-switcher 2.0.1 release acceptance",
+    "next_action": "Collect remaining exact-version manual compatibility results, update COMPATIBILITY_2.0.1.md, perform explicit final release review, then obtain the required fresh exact-head Windows GREEN.",
+    "blocker": "Manual real-application compatibility evidence remains incomplete."
+  },
+  "ownership": {
+    "lease_schema": "execution-lease/v2",
+    "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
+    "invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
+    "generation": 5,
+    "revision": "fca7f788333de0cd1f7add2946b6a330ea1500e7"
+  },
+  "external": {
+    "kind": "manual_compatibility",
+    "id": "COMPATIBILITY_2.0.1.md",
+    "sha": "cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
+    "operation_key": "manual-compatibility:2.0.1:cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
+    "state": "unknown"
+  },
+  "validation": {
+    "candidate_sha": "cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b",
+    "last_green_sha": "db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+    "last_green_evidence": "https://github.com/bajoicheg/g-switcher/actions/runs/36235152300",
+    "missing_gates": [
+      "manual COMPATIBILITY_2.0.1.md completion",
+      "explicit final release review"
+    ]
+  },
+  "health": {
+    "state": "BLOCKED",
+    "fingerprint": null
+  },
+  "budget": {
+    "ref": "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json",
+    "summary": "GitHub Actions budget normal; current release dependency is manual compatibility evidence."
+  },
+  "recovery": {
+    "recommended_action": "resume_manual_compatibility",
+    "reason": "CDC 2.8.2 convergence is complete; product promotion remains gated by manual real-application evidence."
+  },
+  "policy_revision": "2026-09-26-cdc-2.8.2-fleet-adoption",
+  "policy_digest": "sha256:8d859aa6a920496a01921aa009eacf49f822df72dcd082248bd135973f9e9527"
+}
