@@ -8,6 +8,7 @@ class T(unittest.TestCase):
   d=load_yaml(ROOT/"templates/development-cycle.yaml")
   d["policy"]["skill_min_version"]="2.6.0"
   d["convergence"]["target_version"]="2.6.0"
+  for name in ("autonomy","publication","hardening","maturity"):d.pop(name,None)
   return d
  def test_v26_template_valid(self):validate_adapter(self.template(),"2.6.0")
  def test_requires_all_v26_sections(self):

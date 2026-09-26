@@ -2,9 +2,9 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: "2026-09-25-cdc-2.7.3-g-switcher-visibility-ts"
-policy_digest: 327dd55cda2223519ce50c0412957bd31f8ed4dc9d9358cc2d36d324b413fff2
-observed_at_utc: "2026-09-25T20:45:30Z"
+policy_revision: "2026-09-26-cdc-2.8.2-fleet-adoption"
+policy_digest: 8d859aa6a920496a01921aa009eacf49f822df72dcd082248bd135973f9e9527
+observed_at_utc: "2026-09-26T10:10:39Z"
 orchestration_origin: chat
 active_executor: none
 lease_state: released
@@ -175,3 +175,12 @@ real-application matrix without the required Windows/manual observations. The ne
 terminal dependency is therefore manual compatibility evidence, followed by explicit
 final review and the policy-required fresh exact-head Windows GREEN before public
 promotion.
+
+
+## CDC 2.8.2 adoption — 2026-09-26
+
+Process-only CDC convergence updated the active release line to canonical CDC 2.8.2.
+Vendored package tree is `bdf18b8dedb2f0cf62728935d92e6260b4a64ef0`; adoption validation run
+`36234988149` passed package validation (177 files/templates), adapter validation,
+and consumer-lock validation. Product runtime code and the existing manual compatibility
+release blocker are unchanged.

@@ -4,8 +4,8 @@ ROOT=Path(__file__).resolve().parents[1]
 
 class Tests(unittest.TestCase):
  def test_version_is_273(self):
-  self.assertEqual((ROOT/"VERSION").read_text().strip(),"2.7.3")
-  self.assertEqual(json.loads((ROOT/"manifest.json").read_text())["version"],"2.7.3")
+  v=(ROOT/"VERSION").read_text().strip();self.assertGreaterEqual(tuple(map(int,v.split("."))),(2,7,3))
+  self.assertEqual(json.loads((ROOT/"manifest.json").read_text())["version"],v)
  def test_continue_means_terminal_state(self):
   t=(ROOT/"SKILL.md").read_text().lower()
   for term in ("продолжай","continue","terminal state","real durable terminal blocker"):

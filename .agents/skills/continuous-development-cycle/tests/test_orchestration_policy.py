@@ -36,7 +36,7 @@ class OrchestrationPolicyTests(unittest.TestCase):
         data["orchestration"] = configuration()
         data["policy"]["skill_min_version"] = "2.3.0"
         data["checkpoint"]["schema"] = "development-work-status/v3"
-        for name in ("routing", "recovery_recipes", "continuation", "fleet", "convergence", "progress_slo", "audit"):
+        for name in ("routing", "recovery_recipes", "continuation", "fleet", "convergence", "progress_slo", "audit", "autonomy", "publication", "hardening", "maturity"):
             data.pop(name, None)
         return data
 
