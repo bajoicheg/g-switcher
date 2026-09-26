@@ -1,0 +1,25 @@
+name: CDC 2.8.2 Adoption Validate
+on:
+  push:
+    branches: ["cdc/adopt-2.8.2"]
+    paths: [".github/workflows/cdc-adoption-validate.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r .agents/skills/continuous-development-cycle/scripts/requirements.txt
+      - name: Validate immutable package and adapter
+        run: |
+          test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.8.2"
+          test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "bdf18b8dedb2f0cf62728935d92e6260b4a64ef0"
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_package.py
+          python -B .agents/skills/continuous-development-cycle/scripts/validate_adapter.py docs/development-cycle.yaml --json
+          python -B .agents/skills/continuous-development-cycle/scripts/consumer_lock.py docs/cdc-consumer-lock.json
