@@ -74,9 +74,9 @@
     "started_at_utc": "2026-09-28T14:11:37Z"
   },
   "finalization": {
-    "state": "draining",
+    "state": "checkpointed",
     "pending_shared_writes": false,
-    "checkpoint_ref": null,
+    "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/938a98957e44e0d4a8ebce735486e140ca1922fc/docs/work-status/current.md",
     "external_reconciliation": "pending",
     "completion_reason": null,
     "updated_at_utc": "2026-09-28T14:15:53Z",
