@@ -59,6 +59,12 @@ a changed overall state, signal, blocker, recovery action, scheduler/chat drift 
 progress freshness is meaningful. `HEALTHY` means the watchdog control path is
 coherent, not that product validation/release gates are complete.
 
+## CDC 2.11.1 executable liveness boundary
+
+The v1 six-signal schema remains readable, but its HEALTHY classification alone is insufficient for recovery admission: it has no project runnable/terminal scope or current owner-pause decision. Supply the fresh `watchdog-liveness-probe/v1` through `scripts/watchdog_liveness.py` (also dispatched by the compatible health entry point). CRITICAL distinguishes disabled/overdue/premature invocation completion with runnable project work. A current explicit owner pause takes precedence and denies every scheduler effect.
+
+An explicitly policy-authorized Fleet repair controller may use `scripts/fleet_watchdog_runtime.py` to execute bounded recovery for all eligible registered projects. This is distinct from an ordinary project wake changing its own schedule: normal project wakes continue to observe/reconcile, while the repair controller must hold durable one-shot claims, fresh policy/budget/owner/guard checks, and actual backend capabilities. No controller disables a recurring task merely because its current wake or budget ended. Accepted run receipts remain pending until the exact invocation is freshly observed terminal. See `watchdog-liveness-runtime.md` and `live-target-resolution.md`.
+
 ## Silent-dead-end recovery
 
 A completed watchdog invocation with a runnable next action, no legitimate
@@ -96,7 +102,7 @@ including a verified UI action, over older repository enabled:true. Conversely,
 observed enabled:false with unknown actor does not prove a user pause. Old
 checkpoint flags do not revoke newer user authorization.
 
-Normal wakes do not mutate scheduler state or reschedule themselves. During an
+Ordinary project wakes do not mutate scheduler state or reschedule themselves. During an
 explicitly authorized repair, inspect the latest user decision and actual task,
 update only requested fields, preserve cadence/timezone/triggers, then read back.
 A scheduler tool's unavailable audit remains unavailable: record actor/cause as
@@ -149,7 +155,7 @@ replacement delivery; preserve the old-to-new mapping and avoid two active tasks
 During each foreground project status/resume, cheaply reconcile the task's live
 conversation binding. Inspect actual chat availability after binding changes,
 chat cleanup, or failed/missing/stale runs; prioritize this before another run
-request or a compute retry. Ordinary wakes read/report drift and do not repair
+request or a compute retry. Ordinary project wakes read/report drift and do not repair
 the scheduler themselves. A disabled or inaccessible watchdog needs foreground
 recovery; it cannot guarantee its own recovery.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and classify a six-signal watchdog health probe.
+"""Classify legacy health probes or the fresh exact watchdog liveness contract.
 
 The assessment is diagnostic only. It never grants takeover, product-write,
 external-start, scheduler-mutation, or budget authority.
@@ -77,6 +77,11 @@ def _fingerprint(repository, states, overall, action):
 
 
 def assess(probe):
+    # Preserve the legacy v1 diagnostic reader while routing explicit new probes
+    # through the stronger liveness contract. Old evidence cannot be upconverted.
+    if isinstance(probe, dict) and probe.get("schema") == "watchdog-liveness-probe/v1":
+        from watchdog_liveness import assess as assess_liveness
+        return assess_liveness(probe)
     validate_probe(probe)
     states = {name: probe["signals"][name]["state"] for name in SIGNAL_STATES}
     reasons = []
@@ -131,7 +136,7 @@ def assess(probe):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("probe", help="watchdog-health-probe/v1 JSON file")
+    parser.add_argument("probe", help="watchdog-health-probe/v1 or watchdog-liveness-probe/v1 JSON file")
     parser.add_argument("--output", help="optional assessment JSON output path")
     args = parser.parse_args(argv)
     try:

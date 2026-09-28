@@ -2,14 +2,14 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: "2026-09-26-cdc-2.9.2-continuous-autonomy"
-policy_digest: c6e47a61cb6838710a7a49ae4adb6935b80f88989b84bbcef0e7efaad8536d5a
-observed_at_utc: "2026-09-26T17:34:45Z"
+policy_revision: 2026-09-28-cdc-2.11.1-fleet-adoption
+policy_digest: 084b16e58b3600d1ff6e09659571c6d5418047ca22321d8ce358371feca14b98
+observed_at_utc: '2026-09-26T17:34:45Z'
 orchestration_origin: chat
 active_executor: 91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845
 lease_state: active
-executor_heartbeat_at_utc: "2026-09-26T17:34:45Z"
-execution_lease_until_utc: "2026-09-26T17:54:45Z"
+executor_heartbeat_at_utc: '2026-09-26T17:34:45Z'
+execution_lease_until_utc: '2026-09-26T17:54:45Z'
 waiting_external_kind: null
 waiting_external_id: null
 waiting_external_sha: null
@@ -23,32 +23,38 @@ control:
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
-active_change: "CDC 2.9.2 adoption"
-current_task: "Transactional adoption and exact-head validation of canonical CDC 2.9.2"
+active_change: CDC 2.9.2 adoption
+current_task: Transactional adoption and exact-head validation of canonical CDC 2.9.2
 phase: validation
 implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 last_green_sha: db9b91088f7b92c2d35e887c744fcbf48c6b95c3
 last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36235152300
-active_compute: ""
-active_ci_run_id: ""
-last_ci_run_id: "36235152300"
-last_ci_status: "completed/success: Windows Rust CI #409 exact-head GREEN for CDC 2.8.2 adoption"
-release_version: "2.0.1"
+active_compute: ''
+active_ci_run_id: ''
+last_ci_run_id: '36235152300'
+last_ci_status: 'completed/success: Windows Rust CI #409 exact-head GREEN for CDC
+  2.8.2 adoption'
+release_version: 2.0.1
 release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-release_state: "candidate"
-blocker: "none"
-next_action: "Validate the exact CDC 2.9.2 adoption head with CDC Policy Validation, Repository Security and Windows Rust CI; then converge the control plane and restore the manual compatibility release blocker."
-resume_capsule_ref: "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json"
+release_state: candidate
+blocker: none
+next_action: Apply this prepared CDC adoption only after the prior owning invocation
+  explicitly releases or independently verified exact executor quiescence and guard
+  reconciliation; then resume the preserved product task.
+resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
-  invocation_id: "chat-2026-09-26T172500Z-cdc292-adoption"
+  invocation_id: chat-2026-09-26T172500Z-cdc292-adoption
   runnable_next_action: true
   meaningful_progress: true
   primitive_steps_since_progress: 0
-  completion_gate: meaningful_progress
-  last_progress_ref: "tree:ffd814d12d195f4ac8c47aaa59aa35ae9c8b113d:exact-package"
+  completion_gate: continue
+  last_progress_ref: tree:ffd814d12d195f4ac8c47aaa59aa35ae9c8b113d:exact-package
 ---
 
+## CDC 2.11.1 adoption
+
+PREPARED ONLY: this branch is an adoption proposal. The active product ref and its owner/guard have not been changed. Re-read the live lease before integration.
 
 # Current work status
 
@@ -194,3 +200,4 @@ Canonical identity: `refs/heads/release/v2.9.2`, release commit
 `f9087eacbffee774c143eabf854c2cf08d610ec7`. The detached package transfer matched that exact tree before the
 product ref move. G-switcher runtime behavior and the existing 2.0.1 manual
 compatibility/final-review release gates remain unchanged. Exact-head validation follows.
+

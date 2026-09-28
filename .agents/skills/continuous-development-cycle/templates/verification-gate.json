@@ -1,0 +1,52 @@
+{
+  "schema": "verification-gate/v1",
+  "claim_id": "claim-1",
+  "claim_kind": "COMPLETE",
+  "expected_head": "1111111111111111111111111111111111111111",
+  "observed_head": "1111111111111111111111111111111111111111",
+  "authoritative_source_fresh": true,
+  "required_checks": [
+    {
+      "id": "package",
+      "state": "success",
+      "candidate_sha": "1111111111111111111111111111111111111111",
+      "evidence_ref": "check:package-green"
+    },
+    {
+      "id": "targeted",
+      "state": "success",
+      "candidate_sha": "1111111111111111111111111111111111111111",
+      "evidence_ref": "check:targeted-green"
+    }
+  ],
+  "checkpoint": {
+    "required": true,
+    "valid": true,
+    "policy_current": true,
+    "evidence_ref": "checkpoint:current"
+  },
+  "ownership": {
+    "authoritative_source": "coordination",
+    "lease_state": "released",
+    "guard_state": "none",
+    "evidence_ref": "coordination:released"
+  },
+  "artifacts": [
+    {
+      "id": "package-artifact",
+      "required": true,
+      "verified": true,
+      "candidate_sha": "1111111111111111111111111111111111111111",
+      "evidence_ref": "artifact:sha-bound"
+    }
+  ],
+  "clean_state": {
+    "required": true,
+    "clean": true,
+    "evidence_ref": "git:clean"
+  },
+  "completion_evidence_refs": [
+    "scope:complete",
+    "verification:fresh"
+  ]
+}

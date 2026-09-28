@@ -362,8 +362,10 @@ def mark_ready(record, owner_id, generation, invocation_id, at, *, continuity_st
         raise ValueError("continuity state must bind the exact invocation")
     if continuity_state.get("lease_release_required") is not False or continuity_state.get("lease_released") is not False:
         raise ValueError("pre-release continuity state must describe an owned, not-yet-released lease")
-    decision = evaluate(continuity_state)
-    if not decision["allowed"] or continuity_state.get("requested_terminal_outcome") == "continue":
+    if continuity_state.get("checkpoint_ref") != record["finalization"]["checkpoint_ref"]:
+        raise ValueError("continuity state must bind the persisted checkpoint")
+    decision = evaluate(continuity_state, now_utc=at)
+    if not decision["allowed"] or decision.get("final_response_allowed") is not True:
         raise ValueError("hard execution-continuity gate rejected finalization")
     result = copy.deepcopy(record)
     result["finalization"].update(state="ready", completion_reason=decision["reason"], updated_at_utc=at)

@@ -3,13 +3,26 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.9.2
+# Continuous Development Cycle v2.11.1
+
+## Active execution contract — apply before recovery detail
+
+A request to continue/develop/fix means execute the authorized scope through its real terminal boundary. After every commit, test, review, report or child task, choose and perform the next eligible action in the SAME invocation. Send progress in commentary; do not use a final response as a progress report. A milestone is never permission to stop.
+
+1. Verify the code actually loaded: installed `VERSION`, `manifest.json`, `SKILL.md` and the authorized canonical release must agree. A version label in a repository does not update the installed skill. Resolve drift by loading the verified authorized package before using its controls; never claim adoption until installed bytes are verified.
+2. Keep the remaining scope and next runnable action explicit. A dependency blocks its dependent work, not unrelated authorized actions. Missing workflow dispatch or a failed tool route means try a safe available route, not ask the owner to do a mechanical step.
+3. Before beginning lease finalization, evaluate `scripts/execution_continuity.py` against fresh scope facts. `allowed` alone is insufficient: only `final_response_allowed=true` permits the terminal path. `continue` and `progress` are always nonterminal. Supply `terminal_state` (Terminal-State v2) with separate scope-completion evidence or an exact external binding; BLOCKED also requires a fresh `blocker_proof`. Bind these to the same invocation and persisted checkpoint. A pre-release decision skips only the release check; final response still requires actual lease release. Do not enter draining while more work is runnable.
+4. End only for verified scope completion, an evidenced blocker/external wait with no eligible same-invocation work, an explicit owner pause, or an actual runtime/tool/budget limit requiring durable handoff. Report the specific limit and remaining action; never relabel a milestone or model convenience as a limit. Preserve the unfinished queue and external guards. A child task's completion is not scope completion when another task remains.
+5. Current user authorization governs routine recovery and existing implementation plans. Engineering skills supply tests/review/worktree discipline, not redundant requests to approve already-authorized work. Apply the governing instruction hierarchy; never waive a real security, destructive, ownership or protected gate.
+6. Honor an explicit owner scheduler pause. Never enable paused watchdogs merely to make the system appear continuous. Continue eligible foreground work.
+
+These are cooperative agent/runtime controls. Python validators do not intercept ChatGPT's final-response channel or autonomously launch workers; the active executor must actually invoke them and obey the decision. Test the real lease path and agent behavior, not just words in a response.
 
 Durable repository state is the project state. Sessions, agents and schedulers are disposable. Apply the instruction hierarchy, preserve the source/scope of existing user authorization, and reconcile repository policy. Live remote facts override stale checkpoint/chat claims. A spinner, lease or submitted request is not progress evidence.
 
 Before scheduler status, recovery or changes, read `references/watchdog-recovery-and-migration.md`. Keep user-authorized scheduler state separate from current-wake execution eligibility. Blockers, budget/runtime limits and quiet notifications do not authorize disabling a recurring watchdog. Honor a later verified user pause; audit unexplained drift rather than invent its cause. Protect verified task-linked chat IDs from cleanup; diagnose archived/missing chat dependencies before retrying. Read the chat recovery procedure in that reference.
 
-For watchdog/status/resume work, build the **six-signal health vector** from fresh evidence before deciding that development is healthy, blocked, stalled, or recoverable: scheduler state, chat dependency, invocation state, execution lease, external operation/guard, and last meaningful progress. Use `scripts/watchdog_health.py` and the contract in the watchdog reference. The aggregate assessment is diagnostic only: it never grants takeover, product writes, external starts, scheduler mutation, budget restoration, merge, or release authority. Persist a health snapshot on an authorized coordination path when useful; never move a guarded product HEAD merely to publish health. Use the assessment fingerprint to suppress unchanged noise while still reporting new drift or a changed recovery action.
+For watchdog/status/resume work, build the **six-signal health vector** from fresh evidence before deciding that development is healthy, blocked, stalled, or recoverable: scheduler state, chat dependency, invocation state, execution lease, external operation/guard, and last meaningful progress. Use `scripts/watchdog_health.py` and the contract in the watchdog reference. For live recovery also supply the current project scope, owner pause and exact invocation to `scripts/watchdog_liveness.py`; v1 six-signal HEALTHY alone cannot prove that a completed invocation exhausted its runnable work. The aggregate assessment is diagnostic only: it never grants takeover, product writes, external starts, scheduler mutation, budget restoration, merge, or release authority. Persist a health snapshot on an authorized coordination path when useful; never move a guarded product HEAD merely to publish health. Use the assessment fingerprint to suppress unchanged noise while still reporting new drift or a changed recovery action.
 
 ## Route the executor
 
@@ -47,7 +60,7 @@ Persist/read back the exact operation intent and external guard before submissio
 
 Use `scripts/resume_capsule.py` to validate the compact durable resume capsule. Fast resume is allowed only when the fresh live probe exactly matches repository/ref/HEAD, policy version, checkpoint digest and lease revision; any drift expands to normal reconciliation. The capsule is an optimization and handoff record, never authority.
 
-Use `scripts/execution_continuity.py` as the hard pre-final-response gate. The execution FSM is `BOOTSTRAP → RECONCILE → OWNERSHIP → EXECUTE → VALIDATE → CHECKPOINT → CONTINUE` with explicit `WAIT_EXTERNAL`, `BLOCKED` and `COMPLETE` outcomes. A runnable invocation cannot terminate on status/health/lease/poll/report/heartbeat activity alone. Valid terminal boundaries are meaningful durable progress, a durable external binding, a resumable blocker with exact next action, or verified task/scope completion.
+Use `scripts/execution_continuity.py` as the hard pre-final-response gate. The execution FSM is `BOOTSTRAP → RECONCILE → OWNERSHIP → EXECUTE → VALIDATE → CHECKPOINT → CONTINUE` with explicit `WAIT_EXTERNAL`, `BLOCKED` and `COMPLETE` outcomes. A runnable invocation cannot terminate on status/health/lease/poll/report/heartbeat activity alone. Meaningful durable progress is nonterminal. Terminal boundaries require no eligible remaining action plus a durable external binding, an evidenced resumable blocker with exact next action, or verified completion of the authorized scope.
 
 Lease v2 and checkpoint v4 are forward write formats. Legacy lease v1 and checkpoint v3 remain readable for migration; do not mutate an owned v1 lease merely to upgrade it. See `references/control-plane-v2.4.md`.
 
@@ -218,3 +231,87 @@ For **every user command in every CDC-managed chat**, read the **actual current 
 Close every material anomaly through the **RCA-to-roadmap** feedback contract in scripts/rca_feedback.py: classify, deduplicate by stable fix key, sanitize sensitive context and produce one systemic disposition.
 
 Every Fleet Watcher run must produce **exactly one improvement** result through scripts/fleet_improvement.py: either a new evidence-based proposal or a deduplicated reinforcement. Do not force novelty and do not allow an empty harvest. Read references/continuous-autonomy-and-learning.md.
+
+## CDC 2.10.0 Behavioral Skill TDD & Verification Gate
+
+Use **behavioral skill TDD** for material CDC behavior changes. A prose rule or helper unit test is not sufficient by itself: capture the pressure scenario, retain a **baseline RED** trace that demonstrates the failure, apply the control correction, and require a **corrected GREEN** trace under the same pressure facts. Run `scripts/behavioral_eval.py` and keep the case as release regression evidence.
+
+Use **systematic debugging** before material RCA disposition. `scripts/systematic_rca.py` requires competing hypotheses, discriminating tests, observed results, exactly one supported root-cause hypothesis, a bounded correction and defense-in-depth. Feed its result into the existing RCA feedback disposition; neither stage creates product or roadmap write authority.
+
+Before any terminal success claim (`COMPLETE`, `RELEASE_READY` or `INTEGRATED`), run the mandatory **verification-before-terminal** gate in `scripts/verification_gate.py` against freshly re-read authoritative evidence. Verify exact source HEAD, required checks and SHA binding, checkpoint/policy state, live coordination lease/guard, required artifacts and clean state where applicable. A stale checkpoint never overrides newer coordination state.
+
+Verification is evidence-only. GREEN verification can reject or permit the claim path, but it never authorizes product writes, external starts, takeover, merge, release, scheduler mutation or scope expansion. Normal CDC authority and terminal-state gates still apply.
+
+Superpowers is the engineering-quality layer here; CDC remains the authority/ownership/continuity control plane. Do not import redundant approval loops for routine fixes or already-authorized continuation. Read `references/behavioral-tdd-and-verification.md`.
+
+## CDC 2.10.1 Specification Compliance & Two-Stage Review
+
+For material new or scope-changing work, use **selective brainstorming** only when the product/design choice is genuinely ambiguous. Clear fixes and already-authorized continuation must not be forced through redundant clarification or approval loops.
+
+Bind **spec → plan → continuation queue** with `scripts/spec_plan_queue.py`. Each plan task references the specification requirement and expected evidence. A complete task without evidence is invalid; every runnable non-blocked task remains in the continuation queue so a task milestone cannot silently end the authorized scope.
+
+Material implementation passes two ordered independent reviews: first **spec-compliance review**, then **code-quality review**. Use `scripts/review_pipeline.py`. The code-quality review cannot substitute for or precede spec compliance, and completed stages use **independent reviewers**. Any unresolved finding keeps the change non-terminal.
+
+Use **branch finishing** through `scripts/branch_finish.py` before handing a candidate to CDC terminal/release handling. Require fresh validation, exact candidate/HEAD binding, diff/spec reconciliation, both reviews GREEN, no unresolved findings, exact-SHA required checks and clean state.
+
+Review and branch-finishing results are evidence-only: they create no product-write, merge, release or scope-expansion authority. CDC ownership, verification-before-terminal and release controls remain independently mandatory. Read `references/specification-review-and-finishing.md`.
+
+## CDC 2.10.2 Worktree-Isolated Parallel Development & Single Integrator
+
+Use **worktree-isolated parallel development** only when the actual orchestration runtime and project policy already allow delegated writers. **Ordinary ChatGPT chat remains sequential.** A parallel plan never grants worker-launch authority.
+
+Build a dependency DAG and explicit **write-set** plan with `scripts/parallel_task_planner.py`. Independent ready writers may share a wave only when write paths are non-overlapping; overlapping writers are serialized or explicitly repartitioned. Cyclic task graphs are invalid.
+
+Before delegation, bind each worker through `scripts/worktree_worker_contract.py` to a durable worker/task identity, exact common base SHA, isolated branch and worktree, bounded write set, expected outputs and evidence. For wave 2+, a claimed base is insufficient: resolve a content-addressed prior integration record and its content-addressed GREEN integration-gate artifact before accepting the fresh integrated base. Delegated workers cannot write the shared integration branch, merge, release or expand scope.
+
+Preserve one **single integrator**. After worker completion, use `scripts/integration_gate.py`; stale/failed workers, shared-HEAD movement, writer-result overlap, unresolved conflicts, missing spec/code review or any force-push request require reconciliation/replanning. A GREEN `READY_FOR_INTEGRATOR` result is evidence-only and creates no shared-branch write authority.
+
+Measure real benefit with an **observed parallel benchmark** through `scripts/parallel_benchmark.py`. Planner estimates are not release evidence. The benchmark manifest must resolve the actual plan artifact bytes and require `plan_ref` to equal their SHA-256; matching hash-shaped labels are insufficient. The benchmark is GREEN only when observed parallel wall-clock time beats the sequential baseline without increasing unresolved conflicts or rollbacks.
+
+After integration, the final candidate still passes CDC 2.10.1 branch finishing and CDC 2.10.0 verification-before-terminal controls, plus normal ownership/release gates. Read `references/worktree-parallelism-and-integration.md`.
+
+## CDC 2.11.0 Managed Executor Pool
+
+Use a **managed executor pool** for bounded Work-style delegation. The parent invocation remains authoritative for the change; children receive task contracts and evidence obligations, never shared-branch write, merge, release, scope-expansion, scheduler or user-approval authority.
+
+Worker launch is **capability-gated**. When the current runtime cannot launch independent executors, use the **deterministic sequential fallback** over the same task/evidence plan and **must not fabricate subagents** or parallel execution evidence. Already-authorized child tasks need no per-launch user approval when runtime and project policy permit delegation.
+
+Writers remain isolated on exact-base branches/worktrees with portable write claims, and a **single integrator** is the only shared-branch writer. Read-only/review executors carry no write claim.
+
+Worker launch authority is **durable-CAS gated**. Queue/dispatch calculation is advisory until a production durable state store (the built-in `scripts/managed_executor_store.py` Git CAS store or an equivalent store satisfying the same compare-and-swap contract) atomically commits the exact task/attempt/reservation token. **Never launch from an in-memory `queue_task()` result alone.** Only the successful CAS winner may launch; stale sibling reservations fail closed.
+
+Every attempt has durable lifecycle and **attempt lineage**. Duplicate active launches are reconciled, retries create new attempt identities, and one worker failure does not cancel unrelated independent tasks. A successful worker result is still an **unintegrated successful result** until accepted by the integrator. If a worker cannot push, return a **content-addressed result handoff** for parent-mediated publication; missing push capability must not discard or rerun completed work. Publication is GREEN only when the exact **authoritative remote ref** equals the verified result commit; a local branch is not publication evidence. Verify bundle artifacts from an immutable snapshot of already-authenticated bytes.
+
+Required runnable/queued/running work, required recoverable failures, or an unintegrated successful result keep the parent non-terminal. Optional planned/recoverable work also requires explicit execution or omission, and retries reserve only their remaining per-task runtime/cost budget. **Progress is not terminal**: after a child or milestone completes, continue the CDC loop until the project-level terminal gate accepts a real boundary.
+
+Read `references/managed-executor-pool.md`.
+
+
+### Final managed-pool trust boundaries
+
+A managed pool has exactly one **authoritative coordination ref** bound into the validated plan and durable state. Initial durable state pins the full canonical plan digest before queue admission; altered scope, backend or budget cannot reuse an existing queued claim, including across restart. Callers do not choose a different ref for the same pool. Queue reservation is not worker-start authority: only a successful **one-shot durable queued→running CAS** for the exact task/attempt/reservation token may return launch authority, and replay/stale contenders fail closed.
+
+Writer acceptance covers the **entire introduced commit history**, not only the final tree delta. A touched-and-restored out-of-claim path is still an escape. Ambiguous/merge history must be rejected or normalized into an independently validated sanitized result before acceptance.
+
+A required task may not depend directly or transitively on optional work that can be omitted/discarded. Optional disposition must never strand required work.
+
+Publication proof uses a trusted immutable **remote identity/fingerprint** supplied by parent/integrator policy. The configured remote must have one identical fetch/push endpoint, and proof must verify the exact remote branch without logging credential-bearing URLs. A mutable remote name alone is not authority.
+
+### Actual execution and parent closure
+
+Use `scripts/managed_executor_runtime.py` to connect durable pool claims to actual backend effects. Its Linux local-command backend supervises real argument-array subprocesses in isolated Git worktrees, retains an exact attempt journal, and requires descendant quiescence before terminal process acceptance. Host adapters implement the documented start/observe/cancel interface; a validator or stored claim cannot create a Work/Codex tool capability. Unknown starts are observed, never blindly replayed.
+
+Before managed-parent finalization, call `ManagedExecutorRuntime.evaluate_parent()` with fresh continuity evidence. It reads the authoritative pool and combines it with the 2.10.3 terminal contract; required active or unintegrated work keeps the parent running. Read `references/managed-executor-runtime.md`.
+
+Verify active installation with `scripts/active_package.py` against the pinned canonical tree. Exact Git vendoring is strict; explicit host normalization may cover only equivalent interface YAML, icon substitution and executable-mode normalization. Modified runtime/instruction bytes and unpinned executable bytecode caches fail closed. Before installation verification, remove only known generated Python caches; use source-only imports or an empty external cache prefix when execution must avoid loading local cached bytecode (`-B` alone disables writes, not reads). Package verification does not prove that the model obeys its instructions.
+
+
+## CDC 2.11.1 Persistent watchdog liveness and live target resolution
+
+At every watchdog/Fleet entry, resolve the configured authoritative live registry and target at one fresh revision using `scripts/live_target.py`. Verify canonical released version, release commit and package tree. An embedded prompt version or an old project target alias is historical context; it cannot replace the current authority. Target resolution is evidence, never adoption permission.
+
+Use `scripts/watchdog_liveness.py` to distinguish critical nonterminal inactivity from verified project completion and explicit owner pause. A completed invocation with runnable work is a liveness incident even when it released its lease. Budget exhaustion preserves continuation for the next wake and never disables the recurring schedule. Uncertain invocation, owner, lanes or external operation must be observed/reconciled before any competing effect.
+
+Use `scripts/fleet_watchdog_runtime.py` for a bounded all-project recovery pass with an actual authorized scheduler adapter and durable conditional journal. Refresh the latest owner pause and other gates before every effect, including between enable and run. Persist one-shot effect claims before submission; lost/unknown results retain their claim across controller restart and require reconciliation. Preserve every deferred project for continuation. An enabled scheduler or accepted run request is not observed execution or meaningful product progress.
+
+An explicit current owner pause wins over enabled-until-terminal policy. Never enable, run, rebind or reschedule paused automations. Foreground eligible work continues. Cooperative validation cannot intercept an agent's final channel, manufacture unavailable host capabilities or fence arbitrary downstream writes. Read `references/watchdog-liveness-runtime.md` and `references/live-target-resolution.md` for exact contracts and capability boundaries.
