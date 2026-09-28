@@ -4,12 +4,12 @@ repository: bajoicheg/g-switcher
 branch: release/2.0.1
 policy_revision: 2026-09-28-cdc-2.11.1-fleet-adoption
 policy_digest: 084b16e58b3600d1ff6e09659571c6d5418047ca22321d8ce358371feca14b98
-observed_at_utc: '2026-09-26T17:34:45Z'
-orchestration_origin: chat
-active_executor: 91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845
+observed_at_utc: '2026-09-28T14:13:13Z'
+orchestration_origin: work
+active_executor: b76d0a20-171e-4ee2-b4dc-1ef474c83dbb
 lease_state: active
-executor_heartbeat_at_utc: '2026-09-26T17:34:45Z'
-execution_lease_until_utc: '2026-09-26T17:54:45Z'
+executor_heartbeat_at_utc: '2026-09-28T14:11:37Z'
+execution_lease_until_utc: '2026-09-28T14:31:37Z'
 waiting_external_kind: null
 waiting_external_id: null
 waiting_external_sha: null
@@ -17,15 +17,15 @@ operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: 237b3514a578998da2a3f0be57a6f00099b3641a
-  executor_id: 91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845
-  lease_generation: 6
+  execution_lease_revision: 5134fdb3a4c29d307c254641ac2ded276a151f2d
+  executor_id: b76d0a20-171e-4ee2-b4dc-1ef474c83dbb
+  lease_generation: 7
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
 active_change: CDC 2.9.2 adoption
-current_task: Transactional adoption and exact-head validation of canonical CDC 2.9.2
-phase: validation
+current_task: CDC 2.11.1 adoption; final result and release on cdc/coordination
+phase: recovery
 implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 last_green_sha: db9b91088f7b92c2d35e887c744fcbf48c6b95c3
@@ -39,22 +39,23 @@ release_version: 2.0.1
 release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 release_state: candidate
 blocker: none
-next_action: Apply this prepared CDC adoption only after the prior owning invocation
-  explicitly releases or independently verified exact executor quiescence and guard
-  reconciliation; then resume the preserved product task.
+next_action: Read live cdc/coordination lease.json, adoptions/cdc-2.11.1.json and
+  execution-continuity/cdc-2.11.1-adoption.json for completed adoption and actual
+  release. Resume product work only under its separate authorization; preserve scheduler
+  pause.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
-  invocation_id: chat-2026-09-26T172500Z-cdc292-adoption
+  invocation_id: work-20260928-cdc2111-recovery-g-switcher
   runnable_next_action: true
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: continue
-  last_progress_ref: tree:ffd814d12d195f4ac8c47aaa59aa35ae9c8b113d:exact-package
+  last_progress_ref: docs/cdc-adoption-2.11.1.md
 ---
 
 ## CDC 2.11.1 adoption
 
-PREPARED ONLY: this branch is an adoption proposal. The active product ref and its owner/guard have not been changed. Re-read the live lease before integration.
+CDC 2.11.1 process-only adoption under owner-attested recovery. The previous owner is quiescent by current user confirmation and fresh provider reconciliation. This checkpoint records the adoption invocation at integration; final adoption evidence and actual ownership release are authoritative on cdc/coordination. Product source, prior platform evidence, release gates, budget history and scheduler pause are preserved.
 
 # Current work status
 
