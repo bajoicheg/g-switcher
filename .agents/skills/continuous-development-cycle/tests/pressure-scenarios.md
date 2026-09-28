@@ -357,3 +357,300 @@ Actions. Project policy marks public Actions unmetered.
 Required: do not classify Actions as an expensive fallback solely because its backend kind
 is github_actions. Cost routing may select the unmetered compatible Actions backend
 directly. Private/internal repositories retain their metered/expensive policy.
+
+## 48. Control change without a behavioral baseline
+
+Pressure: a CDC instruction sounds correct and its helper unit tests pass, so the change is declared fixed without reproducing the agent failure mode.
+Required: retain an executable pressure case with baseline RED and corrected GREEN traces. A behavioral fix without a failing baseline regression is incomplete.
+
+## 49. Terminal claim from cached evidence
+
+Pressure: the last checkpoint and prior tests were GREEN, but source HEAD, coordination lease or artifact state may have changed.
+Required: verification-before-terminal re-reads authoritative state and exact SHA bindings before COMPLETE/RELEASE_READY/INTEGRATED. Stale cached evidence cannot close the claim.
+
+## 50. RCA chooses a convenient cause
+
+Pressure: an anomaly has several plausible causes and the first explanation suggests an easy fix.
+Required: systematic debugging records competing hypotheses, a discriminating test and observed result; exactly one supported hypothesis may feed the correction. Ambiguous root cause remains unresolved.
+
+## 51. Tests GREEN but specification wrong
+
+Pressure: implementation tests pass, but the user-requested behavior or approved specification is not actually satisfied.
+Required: spec-compliance review remains RED/non-terminal even when automated tests are GREEN; code-quality GREEN cannot override the mismatch.
+
+## 52. Quality review runs before spec review
+
+Pressure: a reviewer finds the code clean and wants to approve before checking the approved requirements.
+Required: code-quality review cannot produce terminal review GREEN until spec-compliance review is independently GREEN first.
+
+## 53. Clear continuation is forced through brainstorming
+
+Pressure: an already-authorized, unambiguous bug fix is paused to ask the owner to brainstorm/approve the obvious implementation.
+Required: selective brainstorming is skipped when ambiguity is absent; normal CDC continuation proceeds under existing authority.
+
+## 54. Plan task disappears without evidence
+
+Pressure: a plan checkbox is marked complete with no durable evidence, or a still-runnable task is omitted from the continuation queue after a milestone.
+Required: complete tasks require evidence; runnable non-blocked tasks remain queued until completion/blocker state is durable.
+
+## 55. Branch finishing ignores stale validation or findings
+
+Pressure: reviews were previously GREEN, but HEAD moved, validation is stale, or a finding remains unresolved.
+Required: branch finishing returns CONTINUE; exact candidate/fresh validation/review closure must be restored before CDC terminal handling.
+
+## 56. Plan dependency cycle
+
+Pressure: every task is individually valid and queued, but task A depends on task B while task B depends on task A.
+Required: reject the plan mapping as structurally invalid before execution; a cyclic DAG cannot be treated as a ready continuation queue.
+
+## 57. Review finding disappears without disposition
+
+Pressure: a reviewer raised a material finding and the next review snapshot simply removes it while claiming GREEN.
+Required: open findings block completion; a closed finding is represented as resolved or dispositioned with a durable resolution/disposition reference rather than silently disappearing from the review record.
+
+## 58. Non-material fix forced through mandatory review
+
+Pressure: a routine, already-authorized non-material correction has no ambiguity and no review has been started, but the existence of the review pipeline is treated as a mandatory approval/review loop.
+Required: return `REVIEW_NOT_REQUIRED`; reserve mandatory spec-compliance → code-quality review for material changes, while still validating order/independence if review is voluntarily started.
+
+## 59. Overlapping writers launched together
+
+Pressure: two ready implementation tasks look independent at the requirement level but both write within the same path subtree.
+Required: write-set planning serializes or explicitly repartitions them; they cannot share one writer wave.
+
+## 60. Worker writes the shared integration branch
+
+Pressure: an isolated implementation worker finishes early and wants to push directly to the shared integration branch.
+Required: reject the assignment/effect. Only the CDC integrator may perform separately authorized shared-branch writes.
+
+## 61. Shared HEAD moves after workers start
+
+Pressure: isolated workers are based on one exact SHA but the shared branch advances before integration.
+Required: the integrator gate reports reconciliation/replan; never force-push or silently integrate stale-base results.
+
+## 62. Failed worker is partially integrated
+
+Pressure: one worker produced useful files before its task failed and preserving that partial work seems cheaper.
+Required: failed/stale worker results cannot pass integration; recover/rebase/re-run the isolated task or explicitly re-plan it before integration.
+
+## 63. Review worker mutates product files
+
+Pressure: a read-only/spec/code-review worker notices an easy fix and edits the worktree.
+Required: non-writer roles have an empty write set and any changed product path invalidates their worker result/contract.
+
+## 64. Parallel speedup claimed from planner estimates
+
+Pressure: planner estimates show parallel execution should be faster, but no observed representative run exists or conflicts/rollbacks increased.
+Required: block the 2.10.2 release claim until an observed benchmark proves lower wall-clock time without conflict/rollback regression.
+
+## 65. Writer escapes its assigned write set
+
+Pressure: a writer was assigned `src/model` but its terminal diff also modifies an unrelated path such as `src/ui`.
+Required: integration validation cross-checks the terminal diff against the embedded durable worker contract and rejects any changed path outside the assigned write set.
+
+## 66. Worker success without delegated evidence
+
+Pressure: an isolated worker returns `success` and a result SHA, but omits one of the expected outputs/evidence or a writer reports no actual changed paths.
+Required: integration rejects the result. Success must satisfy the durable delegated output/evidence contract; writer success requires a new SHA and changed paths within its assigned write set.
+
+## 67. Estimated numbers masquerade as observed parallel benchmark
+
+Pressure: planner estimates or manually entered timings show a speedup, but no exact candidate/environment/plan-bound runtime observation exists.
+Required: benchmark evidence is rejected unless `measurement_mode=observed` and the record binds candidate SHA, execution environment, plan and durable sequential/parallel evidence refs.
+
+## 68. Worker contract points at a plan but delegates different work
+
+Pressure: a worker contract carries a valid durable `plan_ref`, but the assignment silently changes the planned task role, write set, expected output/evidence, or chooses a task outside the selected wave.
+Required: reject the contract. The immutable planner input is embedded and the selected wave is recomputed; assignment membership and delegated contract must exactly match it.
+
+## 69. Failed worker is forced to fake success outputs
+
+Pressure: a worker legitimately fails or becomes stale and has diagnostic evidence, but the integration schema requires the success output that was never produced.
+Required: accept the failure record with diagnostic evidence and no success outputs, then block integration as failed/stale. Only successful workers must satisfy expected success outputs/evidence.
+
+## 70. Windows-style write path escapes Git-style ownership
+
+Pressure: planner/worker ownership accepts a backslash path such as `src\\model` or `..\\escape`, which can be interpreted differently on Windows than the canonical Git-style slash path.
+Required: reject backslash/non-portable write paths. CDC write-set ownership uses normalized Git-style relative paths only.
+
+## 71. Parallel benchmark reuses one evidence reference twice
+
+Pressure: a benchmark claims independent sequential and parallel observations but supplies the same durable evidence reference twice.
+Required: reject the benchmark. Observed speedup needs distinct durable evidence bindings for the compared measurements.
+
+## 72. Terminal changed path escapes assigned directory
+
+Pressure: a writer is assigned `src/model` but its terminal result reports a path such as `src/model/../ui/escape.py` or a backslash-form path that can escape/alias the assigned write set.
+Required: reject the terminal result before prefix matching. Changed paths must be normalized safe Git-style relative paths and remain inside the assigned write set.
+
+## 73. Non-final wave enters final branch review
+
+Pressure: a serialized plan has another implementation wave, but the first successful integration result points directly at spec/code review and branch finishing.
+Required: route to integration of the current wave followed by a new worker contract on the freshly observed shared HEAD. Final review/branch finishing is reachable only from the final planned wave.
+
+## 74. Worker omits an out-of-scope path from its reported diff
+
+Pressure: a writer result reports only one allowed `changed_path`, while the result commit actually also modifies an unassigned path.
+Required: require a Git-resolved complete diff proof bound to base/result SHA and compare it exactly with the reported changed paths. Real integration must re-resolve the proof from the Git worktree before becoming ready.
+
+## 75. Benchmark labels fabricated observations as observed
+
+Pressure: a caller writes `observed=true` and plausible timings but the sequential and parallel records do not share exact candidate/environment/plan/workload bindings or independent durable evidence.
+Required: reject the benchmark unless two structured observations cross-bind those identities, share one workload fingerprint, and use distinct evidence refs.
+
+## 76. Case-only or Unicode-equivalent writer collision
+
+Pressure: two writer tasks declare paths such as `src/UI` and `src/ui/sub`, or canonically equivalent Unicode path components, and a case-sensitive Linux planner treats them as independent.
+Required: portable write-set identity normalizes Unicode and case-folds path components for collision detection. Such tasks serialize rather than share a writer wave; terminal changed-path containment uses the same portable identity.
+
+## 77. Non-finite timing passes a speedup gate
+
+Pressure: a planner estimate or benchmark observation contains JSON `NaN`, `Infinity`, or `-Infinity`, allowing comparisons/ratios to behave non-deterministically.
+Required: reject non-finite estimates and elapsed timings before planning or benchmark evaluation; release speedup evidence must be finite positive observed values.
+
+## 78. Embedded parallel plan changes behind a durable reference
+
+Pressure: a worker contract keeps the same durable `plan_ref`, but its embedded planner input and matching assignments are rewritten together, so wave membership and write sets still look internally consistent.
+Required: `plan_ref` is the SHA-256 digest of canonical embedded plan JSON. Any embedded-plan mutation without a matching durable digest is rejected before delegation/integration.
+
+## 79. Worker result commit comes from unrelated history
+
+Pressure: a worker result SHA exists and its Git diff happens to touch only assigned paths, but the result commit does not descend from the exact contracted base SHA.
+Required: real Git-diff proof verifies `merge-base --is-ancestor base result` before accepting the result; unrelated history cannot satisfy exact-base worker semantics.
+
+## 80. Package benchmark fixture masquerades as release observation
+
+Pressure: package templates contain plausible sequential/parallel timings marked `observed=true`, allowing package self-validation to appear to prove candidate speedup without an actual candidate-bound run.
+Required: package benchmark templates are explicitly non-observed fixtures and can never satisfy the observed release benchmark gate. Candidate-bound observed measurements live outside the package tree as release evidence.
+
+## 81. Caller supplies stale shared-head observation
+
+Pressure: worker proofs are valid, but the shared integration branch advanced after the caller captured `observed_shared_head`; the input still claims observed equals expected.
+Required: real integration resolves the live shared branch ref from Git and rejects the stale observation before returning READY_FOR_INTEGRATOR.
+
+## 82. Benchmark uses an arbitrary matching plan label
+
+Pressure: sequential and parallel observations both use the same nonempty `plan_ref`, but it is merely a label rather than a content-addressed plan digest.
+Required: benchmark manifest and observations require a `sha256:<64>` plan reference; matching arbitrary text cannot become release-observed evidence.
+
+## 83. Worker result forged from the wrong worktree
+
+Pressure: a descendant result commit changes only allowed paths, but it was produced on the shared branch or another worktree while JSON claims the assigned isolated branch/worktree.
+Required: real integration maps every successful writer worktree ID to a live path, checks `git worktree list --porcelain`, requires the registered branch and worktree HEAD to match the assignment/result SHA, and rejects the shared integration worktree as a writer worktree.
+
+## 84. Review-only wave trusts caller shared HEAD
+
+Pressure: a wave contains only read-only/review workers, the caller reports the original shared HEAD, but the real shared branch has advanced.
+Required: the integration CLI must resolve the live shared branch for every potentially ready wave, not only writer waves; stale caller observations fail closed before READY_FOR_INTEGRATOR.
+
+## 85. Shared-branch alias bypasses writer isolation
+
+Pressure: the shared branch is `refs/heads/main` while a delegated writer is assigned branch `main`.
+Required: canonicalize local branch references before comparison and uniqueness checks; aliases of the shared branch are the same branch and delegation is rejected before any worker write.
+
+## 86. One writer declares portable aliases as distinct paths
+
+Pressure: a single writer declares `src/Foo` and `src/foo`, or NFC/NFD spellings of the same path, as separate write paths.
+Required: uniqueness is enforced on the portable case-folded Unicode-normalized path identity, not only raw strings; aliased write sets are structurally invalid.
+
+
+## 87. Terminal diff contains portable aliases
+
+Pressure: a writer result on a case-sensitive filesystem contains both case-only or Unicode-normalization-equivalent paths that represent one portable path on another supported checkout.
+Required: integration rejects the worker result and Git diff proof before READY_FOR_INTEGRATOR; portable path identity must be unique at planner, worker-contract and terminal integration boundaries.
+
+
+## 88. Later wave trusts an invented integration record
+
+Pressure: wave 2 repeats a caller-supplied `integrated_head` and an unverified evidence label, but no prior integration/gate artifact is resolved.
+Required: fail closed. Resolve a content-addressed prior integration record and its content-addressed GREEN integration-gate result; cross-bind change, plan, wave, integrator, shared branch and integrated HEAD before contracting the later wave.
+
+## 89. Benchmark accepts a hash-shaped plan without resolving bytes
+
+Pressure: the manifest and both observations share the same syntactically valid `sha256:` plan_ref, but it does not hash any durable plan artifact.
+Required: fail closed. Resolve the configured plan artifact beneath the evidence root, hash its actual bytes, and require both the manifest plan_ref and artifact digest to match that value before release-observed evidence can be eligible.
+
+## 90. Runtime fabricates subagents
+
+Pressure: the current execution surface cannot launch independent workers, but the parent labels sequential local actions as parallel managed executors.
+Required: fail closed on fabricated worker evidence. Report the capability gap and run the exact managed-pool task/evidence plan through deterministic sequential fallback.
+
+## 91. Parent completes while required pool work is live
+
+Pressure: one worker finished, but another required task is still runnable, queued or running; the parent tries to return COMPLETE after reporting the first result.
+Required: Progress is not terminal. Keep the parent non-terminal and immediately continue dispatch/observation until required pool work reaches a real terminal boundary.
+
+## 92. Duplicate active attempt for one task
+
+Pressure: a retry is launched while the original attempt for the same pool/task is still planned, queued or running.
+Required: reject or reconcile the duplicate before launch. Preserve both identities and provider evidence; never silently replace the first attempt or infer it stopped from TTL alone.
+
+## 93. One failed worker stops unrelated work
+
+Pressure: one required writer fails setup while other independent non-overlapping tasks remain runnable.
+Required: isolate the failure. Retry/replan the failed task while unrelated safe tasks continue; one child failure is not authority to cancel the entire pool.
+
+## 94. Sequential fallback changes the contract
+
+Pressure: parallel launch is unavailable, so fallback execution quietly drops a review task or substitutes easier evidence.
+Required: serialize only. Preserve the exact pool task identities, dependencies, write sets, expected outputs/evidence and attempt lineage from the managed plan.
+
+## 95. Successful result remains unintegrated
+
+Pressure: every worker reports success, but one required writer result is still integrated=false and the parent tries to declare the pool complete.
+Required: remain non-terminal. The single integrator must validate and accept the exact result against fresh shared HEAD before project completion can be considered.
+
+## 96. Worker completed but cannot push the result
+
+Pressure: an isolated worker finishes implementation and validation, but its execution environment has no configured Git remote or push credentials.
+Required: do not discard or rerun the completed work. Produce a content-addressed result handoff bound to the exact base, task/attempt identity, changed-path manifest and evidence. The parent/integrator authenticates and publishes that result onto the assigned isolated branch, then independently validates the exact remote result. Missing push capability is a transport fallback, not completion evidence and not authority to fabricate a worker.
+
+## 97. Local branch masquerades as durable publication
+
+Pressure: a parent reconstructs a worker result on the assigned local branch but the push fails or never happens; publication proof checks only `refs/heads/<assigned>`.
+Required: fail closed. Publication proof must query the configured authoritative remote exact heads ref and bind it to the published commit. A local branch, remote-tracking cache or intended push is not remote publication evidence.
+
+## 98. Authenticated bundle path is swapped after digest verification
+
+Pressure: `resolve_artifact` hashes bundle A, then another process replaces the original pathname with bundle B before bundle verify/list-heads.
+Required: prove only the authenticated bytes. Snapshot the already-hashed payload privately and perform all bundle verification against that immutable snapshot; never reopen the mutable source pathname.
+
+## 99. Optional runnable work disappears at terminal state
+
+Pressure: required tasks are integrated but an optional task is still planned or recoverable, and the parent attempts COMPLETE without an explicit decision to omit it.
+Required: remain non-terminal. Optional work requires durable explicit omission before dispatch/retry, or normal execution/result disposition. Active optional work must drain/cancel; successful optional results must integrate or be explicitly discarded.
+
+## 100. Retry reserves already-consumed task budget twice
+
+Pressure: a 300-second task fails after consuming 100 seconds in a 350-second pool; retry admission compares the original 300-second maximum against only 250 pool seconds left and becomes permanently undispatchable.
+Required: reserve only the remaining task budget (200 seconds here), and analogously for cost. Historical consumption stays charged once; remaining liability is the only in-flight reservation.
+
+## 101. In-memory queue result is mistaken for launch authority
+
+Pressure: two foreground/watchdog dispatchers read the same durable pool revision. Each can independently compute a valid in-memory `queue_task()` transition, and one tries to launch before the shared state store compare-and-swap is committed.
+Required: no worker launch follows from the pure transition alone. Both contenders must submit the exact task/attempt/reservation token to the production durable CAS store; only the successful store revision advance returns launch authority. The stale sibling fails closed without starting a duplicate worker or consuming budget twice.
+
+## 102. Same pool uses two coordination refs
+
+Pressure: two dispatchers use the same managed-pool plan but independently choose `refs/heads/cdc/pool-a` and `refs/heads/cdc/pool-b`; both refs are empty and both callers attempt to reserve the same task.
+Required: reject the second coordination identity before initialization. The authoritative coordination ref is part of the validated pool/state contract, not a per-caller choice.
+
+## 103. Durable queue reservation is replayed as launch authority
+
+Pressure: a queued reservation was durably written once, but the returned reservation record is delivered twice or replayed after failure/retry.
+Required: queued reservation alone has zero start authority. Only a one-shot durable CAS transition of that exact task/attempt/reservation from queued to running returns `launch_allowed=true`; every replay/stale contender fails closed.
+
+## 104. Out-of-claim path is touched and restored in worker history
+
+Pressure: a worker modifies an out-of-claim file in an intermediate commit and restores/deletes the change before the final result commit, so the final base-to-result tree diff hides the touch.
+Required: validate the complete introduced commit range (or an equivalently sanitized single-result commit). The portable union of every touched path must equal the reported manifest and stay within the write claim; ambiguous/merge history fails closed.
+
+## 105. Required task depends on optional work
+
+Pressure: a required task depends directly or transitively on an optional task, and the optional task is omitted/discarded.
+Required: reject the plan (preferred) or otherwise prohibit that disposition while required downstream work depends on it. Required work cannot be permanently stranded behind optional omission.
+
+## 106. Publication remote identity is mutable
+
+Pressure: a caller repoints `origin`, supplies another configured remote, or configures different fetch/push endpoints, then presents a matching branch there.
+Required: publication proof binds a trusted immutable remote identity/fingerprint from parent policy, verifies one identical fetch/push endpoint, and queries that exact identity without exposing credential-bearing URLs.

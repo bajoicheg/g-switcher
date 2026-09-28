@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Carrier-neutral CDC package transport verification with exact Git tree identity."""
 from __future__ import annotations
+
+from git_object_integrity import git_object_environment
 import argparse
 import hashlib
 import json
@@ -141,7 +143,7 @@ def verify_git_tree(data, worktree, package_path):
     try:
         observed = subprocess.check_output(
             ["git", "-C", str(Path(worktree)), "rev-parse", f"HEAD:{package_path}"],
-            text=True, stderr=subprocess.PIPE, timeout=15,
+            env=git_object_environment(), text=True, stderr=subprocess.PIPE, timeout=15,
         ).strip()
     except (OSError, subprocess.SubprocessError) as exc:
         raise ValueError(f"cannot read vendored Git tree: {exc}") from exc

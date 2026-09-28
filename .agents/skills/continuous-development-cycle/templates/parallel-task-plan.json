@@ -1,0 +1,39 @@
+{
+  "schema": "parallel-task-plan/v1",
+  "change_id": "change-parallel",
+  "base_sha": "1111111111111111111111111111111111111111",
+  "integrator_id": "integrator-1",
+  "shared_branch": "feature/integration",
+  "tasks": [
+    {
+      "id": "task-model",
+      "role": "writer",
+      "dependencies": [],
+      "write_paths": [
+        "src/model"
+      ],
+      "expected_outputs": [
+        "commit:model"
+      ],
+      "expected_evidence": [
+        "test:model-green"
+      ],
+      "estimated_seconds": 90
+    },
+    {
+      "id": "task-ui",
+      "role": "writer",
+      "dependencies": [],
+      "write_paths": [
+        "src/ui"
+      ],
+      "expected_outputs": [
+        "commit:ui"
+      ],
+      "expected_evidence": [
+        "test:ui-green"
+      ],
+      "estimated_seconds": 70
+    }
+  ]
+}

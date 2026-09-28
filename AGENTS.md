@@ -1,3 +1,11 @@
+## CDC 2.11.1 authoritative provenance
+
+Use canonical `bajoicheg/g-cdc` **v2.11.1**, release `refs/heads/release/v2.11.1`, commit `a262f78b82cd9e8eba9bc3b6108e0b52a17c33b0`, exact package tree `6ffacd32cce74c3537150778d9b37cfeb361a621`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; earlier version statements below are historical. Read the current vendored SKILL.md and validate the adapter and checkpoint before execution.
+
+The owner's scheduler pause remains in force. Do not enable, run, rebind or reschedule paused automations. Foreground work remains eligible under normal ownership, guard and budget controls. A paused scheduler, elapsed lease or terminal CI never proves that an owning invocation has stopped.
+
+For live target resolution use the authoritative `bajoicheg-private/g-supervisor` ref `refs/heads/cdc/fleet`, paths `fleet/registry.json` and `fleet/target.json`. Resolve both at one fresh revision and verify the canonical released identity. Read `references/live-target-resolution.md` and `references/watchdog-liveness-runtime.md`. Archived targets and prompt version strings cannot override that live authority. Existing product release, security, review and platform gates remain in force.
+
 ## CDC 2.9.2 authoritative provenance
 
 Current CDC authority is canonical `bajoicheg/g-cdc` **v2.9.2**, immutable `refs/heads/release/v2.9.2`, release commit `0dd30a888be852d2820f690be04dbd374d732c06`, package tree `f9087eacbffee774c143eabf854c2cf08d610ec7`. The complete package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical and must not override this provenance.
@@ -51,3 +59,4 @@ means continue the already-authorized current scope until terminal state. Do not
 after one status read, commit, compute result or intermediate checkpoint. This does not
 expand scope or authority. Terminal state is verified scope completion or a real durable
 terminal blocker/handoff with exact evidence and one executable next action.
+

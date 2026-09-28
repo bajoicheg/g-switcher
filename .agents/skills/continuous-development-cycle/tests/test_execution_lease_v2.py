@@ -3,17 +3,19 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"))
 import execution_lease_v2 as m
+from continuity_fixtures import with_terminal_evidence
 
 T0="2026-01-01T10:00:00Z"; T1="2026-01-01T10:00:01Z"
 OWNER=str(uuid.UUID("11111111-1111-4111-8111-111111111111"))
 INV={"invocation_id":"wake-1","automation_id":"auto-1","conversation_id":"chat-1","execution_surface":"watchdog","started_at_utc":T0}
 def boundary(progress=True):
-    return {"schema":"execution-continuity/v1","invocation_id":"wake-1","current_state":"CHECKPOINT",
-            "requested_terminal_outcome":"progress","runnable_next_action":True,
+    state = {"schema":"execution-continuity/v1","invocation_id":"wake-1","current_state":"CHECKPOINT",
+            "requested_terminal_outcome":"scope_complete" if progress else "progress","runnable_next_action":not progress,
             "meaningful_progress_refs":["git:abc"] if progress else [],
             "primitive_steps":["status_read"],"external_binding":None,"blocker":None,
             "checkpoint_ref":"checkpoint:1","next_action":"continue",
             "lease_release_required":False,"lease_released":False}
+    return with_terminal_evidence(state) if progress else state
 
 class Tests(unittest.TestCase):
     def owned(self):

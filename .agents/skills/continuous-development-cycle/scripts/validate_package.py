@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check installed package integrity and validate templates with their actual parsers."""
 from pathlib import Path
+from datetime import datetime
+import hashlib
 import json
 import re
 import sys
@@ -19,6 +21,7 @@ from resume_capsule import validate as validate_resume_capsule
 from budget import validate_ledger
 from recovery import validate_wait_state, decide_recovery
 from watchdog_health import assess as assess_watchdog_health
+from watchdog_liveness import validate_probe as validate_liveness_probe
 from capability_router import validate_registry, validate_request, route as route_backend
 from cost_router import validate_policy as validate_cost_policy, validate_context as validate_cost_context, route as route_cost
 from recovery_recipes import validate_catalog, validate_diagnosis, select as select_recovery_recipe
@@ -56,10 +59,34 @@ from continuation_cycle import decide as decide_continuation_cycle
 from command_timestamp import render as render_command_timestamp
 from rca_feedback import disposition as disposition_rca_feedback
 from fleet_improvement import harvest as harvest_fleet_improvement
+from behavioral_eval import evaluate_suite as evaluate_behavioral_suite
+from verification_gate import evaluate as evaluate_verification_gate
+from systematic_rca import analyze as analyze_systematic_rca
+from spec_plan_queue import evaluate as evaluate_spec_plan_queue
+from review_pipeline import evaluate as evaluate_review_pipeline
+from branch_finish import evaluate as evaluate_branch_finish
+from parallel_task_planner import plan as plan_parallel_tasks
+from worktree_worker_contract import (
+    assess as assess_worker_contract, validate_prior_integration_record,
+    validate_gate_evidence, validate_gate_result, validate_assembly_evidence,
+)
+from integration_gate import evaluate as evaluate_integration_gate
+from parallel_benchmark import evaluate_from_files as evaluate_parallel_benchmark_files, load_observations as load_parallel_benchmark_observations
+
+from managed_executor_attempt import validate_attempt as validate_managed_executor_attempt, validate_result as validate_managed_executor_result, acceptance as accept_managed_executor_result
+from managed_executor_pool import validate_plan as validate_managed_pool_plan, validate_state as validate_managed_pool_state, dispatch as dispatch_managed_pool, assess as assess_managed_pool
+from managed_executor_handoff import validate_handoff as validate_managed_handoff, publication_plan as plan_managed_handoff_publication
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
     'SKILL.md', 'VERSION', 'manifest.json', 'agents/openai.yaml',
+    'scripts/live_target.py', 'tests/test_live_target.py', 'references/live-target-resolution.md',
+    'scripts/git_object_integrity.py', 'tests/test_git_object_integrity.py',
+    'scripts/watchdog_liveness.py', 'scripts/fleet_watchdog_runtime.py', 'scripts/git_document_store.py',
+    'templates/watchdog-liveness-probe.json', 'tests/test_coordination_transport.py',
+    'tests/test_watchdog_liveness.py', 'tests/test_fleet_watchdog_runtime.py', 'references/watchdog-liveness-runtime.md',
+    'scripts/managed_executor_runtime.py', 'tests/test_managed_executor_runtime.py',
+    'references/managed-executor-runtime.md',
     'references/runtime-routing-and-subagents.md', 'references/task-lifecycle.md',
     'references/validation-compute-and-ci.md', 'references/codex-compute.md',
     'references/progress-and-checkpoints.md', 'references/watchdog-recovery-and-migration.md',
@@ -173,6 +200,42 @@ REQUIRED = [
     'tests/test_continuation_cycle.py', 'tests/test_command_timestamp.py',
     'tests/test_rca_feedback.py', 'tests/test_fleet_improvement.py',
     'tests/test_v292_guidance.py',
+    'references/behavioral-tdd-and-verification.md',
+    'scripts/behavioral_eval.py', 'scripts/verification_gate.py', 'scripts/systematic_rca.py',
+    'templates/behavioral-eval-suite.json', 'templates/verification-gate.json',
+    'templates/systematic-rca.json',
+    'tests/test_behavioral_eval.py', 'tests/test_verification_gate.py',
+    'tests/test_systematic_rca.py', 'tests/test_v2100_guidance.py',
+    'references/specification-review-and-finishing.md',
+    'scripts/spec_plan_queue.py', 'scripts/review_pipeline.py', 'scripts/branch_finish.py',
+    'templates/spec-plan-queue.json', 'templates/review-pipeline.json', 'templates/branch-finish.json',
+    'tests/test_spec_plan_queue.py', 'tests/test_review_pipeline.py', 'tests/test_branch_finish.py',
+    'tests/test_v2101_guidance.py',
+    'references/worktree-parallelism-and-integration.md',
+    'scripts/parallel_task_planner.py', 'scripts/worktree_worker_contract.py',
+    'scripts/integration_gate.py', 'scripts/parallel_benchmark.py',
+    'templates/parallel-task-plan.json', 'templates/worktree-worker-contract.json',
+    'templates/integration-gate.json', 'templates/parallel-benchmark.json',
+    'templates/wave-integration-record.json', 'templates/wave-integration-gate-evidence.json',
+    'templates/wave-integration-gate-result.json', 'templates/wave-assembly-evidence.json',
+    'templates/parallel-benchmark-plan.json', 'templates/parallel-benchmark-environment.json',
+    'templates/parallel-benchmark-observation-sequential.json',
+    'templates/parallel-benchmark-observation-parallel.json',
+    'tests/test_parallel_task_planner.py', 'tests/test_worktree_worker_contract.py',
+    'tests/test_integration_gate.py', 'tests/test_parallel_benchmark.py',
+    'tests/test_v2102_guidance.py',
+    'tests/test_continuity_recovery.py',
+    'tests/continuity_fixtures.py',
+    'references/managed-executor-pool.md',
+    'scripts/managed_executor_attempt.py', 'scripts/managed_executor_pool.py', 'scripts/managed_executor_handoff.py', 'scripts/managed_executor_store.py',
+    'templates/managed-executor-attempt.json', 'templates/managed-executor-result.json',
+    'templates/managed-executor-pool-plan.json', 'templates/managed-executor-pool-state.json',
+    'templates/managed-executor-handoff.json', 'templates/managed-executor-publication-proof.json',
+    'templates/managed-executor-handoff-artifact.patch',
+    'tests/test_managed_executor_attempt.py', 'tests/test_managed_executor_pool.py',
+    'tests/test_managed_executor_handoff.py', 'tests/test_managed_executor_store.py', 'tests/test_v2110_guidance.py',
+    'scripts/git_remote_identity.py', 'tests/test_git_remote_identity.py',
+    'scripts/active_package.py', 'tests/test_active_package.py',
 ]
 
 
@@ -180,6 +243,7 @@ def validate():
     missing = [name for name in REQUIRED if not (ROOT / name).is_file()]
     if missing:
         raise ContractError('missing package files: ' + ', '.join(missing))
+    validate_liveness_probe(json.loads((ROOT / 'templates/watchdog-liveness-probe.json').read_text()))
     version = (ROOT / 'VERSION').read_text().strip()
     semver(version)
     manifest = json.loads((ROOT / 'manifest.json').read_text())
@@ -212,7 +276,9 @@ def validate():
     validate_lease(json.loads((ROOT / 'templates/execution-lease.json').read_text()))
     validate_lease_v2(json.loads((ROOT / 'templates/execution-lease-v2.json').read_text()))
     validate_resume_capsule(json.loads((ROOT / 'templates/resume-capsule.json').read_text()))
-    continuity = evaluate_continuity(json.loads((ROOT / 'templates/execution-continuity.json').read_text()))
+    continuity_template = json.loads((ROOT / 'templates/execution-continuity.json').read_text())
+    # Static example validation uses its own observation time, not live evidence.
+    continuity = evaluate_continuity(continuity_template, now_utc=continuity_template['blocker_proof']['observed_at_utc'])
     if not continuity['allowed']:
         raise ContractError('invalid CDC 2.4 execution-continuity template: ' + continuity['reason'])
     validate_ledger(json.loads((ROOT / 'templates/budget-ledger.json').read_text()))
@@ -355,7 +421,9 @@ def validate():
     continuation = decide_continuation_cycle(json.loads((ROOT / 'templates/continuation-cycle.json').read_text()))
     if continuation['action'] != 'CONTINUE_NOW' or continuation['final_response_allowed'] or continuation['progress_is_terminal']:
         raise ContractError('invalid continuation cycle template')
-    timestamp = render_command_timestamp(json.loads((ROOT / 'templates/command-timestamp-request.json').read_text()))
+    timestamp_request = json.loads((ROOT / 'templates/command-timestamp-request.json').read_text())
+    timestamp_fixture_clock = datetime.fromisoformat(timestamp_request['observed_at'].replace('Z','+00:00'))
+    timestamp = render_command_timestamp(timestamp_request, now=timestamp_fixture_clock)
     if timestamp['action'] != 'EMIT_ONCE' or timestamp['display'] != '[19:31 26.09]' or timestamp['authorizes_anything']:
         raise ContractError('invalid command timestamp template')
     rca = disposition_rca_feedback(json.loads((ROOT / 'templates/rca-feedback.json').read_text()))
@@ -364,6 +432,130 @@ def validate():
     improvement = harvest_fleet_improvement(json.loads((ROOT / 'templates/fleet-improvement-harvest.json').read_text()))
     if improvement['proposal_count'] != 1 or improvement['action'] != 'REINFORCE_EXISTING' or improvement['authorizes_roadmap_write']:
         raise ContractError('invalid fleet improvement template')
+    behavioral = evaluate_behavioral_suite(json.loads((ROOT / 'templates/behavioral-eval-suite.json').read_text()))
+    if (not behavioral['all_regressions_green'] or behavioral['case_count'] < 6 or
+            any(behavioral[name] for name in ('authorizes_product_write','authorizes_takeover','authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10 behavioral eval template')
+    verification = evaluate_verification_gate(json.loads((ROOT / 'templates/verification-gate.json').read_text()))
+    if (not verification['allowed'] or not verification['final_claim_allowed'] or verification['blockers'] or
+            any(verification[name] for name in ('authorizes_product_write','authorizes_takeover','authorizes_external_start',
+                                                'authorizes_merge','authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10 verification template')
+    systematic = analyze_systematic_rca(json.loads((ROOT / 'templates/systematic-rca.json').read_text()))
+    if (not systematic['ready_for_feedback_disposition'] or
+            any(systematic[name] for name in ('authorizes_product_write','authorizes_roadmap_write','authorizes_takeover'))):
+        raise ContractError('invalid CDC 2.10 systematic RCA template')
+    systematic_disposition = disposition_rca_feedback(systematic['feedback'])
+    if systematic_disposition['action'] != 'REINFORCE_EXISTING' or systematic_disposition['authorizes_roadmap_write']:
+        raise ContractError('systematic RCA did not preserve bounded feedback authority')
+    spec_plan = evaluate_spec_plan_queue(json.loads((ROOT / 'templates/spec-plan-queue.json').read_text()))
+    if (not spec_plan['ready'] or spec_plan['blockers'] or spec_plan['brainstorming_required'] or
+            any(spec_plan[name] for name in ('authorizes_product_write','authorizes_external_start',
+                                             'authorizes_scope_expansion','authorizes_merge','authorizes_release'))):
+        raise ContractError('invalid CDC 2.10.1 spec-plan template')
+    review = evaluate_review_pipeline(json.loads((ROOT / 'templates/review-pipeline.json').read_text()))
+    if (not review['review_green'] or review['action'] != 'REVIEW_GREEN' or review['blockers'] or
+            any(review[name] for name in ('authorizes_product_write','authorizes_merge',
+                                          'authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10.1 review pipeline template')
+    branch_finish = evaluate_branch_finish(json.loads((ROOT / 'templates/branch-finish.json').read_text()))
+    if (not branch_finish['ready'] or branch_finish['action'] != 'READY_FOR_CDC_TERMINAL' or branch_finish['blockers'] or
+            any(branch_finish[name] for name in ('authorizes_product_write','authorizes_merge',
+                                                 'authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10.1 branch-finishing template')
+    parallel_plan = plan_parallel_tasks(json.loads((ROOT / 'templates/parallel-task-plan.json').read_text()))
+    if (not parallel_plan['parallel_safe'] or not parallel_plan['waves'] or len(parallel_plan['waves'][0]['task_ids']) < 2 or
+            parallel_plan['parallel_estimate_seconds'] >= parallel_plan['sequential_estimate_seconds'] or
+            any(parallel_plan[name] for name in ('authorizes_worker_launch','authorizes_product_write',
+                                                 'authorizes_merge','authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10.2 parallel planner template')
+    worker_contract = assess_worker_contract(json.loads((ROOT / 'templates/worktree-worker-contract.json').read_text()))
+    if (not worker_contract['valid'] or
+            any(worker_contract[name] for name in ('authorizes_worker_launch','authorizes_shared_branch_write',
+                                                   'authorizes_merge','authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10.2 worker isolation template')
+    prior_record = json.loads((ROOT / 'templates/wave-integration-record.json').read_text())
+    validate_prior_integration_record(prior_record)
+    gate = json.loads((ROOT / 'templates/wave-integration-gate-evidence.json').read_text())
+    assembly = json.loads((ROOT / 'templates/wave-assembly-evidence.json').read_text())
+    validate_gate_evidence(gate); validate_assembly_evidence(assembly)
+    for ref_name in ('gate_artifact_ref','assembly_artifact_ref'):
+        ref = prior_record[ref_name]
+        payload = (ROOT / ref['path']).read_bytes()
+        observed = 'sha256:' + hashlib.sha256(payload).hexdigest()
+        if observed != ref['sha256']:
+            raise ContractError('invalid CDC 2.10.2 prior-wave artifact digest: ' + ref_name)
+    gate_result_ref = gate['result_artifact_ref']
+    gate_result_payload = (ROOT / gate_result_ref['path']).read_bytes()
+    gate_result_observed = 'sha256:' + hashlib.sha256(gate_result_payload).hexdigest()
+    if gate_result_observed != gate_result_ref['sha256']:
+        raise ContractError('invalid CDC 2.10.2 integration gate result artifact digest')
+    gate_result = json.loads(gate_result_payload)
+    validate_gate_result(gate_result)
+    if (gate_result['change_id'] != prior_record['change_id'] or
+            gate_result['plan_ref'] != prior_record['plan_ref'] or
+            gate_result['wave'] != prior_record['wave'] or
+            gate_result['shared_branch'] != prior_record['shared_branch'] or
+            gate_result['expected_shared_head'] != prior_record['base_sha'] or
+            gate_result['observed_shared_head'] != prior_record['base_sha'] or
+            not gate_result['ready'] or gate_result['action'] != 'READY_FOR_INTEGRATOR' or gate_result['blockers']):
+        raise ContractError('invalid CDC 2.10.2 integration gate result binding')
+    if gate_result['writer_result_shas'] != prior_record['writer_result_shas']:
+        raise ContractError('invalid CDC 2.10.2 gate/result writer binding')
+    if assembly['writer_result_shas'] != prior_record['writer_result_shas']:
+        raise ContractError('invalid CDC 2.10.2 assembly/result writer binding')
+    if assembly['gate_sha256'] != prior_record['gate_artifact_ref']['sha256']:
+        raise ContractError('invalid CDC 2.10.2 prior-wave gate/assembly binding')
+    if prior_record['base_sha'] == prior_record['integrated_head']:
+        raise ContractError('invalid CDC 2.10.2 prior-wave non-advancing integration record')
+    integration = evaluate_integration_gate(json.loads((ROOT / 'templates/integration-gate.json').read_text()))
+    if (not integration['ready'] or integration['action'] != 'READY_FOR_INTEGRATOR' or integration['blockers'] or
+            integration['next_gate'] != 'cdc_2.10.1_review_branch_finish_then_2.10.0_verification' or
+            any(integration[name] for name in ('authorizes_shared_branch_write','authorizes_force_push',
+                                               'authorizes_merge','authorizes_release','authorizes_scope_expansion'))):
+        raise ContractError('invalid CDC 2.10.2 integration gate template')
+    benchmark_template = json.loads((ROOT / 'templates/parallel-benchmark.json').read_text())
+    benchmark = evaluate_parallel_benchmark_files(benchmark_template, ROOT)
+    if (not benchmark['passed'] or benchmark['blockers'] or benchmark['evidence_class'] != 'fixture'
+            or benchmark['release_evidence_eligible']
+            or any(benchmark[name] for name in ('authorizes_worker_launch','authorizes_product_write',
+                                                 'authorizes_merge','authorizes_release'))):
+        raise ContractError('invalid CDC 2.10.2 fixture-only benchmark template')
+    managed_attempt = json.loads((ROOT / 'templates/managed-executor-attempt.json').read_text())
+    managed_result = json.loads((ROOT / 'templates/managed-executor-result.json').read_text())
+    validate_managed_executor_attempt(managed_attempt)
+    validate_managed_executor_result(managed_result, managed_attempt)
+    managed_acceptance = accept_managed_executor_result(managed_result, managed_attempt)
+    if (not managed_acceptance['accepted'] or managed_acceptance['integrated'] or
+            any(managed_acceptance[name] for name in ('authorizes_shared_branch_write','authorizes_merge',
+                                                       'authorizes_release','authorizes_scope_expansion',
+                                                       'authorizes_scheduler_mutation','authorizes_user_approval'))):
+        raise ContractError('invalid CDC 2.11.0 managed executor attempt/result templates')
+    managed_pool_plan = json.loads((ROOT / 'templates/managed-executor-pool-plan.json').read_text())
+    managed_pool_state = json.loads((ROOT / 'templates/managed-executor-pool-state.json').read_text())
+    validate_managed_pool_plan(managed_pool_plan)
+    validate_managed_pool_state(managed_pool_plan, managed_pool_state)
+    managed_dispatch = dispatch_managed_pool(managed_pool_plan, managed_pool_state)
+    managed_assessment = assess_managed_pool(managed_pool_plan, managed_pool_state)
+    if (managed_dispatch['task_ids'] != ['writer-a','writer-b'] or
+            managed_dispatch['fallback_serialized'] or managed_assessment['complete'] or
+            managed_assessment['terminal_allowed'] or
+            any(managed_dispatch[name] for name in ('authorizes_worker_launch','authorizes_shared_branch_write',
+                                                    'authorizes_merge','authorizes_release','authorizes_scope_expansion',
+                                                    'authorizes_scheduler_mutation','authorizes_user_approval')) or
+            any(managed_assessment[name] for name in ('authorizes_worker_launch','authorizes_shared_branch_write',
+                                                      'authorizes_merge','authorizes_release','authorizes_scope_expansion',
+                                                      'authorizes_scheduler_mutation','authorizes_user_approval'))):
+        raise ContractError('invalid CDC 2.11.0 managed executor pool templates')
+    managed_handoff = json.loads((ROOT / 'templates/managed-executor-handoff.json').read_text())
+    validate_managed_handoff(managed_handoff)
+    handoff_plan = plan_managed_handoff_publication(managed_handoff, ROOT)
+    if (handoff_plan['action'] != 'IMPORT_CONTENT_ARTIFACT_TO_ASSIGNED_BRANCH' or
+            handoff_plan['requires_reexecution'] or
+            any(handoff_plan[name] for name in ('authorizes_product_write','authorizes_shared_branch_write',
+                                                'authorizes_force_push','authorizes_merge','authorizes_release',
+                                                'authorizes_scope_expansion','authorizes_scheduler_mutation'))):
+        raise ContractError('invalid CDC 2.11.0 managed executor handoff template')
     for path in ROOT.rglob('*.md'):
         content = path.read_text()
         # Only portable package paths; repository paths in examples remain project-specific inputs.

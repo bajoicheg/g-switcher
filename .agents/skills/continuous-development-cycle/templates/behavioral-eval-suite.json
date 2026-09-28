@@ -1,0 +1,112 @@
+{
+  "schema": "behavioral-eval-suite/v1",
+  "cases": [
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "milestone-stop",
+      "scenario_type": "premature_milestone_stop",
+      "facts": {
+        "runnable_work": true
+      },
+      "baseline_trace": [
+        "progress_update",
+        "final_response"
+      ],
+      "corrected_trace": [
+        "progress_update",
+        "continue",
+        "terminal_complete",
+        "final_response"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "terminal-stale-guard",
+      "scenario_type": "terminal_provider_stale_guard",
+      "facts": {
+        "provider_state": "terminal",
+        "guard_state": "running"
+      },
+      "baseline_trace": [
+        "observe_provider_terminal",
+        "wait"
+      ],
+      "corrected_trace": [
+        "observe_provider_terminal",
+        "reconcile_provider",
+        "finalize_owner"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "typed-checkpoint",
+      "scenario_type": "schema_invalid_checkpoint",
+      "facts": {
+        "checkpoint_initial_valid": false
+      },
+      "baseline_trace": [
+        "commit_checkpoint:invalid"
+      ],
+      "corrected_trace": [
+        "validate_checkpoint:reject",
+        "build_typed_checkpoint",
+        "validate_checkpoint:pass",
+        "commit_checkpoint:valid"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "timestamp-once",
+      "scenario_type": "duplicate_command_timestamp",
+      "facts": {
+        "command_id": "cmd-1"
+      },
+      "baseline_trace": [
+        "timestamp:[19:31 26.09]",
+        "progress_update",
+        "timestamp:[19:32 26.09]"
+      ],
+      "corrected_trace": [
+        "timestamp:[19:31 26.09]",
+        "progress_update",
+        "suppress_duplicate_timestamp"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "coordination-authority",
+      "scenario_type": "stale_checkpoint_vs_live_lease",
+      "facts": {
+        "checkpoint_lease_state": "released",
+        "coordination_lease_state": "active"
+      },
+      "baseline_trace": [
+        "read_checkpoint",
+        "authority:checkpoint",
+        "takeover"
+      ],
+      "corrected_trace": [
+        "read_checkpoint",
+        "read_live_coordination",
+        "authority:coordination",
+        "observe_owner"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "recovery-diversity",
+      "scenario_type": "unchanged_recovery_retry",
+      "facts": {
+        "failed_strategy": "emulator:default"
+      },
+      "baseline_trace": [
+        "failure:emulator:default",
+        "retry:emulator:default"
+      ],
+      "corrected_trace": [
+        "failure:emulator:default",
+        "retry:emulator:smaller-disk"
+      ]
+    }
+  ]
+}

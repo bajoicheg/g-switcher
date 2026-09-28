@@ -7,7 +7,7 @@ CDC 2.4 makes individual chats, watchdog wakes, models and compute backends disp
 1. **Invocation-bound lease.** New writers use `execution-lease/v2`: repository/source ref + executor UUID + generation + exact invocation ID. The invocation is part of every mutation/start/release check.
 2. **No unsafe migration.** Lease v1 remains readable. An owned v1 record is not converted in place; migrate only after explicit release or verified quiescence with no pending writes and classified external effects.
 3. **Transactional finalization.** Finalization progresses `active → draining → checkpointed → reconciled → ready → release`. No product write or new external start is legal after draining begins. A final response while the invocation still owns a lease is a defect.
-4. **Hard execution continuity.** `execution-continuity/v1` rejects primitive-only completion while runnable work exists. Primitive status/health/lease/poll/report/heartbeat actions are observable activity, not progress.
+4. **Hard execution continuity.** `execution-continuity/v1` rejects every terminal claim while runnable work exists, including claims carrying commit evidence, an external binding or a blocker. Primitive status/health/lease/poll/report/heartbeat actions are observable activity, not progress.
 5. **Durable resume capsule.** `resume-capsule/v1` carries the minimum handoff needed to recover without a previous chat. Exact fresh agreement is required for fast resume; any repository, HEAD, policy, checkpoint or lease-revision drift forces full reconciliation.
 6. **Checkpoint v4.** New 2.4 policy writes use `development-work-status/v4`, including the resume-capsule reference and execution-continuity fields. v3 stays read-compatible during migration.
 
@@ -30,9 +30,15 @@ These controls serialize cooperative orchestration; they do not bypass repositor
 
 ## Hard finalization coupling
 
-The `ready` lease transition consumes an allowed execution-continuity decision bound to the exact invocation and records its completion reason in the release evidence. A failed finalization can restart from `draining` and repeat checkpoint/reconciliation; failure is recoverable but never silently bypassed. Resume-capsule fast paths bind skill version, policy revision and policy digest in addition to repository/ref/HEAD/checkpoint/lease revision.
+Preflight execution continuity before entering `draining`; remaining runnable work keeps the lease active. The `ready` lease transition consumes `final_response_allowed=true`, bound to the exact invocation and the persisted checkpoint and records its completion reason in the release evidence. A failed finalization can restart from `draining` and repeat checkpoint/reconciliation; failure is recoverable but never silently bypassed. Resume-capsule fast paths bind skill version, policy revision and policy digest in addition to repository/ref/HEAD/checkpoint/lease revision.
 
 
 ## Historical v1 migration anomalies
 
 Released v1 coordination may contain historical records created before strict UUID enforcement. CDC 2.5 migration records an auditable `legacy_migration` marker with the source digest, migration generation and exact digests of any noncanonical historical claims/legacy takeover evidence. Those anomalies remain readable only as pre-migration history; new claims and takeover evidence stay strict v2. An owned v1 record still cannot migrate.
+
+## 2.10.3 evidence-bound finalization
+
+`execution-continuity/v1` keeps legacy fields and adds `terminal_state` and `blocker_proof`. Continue/progress remain readable without terminal evidence but cannot finalize. New terminal writes require Terminal-State v2 with the same invocation, checkpoint, runnable state and lease state. Completion needs distinct scope evidence and no next action. Waits bind kind/id/operation key and the recheck action. BLOCKED requires a fresh blocked-state-proof/v1 with work exhausted and matching dependency/evidence/next-action/trigger. `mark_ready` checks freshness at its operation timestamp. Old terminal payloads without this evidence fail closed and must be rebuilt from fresh observations; old stored lease records remain readable.
+
+The internal `pre_release` assessment skips only the release condition while preparing `ready`; it does not release ownership or authorize a final response with a still-owned lease. The real transaction must complete. Validators cannot authenticate referenced external observations; callers retrieve them through authorized tools.

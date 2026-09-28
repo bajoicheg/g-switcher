@@ -2,15 +2,19 @@
 """Small Git conditional store. Only normal fast-forward pushes to a separate ref."""
 from __future__ import annotations
 
+from git_object_integrity import git_object_environment
+
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 
 import execution_lease
 import execution_lease_v2
 import operation_intent as op
+from git_remote_identity import isolated_remote_args, remote_identity
 
 
 def validate_coordination_record(record):
@@ -55,9 +59,14 @@ class GitLeaseStore:
         push = self._git('remote', 'get-url', '--push', '--all', remote).splitlines()
         if len(fetch) != 1 or push != fetch:
             raise ValueError('coordination remote needs one identical fetch and push URL')
+        self.store_id = remote_identity(self.repo, self.remote)
+
+    def _assert_remote_identity(self):
+        if remote_identity(self.repo, self.remote) != self.store_id:
+            raise ValueError('lease coordination remote identity drift')
 
     def _git(self, *args, input=None):
-        environment = dict(os.environ, GIT_TERMINAL_PROMPT='0',
+        environment = git_object_environment(GIT_TERMINAL_PROMPT='0',
                            GIT_AUTHOR_NAME='CDC coordination', GIT_AUTHOR_EMAIL='cdc@example.invalid',
                            GIT_COMMITTER_NAME='CDC coordination', GIT_COMMITTER_EMAIL='cdc@example.invalid')
         try:
@@ -71,6 +80,7 @@ class GitLeaseStore:
         return result.stdout.strip()
 
     def read(self):
+        self._assert_remote_identity()
         rows = self._git('ls-remote', '--refs', self.remote, self.ref).splitlines()
         if not rows:
             return None, None
@@ -79,13 +89,15 @@ class GitLeaseStore:
         revision, ref = rows[0].split('\t')
         if ref != self.ref or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', revision):
             raise ValueError('invalid coordination revision')
-        self._git('fetch', '--no-tags', '--no-write-fetch-head', self.remote, self.ref)
+        config, remote = isolated_remote_args(self.repo, self.remote, self.store_id)
+        self._git(*config, 'fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', remote, self.ref)
         if self._git('cat-file', '-t', revision) != 'commit':
             raise ValueError('coordination ref must point to a commit')
         record = json.loads(self._git('show', revision + ':lease.json'), object_pairs_hook=op._unique_object)
         validate_coordination_record(record)
         if record['source_ref'] == self.ref:
             raise ValueError('coordination ref must differ from product source ref')
+        self._assert_remote_identity()
         if self._git('ls-remote', '--refs', self.remote, self.ref).splitlines() != rows:
             raise ValueError('coordination ref moved during read; refetch before acting')
         return revision, record
@@ -101,9 +113,13 @@ class GitLeaseStore:
         blob = self._git('hash-object', '-w', '--stdin', input=op._canonical(record).decode() + '\n')
         tree = self._git('mktree', input=f'100644 blob {blob}\tlease.json\n')
         parent = ['-p', expected_revision] if expected_revision else []
-        commit = self._git('commit-tree', tree, *parent, input='Update cooperative execution ownership\n')
+        commit = self._git('commit-tree', tree, *parent,
+                           input='Update cooperative execution ownership\n\nCAS proposal: ' + secrets.token_hex(32) + '\n')
         # This commit has exactly the observed ref as its parent. Concurrent proposals
         # are siblings: normal push accepts at most one and rejects the other.
-        self._git('-c', 'push.followTags=false', 'push', '--porcelain',
-                  self.remote, f'{commit}:{self.ref}')
+        config, remote = isolated_remote_args(self.repo, self.remote, self.store_id)
+        self._git(*config, '-c', 'push.followTags=false', 'push', '--porcelain', remote, f'{commit}:{self.ref}')
+        self._assert_remote_identity()
+        if self._git('ls-remote', '--refs', self.remote, self.ref).splitlines() != [f'{commit}\t{self.ref}']:
+            raise ValueError('lease CAS push did not become authoritative')
         return commit

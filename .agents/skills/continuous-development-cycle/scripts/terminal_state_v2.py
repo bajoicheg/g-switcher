@@ -47,7 +47,7 @@ def validate(state):
     if type(state["lease_released"]) is not bool:raise ValueError("lease_released must be boolean")
     return state
 
-def evaluate(state):
+def evaluate(state, *, pre_release=False):
     validate(state)
     decision=state["decision"]; runnable=state["runnable_actions"]; ext=state["pending_external"]; blocker=state["blocker"]
     common={"schema":"terminal-state-assessment/v2","decision":decision,
@@ -57,7 +57,7 @@ def evaluate(state):
         return {**common,"allowed":True,"final_response_allowed":False,"reason":"no_idle_runnable_work","next_action":runnable[0]["action"]}
     if runnable:
         return {**common,"allowed":False,"final_response_allowed":False,"reason":"no_idle_invariant_runnable_work_exists","next_action":runnable[0]["action"]}
-    if not state["lease_released"]:
+    if not state["lease_released"] and not pre_release:
         return {**common,"allowed":False,"final_response_allowed":False,"reason":"lease_must_be_released_before_terminal_response","next_action":"release invocation-bound lease"}
     if decision=="WAIT_EXTERNAL":
         if ext is None or blocker is not None:return {**common,"allowed":False,"final_response_allowed":False,"reason":"waiting_external_requires_single_durable_external_binding","next_action":None}

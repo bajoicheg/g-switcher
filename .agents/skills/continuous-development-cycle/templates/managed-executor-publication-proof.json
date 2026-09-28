@@ -1,0 +1,27 @@
+{
+  "schema": "managed-executor-publication-proof/v1",
+  "handoff_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "pool_id": "pool-example",
+  "task_id": "writer-a",
+  "attempt_id": "attempt-a1",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "assigned_branch": "cdc/worker-a",
+  "published_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "observed_changed_paths": [
+    "src/example.txt"
+  ],
+  "evidence_refs": [
+    "git:remote-head",
+    "tests:remote-green"
+  ],
+  "result_verified": true,
+  "authorizes_product_write": false,
+  "authorizes_shared_branch_write": false,
+  "authorizes_force_push": false,
+  "authorizes_merge": false,
+  "authorizes_release": false,
+  "authorizes_scope_expansion": false,
+  "authorizes_scheduler_mutation": false,
+  "publication_repository": "example/repository",
+  "publication_remote_id": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+}
