@@ -3,18 +3,18 @@
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
   "generation": 7,
-  "owner_id": "b76d0a20-171e-4ee2-b4dc-1ef474c83dbb",
-  "acquired_at_utc": "2026-09-28T14:11:37Z",
-  "heartbeat_at_utc": "2026-09-28T14:11:37Z",
-  "expires_at_utc": "2026-09-28T14:31:37Z",
+  "owner_id": null,
+  "acquired_at_utc": null,
+  "heartbeat_at_utc": null,
+  "expires_at_utc": null,
   "activity_refs": [],
   "external_guard": null,
   "last_release": {
-    "owner_id": "75257bf3-54f5-429d-a20e-165c89d5c25f",
-    "generation": 5,
-    "invocation_id": "chat-2026-09-26T143230Z-cdc282-control-plane-convergence",
-    "at_utc": "2026-09-26T14:47:35Z",
-    "checkpoint_ref": "resume.json@c3240b454ac1f1b6e6333094a737228dfe1ab5ea;blocked-state-proof.json@f54f4ccba9e19615454772ecaa1687c66a3ee84b;fleet-target.json@6a056e52b476f196b8ea7305edbfe87e1ec33a6c;product@db9b91088f7b92c2d35e887c744fcbf48c6b95c3",
+    "owner_id": "b76d0a20-171e-4ee2-b4dc-1ef474c83dbb",
+    "generation": 7,
+    "invocation_id": "work-20260928-cdc2111-recovery-g-switcher",
+    "at_utc": "2026-09-28T14:15:53Z",
+    "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/938a98957e44e0d4a8ebce735486e140ca1922fc/docs/work-status/current.md",
     "external_reconciliation": "none",
     "completion_reason": "scope_complete"
   },
@@ -66,21 +66,7 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": {
-    "invocation_id": "work-20260928-cdc2111-recovery-g-switcher",
-    "automation_id": null,
-    "conversation_id": null,
-    "execution_surface": "work",
-    "started_at_utc": "2026-09-28T14:11:37Z"
-  },
-  "finalization": {
-    "state": "ready",
-    "pending_shared_writes": false,
-    "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/938a98957e44e0d4a8ebce735486e140ca1922fc/docs/work-status/current.md",
-    "external_reconciliation": "none",
-    "completion_reason": "scope_complete",
-    "updated_at_utc": "2026-09-28T14:15:53Z",
-    "failure": null
-  },
+  "invocation": null,
+  "finalization": null,
   "legacy_migration": null
 }

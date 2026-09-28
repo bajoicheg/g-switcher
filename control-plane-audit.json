@@ -24,6 +24,39 @@
       "details_digest": "sha256:43b53b9145ac29ffa43cf60b0c7117494c859aa20cbd394c6880a23eb6f18973",
       "previous_hash": "sha256:028742dc000bd5c1bde216dad062011edddf806e96d0844234552e9494ae2311",
       "event_hash": "sha256:7728c4cfb904133d9a10c1b159b8df7a97742cd533223d5180a534e87e4b0643"
+    },
+    {
+      "sequence": 3,
+      "occurred_at_utc": "2026-09-28T14:15:53Z",
+      "actor_invocation_id": "work-20260928-cdc2111-recovery-g-switcher",
+      "event_type": "lease_acquire",
+      "object_ref": "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/adoptions/cdc-2.11.1.json",
+      "outcome": "Owner-attested bounded recovery; archive preserves prior lease and all consumed attempts",
+      "details_digest": "sha256:f442cbac7084f9f212fd8c913576dac68808df297dda3e10ac5a7c46a15b90c8",
+      "previous_hash": "sha256:7728c4cfb904133d9a10c1b159b8df7a97742cd533223d5180a534e87e4b0643",
+      "event_hash": "sha256:a2674700c9540abce870e508542e4c7fb1e11ac3d865a2a8a6175341b48d5df7"
+    },
+    {
+      "sequence": 4,
+      "occurred_at_utc": "2026-09-28T14:15:53Z",
+      "actor_invocation_id": "work-20260928-cdc2111-recovery-g-switcher",
+      "event_type": "policy_adopt",
+      "object_ref": "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/adoptions/cdc-2.11.1.json",
+      "outcome": "CDC 2.11.1 merged exact package/policy/checkpoint readback PASS",
+      "details_digest": "sha256:f442cbac7084f9f212fd8c913576dac68808df297dda3e10ac5a7c46a15b90c8",
+      "previous_hash": "sha256:a2674700c9540abce870e508542e4c7fb1e11ac3d865a2a8a6175341b48d5df7",
+      "event_hash": "sha256:4af642f6d426d074143ed204a3e2a428550d2d5ba075d4d8b16a253041205f10"
+    },
+    {
+      "sequence": 5,
+      "occurred_at_utc": "2026-09-28T14:15:53Z",
+      "actor_invocation_id": "work-20260928-cdc2111-recovery-g-switcher",
+      "event_type": "lease_release",
+      "object_ref": "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/adoptions/cdc-2.11.1.json",
+      "outcome": "CDC adoption scope complete; product scope unchanged",
+      "details_digest": "sha256:f442cbac7084f9f212fd8c913576dac68808df297dda3e10ac5a7c46a15b90c8",
+      "previous_hash": "sha256:4af642f6d426d074143ed204a3e2a428550d2d5ba075d4d8b16a253041205f10",
+      "event_hash": "sha256:38a642a06fa09b06594db4ae208abbc043b859c5085534731176f34d4ed5be9f"
     }
   ]
 }
