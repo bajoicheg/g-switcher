@@ -2,11 +2,11 @@
   "schema": "execution-lease/v2",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "generation": 7,
-  "owner_id": null,
-  "acquired_at_utc": null,
-  "heartbeat_at_utc": null,
-  "expires_at_utc": null,
+  "generation": 8,
+  "owner_id": "ed6d8f5f-f6fb-5c95-91b7-ea64f50f4a57",
+  "acquired_at_utc": "2026-09-30T18:14:57Z",
+  "heartbeat_at_utc": "2026-09-30T18:14:57Z",
+  "expires_at_utc": "2026-09-30T18:34:57Z",
   "activity_refs": [],
   "external_guard": null,
   "last_release": {
@@ -18,17 +18,7 @@
     "external_reconciliation": "none",
     "completion_reason": "scope_complete"
   },
-  "takeover_evidence": {
-    "owner_id": "91fcb4d6-05c5-4f26-82e4-7bdb8d6b9845",
-    "generation": 6,
-    "repository": "bajoicheg/g-switcher",
-    "source_ref": "refs/heads/release/2.0.1",
-    "invocation_id": "chat-2026-09-26T172500Z-cdc292-adoption",
-    "kind": "executor_stopped",
-    "reference": "https://github.com/bajoicheg/g-switcher/blob/ea96130b14b81e5fb41295dbbe8346f6c8f7c579/recovery/cdc-2.11.1-owner-attestation.json",
-    "pending_shared_writes": false,
-    "external_effects_state": "none"
-  },
+  "takeover_evidence": null,
   "last_terminal": {
     "operation_key": "sha256:a86d9d239964b34a051bdc2b48160099beb9a449088cc3bad0c0228ed04e825f",
     "intent_digest": "sha256:04af20c5b8c0cdf4bce0f6a711da3e97426ee2836f4a672ce4aaa38c5cdba668",
@@ -66,7 +56,21 @@
     "at_utc": "2026-09-25T17:38:00Z"
   },
   "submission_claims": [],
-  "invocation": null,
-  "finalization": null,
+  "invocation": {
+    "invocation_id": "chat-20260930-cdc2112-adoption-g-switcher",
+    "automation_id": null,
+    "conversation_id": null,
+    "execution_surface": "chat",
+    "started_at_utc": "2026-09-30T18:14:57Z"
+  },
+  "finalization": {
+    "state": "active",
+    "pending_shared_writes": false,
+    "checkpoint_ref": null,
+    "external_reconciliation": "pending",
+    "completion_reason": null,
+    "updated_at_utc": "2026-09-30T18:14:57Z",
+    "failure": null
+  },
   "legacy_migration": null
 }
