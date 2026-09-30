@@ -5,9 +5,11 @@
   "generation": 9,
   "owner_id": "7c9f2c74-0cd9-4ef3-baa8-86b02a514218",
   "acquired_at_utc": "2026-09-30T22:25:00Z",
-  "heartbeat_at_utc": "2026-09-30T22:25:00Z",
-  "expires_at_utc": "2026-09-30T22:45:00Z",
-  "activity_refs": [],
+  "heartbeat_at_utc": "2026-09-30T22:28:00Z",
+  "expires_at_utc": "2026-09-30T22:48:00Z",
+  "activity_refs": [
+    "source:35356edb2c114a931c7c692af06321d838d17695"
+  ],
   "external_guard": null,
   "last_release": {
     "owner_id": "b76d0a20-171e-4ee2-b4dc-1ef474c83dbb",
