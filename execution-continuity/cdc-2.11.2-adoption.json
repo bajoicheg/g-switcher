@@ -12,8 +12,8 @@
   "blocker": null,
   "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/35356edb2c114a931c7c692af06321d838d17695/docs/work-status/current.md",
   "next_action": null,
-  "lease_release_required": false,
-  "lease_released": false,
+  "lease_release_required": true,
+  "lease_released": true,
   "terminal_state": {
     "schema": "terminal-state/v2",
     "invocation_id": "chat-20261001-cdc2112-recovery-g-switcher",
@@ -31,6 +31,6 @@
       "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/rca/orphan-lease-generation-8.json"
     ],
     "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/35356edb2c114a931c7c692af06321d838d17695/docs/work-status/current.md",
-    "lease_released": false
+    "lease_released": true
   }
 }
