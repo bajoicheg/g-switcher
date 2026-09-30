@@ -236,6 +236,16 @@ REQUIRED = [
     'tests/test_managed_executor_handoff.py', 'tests/test_managed_executor_store.py', 'tests/test_v2110_guidance.py',
     'scripts/git_remote_identity.py', 'tests/test_git_remote_identity.py',
     'scripts/active_package.py', 'tests/test_active_package.py',
+    'scripts/project_lanes.py', 'scripts/project_lane_runtime.py', 'scripts/project_lane_git.py',
+    'scripts/project_lane_executor.py',
+    'scripts/watchdog_survivability.py', 'scripts/watchdog_survivability_runtime.py',
+    'scripts/watchdog_sentinel.py',
+    'tests/test_project_lanes.py', 'tests/test_project_lanes_extended.py',
+    'tests/test_project_lane_registry_binding.py', 'tests/test_project_lane_git.py',
+    'tests/test_project_lane_executor.py', 'tests/test_project_lane_concurrency_demo.py',
+    'tests/test_watchdog_survivability.py', 'tests/test_watchdog_survivability_runtime.py',
+    'tests/test_watchdog_sentinel.py',
+    'references/cooperative-project-lanes-and-watchdog-survivability.md',
 ]
 
 

@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.11.1",
+  "version": "2.11.2",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Project-independent durable development with verified behavior/review gates and worktree-isolated parallel execution under a single integrator."
+  "description": "Project-independent durable development with cooperative project lanes, single-integrator safety, and desired-state watchdog survivability."
 }

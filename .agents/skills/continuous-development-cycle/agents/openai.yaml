@@ -1,6 +1,6 @@
 name: Continuous Development Cycle
 description: Durable CDC orchestration with behavioral verification, two-stage review and isolated parallel execution.
-version: 2.11.1
+version: 2.11.2
 policy:
   products:
   - chatgpt
@@ -13,4 +13,4 @@ interface:
   short_description: Verified review and safe parallel integration
   icon_small: assets/icon.svg
   icon_large: assets/icon.svg
-  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.11.1 continuous execution, live target and owner-pause-aware watchdog controls.
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.11.2 cooperative project lanes and owner-pause-aware watchdog survivability controls.

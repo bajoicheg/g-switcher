@@ -39,11 +39,13 @@ class FleetRuntime:
     invocation does not clear pending work or prove a project terminal.
     """
 
-    def __init__(self, store, backend, *, clock=now_utc, max_age_seconds=120):
+    def __init__(self, store, backend, *, clock=now_utc, max_age_seconds=120,
+                 survivability_runtime=None):
         self.store = store
         self.backend = backend
         self.clock = clock
         self.max_age_seconds = max_age_seconds
+        self.survivability_runtime = survivability_runtime
 
     def _initial_state(self):
         return {"schema": SCHEMA, "coordination_ref": self.store.ref,
@@ -300,6 +302,26 @@ class FleetRuntime:
             raise ValueError("registry has duplicate project bindings")
         if len({project["watchdog_id"] for project in projects}) != len(projects):
             raise ValueError("registry must bind each watchdog to exactly one project/ref")
+        survivability = None
+        survivability_effects = 0
+        if self.survivability_runtime is not None:
+            try:
+                survivability = self.survivability_runtime.reconcile_registered(max_effects=max_effects)
+                if (not isinstance(survivability, dict)
+                        or type(survivability.get("effects_attempted")) is not int
+                        or not 0 <= survivability["effects_attempted"] <= max_effects
+                        or type(survivability.get("continuation_required")) is not bool):
+                    raise ValueError("watchdog survivability batch contract invalid")
+                survivability_effects = survivability["effects_attempted"]
+            except Exception as exc:
+                survivability = {
+                    "schema": "watchdog-survivability-batch/v1",
+                    "effects_attempted": 0,
+                    "continuation_required": True,
+                    "outcome": "coordination_or_observation_unavailable",
+                    "error_class": type(exc).__name__,
+                }
+
         # Assess every registered project even when the side-effect budget is zero.
         assessments, observations = {}, {}
         for key, project in zip(keys, projects):
@@ -329,7 +351,7 @@ class FleetRuntime:
                                    "assessed_projects": keys, "checkpoint_at_utc": self.clock()}
             return True
         self._change(checkpoint)
-        batch_budget, outcomes = {"attempted": 0, "deadline_utc": deadline_utc}, {}
+        batch_budget, outcomes = {"attempted": survivability_effects, "deadline_utc": deadline_utc}, {}
         for key, project in zip(keys, projects):
             if key not in observations:
                 outcomes[key] = "observation_unavailable"
@@ -357,7 +379,9 @@ class FleetRuntime:
         _, state = self._read()
         return {"schema": "fleet-watchdog-batch/v1", "assessments": [assessments[key] for key in keys],
                 "outcomes": outcomes, "effects_attempted": batch_budget["attempted"], "pending": state["pending"],
-                "continuation_required": bool(state["pending"])}
+                "survivability": survivability,
+                "continuation_required": bool(state["pending"])
+                or bool(survivability and survivability.get("continuation_required"))}
 
 
 def main(argv=None):

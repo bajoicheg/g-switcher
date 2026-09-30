@@ -2,14 +2,14 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-09-28-cdc-2.11.1-fleet-adoption
-policy_digest: 084b16e58b3600d1ff6e09659571c6d5418047ca22321d8ce358371feca14b98
-observed_at_utc: '2026-09-28T14:13:13Z'
-orchestration_origin: work
-active_executor: b76d0a20-171e-4ee2-b4dc-1ef474c83dbb
+policy_revision: 2026-09-30-cdc-2.11.2-fleet-adoption
+policy_digest: 43fb931928738c33b7b20e500bb31a90be3b9e49536f58498735720dd4070b1f
+observed_at_utc: '2026-09-30T22:27:00Z'
+orchestration_origin: chat
+active_executor: 7c9f2c74-0cd9-4ef3-baa8-86b02a514218
 lease_state: active
-executor_heartbeat_at_utc: '2026-09-28T14:11:37Z'
-execution_lease_until_utc: '2026-09-28T14:31:37Z'
+executor_heartbeat_at_utc: '2026-09-30T22:25:00Z'
+execution_lease_until_utc: '2026-09-30T22:45:00Z'
 waiting_external_kind: null
 waiting_external_id: null
 waiting_external_sha: null
@@ -17,15 +17,15 @@ operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: 5134fdb3a4c29d307c254641ac2ded276a151f2d
-  executor_id: b76d0a20-171e-4ee2-b4dc-1ef474c83dbb
-  lease_generation: 7
+  execution_lease_revision: 02ae6a948008e4c5efe2f77cb6c5270083b22a70
+  executor_id: 7c9f2c74-0cd9-4ef3-baa8-86b02a514218
+  lease_generation: 9
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
 active_change: CDC 2.9.2 adoption
-current_task: CDC 2.11.1 adoption; final result and release on cdc/coordination
-phase: recovery
+current_task: CDC 2.11.2 process-only adoption
+phase: validation
 implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 last_green_sha: db9b91088f7b92c2d35e887c744fcbf48c6b95c3
@@ -39,18 +39,15 @@ release_version: 2.0.1
 release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 release_state: candidate
 blocker: none
-next_action: Read live cdc/coordination lease.json, adoptions/cdc-2.11.1.json and
-  execution-continuity/cdc-2.11.1-adoption.json for completed adoption and actual
-  release. Resume product work only under its separate authorization; preserve scheduler
-  pause.
+next_action: Validate exact CDC 2.11.2 subtree, lock, semantic adapter/checkpoint binding and portability fixture; then record adoption/RCA evidence and explicitly release generation 9.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
-  invocation_id: work-20260928-cdc2111-recovery-g-switcher
+  invocation_id: chat-20261001-cdc2112-recovery-g-switcher
   runnable_next_action: true
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: continue
-  last_progress_ref: docs/cdc-adoption-2.11.1.md
+  last_progress_ref: docs/cdc-adoption-2.11.2.md
 ---
 
 ## CDC 2.11.1 adoption

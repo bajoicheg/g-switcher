@@ -1,6 +1,6 @@
-## CDC 2.11.1 authoritative provenance
+## CDC 2.11.2 authoritative provenance
 
-Use canonical `bajoicheg/g-cdc` **v2.11.1**, release `refs/heads/release/v2.11.1`, commit `a262f78b82cd9e8eba9bc3b6108e0b52a17c33b0`, exact package tree `6ffacd32cce74c3537150778d9b37cfeb361a621`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; earlier version statements below are historical. Read the current vendored SKILL.md and validate the adapter and checkpoint before execution.
+Use canonical `bajoicheg/g-cdc` **v2.11.2**, release `refs/heads/release/v2.11.2`, commit `48e637b230e7640d0dcd13da60d712f38f59a2b6`, exact package tree `7a7a7faa75b7fc9160d912d8fb507c6b9573d17f`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; earlier version statements below are historical. Read the current vendored SKILL.md and validate the adapter and checkpoint before execution.
 
 The owner's scheduler pause remains in force. Do not enable, run, rebind or reschedule paused automations. Foreground work remains eligible under normal ownership, guard and budget controls. A paused scheduler, elapsed lease or terminal CI never proves that an owning invocation has stopped.
 

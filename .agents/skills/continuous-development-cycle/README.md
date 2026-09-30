@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.11.1
+# Continuous Development Cycle v2.11.2
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 
@@ -233,3 +233,8 @@ The executable adapter in `scripts/managed_executor_runtime.py` provides a real 
 ## v2.11.1 liveness
 
 Fresh registry/release target resolution and durable all-project watchdog recovery distinguish premature completion from project terminal state. Owner pause is an explicit overriding gate; unknown effects are never replayed. Actual scheduler adapters remain capability- and authority-gated.
+
+
+## v2.11.2 cooperative lanes and watchdog survivability
+
+CDC can coordinate disjoint foreground/watchdog/Work/Codex project lanes under one shared-branch integrator, while desired-state watchdog survivability detects and safely reconciles missing, disabled, overdue, drifted, duplicate or flapping scheduler materializations. Explicit owner pause remains authoritative.

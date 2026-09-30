@@ -22,6 +22,25 @@ else:
     GitDocumentStore = None
 
 
+class RecordingSurvivability:
+    def __init__(self, effects_attempted=1, continuation_required=False):
+        self.effects_attempted = effects_attempted
+        self.continuation_required = continuation_required
+        self.calls = []
+
+    def reconcile_registered(self, *, max_effects):
+        self.calls.append(max_effects)
+        return {
+            "schema": "watchdog-survivability-batch/v1",
+            "registered_count": 1,
+            "results": [],
+            "effects_attempted": min(self.effects_attempted, max_effects),
+            "max_effects": max_effects,
+            "continuation_required": self.continuation_required,
+            "authorizes_scheduler_mutation": False,
+        }
+
+
 class RecordingScheduler:
     """Instrumented local scheduler: mutation changes live state and writes a receipt."""
     def __init__(self, root, projects):
@@ -97,11 +116,30 @@ class FleetTests(unittest.TestCase):
         self.git("remote", "add", "origin", str(self.remote), cwd=repo)
         return (cls or GitDocumentStore)(repo, "origin", self.ref, self.store_id, protected_refs=["refs/heads/main"])
 
-    def runtime(self, store=None):
-        return fleet.FleetRuntime(store or self.store, self.backend, clock=lambda: NOW)
+    def runtime(self, store=None, survivability=None):
+        return fleet.FleetRuntime(store or self.store, self.backend, clock=lambda: NOW,
+                                  survivability_runtime=survivability)
 
     def batch(self, runtime=None, budget=20, invocation="controller-invocation-1"):
         return (runtime or self.runtime()).run_batch(self.projects, max_effects=budget, invocation_id=invocation)
+
+    def test_survivability_repairs_share_the_same_bounded_fleet_effect_budget(self):
+        survivability = RecordingSurvivability(effects_attempted=1)
+        result = self.batch(runtime=self.runtime(survivability=survivability), budget=1)
+        self.assertEqual(survivability.calls, [1])
+        self.assertEqual(result["effects_attempted"], 1)
+        self.assertEqual(self.backend.effects, [])
+        self.assertEqual(len(result["assessments"]), 1)
+        self.assertTrue(result["continuation_required"])
+        self.assertEqual(result["survivability"]["effects_attempted"], 1)
+
+    def test_survivability_continuation_is_preserved_even_when_liveness_is_settled(self):
+        self.backend.live["alpha"]["signals"]["work"].update(state="terminal", terminal_proof={
+            "project_id": "alpha", "source_ref": "refs/heads/main",
+            "source_revision": "a" * 40, "evidence_ref": "git:complete"})
+        survivability = RecordingSurvivability(effects_attempted=0, continuation_required=True)
+        result = self.batch(runtime=self.runtime(survivability=survivability), budget=0)
+        self.assertTrue(result["continuation_required"])
 
     def test_runtime_executes_enable_and_run_with_exact_readback_and_preserves_configuration(self):
         result = self.batch()
