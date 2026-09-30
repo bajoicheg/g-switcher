@@ -1,0 +1,36 @@
+{
+  "schema": "execution-continuity/v1",
+  "invocation_id": "chat-20261001-cdc2112-recovery-g-switcher",
+  "current_state": "COMPLETE",
+  "requested_terminal_outcome": "scope_complete",
+  "runnable_next_action": false,
+  "meaningful_progress_refs": [
+    "https://github.com/bajoicheg/g-switcher/commit/35356edb2c114a931c7c692af06321d838d17695"
+  ],
+  "primitive_steps": [],
+  "external_binding": null,
+  "blocker": null,
+  "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/35356edb2c114a931c7c692af06321d838d17695/docs/work-status/current.md",
+  "next_action": null,
+  "lease_release_required": false,
+  "lease_released": false,
+  "terminal_state": {
+    "schema": "terminal-state/v2",
+    "invocation_id": "chat-20261001-cdc2112-recovery-g-switcher",
+    "scope_id": "CDC 2.11.2 adoption for bajoicheg/g-switcher",
+    "observed_head": "35356edb2c114a931c7c692af06321d838d17695",
+    "decision": "COMPLETE",
+    "runnable_actions": [],
+    "pending_external": null,
+    "blocker": null,
+    "meaningful_progress_refs": [
+      "https://github.com/bajoicheg/g-switcher/commit/35356edb2c114a931c7c692af06321d838d17695"
+    ],
+    "completion_evidence_refs": [
+      "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/adoptions/cdc-2.11.2.json",
+      "https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/rca/orphan-lease-generation-8.json"
+    ],
+    "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/35356edb2c114a931c7c692af06321d838d17695/docs/work-status/current.md",
+    "lease_released": false
+  }
+}
