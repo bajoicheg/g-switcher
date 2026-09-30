@@ -76,12 +76,12 @@
     "started_at_utc": "2026-09-30T22:25:00Z"
   },
   "finalization": {
-    "state": "reconciled",
+    "state": "ready",
     "pending_shared_writes": false,
     "checkpoint_ref": "https://github.com/bajoicheg/g-switcher/blob/35356edb2c114a931c7c692af06321d838d17695/docs/work-status/current.md",
     "external_reconciliation": "none",
-    "completion_reason": null,
-    "updated_at_utc": "2026-09-30T22:30:02Z",
+    "completion_reason": "scope_complete",
+    "updated_at_utc": "2026-09-30T22:30:03Z",
     "failure": null
   },
   "legacy_migration": null
