@@ -88,6 +88,19 @@ class CoordinationTransportTests(unittest.TestCase):
         self.assertEqual(store.read(), (updated, state))
         self.assertEqual(self.git(store.repo, "for-each-ref", "--format=%(refname) %(objectname)"), before)
 
+    def test_document_historical_readback_survives_successor_cas(self):
+        store, state = self.fixture("document")
+        first = store.compare_and_swap(None, state)
+        second_state = {"value": 2}
+        second = store.compare_and_swap(first, second_state)
+        self.assertEqual(store.read_revision(first), state)
+        self.assertEqual(store.read_revision(second), second_state)
+        blob = self.git(store.repo, "hash-object", "-w", "--stdin", input='{"value":3}\n')
+        tree = self.git(store.repo, "mktree", input=f"100644 blob {blob}\tdocument.json\n")
+        unrelated = store._git("commit-tree", tree, input_text="unrelated document\n")
+        with self.assertRaisesRegex(ValueError, "authoritative document ancestry"):
+            store.read_revision(unrelated)
+
     def test_lease_remote_repointing_after_construction_is_rejected(self):
         store, state = self.fixture("lease")
         other = self.root / "other.git"

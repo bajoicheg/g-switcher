@@ -2,14 +2,14 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-09-30-cdc-2.11.2-fleet-adoption
-policy_digest: 43fb931928738c33b7b20e500bb31a90be3b9e49536f58498735720dd4070b1f
-observed_at_utc: '2026-09-30T22:27:00Z'
+policy_revision: 2026-10-01-cdc-2.11.3-managed-adoption
+policy_digest: 9c47e340e1e248b7efd2a9dc15fcda5ea58c065374e0f78c459ad9f28975a338
+observed_at_utc: '2026-10-01T17:19:10.336682Z'
 orchestration_origin: chat
-active_executor: 7c9f2c74-0cd9-4ef3-baa8-86b02a514218
-lease_state: active
-executor_heartbeat_at_utc: '2026-09-30T22:25:00Z'
-execution_lease_until_utc: '2026-09-30T22:45:00Z'
+active_executor: none
+lease_state: released
+executor_heartbeat_at_utc: null
+execution_lease_until_utc: null
 waiting_external_kind: null
 waiting_external_id: null
 waiting_external_sha: null
@@ -17,9 +17,9 @@ operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: 02ae6a948008e4c5efe2f77cb6c5270083b22a70
-  executor_id: 7c9f2c74-0cd9-4ef3-baa8-86b02a514218
-  lease_generation: 9
+  execution_lease_revision: null
+  executor_id: null
+  lease_generation: 10
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
@@ -33,8 +33,7 @@ last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/362351
 active_compute: ''
 active_ci_run_id: ''
 last_ci_run_id: '36235152300'
-last_ci_status: 'completed/success: Windows Rust CI #409 exact-head GREEN for CDC
-  2.8.2 adoption'
+last_ci_status: 'completed/success: Windows Rust CI #409 exact-head GREEN for CDC 2.8.2 adoption'
 release_version: 2.0.1
 release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
 release_state: candidate
@@ -42,13 +41,17 @@ blocker: none
 next_action: Validate exact CDC 2.11.2 subtree, lock, semantic adapter/checkpoint binding and portability fixture; then record adoption/RCA evidence and explicitly release generation 9.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
-  invocation_id: chat-20261001-cdc2112-recovery-g-switcher
+  invocation_id: null
   runnable_next_action: true
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: continue
-  last_progress_ref: docs/cdc-adoption-2.11.2.md
+  last_progress_ref: docs/cdc-adoption-2.11.3.md
 ---
+## CDC 2.11.3 process-only adoption — managed atomic publication
+
+This branch now binds canonical CDC **2.11.3** at `refs/heads/release/v2.11.3`, release commit `ed8256d1b80cc3f5424890e5488d5fbbcb57a304`, package tree `39f733127ac130de4f647cf9e5ec55afcca0769c`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
+
 
 ## CDC 2.11.1 adoption
 

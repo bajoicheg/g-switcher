@@ -1,4 +1,5 @@
 import json, sys, unittest, uuid
+from unittest import mock
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"))
@@ -7,7 +8,7 @@ from continuity_fixtures import with_terminal_evidence
 
 T0="2026-01-01T10:00:00Z"; T1="2026-01-01T10:00:01Z"
 OWNER=str(uuid.UUID("11111111-1111-4111-8111-111111111111"))
-INV={"invocation_id":"wake-1","automation_id":"auto-1","conversation_id":"chat-1","execution_surface":"watchdog","started_at_utc":T0}
+INV={"invocation_id":"wake-1","automation_id":"auto-1","conversation_id":"chat-1","execution_surface":"managed","started_at_utc":T0}
 def boundary(progress=True):
     state = {"schema":"execution-continuity/v1","invocation_id":"wake-1","current_state":"CHECKPOINT",
             "requested_terminal_outcome":"scope_complete" if progress else "progress","runnable_next_action":not progress,
@@ -19,7 +20,17 @@ def boundary(progress=True):
 
 class Tests(unittest.TestCase):
     def owned(self):
-        return m.acquire(m.initialize("example/project","refs/heads/main"),OWNER,T1,invocation=INV)
+        with mock.patch.object(m.terminal_capability_api,"validate_verified",return_value={}):
+            return m.acquire(m.initialize("example/project","refs/heads/main"),OWNER,T1,invocation=INV,terminal_capability=object())
+    def test_spoofed_managed_label_without_runtime_capability_is_rejected(self):
+        with self.assertRaisesRegex(ValueError,"capability proof"):
+            m.acquire(m.initialize("example/project","refs/heads/main"),OWNER,T1,invocation=INV)
+
+    def test_unmanaged_host_surfaces_are_observer_only(self):
+        for surface in ("chat","work","codex","watchdog","api","unknown"):
+            invocation=dict(INV,execution_surface=surface)
+            with self.subTest(surface=surface), self.assertRaisesRegex(ValueError,"observer/orchestrator only"):
+                m.acquire(m.initialize("example/project","refs/heads/main"),OWNER,T1,invocation=invocation)
     def test_wrong_invocation_cannot_renew(self):
         with self.assertRaisesRegex(ValueError,"invocation binding"):
             m.renew(self.owned(),OWNER,1,"wake-other","2026-01-01T10:00:02Z",activity_ref="git:x")
@@ -34,6 +45,26 @@ class Tests(unittest.TestCase):
         r=m.mark_ready(r,OWNER,1,"wake-1","2026-01-01T10:00:05Z",continuity_state=boundary())
         r=m.release(r,OWNER,1,"wake-1","2026-01-01T10:00:06Z")
         self.assertIsNone(r["owner_id"]); self.assertEqual(r["last_release"]["invocation_id"],"wake-1")
+    def test_release_cas_returns_revision_bound_receipt(self):
+        class Store:
+            def __init__(self,record): self.revision="a"*40; self.record=record
+            def read(self): return self.revision, json.loads(json.dumps(self.record))
+            def compare_and_swap(self,expected,record):
+                if expected!=self.revision: raise ValueError("stale")
+                self.record=json.loads(json.dumps(record)); self.revision="b"*40; return self.revision
+        r=self.owned()
+        r=m.begin_finalization(r,OWNER,1,"wake-1","2026-01-01T10:00:02Z",pending_shared_writes=False)
+        r=m.record_checkpoint(r,OWNER,1,"wake-1","2026-01-01T10:00:03Z",checkpoint_ref="checkpoint:1",pending_shared_writes=False)
+        r=m.reconcile_finalization(r,OWNER,1,"wake-1","2026-01-01T10:00:04Z",external_reconciliation="none")
+        r=m.mark_ready(r,OWNER,1,"wake-1","2026-01-01T10:00:05Z",continuity_state=boundary())
+        store=Store(r)
+        out=m.release_cas(store,"a"*40,"example/project","refs/heads/main",OWNER,1,"wake-1","2026-01-01T10:00:06Z")
+        self.assertEqual(out["revision"],"b"*40)
+        self.assertEqual(out["release_receipt"]["schema"],"execution-release-receipt/v1")
+        self.assertEqual(out["release_receipt"]["lease_revision"],"b"*40)
+        self.assertEqual(out["release_receipt"]["release"]["generation"],1)
+        self.assertEqual(out["release_receipt"]["release"]["invocation_id"],"wake-1")
+        self.assertIsNone(out["record"]["owner_id"])
     def test_primitive_boundary_cannot_mark_ready(self):
         r=self.owned()
         r=m.begin_finalization(r,OWNER,1,"wake-1","2026-01-01T10:00:02Z",pending_shared_writes=False)

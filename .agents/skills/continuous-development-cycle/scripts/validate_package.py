@@ -76,6 +76,10 @@ from parallel_benchmark import evaluate_from_files as evaluate_parallel_benchmar
 from managed_executor_attempt import validate_attempt as validate_managed_executor_attempt, validate_result as validate_managed_executor_result, acceptance as accept_managed_executor_result
 from managed_executor_pool import validate_plan as validate_managed_pool_plan, validate_state as validate_managed_pool_state, dispatch as dispatch_managed_pool, assess as assess_managed_pool
 from managed_executor_handoff import validate_handoff as validate_managed_handoff, publication_plan as plan_managed_handoff_publication
+from execution_liveness import classify as classify_execution_liveness
+from final_response_gate import evaluate as evaluate_final_response_gate
+from fleet_supervisor_control import validate as validate_fleet_supervisor_control
+from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
@@ -85,7 +89,7 @@ REQUIRED = [
     'scripts/watchdog_liveness.py', 'scripts/fleet_watchdog_runtime.py', 'scripts/git_document_store.py',
     'templates/watchdog-liveness-probe.json', 'tests/test_coordination_transport.py',
     'tests/test_watchdog_liveness.py', 'tests/test_fleet_watchdog_runtime.py', 'references/watchdog-liveness-runtime.md',
-    'scripts/managed_executor_runtime.py', 'tests/test_managed_executor_runtime.py',
+    'scripts/managed_executor_runtime.py', 'scripts/managed_terminal_capability.py', 'tests/test_managed_executor_runtime.py',
     'references/managed-executor-runtime.md',
     'references/runtime-routing-and-subagents.md', 'references/task-lifecycle.md',
     'references/validation-compute-and-ci.md', 'references/codex-compute.md',
@@ -246,6 +250,14 @@ REQUIRED = [
     'tests/test_watchdog_survivability.py', 'tests/test_watchdog_survivability_runtime.py',
     'tests/test_watchdog_sentinel.py',
     'references/cooperative-project-lanes-and-watchdog-survivability.md',
+    'scripts/execution_liveness.py', 'scripts/final_response_gate.py',
+    'scripts/fleet_supervisor_control.py', 'scripts/consumer_adoption.py',
+    'templates/runtime-observation.json', 'templates/final-response-gate.json',
+    'templates/fleet-supervisor-state.json', 'templates/consumer-adoption-publication.json',
+    'tests/test_execution_liveness.py', 'tests/test_final_response_gate.py',
+    'tests/test_fleet_supervisor_control.py', 'tests/test_consumer_adoption.py',
+    'tests/test_v2113_guidance.py',
+    'references/multi-subscription-coordination-and-ownership.md',
 ]
 
 
@@ -285,6 +297,21 @@ def validate():
     validate_intent(json.loads((ROOT / 'templates/operation-intent.json').read_text()))
     validate_lease(json.loads((ROOT / 'templates/execution-lease.json').read_text()))
     validate_lease_v2(json.loads((ROOT / 'templates/execution-lease-v2.json').read_text()))
+    runtime_template = json.loads((ROOT / 'templates/runtime-observation.json').read_text())
+    released_liveness = classify_execution_liveness(
+        json.loads((ROOT / 'templates/execution-lease-v2.json').read_text()), runtime_template, '2026-01-01T00:00:05Z')
+    if released_liveness['state'] != 'released' or released_liveness['authorizes_takeover']:
+        raise ContractError('invalid CDC 2.11.3 execution liveness template')
+    final_gate_template = json.loads((ROOT / 'templates/final-response-gate.json').read_text())
+    final_gate = evaluate_final_response_gate(final_gate_template['invocation_id'], final_gate_template['lease'],
+                                              final_gate_template['continuity'], final_gate_template['owned_lease'],
+                                              final_gate_template['release_receipt'], None, '2026-01-01T00:00:00Z')
+    if not final_gate['allowed'] or not final_gate['final_response_allowed']:
+        raise ContractError('invalid CDC 2.11.3 final-response gate template')
+    validate_fleet_supervisor_control(json.loads((ROOT / 'templates/fleet-supervisor-state.json').read_text()))
+    adoption_plan = assess_consumer_adoption(json.loads((ROOT / 'templates/consumer-adoption-publication.json').read_text()))
+    if adoption_plan['action'] != 'PREPARE_DETACHED' or adoption_plan['authorizes_ref_move']:
+        raise ContractError('invalid CDC 2.11.3 atomic adoption template')
     validate_resume_capsule(json.loads((ROOT / 'templates/resume-capsule.json').read_text()))
     continuity_template = json.loads((ROOT / 'templates/execution-continuity.json').read_text())
     # Static example validation uses its own observation time, not live evidence.

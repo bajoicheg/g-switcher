@@ -35,6 +35,26 @@ class MemoryStore:
         return str(self.revision)
 
 
+class RecordingLeaderGuard:
+    def __init__(self):
+        self.invocation_id="survivability-test"
+        self.head="f"*40
+        self.generation=9
+
+    def binding(self, invocation_id):
+        if invocation_id!=self.invocation_id:
+            raise ValueError("leader invocation mismatch")
+        return {
+            "schema":"fleet-leader-binding/v1",
+            "fleet_repository":"owner/fleet",
+            "fleet_ref":"refs/heads/cdc/fleet",
+            "owner_id":"88888888-8888-4888-8888-888888888888",
+            "generation":self.generation,
+            "invocation_id":self.invocation_id,
+            "observed_fleet_head":self.head,
+        }
+
+
 class RecordingBackend:
     def __init__(self, inv=None):
         self.inventory = copy.deepcopy(inv or inventory([]))
@@ -94,7 +114,9 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         self.assertIsNotNone(runtime_mod, "watchdog survivability runtime is not implemented")
         self.store = MemoryStore()
         self.backend = RecordingBackend()
-        self.runtime = runtime_mod.WatchdogSurvivabilityRuntime(self.store, self.backend, clock=lambda: NOW)
+        self.leader_guard = RecordingLeaderGuard()
+        self.runtime = runtime_mod.WatchdogSurvivabilityRuntime(
+            self.store, self.backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         self.runtime.register(desired(canonical_object_id=None))
 
     def test_missing_watchdog_fences_generation_before_create_and_adopts_readback(self):
@@ -109,7 +131,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
     def test_stale_idle_object_without_quiescence_proof_does_not_bump_generation_or_create(self):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj("wd-old", generation=6, execution_state="idle")]))
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         result = runtime.reconcile(desired()["binding"])
         current = runtime.snapshot()["entries"][runtime_mod.binding_key(desired()["binding"])]["desired"]
@@ -124,7 +146,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
             if reads == 2:
                 other.inventory["objects"] = [obj("wd-old", generation=6, execution_state="running")]
         backend.before_observe = race
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired(canonical_object_id=None))
         result = runtime.reconcile(desired()["binding"])
         current = runtime.snapshot()["entries"][runtime_mod.binding_key(desired()["binding"])]["desired"]
@@ -138,7 +160,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
             obj("wd-old", generation=6, execution_state="idle",
                 quiescence_evidence=quiescence("wd-old", 6))
         ]))
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         result = runtime.reconcile(desired()["binding"])
         self.assertEqual(result["outcome"], "recreated")
@@ -146,6 +168,23 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         self.assertEqual(current["generation"], 8)
         self.assertEqual(current["canonical_object_id"], "wd-created-1")
         self.assertEqual([e[0] for e in backend.effects], ["create"])
+
+    def test_leader_head_change_after_claim_blocks_provider_io_without_unknown_effect(self):
+        store=MemoryStore()
+        backend=RecordingBackend(inventory([obj(enabled=False)]))
+        runtime=runtime_mod.WatchdogSurvivabilityRuntime(
+            store,backend,clock=lambda: NOW,leader_guard=self.leader_guard)
+        runtime.register(desired())
+        def move_leader(other,reads):
+            if reads==2:
+                self.leader_guard.head="e"*40
+        backend.before_observe=move_leader
+        result=runtime.reconcile(desired()["binding"])
+        self.assertEqual(result["outcome"],"fleet_head_or_leader_changed")
+        self.assertEqual(backend.effects,[])
+        entry=runtime.snapshot()["entries"][runtime_mod.binding_key(desired()["binding"])]
+        self.assertEqual(next(iter(entry["operations"].values()))["status"],"blocked")
+        self.leader_guard.head="f"*40
 
     def test_lost_create_reply_retains_generation_and_never_replays_create(self):
         self.backend.lose_create_reply = True
@@ -177,7 +216,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj(last_run_at_utc="2026-09-29T09:00:00Z")]))
         backend.lose_run_reply = True
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         first = runtime.reconcile(desired()["binding"])
         self.assertEqual(first["outcome"], "provider_outcome_unknown")
@@ -201,7 +240,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
                 other.inventory["objects"][0]["last_run_at_utc"] = NOW
                 other.inventory["objects"][0]["execution_state"] = "running"
         backend.before_observe = race
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         result = runtime.reconcile(desired()["binding"])
         self.assertEqual(result["outcome"], "post_claim_gate_denied")
@@ -236,7 +275,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         store = MemoryStore()
         backend = RecordingBackend(
             inventory([obj(), obj("wd-old", generation=6, execution_state="running")]))
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(d)
         first = runtime.reconcile(d["binding"])
         self.assertEqual(first["outcome"], "provider_outcome_unknown")
@@ -267,7 +306,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         d = desired()
         self.store = MemoryStore()
         self.backend = RecordingBackend(inventory([obj(), obj("wd-old", generation=6)]))
-        self.runtime = runtime_mod.WatchdogSurvivabilityRuntime(self.store, self.backend, clock=lambda: NOW)
+        self.runtime = runtime_mod.WatchdogSurvivabilityRuntime(self.store, self.backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         self.runtime.register(d)
         result = self.runtime.reconcile(d["binding"])
         self.assertEqual(result["outcome"], "duplicates_quiesced")
@@ -282,7 +321,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
             with self.subTest(effect=effect):
                 store = MemoryStore()
                 backend = RecordingBackend(inventory([current]))
-                runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+                runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
                 runtime.register(desired())
                 result = runtime.reconcile(desired()["binding"])
                 self.assertEqual(result["outcome"], {"enable": "enabled", "run": "run_requested"}[effect])
@@ -293,7 +332,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj(enabled=False)]))
         instant = [NOW]
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: instant[0])
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: instant[0], leader_guard=self.leader_guard)
         runtime.register(desired())
         self.assertEqual(runtime.reconcile(desired()["binding"])["outcome"], "enabled")
         backend.inventory["objects"][0]["enabled"] = False
@@ -307,7 +346,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj(last_run_at_utc="2026-09-29T09:00:00Z")]))
         instant = [NOW]
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: instant[0])
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: instant[0], leader_guard=self.leader_guard)
         runtime.register(desired())
         self.assertEqual(runtime.reconcile(desired()["binding"])["outcome"], "run_requested")
         backend.inventory["objects"][0]["execution_state"] = "idle"
@@ -328,7 +367,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
             with self.subTest(d=d):
                 store = MemoryStore()
                 backend = RecordingBackend(inv)
-                runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+                runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
                 runtime.register(d)
                 result = runtime.reconcile(d["binding"])
                 self.assertEqual(result["outcome"], "no_effect")
@@ -351,7 +390,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
         store = MemoryStore()
         inv = inventory([obj(execution_state="unknown")])
         backend = RecordingBackend(inv)
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         result = runtime.reconcile_registered()
         self.assertTrue(result["continuation_required"])
@@ -366,7 +405,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
     def test_reconciled_unknown_does_not_consume_current_batch_effect_budget(self):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj(enabled=False)]))
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
 
         def lost_enable_reply(binding, *, object_id, operation_id):
@@ -393,7 +432,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
     def test_registered_reconciliation_assesses_all_but_bounds_scheduler_effects(self):
         store = MemoryStore()
         runtime = runtime_mod.WatchdogSurvivabilityRuntime(
-            store, RecordingBackend(inventory([])), clock=lambda: NOW)
+            store, RecordingBackend(inventory([])), clock=lambda: NOW, leader_guard=self.leader_guard)
         alpha = desired(canonical_object_id=None)
         beta = desired(
             binding={"project_id": "beta", "source_ref": "refs/heads/main", "role": "project-watchdog"},
@@ -413,7 +452,7 @@ class WatchdogSurvivabilityRuntimeTests(unittest.TestCase):
     def test_duplicate_quiescence_consumes_one_effect_per_reconcile(self):
         store = MemoryStore()
         backend = RecordingBackend(inventory([obj(), obj("wd-old-1", generation=6), obj("wd-old-2", generation=5)]))
-        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW)
+        runtime = runtime_mod.WatchdogSurvivabilityRuntime(store, backend, clock=lambda: NOW, leader_guard=self.leader_guard)
         runtime.register(desired())
         first = runtime.reconcile_registered(max_effects=1)
         self.assertEqual(first["effects_attempted"], 1)

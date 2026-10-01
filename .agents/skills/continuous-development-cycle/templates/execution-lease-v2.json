@@ -15,5 +15,6 @@
   "submission_claims": [],
   "invocation": null,
   "finalization": null,
-  "legacy_migration": null
+  "legacy_migration": null,
+  "submission_resolutions": []
 }

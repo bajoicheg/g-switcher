@@ -163,6 +163,25 @@ class GitManagedExecutorStore:
             raise ValueError("managed-executor coordination ref moved during read")
         return revision, state
 
+    def read_revision(self, revision):
+        if not isinstance(revision, str) or not REVISION.fullmatch(revision):
+            raise ValueError("invalid historical managed-executor revision")
+        current, _ = self.read()
+        if current is None:
+            raise ValueError("managed-executor coordination history is absent")
+        if self._git("cat-file", "-t", revision) != "commit":
+            raise ValueError("historical managed-executor revision must be a commit")
+        try:
+            base = self._git("merge-base", revision, current)
+        except ValueError:
+            raise ValueError("historical managed-executor revision is not authoritative ancestry") from None
+        if base != revision:
+            raise ValueError("historical managed-executor revision is not authoritative ancestry")
+        if self._git("ls-tree", "--name-only", revision).splitlines() != [STATE_FILE]:
+            raise ValueError("historical managed-executor tree must contain only pool-state.json")
+        payload = self._git("show", f"{revision}:{STATE_FILE}") + "\n"
+        return self._decode_state(payload)
+
     def compare_and_swap(self, expected_revision, new_state):
         validate_state(self.plan, new_state)
         if new_state["coordination_ref"] != self.ref or new_state["coordination_store_id"] != self.store_id:

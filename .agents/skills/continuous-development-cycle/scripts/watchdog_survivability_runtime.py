@@ -31,11 +31,12 @@ def operation_key(binding, action, generation, object_id=None, basis=None):
 
 
 class WatchdogSurvivabilityRuntime:
-    def __init__(self, store, backend, *, clock, max_age_seconds=120):
+    def __init__(self, store, backend, *, clock, max_age_seconds=120, leader_guard=None):
         self.store = store
         self.backend = backend
         self.clock = clock
         self.max_age_seconds = max_age_seconds
+        self.leader_guard = leader_guard
 
     def _initial(self):
         return {"schema": SCHEMA, "coordination_ref": self.store.ref,
@@ -60,6 +61,12 @@ class WatchdogSurvivabilityRuntime:
                         or operation.get("action") not in {"create", "enable", "run", "disable"}
                         or not isinstance(operation.get("operation_id"), str) or not operation["operation_id"]):
                     raise ValueError("watchdog survivability operation invalid")
+                leader=operation.get("leader")
+                if leader is not None:
+                    expected_leader={"schema","fleet_repository","fleet_ref","owner_id","generation","invocation_id","observed_fleet_head"}
+                    if (not isinstance(leader,dict) or set(leader)!=expected_leader
+                            or leader.get("schema")!="fleet-leader-binding/v1"):
+                        raise ValueError("watchdog survivability leader binding invalid")
                 expected = operation_key(entry["desired"]["binding"], operation["action"],
                                          operation["generation"], operation.get("object_id"),
                                          operation.get("basis"))
@@ -134,7 +141,24 @@ class WatchdogSurvivabilityRuntime:
         result = assess(desired, inventory, now=self.clock(), max_age_seconds=self.max_age_seconds)
         return inventory, result
 
-    def _set_operation(self, key, action, generation, object_id=None, *, basis=None):
+    def _leader_binding(self, invocation_id=None, expected=None):
+        if self.leader_guard is None:
+            raise ValueError("Fleet leader guard required for watchdog scheduler effects")
+        if invocation_id is None:
+            invocation_id=getattr(self.leader_guard,"invocation_id",None)
+        if not isinstance(invocation_id,str) or not invocation_id:
+            raise ValueError("watchdog scheduler effect requires exact leader invocation")
+        value=self.leader_guard.binding(invocation_id)
+        fields={"schema","fleet_repository","fleet_ref","owner_id","generation","invocation_id","observed_fleet_head"}
+        if not isinstance(value,dict) or set(value)!=fields or value.get("schema")!="fleet-leader-binding/v1":
+            raise ValueError("Fleet leader binding invalid")
+        if value["invocation_id"]!=invocation_id:
+            raise ValueError("Fleet leader invocation mismatch")
+        if expected is not None and value!=expected:
+            raise ValueError("Fleet head or leader changed")
+        return copy.deepcopy(value)
+
+    def _set_operation(self, key, action, generation, object_id=None, *, basis=None, leader=None):
         op_key = operation_key(self._entry_by_key(key)["desired"]["binding"],
                                action, generation, object_id, basis)
         operation_id = "watchdog-operation-" + secrets.token_hex(24)
@@ -149,6 +173,7 @@ class WatchdogSurvivabilityRuntime:
                 "action": action, "generation": generation, "object_id": object_id,
                 "basis": basis, "operation_id": operation_id,
                 "status": "claimed", "claimed_at_utc": self.clock(),
+                "leader": copy.deepcopy(leader),
             }
             return True
 
@@ -255,10 +280,15 @@ class WatchdogSurvivabilityRuntime:
         _, assessment = self._observe(desired)
         return assessment
 
-    def reconcile_registered(self, *, max_effects=100):
+    def reconcile_registered(self, *, max_effects=100, invocation_id=None, leader_binding=None):
         """Assess every registered watchdog and apply a bounded number of scheduler effects."""
         if type(max_effects) is not int or not 0 <= max_effects <= 2000:
             raise ValueError("watchdog survivability max_effects must be 0..2000")
+        batch_leader=None
+        if max_effects>0:
+            batch_leader=(self._leader_binding(invocation_id)
+                          if leader_binding is None
+                          else self._leader_binding(invocation_id, expected=leader_binding))
         _, state = self._read()
         results = []
         effects_attempted = 0
@@ -277,7 +307,7 @@ class WatchdogSurvivabilityRuntime:
                     if assessment["action"] in effect_actions and effects_attempted >= max_effects:
                         result = {"outcome": "effect_budget_deferred", "assessment": assessment}
                     else:
-                        result = self.reconcile(binding)
+                        result = self.reconcile(binding, invocation_id=invocation_id, leader_binding=batch_leader)
                         if result["outcome"] in effect_outcomes:
                             effects_attempted += 1
             except Exception as exc:
@@ -307,7 +337,7 @@ class WatchdogSurvivabilityRuntime:
             "authorizes_scheduler_mutation": False,
         }
 
-    def reconcile(self, binding):
+    def reconcile(self, binding, *, invocation_id=None, leader_binding=None):
         key, entry = self._entry(binding)
         uncertain = self._reconcile_uncertain(key, entry)
         if uncertain is not None:
@@ -324,9 +354,12 @@ class WatchdogSurvivabilityRuntime:
             return {"outcome": "no_effect", "assessment": assessment}
         if action == "RECREATE":
             target_generation = assessment["next_generation"]
+            leader=(self._leader_binding(invocation_id)
+                    if leader_binding is None
+                    else self._leader_binding(invocation_id, expected=leader_binding))
             operation_id, op_key = self._set_operation(
                 key, "create", target_generation,
-                basis="generation:" + str(target_generation))
+                basis="generation:" + str(target_generation), leader=leader)
             if operation_id is None:
                 return {"outcome": "unreconciled_operation", "assessment": assessment}
 
@@ -365,6 +398,11 @@ class WatchdogSurvivabilityRuntime:
                              "pre-I/O replacement safety changed")
                 return {"outcome": "post_claim_gate_denied", "assessment": before_io}
             try:
+                self._leader_binding(invocation_id, expected=leader)
+            except ValueError:
+                self._finish(key, op_key, operation_id, "blocked", "fleet head or leader changed before provider I/O")
+                return {"outcome": "fleet_head_or_leader_changed", "assessment": before_io}
+            try:
                 reply = self.backend.create(copy.deepcopy(binding), generation=target_generation,
                                             schedule=desired["schedule"], template_digest=desired["template_digest"],
                                             operation_id=operation_id)
@@ -389,8 +427,11 @@ class WatchdogSurvivabilityRuntime:
             basis = ("disabled@" + inventory["observed_at_utc"] if verb == "enable"
                      else "run-after:" + str(before["last_run_at_utc"] or "never")
                      + ":failures:" + str(before["consecutive_failures"]))
+            leader=(self._leader_binding(invocation_id)
+                    if leader_binding is None
+                    else self._leader_binding(invocation_id, expected=leader_binding))
             operation_id, op_key = self._set_operation(
-                key, verb, generation, object_id, basis=basis)
+                key, verb, generation, object_id, basis=basis, leader=leader)
             if operation_id is None:
                 return {"outcome": "unreconciled_operation", "assessment": assessment}
             current = self._entry_by_key(key)["desired"]
@@ -398,6 +439,11 @@ class WatchdogSurvivabilityRuntime:
             if post_claim["action"] != action or not post_claim["recovery_eligible"]:
                 self._finish(key, op_key, operation_id, "blocked", "post-claim recovery action changed")
                 return {"outcome": "post_claim_gate_denied", "assessment": post_claim}
+            try:
+                self._leader_binding(invocation_id, expected=leader)
+            except ValueError:
+                self._finish(key, op_key, operation_id, "blocked", "fleet head or leader changed before provider I/O")
+                return {"outcome": "fleet_head_or_leader_changed", "assessment": post_claim}
             try:
                 method = getattr(self.backend, verb)
                 claimed_at = self._entry_by_key(key)["operations"][op_key]["claimed_at_utc"]
@@ -425,8 +471,11 @@ class WatchdogSurvivabilityRuntime:
                 return {"outcome": "observation_changed", "assessment": assessment}
             basis = ("duplicate:" + str(stale["generation"]) + "@"
                      + inventory["observed_at_utc"])
+            leader=(self._leader_binding(invocation_id)
+                    if leader_binding is None
+                    else self._leader_binding(invocation_id, expected=leader_binding))
             operation_id, op_key = self._set_operation(
-                key, "disable", desired["generation"], object_id, basis=basis)
+                key, "disable", desired["generation"], object_id, basis=basis, leader=leader)
             if operation_id is None:
                 return {"outcome": "unreconciled_operation", "assessment": assessment}
             current = self._entry_by_key(key)["desired"]
@@ -436,6 +485,11 @@ class WatchdogSurvivabilityRuntime:
                     or not post_claim["recovery_eligible"]):
                 self._finish(key, op_key, operation_id, "blocked", "post-claim duplicate action changed")
                 return {"outcome": "post_claim_gate_denied", "assessment": post_claim}
+            try:
+                self._leader_binding(invocation_id, expected=leader)
+            except ValueError:
+                self._finish(key, op_key, operation_id, "blocked", "fleet head or leader changed before provider I/O")
+                return {"outcome": "fleet_head_or_leader_changed", "assessment": post_claim}
             try:
                 reply = self.backend.disable(copy.deepcopy(binding), object_id=object_id, operation_id=operation_id)
                 inv, readback = self._observe(current)

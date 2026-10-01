@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -16,9 +17,11 @@ from git_remote_identity import endpoint_identity
 
 if importlib.util.find_spec("fleet_watchdog_runtime"):
     import fleet_watchdog_runtime as fleet
+    import fleet_supervisor_control as fleet_control
     from git_document_store import GitDocumentStore
 else:
     fleet = None
+    fleet_control = None
     GitDocumentStore = None
 
 
@@ -28,8 +31,13 @@ class RecordingSurvivability:
         self.continuation_required = continuation_required
         self.calls = []
 
-    def reconcile_registered(self, *, max_effects):
+    def reconcile_registered(self, *, max_effects, invocation_id=None, leader_binding=None):
         self.calls.append(max_effects)
+        if max_effects>0:
+            if not isinstance(invocation_id,str) or not invocation_id:
+                raise ValueError("invocation required")
+            if leader_binding is None:
+                raise ValueError("leader binding required")
         return {
             "schema": "watchdog-survivability-batch/v1",
             "registered_count": 1,
@@ -39,6 +47,43 @@ class RecordingSurvivability:
             "continuation_required": self.continuation_required,
             "authorizes_scheduler_mutation": False,
         }
+
+
+class RecordingLeaderGuard:
+    def __init__(self):
+        self.calls=[]
+        self.head="f"*40
+        self.effects={}
+
+    def binding(self, invocation_id):
+        self.calls.append(invocation_id)
+        return {
+            "schema":"fleet-leader-binding/v1",
+            "fleet_repository":"owner/fleet",
+            "fleet_ref":"refs/heads/cdc/fleet",
+            "owner_id":"66666666-6666-4666-8666-666666666666",
+            "generation":7,
+            "invocation_id":invocation_id,
+            "observed_fleet_head":self.head,
+        }
+
+    def claim_scheduler_effect(self,invocation_id,project,effect,recovery,policy_revision):
+        leader=self.binding(invocation_id)
+        payload={"project":project,"effect":effect,"schedule":recovery["schedule"],"prompt":recovery["prompt"],
+                 "expected_invocation":recovery["expected_invocation"],"policy_revision":policy_revision,
+                 "generation":leader["generation"],"head":leader["observed_fleet_head"]}
+        effect_id="sha256:"+hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+        if effect_id in self.effects:
+            return {"action":"OBSERVE_EXISTING","authorizes_effect":False,"effect":copy.deepcopy(self.effects[effect_id]),"leader":leader}
+        record={"effect_id":effect_id,"state":"claimed"}
+        self.effects[effect_id]=record
+        return {"action":"SUBMIT_ONCE","authorizes_effect":True,"effect":copy.deepcopy(record),"leader":leader}
+
+    def finish_scheduler_effect(self,invocation_id,effect_id,state_name,receipt_ref,outcome=None):
+        self.binding(invocation_id)
+        if effect_id not in self.effects:raise ValueError("effect not found")
+        self.effects[effect_id].update(state=state_name,receipt_ref=receipt_ref,outcome=outcome)
+        return copy.deepcopy(self.effects[effect_id])
 
 
 class RecordingScheduler:
@@ -104,6 +149,7 @@ class FleetTests(unittest.TestCase):
         self.projects = [copy.deepcopy(PROJECT)]
         self.store = self.make_store("controller-a")
         self.backend = RecordingScheduler(self.root, self.projects)
+        self.leader_guard = RecordingLeaderGuard()
 
     def git(self, *args, cwd=None, input=None):
         r = subprocess.run(["git", *args], cwd=cwd, input=input, text=True, capture_output=True, check=True)
@@ -118,10 +164,59 @@ class FleetTests(unittest.TestCase):
 
     def runtime(self, store=None, survivability=None):
         return fleet.FleetRuntime(store or self.store, self.backend, clock=lambda: NOW,
-                                  survivability_runtime=survivability)
+                                  survivability_runtime=survivability, leader_guard=self.leader_guard)
 
     def batch(self, runtime=None, budget=20, invocation="controller-invocation-1"):
         return (runtime or self.runtime()).run_batch(self.projects, max_effects=budget, invocation_id=invocation)
+
+    def acquire_leader(self,*args,**kwargs):
+        with mock.patch.object(fleet_control.leasev2.terminal_capability_api,"validate_verified",return_value={}):
+            return fleet_control.acquire_record(*args,terminal_capability=object(),**kwargs)
+
+    def test_git_leader_guard_binds_authoritative_remote_fleet_head(self):
+        source=self.root/"fleet-source"
+        source.mkdir();self.git("init","-q",str(source))
+        self.git("config","user.email","cdc@example.invalid",cwd=source)
+        self.git("config","user.name","CDC test",cwd=source)
+        (source/"fleet.txt").write_text("fleet\n")
+        self.git("add","fleet.txt",cwd=source);self.git("commit","-qm","fleet",cwd=source)
+        head=self.git("rev-parse","HEAD",cwd=source)
+        self.git("remote","add","origin",str(self.remote),cwd=source)
+        self.git("push","-q","origin","HEAD:refs/heads/cdc/fleet",cwd=source)
+
+        leader_repo=self.root/"leader-controller";leader_repo.mkdir()
+        self.git("init","-q",str(leader_repo));self.git("remote","add","origin",str(self.remote),cwd=leader_repo)
+        leader_store=GitDocumentStore(leader_repo,"origin","refs/heads/cdc/fleet-supervisor",self.store_id,
+                                      protected_refs=["refs/heads/cdc/fleet"])
+        state=fleet_control.initialize("owner/fleet","refs/heads/cdc/fleet")
+        state=self.acquire_leader(
+            state,"77777777-7777-4777-8777-777777777777",NOW,
+            {"invocation_id":"leader-live","automation_id":None,"conversation_id":None,
+             "execution_surface":"managed","started_at_utc":NOW})
+        leader_store.compare_and_swap(None,state)
+        guard=fleet.GitFleetLeaderGuard(
+            leader_store,owner_id="77777777-7777-4777-8777-777777777777",generation=1,
+            invocation_id="leader-live",clock=lambda: NOW)
+        binding=guard.binding("leader-live")
+        self.assertEqual(binding["observed_fleet_head"],head)
+        self.assertEqual(binding["generation"],1)
+
+    def test_positive_effect_budget_requires_fleet_leader_guard(self):
+        runtime=fleet.FleetRuntime(self.store,self.backend,clock=lambda: NOW)
+        with self.assertRaisesRegex(ValueError,"leader guard"):
+            runtime.run_batch(self.projects,max_effects=1,invocation_id="unfenced")
+        self.assertEqual(self.backend.effects, [])
+
+    def test_zero_effect_observation_does_not_require_leader(self):
+        runtime=fleet.FleetRuntime(self.store,self.backend,clock=lambda: NOW)
+        result=runtime.run_batch(self.projects,max_effects=0,invocation_id="observer")
+        self.assertEqual(result["effects_attempted"],0)
+        self.assertEqual(self.backend.effects, [])
+
+    def test_runtime_operation_key_keeps_legacy_incident_scope(self):
+        first=probe(self.projects[0])["binding"]
+        second=copy.deepcopy(first);second["incident_id"]="renamed-incident"
+        self.assertNotEqual(fleet.operation_key(first,"run"),fleet.operation_key(second,"run"))
 
     def test_survivability_repairs_share_the_same_bounded_fleet_effect_budget(self):
         survivability = RecordingSurvivability(effects_attempted=1)
@@ -188,7 +283,7 @@ class FleetTests(unittest.TestCase):
         self.backend.live["alpha"]["signals"]["invocation"].update(state="idle", invocation_id=None)
         instant = [NOW]
         self.backend.after_enable = lambda backend, project: instant.__setitem__(0, "2026-09-28T12:00:02Z")
-        runtime = fleet.FleetRuntime(self.store, self.backend, clock=lambda: instant[0])
+        runtime = fleet.FleetRuntime(self.store, self.backend, clock=lambda: instant[0], leader_guard=self.leader_guard)
         result = runtime.run_batch(self.projects, max_effects=2, invocation_id="deadline-wake", deadline_utc="2026-09-28T12:00:01Z")
         self.assertEqual(self.backend.effects, [("alpha", "enable")])
         self.assertTrue(result["continuation_required"])
@@ -214,10 +309,18 @@ class FleetTests(unittest.TestCase):
         self.assertEqual(self.backend.effects, [])
         self.assertTrue(result["continuation_required"])
 
+    def test_fleet_head_change_between_effects_stops_old_batch(self):
+        self.backend.live["alpha"]["signals"]["invocation"].update(state="idle", invocation_id=None)
+        self.backend.after_enable=lambda backend,project:setattr(self.leader_guard,"head","e"*40)
+        result=self.batch(budget=2,invocation="head-change-wake")
+        self.assertEqual(self.backend.effects,[("alpha","enable")])
+        self.assertEqual(result["outcomes"][fleet.binding_key(self.projects[0])],"fleet_head_or_leader_changed")
+        self.assertTrue(result["continuation_required"])
+
     def test_wake_deadline_exhaustion_between_enable_and_run_preserves_schedule_and_remainder(self):
         instant = [NOW]
         self.backend.after_enable = lambda backend, project: instant.__setitem__(0, "2026-09-28T12:00:02Z")
-        runtime = fleet.FleetRuntime(self.store, self.backend, clock=lambda: instant[0])
+        runtime = fleet.FleetRuntime(self.store, self.backend, clock=lambda: instant[0], leader_guard=self.leader_guard)
         result = runtime.run_batch(self.projects, max_effects=20, invocation_id="deadline-wake", deadline_utc="2026-09-28T12:00:01Z")
         self.assertEqual(self.backend.effects, [("alpha", "enable")])
         self.assertTrue(result["continuation_required"])
@@ -257,6 +360,7 @@ class FleetTests(unittest.TestCase):
                 store = self.make_store("gate-" + str(index))
                 store.ref = "refs/heads/cdc/gate-" + str(index)
                 self.backend = RecordingScheduler(self.root, self.projects)
+                self.leader_guard = RecordingLeaderGuard()
                 def change(backend, project):
                     backend.live[project["project_id"]]["signals"][signal].update(patch)
                 self.backend.after_enable = change
@@ -528,11 +632,44 @@ def build(config):
         backend.enable = lambda *args, **kwargs: os._exit(19)
     return backend
 ''')
+        # Production CLI requires a real Fleet Supervisor leader state and a
+        # distinct authoritative Fleet ref on the same immutable remote identity.
+        fleet_blob = self.git("hash-object", "-w", "--stdin", cwd=self.store.repo, input="fleet\n")
+        fleet_tree = self.git("mktree", cwd=self.store.repo, input=f"100644 blob {fleet_blob}\tfleet.txt\n")
+        fleet_commit = self.store._git("commit-tree", fleet_tree, input_text="fleet head\n")
+        self.git("push", "-q", "origin", fleet_commit + ":refs/heads/cdc/fleet", cwd=self.store.repo)
+
+        leader_repo = self.root / "cli-leader"
+        leader_repo.mkdir(exist_ok=True)
+        if not (leader_repo / ".git").exists():
+            self.git("init", "-q", str(leader_repo))
+            self.git("remote", "add", "origin", str(self.remote), cwd=leader_repo)
+        leader_ref = "refs/heads/cdc/fleet-supervisor"
+        leader_store = GitDocumentStore(
+            leader_repo, "origin", leader_ref, self.store_id,
+            protected_refs=["refs/heads/cdc/fleet"])
+        owner_id = "88888888-8888-4888-8888-888888888888"
+        at = fleet.now_utc()
+        leader_state = fleet_control.initialize("owner/fleet", "refs/heads/cdc/fleet")
+        leader_state = self.acquire_leader(
+            leader_state, owner_id, at,
+            {"invocation_id":"cli-invocation","automation_id":None,"conversation_id":None,
+             "execution_surface":"managed","started_at_utc":at},
+            ttl=3600)
+        leader_revision, existing_leader = leader_store.read()
+        if existing_leader is None:
+            leader_store.compare_and_swap(leader_revision, leader_state)
+
         config = self.root / "fleet.json"
-        config.write_text(json.dumps({"store": {"repo": str(self.store.repo), "remote": "origin", "coordination_ref": self.ref,
-                                                "coordination_store_id": self.store_id, "protected_refs": ["refs/heads/main"]},
-                                      "projects": self.projects, "max_effects": 2, "invocation_id": "cli-invocation",
-                                      "backend_config": {"root": str(self.root), "projects": self.projects, "crash": crash}}))
+        config.write_text(json.dumps({
+          "store": {"repo": str(self.store.repo), "remote": "origin", "coordination_ref": self.ref,
+                    "coordination_store_id": self.store_id, "protected_refs": ["refs/heads/main"]},
+          "leader_store": {"repo": str(leader_repo), "remote": "origin", "coordination_ref": leader_ref,
+                           "coordination_store_id": self.store_id, "protected_refs": ["refs/heads/cdc/fleet"]},
+          "leader": {"owner_id": owner_id, "generation": 1, "invocation_id": "cli-invocation"},
+          "projects": self.projects, "max_effects": 2, "invocation_id": "cli-invocation",
+          "backend_config": {"root": str(self.root), "projects": self.projects, "crash": crash}
+        }))
         scripts = Path(__file__).resolve().parents[1] / "scripts"
         env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(self.root), str(Path(__file__).parent), str(scripts)]))
         command = [sys.executable, "-B", str(scripts / "fleet_watchdog_runtime.py"), str(config), "--backend", "local_scheduler_adapter:build"]

@@ -16,6 +16,8 @@ import secrets
 import sys
 
 from git_document_store import GitDocumentStore
+from git_remote_identity import isolated_remote_args
+import fleet_supervisor_control as fleet_control
 from parallel_task_planner import portable_path_key
 from watchdog_liveness import assess, binding_key, now_utc, text, utc, validate_binding
 
@@ -31,6 +33,96 @@ def operation_key(binding, effect):
     return binding_key(binding) + ":" + effect
 
 
+class GitFleetLeaderGuard:
+    """Read-only verifier for an already-acquired Fleet Supervisor leader lease."""
+
+    def __init__(self, store, *, owner_id, generation, invocation_id, clock=now_utc):
+        if not isinstance(store, GitDocumentStore):
+            raise ValueError("Fleet leader state requires GitDocumentStore")
+        self.store=store
+        self.owner_id=owner_id
+        self.generation=generation
+        self.invocation_id=invocation_id
+        self.clock=clock
+
+    def _live_fleet_head(self,state):
+        self.store._assert_remote_identity()
+        if portable_path_key(self.store.ref)==portable_path_key(state["fleet_ref"]):
+            raise ValueError("Fleet leader state ref must be isolated from authoritative Fleet ref")
+        # Reuse the coordination store's immutable remote identity, but read the
+        # authoritative Fleet ref rather than trusting config bytes.
+        config,alias=isolated_remote_args(self.store.repo,self.store.remote,self.store.store_id)
+        output=self.store._git(*config,"ls-remote","--refs",alias,state["fleet_ref"])
+        rows=[line for line in output.splitlines() if line.strip()]
+        if len(rows)!=1:
+            raise ValueError("authoritative Fleet ref must resolve exactly once")
+        parts=rows[0].split("\t")
+        if len(parts)!=2 or parts[1]!=state["fleet_ref"] or len(parts[0])!=40 or any(ch not in "0123456789abcdef" for ch in parts[0]):
+            raise ValueError("authoritative Fleet ref response invalid")
+        return parts[0]
+
+    def binding(self, invocation_id):
+        if invocation_id!=self.invocation_id:
+            raise ValueError("Fleet runtime invocation does not match leader invocation")
+        _,state=self.store.read()
+        if state is None:
+            raise ValueError("Fleet leader state is absent")
+        live_head=self._live_fleet_head(state)
+        return fleet_control.leader_binding(
+            state,self.owner_id,self.generation,self.invocation_id,self.clock(),live_head)
+
+    def claim_scheduler_effect(self, invocation_id, project, effect, recovery, policy_revision):
+        if invocation_id!=self.invocation_id:
+            raise ValueError("Fleet runtime invocation does not match leader invocation")
+        target="watchdog:"+binding_key(project)
+        intent={
+            "effect":effect,
+            "schedule":recovery["schedule"],
+            "prompt":recovery["prompt"],
+            "expected_invocation":copy.deepcopy(recovery["expected_invocation"]),
+            "policy_revision":policy_revision,
+            "leader_generation":self.generation,
+            "leader_invocation_id":self.invocation_id,
+        }
+        for _ in range(6):
+            revision,state=self.store.read()
+            if state is None:
+                raise ValueError("Fleet leader state is absent")
+            live_head=self._live_fleet_head(state)
+            leader=fleet_control.leader_binding(
+                state,self.owner_id,self.generation,self.invocation_id,self.clock(),live_head)
+            request={"kind":"scheduler_repair","target":target,"observed_fleet_head":live_head,"intent":intent}
+            changed,decision=fleet_control.claim_effect_record(
+                state,self.owner_id,self.generation,self.invocation_id,self.clock(),live_head,request)
+            if decision["action"]!="SUBMIT_ONCE":
+                return {**decision,"leader":leader}
+            try:
+                self.store.compare_and_swap(revision,changed)
+                return {**decision,"leader":leader}
+            except ValueError:
+                continue
+        raise ValueError("Fleet effect journal contention or unavailable CAS")
+
+    def finish_scheduler_effect(self, invocation_id, effect_id, state_name, receipt_ref, outcome=None):
+        if invocation_id!=self.invocation_id:
+            raise ValueError("Fleet runtime invocation does not match leader invocation")
+        for _ in range(6):
+            revision,state=self.store.read()
+            if state is None:
+                raise ValueError("Fleet leader state is absent")
+            try:
+                changed=fleet_control.update_effect_record(
+                    state,self.owner_id,self.generation,self.invocation_id,self.clock(),
+                    effect_id,state_name,receipt_ref,outcome)
+            except ValueError:
+                raise
+            try:
+                self.store.compare_and_swap(revision,changed)
+                return next(copy.deepcopy(e) for e in changed["effects"] if e["effect_id"]==effect_id)
+            except ValueError:
+                continue
+        raise ValueError("Fleet effect completion contention or unavailable CAS")
+
 class FleetRuntime:
     """backend.observe(project), enable(...), and run(...) are real capabilities.
 
@@ -40,12 +132,16 @@ class FleetRuntime:
     """
 
     def __init__(self, store, backend, *, clock=now_utc, max_age_seconds=120,
-                 survivability_runtime=None):
+                 survivability_runtime=None, leader_guard=None):
         self.store = store
         self.backend = backend
         self.clock = clock
         self.max_age_seconds = max_age_seconds
         self.survivability_runtime = survivability_runtime
+        self.leader_guard = leader_guard
+        if (self.survivability_runtime is not None and self.leader_guard is not None
+                and getattr(self.survivability_runtime, "leader_guard", None) is None):
+            self.survivability_runtime.leader_guard = self.leader_guard
 
     def _initial_state(self):
         return {"schema": SCHEMA, "coordination_ref": self.store.ref,
@@ -74,9 +170,28 @@ class FleetRuntime:
             raise ValueError("Fleet pending continuation invalid")
         for key, op in state["operations"].items():
             validate_binding(op["binding"])
-            if (op.get("effect") not in {"enable", "run"} or key != operation_key(op["binding"], op["effect"])
+            if (op.get("effect") not in {"enable", "run"} or key != operation_key(op["binding"],op["effect"])
                     or op.get("status") not in {"claimed", "succeeded", "blocked", "unknown"}):
                 raise ValueError("Fleet operation identity or status invalid")
+            leader=op.get("leader")
+            if leader is not None:
+                expected={"schema","fleet_repository","fleet_ref","owner_id","generation","invocation_id","observed_fleet_head"}
+                if not isinstance(leader,dict) or set(leader)!=expected or leader.get("schema")!="fleet-leader-binding/v1":
+                    raise ValueError("Fleet operation leader binding invalid")
+                if leader["invocation_id"]!=op.get("controller_invocation_id"):
+                    raise ValueError("Fleet operation leader/controller mismatch")
+                if (not isinstance(leader["generation"],int) or leader["generation"]<1
+                        or not isinstance(leader["owner_id"],str) or not leader["owner_id"]
+                        or not isinstance(leader["fleet_repository"],str) or not leader["fleet_repository"]
+                        or not isinstance(leader["fleet_ref"],str) or not leader["fleet_ref"].startswith("refs/heads/")
+                        or not isinstance(leader["observed_fleet_head"],str) or len(leader["observed_fleet_head"])!=40
+                        or any(ch not in "0123456789abcdef" for ch in leader["observed_fleet_head"])):
+                    raise ValueError("Fleet operation leader binding values invalid")
+            fleet_effect_id=op.get("fleet_effect_id")
+            if fleet_effect_id is not None:
+                if (leader is None or not isinstance(fleet_effect_id,str) or not fleet_effect_id.startswith("sha256:")
+                        or len(fleet_effect_id)!=71 or any(ch not in "0123456789abcdef" for ch in fleet_effect_id[7:])):
+                    raise ValueError("Fleet operation effect provenance invalid")
             text(op.get("operation_id"), "operation_id")
             text(op.get("controller_invocation_id"), "controller_invocation_id")
             if op["controller_invocation_id"] not in state["wake_budgets"]:
@@ -129,6 +244,17 @@ class FleetRuntime:
         result = assess(value, now=self.clock(), max_age_seconds=self.max_age_seconds, expected_binding=binding)
         return value, result
 
+    def _leader_binding(self, invocation_id):
+        if self.leader_guard is None:
+            raise ValueError("Fleet leader guard required for side effects")
+        value=self.leader_guard.binding(invocation_id)
+        expected={"schema","fleet_repository","fleet_ref","owner_id","generation","invocation_id","observed_fleet_head"}
+        if not isinstance(value,dict) or set(value)!=expected or value.get("schema")!="fleet-leader-binding/v1":
+            raise ValueError("Fleet leader binding invalid")
+        if value["invocation_id"]!=invocation_id:
+            raise ValueError("Fleet leader binding invocation mismatch")
+        return copy.deepcopy(value)
+
     def _uncertain(self, state, project):
         return any(op["binding"]["watchdog_id"] == project["watchdog_id"]
                    and (op["status"] in {"claimed", "unknown"}
@@ -175,7 +301,7 @@ class FleetRuntime:
             return changed
         self._change(transform)
 
-    def _recover(self, project, initial, remaining, invocation_id, batch_budget):
+    def _recover(self, project, initial, remaining, invocation_id, batch_budget, batch_leader):
         binding = initial["binding"]
         recovery_key = binding_key(binding)
         value, assessment = self._observe(project, binding)
@@ -214,6 +340,23 @@ class FleetRuntime:
             value, assessment = self._observe(project, binding)
             if not self._effect_gate(value, assessment, recovery, effect):
                 return attempted, "fresh_gate_denied"
+            if batch_leader is None or self._leader_binding(invocation_id)!=batch_leader:
+                return attempted, "fleet_head_or_leader_changed"
+            if self.leader_guard is None or not hasattr(self.leader_guard,"claim_scheduler_effect"):
+                raise ValueError("Fleet leader guard lacks scheduler effect journal")
+            outer=self.leader_guard.claim_scheduler_effect(
+                invocation_id,project,effect,recovery,value["signals"]["policy"]["revision"])
+            if outer["action"]!="SUBMIT_ONCE":
+                return attempted, "fleet_effect_already_claimed"
+            if outer["leader"]!=batch_leader:
+                try:
+                    self.leader_guard.finish_scheduler_effect(
+                        invocation_id,outer["effect"]["effect_id"],"terminal","control:leader-binding-changed","not_submitted")
+                except Exception:
+                    pass
+                return attempted, "fleet_head_or_leader_changed"
+            leader_binding=copy.deepcopy(batch_leader)
+            fleet_effect_id=outer["effect"]["effect_id"]
             operation_id = "operation-" + secrets.token_hex(24)
             def claim(state):
                 if key in state["operations"] or self._uncertain(state, project):
@@ -225,18 +368,32 @@ class FleetRuntime:
                     "binding": binding, "effect": effect, "status": "claimed", "operation_id": operation_id,
                     "controller_invocation_id": invocation_id, "claimed_at_utc": self.clock(),
                     "policy_revision": value["signals"]["policy"]["revision"],
+                    "leader": copy.deepcopy(leader_binding),
+                    "fleet_effect_id": fleet_effect_id,
                 }
                 return True
             if not self._change(claim):
+                try:
+                    self.leader_guard.finish_scheduler_effect(
+                        invocation_id,fleet_effect_id,"terminal","control:internal-claim-denied","not_submitted")
+                except Exception:
+                    pass
                 return attempted, "claim_not_granted"
             # Pause, policy, owner, guard, external, exact invocation, and provider
             # budget are reread AFTER the durable claim and immediately before IO.
             try:
                 live, gate = self._observe(project, binding)
-                allowed = self._effect_gate(live, gate, recovery, effect) and self._time_available(batch_budget)
+                current_leader=self._leader_binding(invocation_id)
+                allowed = (current_leader==leader_binding and self._effect_gate(live, gate, recovery, effect)
+                           and self._time_available(batch_budget))
             except Exception:
                 allowed = False
             if not allowed:
+                try:
+                    self.leader_guard.finish_scheduler_effect(
+                        invocation_id,fleet_effect_id,"terminal","control:post-claim-gate-denied","not_submitted")
+                except Exception:
+                    pass
                 self._finish(key, operation_id, "blocked", "post_claim_gate_denied")
                 return attempted, "post_claim_gate_denied"
             attempted += 1
@@ -264,11 +421,24 @@ class FleetRuntime:
                 if not valid:
                     raise ValueError("scheduler exact readback disagrees")
             except Exception:
+                try:
+                    self.leader_guard.finish_scheduler_effect(
+                        invocation_id,fleet_effect_id,"unknown","scheduler-attempt:"+operation_id)
+                except Exception:
+                    pass
                 self._finish(key, operation_id, "unknown", "provider_reply_or_exact_readback_unconfirmed")
                 return attempted, "provider_outcome_unknown"
             receipt = ({"provider_invocation_id": reply["invocation_id"],
                         "invocation_terminal": readback["signals"]["invocation"]["state"] == "completed"}
                        if effect == "run" else None)
+            outer_receipt=("provider-invocation:"+reply["invocation_id"] if effect=="run"
+                           else "scheduler-operation:"+operation_id)
+            try:
+                self.leader_guard.finish_scheduler_effect(
+                    invocation_id,fleet_effect_id,"terminal",outer_receipt,"success")
+            except Exception:
+                self._finish(key, operation_id, "unknown", "fleet_effect_completion_unconfirmed")
+                return attempted, "provider_outcome_unknown"
             if not self._finish(key, operation_id, "succeeded", "exact_readback_confirmed", receipt):
                 return attempted, "claim_completion_unconfirmed"
         return attempted, "recovery_steps_consumed"
@@ -292,6 +462,7 @@ class FleetRuntime:
             raise ValueError("batch effect budget must be an integer from 0 to 2000")
         if not isinstance(projects, list) or not 0 < len(projects) <= MAX_PROJECTS:
             raise ValueError("registry must contain 1 to 1000 projects")
+        batch_leader=self._leader_binding(invocation_id) if max_effects>0 else None
         projects = copy.deepcopy(projects)
         for project in projects:
             validate_binding(project, incident=False)
@@ -306,7 +477,10 @@ class FleetRuntime:
         survivability_effects = 0
         if self.survivability_runtime is not None:
             try:
-                survivability = self.survivability_runtime.reconcile_registered(max_effects=max_effects)
+                if max_effects>0 and self._leader_binding(invocation_id)!=batch_leader:
+                    raise ValueError("Fleet head or leader changed before survivability effects")
+                survivability = self.survivability_runtime.reconcile_registered(
+                    max_effects=max_effects, invocation_id=invocation_id, leader_binding=batch_leader)
                 if (not isinstance(survivability, dict)
                         or type(survivability.get("effects_attempted")) is not int
                         or not 0 <= survivability["effects_attempted"] <= max_effects
@@ -348,7 +522,8 @@ class FleetRuntime:
                     pending.discard(key)
             state["pending"] = sorted(pending)
             state["last_batch"] = {"invocation_id": invocation_id, "max_effects": max_effects,
-                                   "assessed_projects": keys, "checkpoint_at_utc": self.clock()}
+                                   "assessed_projects": keys, "checkpoint_at_utc": self.clock(),
+                                   "leader": copy.deepcopy(batch_leader)}
             return True
         self._change(checkpoint)
         batch_budget, outcomes = {"attempted": survivability_effects, "deadline_utc": deadline_utc}, {}
@@ -360,7 +535,7 @@ class FleetRuntime:
                 outcomes[key] = "batch_budget_exhausted"
                 continue
             try:
-                _, outcome = self._recover(project, observations[key], max_effects - batch_budget["attempted"], invocation_id, batch_budget)
+                _, outcome = self._recover(project, observations[key], max_effects - batch_budget["attempted"], invocation_id, batch_budget, batch_leader)
                 outcomes[key] = outcome
             except Exception:
                 # A claim may already be durable. Preserve it and report uncertainty.
@@ -399,7 +574,14 @@ def main(argv=None):
             raise ValueError("backend must be an explicit module:factory")
         backend = getattr(importlib.import_module(module), factory)(config.get("backend_config", {}))
         store = GitDocumentStore(**config["store"])
-        result = FleetRuntime(store, backend).run_batch(config["projects"], max_effects=config["max_effects"], invocation_id=config["invocation_id"], deadline_utc=config.get("deadline_utc"))
+        leader_guard=None
+        if config["max_effects"]>0:
+            leader_store=GitDocumentStore(**config["leader_store"])
+            leader=copy.deepcopy(config["leader"])
+            leader_guard=GitFleetLeaderGuard(leader_store,clock=now_utc,**leader)
+        result = FleetRuntime(store, backend, leader_guard=leader_guard).run_batch(
+            config["projects"], max_effects=config["max_effects"], invocation_id=config["invocation_id"],
+            deadline_utc=config.get("deadline_utc"))
         print(json.dumps(result, sort_keys=True))
         return 0
     except (OSError, ValueError, KeyError, TypeError, ImportError, AttributeError) as exc:

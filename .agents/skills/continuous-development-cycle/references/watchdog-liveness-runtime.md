@@ -99,7 +99,9 @@ covers live target, package, handoff, and integration proofs. Independent bootst
 uses an equivalent stdlib-only environment; arbitrary user validation commands and
 worker command environments retain their existing semantics.
 
-`FleetRuntime(store, backend).run_batch(projects, max_effects=...,
+Under CDC 2.11.3, any positive Fleet effect budget additionally requires a `GitFleetLeaderGuard` bound to the exact Fleet Supervisor owner/generation/invocation. The guard re-reads the authoritative remote `cdc/fleet` HEAD; one batch is fenced to one leader binding and any leader/HEAD change stops further effects. `max_effects=0` remains read-only and requires no leader. Incident labels remain part of the legacy runtime attempt lineage, but they are excluded from the outer CDC 2.11.3 Fleet-leader effect identity. The outer journal is authoritative for cross-subscription duplicate suppression.
+
+`FleetRuntime(store, backend, leader_guard=...).run_batch(projects, max_effects=...,
 invocation_id=..., deadline_utc=...)` assesses every registered project (maximum
 1000), durably checkpoints all assessments and remaining work, then attempts each
 eligible recovery within the budget. `deadline_utc` is optional; supply the host's

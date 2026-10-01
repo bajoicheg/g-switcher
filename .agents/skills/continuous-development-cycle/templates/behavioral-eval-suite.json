@@ -107,6 +107,90 @@
         "failure:emulator:default",
         "retry:emulator:smaller-disk"
       ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "orphan-release-gate",
+      "scenario_type": "orphan_owned_final_response",
+      "facts": {
+        "lease_owned": true,
+        "runtime_state": "stopped",
+        "pending_effects": false
+      },
+      "baseline_trace": [
+        "read_owner",
+        "status:active",
+        "final_response"
+      ],
+      "corrected_trace": [
+        "runtime:stopped",
+        "classify:orphaned_recoverable",
+        "gate:block_owned",
+        "release",
+        "release_receipt",
+        "final_response"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "dual-fleet-leader",
+      "scenario_type": "dual_fleet_supervisor",
+      "facts": {
+        "same_initial_revision": true
+      },
+      "baseline_trace": [
+        "supervisor:a",
+        "supervisor:b",
+        "provider_effect:a",
+        "provider_effect:b"
+      ],
+      "corrected_trace": [
+        "cas:a:leader",
+        "cas:b:stale",
+        "provider_effect:a"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "atomic-consumer-adoption",
+      "scenario_type": "partial_consumer_adoption",
+      "facts": {
+        "target_version": "2.11.3"
+      },
+      "baseline_trace": [
+        "write:VERSION",
+        "shared_ref:partial_target",
+        "write:package"
+      ],
+      "corrected_trace": [
+        "prepare:detached",
+        "verify:package_tree",
+        "claim:conditional_publish",
+        "conditional_fast_forward",
+        "readback:package_tree"
+      ]
+    },
+    {
+      "schema": "behavioral-eval-case/v1",
+      "scenario_id": "successor-release-receipt",
+      "scenario_type": "successor_release_receipt",
+      "facts": {
+        "first_generation": 1,
+        "successor_generation": 2
+      },
+      "baseline_trace": [
+        "release:g1",
+        "release:g2",
+        "read:last_release:g2",
+        "final_response:g1:blocked"
+      ],
+      "corrected_trace": [
+        "release:g1",
+        "capture_receipt:g1",
+        "release:g2",
+        "verify_receipt:g1",
+        "final_response:g1"
+      ]
     }
   ]
 }

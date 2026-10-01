@@ -1,3 +1,7 @@
+## CDC 2.11.3 authoritative provenance
+
+Use canonical `bajoicheg/g-cdc` **v2.11.3**, release `refs/heads/release/v2.11.3`, commit `ed8256d1b80cc3f5424890e5488d5fbbcb57a304`, exact package tree `39f733127ac130de4f647cf9e5ec55afcca0769c`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical. This process-only convergence changes no product acceptance gate and performs no scheduler mutation.
+
 ## CDC 2.11.2 authoritative provenance
 
 Use canonical `bajoicheg/g-cdc` **v2.11.2**, release `refs/heads/release/v2.11.2`, commit `48e637b230e7640d0dcd13da60d712f38f59a2b6`, exact package tree `7a7a7faa75b7fc9160d912d8fb507c6b9573d17f`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; earlier version statements below are historical. Read the current vendored SKILL.md and validate the adapter and checkpoint before execution.

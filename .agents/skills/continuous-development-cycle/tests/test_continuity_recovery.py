@@ -2,6 +2,8 @@
 import copy
 import sys
 import unittest
+from unittest import mock
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -23,10 +25,12 @@ def state(outcome="progress", runnable=True):
 
 
 def owned():
-    return lease.acquire(lease.initialize("example/project", "refs/heads/main"),
-                         OWNER, AT, invocation=dict(invocation_id="recovery",
-                         automation_id=None, conversation_id=None,
-                         execution_surface="work", started_at_utc=AT))
+    with mock.patch.object(lease.terminal_capability_api,"validate_verified",return_value={}):
+        return lease.acquire(lease.initialize("example/project", "refs/heads/main"),
+                             OWNER, AT, invocation=dict(invocation_id="recovery",
+                             automation_id=None, conversation_id=None,
+                             execution_surface="managed", started_at_utc=AT),
+                             terminal_capability=object())
 
 
 def reconciled():

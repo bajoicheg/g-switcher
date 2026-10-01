@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.11.2
+# Continuous Development Cycle v2.11.3
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 
@@ -238,3 +238,14 @@ Fresh registry/release target resolution and durable all-project watchdog recove
 ## v2.11.2 cooperative lanes and watchdog survivability
 
 CDC can coordinate disjoint foreground/watchdog/Work/Codex project lanes under one shared-branch integrator, while desired-state watchdog survivability detects and safely reconciles missing, disabled, overdue, drifted, duplicate or flapping scheduler materializations. Explicit owner pause remains authoritative.
+
+
+## v2.11.3 multi-subscription ownership integrity
+
+- One invocation-bound Fleet Supervisor leader owns Fleet-wide side effects; other subscriptions are standby observers or project executors.
+- One-shot Fleet effect claims bind leader generation/invocation and exact Fleet HEAD, so duplicate wake/repair/enqueue attempts reconcile instead of replay.
+- Independent runtime evidence distinguishes active execution from orphaned or unknown lease records.
+- Persistent lease ownership is package-managed-only; ordinary ChatGPT/Work/Codex/watchdog/API surfaces without a mechanically enforceable terminal boundary are observer/orchestrator-only. Managed owners still require exact durable release proof before terminal completion.
+- Consumer adoption binds every required path to an immutable assembly-manifest Git object, validates consumer-lock target semantics, then publishes once by conditional fast-forward and exact readback.
+
+Read `references/multi-subscription-coordination-and-ownership.md`.

@@ -107,6 +107,29 @@ class GitDocumentStore:
             raise ValueError("coordination ref moved during read")
         return revision, document
 
+    def read_revision(self, revision):
+        """Read an immutable document from this coordination ref's authoritative history."""
+        if not isinstance(revision, str) or not REVISION.fullmatch(revision):
+            raise ValueError("invalid historical document revision")
+        current, _ = self.read()
+        if current is None:
+            raise ValueError("document coordination history is absent")
+        if self._git("cat-file", "-t", revision) != "commit":
+            raise ValueError("historical document revision must be a commit")
+        try:
+            base = self._git("merge-base", revision, current)
+        except ValueError:
+            raise ValueError("historical revision is not in authoritative document ancestry") from None
+        if base != revision:
+            raise ValueError("historical revision is not in authoritative document ancestry")
+        if self._git("ls-tree", "--name-only", revision).splitlines() != [STATE_FILE]:
+            raise ValueError("historical coordination tree must contain only document.json")
+        payload = self._git("show", f"{revision}:{STATE_FILE}") + "\n"
+        document = json.loads(payload, object_pairs_hook=unique_object)
+        if canonical(document) != payload:
+            raise ValueError("historical coordination document must have canonical JSON encoding")
+        return document
+
     def compare_and_swap(self, expected_revision, document):
         payload = canonical(document)
         current, _ = self.read()

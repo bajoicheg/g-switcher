@@ -11,6 +11,7 @@ from __future__ import annotations
 from git_object_integrity import git_object_environment
 
 import argparse
+import copy
 import ctypes
 from datetime import datetime, timezone
 import hashlib
@@ -52,6 +53,28 @@ def _write(path, value):
     finally:
         os.close(fd)
 
+
+def _read_json(path):
+    path=Path(path)
+    if not path.exists():
+        return None
+    try:
+        value=json.loads(path.read_text(encoding="utf-8"))
+    except (OSError,json.JSONDecodeError) as exc:
+        raise ValueError("managed terminal marker invalid") from exc
+    if not isinstance(value,dict):
+        raise ValueError("managed terminal marker must be an object")
+    return value
+
+def _terminal_hold_paths(directory):
+    directory=Path(directory)
+    return {
+        "intent":directory/"terminal-lease-intent.json",
+        "acquire_done":directory/"terminal-lease-acquire-done.json",
+        "owned":directory/"terminal-lease-owned.json",
+        "release":directory/"terminal-lease-release.json",
+        "abort":directory/"terminal-lease-abort.json",
+    }
 
 def _git(root, *args):
     result = subprocess.run(["git", "-C", str(root), *args], env=git_object_environment(), text=True, stdout=subprocess.PIPE,
@@ -269,11 +292,44 @@ def _supervise(directory):
                             pass
             time.sleep(.01)
         elapsed = time.monotonic() - started
-        receipt.update(status=termination or ("succeeded" if exit_code == 0 else "failed"),
-                       quiescent=True, finished_at_utc=_utc(), exit_code=exit_code,
-                       elapsed_seconds=elapsed, runtime_seconds=min(elapsed, request["timeout_seconds"]))
-        if receipt["status"] != "succeeded":
-            receipt["failure"] = termination or f"worker exit {exit_code}"
+        terminal_status=termination or ("succeeded" if exit_code == 0 else "failed")
+        terminal_failure=None if terminal_status=="succeeded" else (termination or f"worker exit {exit_code}")
+        paths=_terminal_hold_paths(directory)
+        intent=_read_json(paths["intent"])
+        if intent is not None:
+            required={"schema","capability_ref","invocation_id","lease_repository","lease_source_ref","armed_at_utc",
+                      "controller_proc_pid","controller_birth"}
+            if set(intent)!=required or intent.get("schema")!="managed-terminal-lease-intent/v1":
+                raise ValueError("managed terminal lease intent invalid")
+            while True:
+                release=_read_json(paths["release"])
+                abort=_read_json(paths["abort"])
+                owned=_read_json(paths["owned"])
+                if release is not None:
+                    expected={"schema","capability_ref","owner_id","generation","invocation_id","lease_revision","release_receipt"}
+                    if (set(release)!=expected or release.get("schema")!="managed-terminal-lease-release/v1"
+                            or release.get("capability_ref")!=intent["capability_ref"]
+                            or release.get("invocation_id")!=intent["invocation_id"]):
+                        raise ValueError("managed terminal lease release marker invalid")
+                    break
+                if abort is not None and owned is None:
+                    expected={"schema","capability_ref","aborted_at_utc","reason"}
+                    if (set(abort)!=expected or abort.get("schema")!="managed-terminal-lease-abort/v1"
+                            or abort.get("capability_ref")!=intent["capability_ref"]):
+                        raise ValueError("managed terminal lease abort marker invalid")
+                    break
+                receipt.update(status="awaiting_release",quiescent=False,finished_at_utc=None,
+                               exit_code=exit_code,elapsed_seconds=elapsed,
+                               runtime_seconds=min(elapsed,request["timeout_seconds"]),
+                               failure=None,terminal_hold_ref=intent["capability_ref"],
+                               pending_terminal_status=terminal_status)
+                _write(directory/"receipt.json",receipt)
+                time.sleep(.02)
+                elapsed=time.monotonic()-started
+        receipt.update(status=terminal_status,quiescent=True,finished_at_utc=_utc(),exit_code=exit_code,
+                       elapsed_seconds=elapsed,runtime_seconds=min(elapsed,request["timeout_seconds"]),
+                       failure=terminal_failure)
+        receipt.pop("terminal_hold_ref",None);receipt.pop("pending_terminal_status",None)
         _write(directory / "receipt.json", receipt)
     except Exception as exc:
         # Unexpected supervisor failure may leave children. Never manufacture closure.
@@ -295,6 +351,210 @@ class ManagedExecutorRuntime:
         self.repo_root = Path(_git(repo_root, "rev-parse", "--show-toplevel")).resolve()
         if _git(self.repo_root, "rev-parse", plan["base_sha"] + "^{commit}") != plan["base_sha"]:
             raise ValueError("plan base is not an exact available commit")
+
+    def _terminal_hold_directory(self,task_id,attempt_id):
+        return self.journal.directory(self._identity(task_id,attempt_id))
+
+    def _arm_terminal_hold(self,capability):
+        import managed_terminal_capability
+        payload=capability.payload
+        directory=self._terminal_hold_directory(payload["task_id"],payload["attempt_id"])
+        paths=_terminal_hold_paths(directory)
+        if any(path.exists() for path in paths.values()):
+            raise ValueError("managed terminal lease hold already armed or consumed")
+        proc_pid=int(os.readlink("/proc/self"))
+        proc_state=_process(proc_pid)
+        if proc_state is None:
+            raise ValueError("controller process identity unavailable")
+        intent={"schema":"managed-terminal-lease-intent/v1",
+                "capability_ref":managed_terminal_capability.reference(capability),
+                "invocation_id":payload["invocation_id"],"lease_repository":payload["lease_repository"],
+                "lease_source_ref":payload["lease_source_ref"],"armed_at_utc":_utc(),
+                "controller_proc_pid":proc_pid,"controller_birth":proc_state["birth"]}
+        _write(paths["intent"],intent)
+        fd=os.open(directory,os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        return intent
+
+    def _mark_terminal_acquire_done(self,capability,status):
+        import managed_terminal_capability
+        if status not in {"authoritative","error"}:
+            raise ValueError("managed terminal acquire completion status invalid")
+        payload=capability.payload
+        paths=_terminal_hold_paths(self._terminal_hold_directory(payload["task_id"],payload["attempt_id"]))
+        marker={"schema":"managed-terminal-lease-acquire-done/v1",
+                "capability_ref":managed_terminal_capability.reference(capability),
+                "status":status,"finished_at_utc":_utc()}
+        _write(paths["acquire_done"],marker)
+        return marker
+
+    def _abort_terminal_hold(self,capability,reason):
+        import managed_terminal_capability
+        payload=capability.payload
+        directory=self._terminal_hold_directory(payload["task_id"],payload["attempt_id"])
+        paths=_terminal_hold_paths(directory)
+        if paths["owned"].exists():
+            raise ValueError("cannot abort terminal hold after lease ownership was recorded")
+        _write(paths["abort"],{"schema":"managed-terminal-lease-abort/v1",
+                               "capability_ref":managed_terminal_capability.reference(capability),
+                               "aborted_at_utc":_utc(),"reason":reason})
+
+    def terminal_capability(self,task_id,attempt_id,*,lease_repository,lease_source_ref,observed_at_utc=None):
+        import managed_terminal_capability
+        return managed_terminal_capability.issue(
+            self,task_id,attempt_id,lease_repository=lease_repository,lease_source_ref=lease_source_ref,
+            observed_at_utc=observed_at_utc)
+
+    def acquire_execution_lease(self,lease_store,expected_revision,repository,source_ref,owner_id,task_id,attempt_id,at,*,ttl=1200,quiescence=None):
+        import execution_lease_v2,managed_terminal_capability
+        capability=self.terminal_capability(
+            task_id,attempt_id,lease_repository=repository,lease_source_ref=source_ref,observed_at_utc=at)
+        intent=self._arm_terminal_hold(capability)
+        try:
+            managed_terminal_capability.validate_verified(
+                capability,capability.invocation(),repository,source_ref,at)
+            result=execution_lease_v2.acquire_managed_cas(
+                lease_store,expected_revision,repository,source_ref,owner_id,at,
+                terminal_capability=capability,ttl=ttl,quiescence=quiescence)
+            self._mark_terminal_acquire_done(capability,"authoritative")
+        except Exception as exc:
+            try:
+                self._mark_terminal_acquire_done(capability,"error")
+            except Exception:
+                pass
+            try:
+                reconciled=self.reconcile_execution_lease_hold(lease_store,task_id,attempt_id)
+            except Exception:
+                raise
+            if reconciled["status"]=="owned":
+                current_revision,current_record=lease_store.read()
+                owned=reconciled["owned_marker"]
+                if (current_record is None or current_record.get("owner_id")!=owned["owner_id"]
+                        or current_record.get("generation")!=owned["generation"]
+                        or current_record.get("invocation",{}).get("invocation_id")!=owned["invocation_id"]):
+                    raise ValueError("managed lease acquisition recovery lost exact ownership") from exc
+                return {"revision":current_revision,"record":current_record,
+                        "owner_id":owned["owner_id"],"generation":owned["generation"],
+                        "invocation":copy.deepcopy(current_record["invocation"]),
+                        "terminal_capability_ref":intent["capability_ref"],
+                        "terminal_task_id":task_id,"terminal_attempt_id":attempt_id,
+                        "recovered_after_acquire":True}
+            if reconciled["status"]=="released":
+                raise ValueError("managed lease acquisition was already released during reconciliation") from exc
+            raise
+        payload=capability.payload
+        paths=_terminal_hold_paths(self._terminal_hold_directory(task_id,attempt_id))
+        owned={"schema":"managed-terminal-lease-owned/v1","capability_ref":intent["capability_ref"],
+               "owner_id":owner_id,"generation":result["generation"],
+               "invocation_id":result["invocation"]["invocation_id"],"lease_revision":result["revision"]}
+        if payload["invocation_id"]!=owned["invocation_id"]:
+            raise ValueError("managed lease acquisition invocation mismatch")
+        _write(paths["owned"],owned)
+        return {**result,"terminal_capability_ref":intent["capability_ref"],
+                "terminal_task_id":task_id,"terminal_attempt_id":attempt_id}
+
+    def reconcile_execution_lease_hold(self,lease_store,task_id,attempt_id):
+        directory=self._terminal_hold_directory(task_id,attempt_id)
+        paths=_terminal_hold_paths(directory)
+        intent=_read_json(paths["intent"])
+        if intent is None:
+            raise ValueError("managed terminal lease intent missing")
+        release=_read_json(paths["release"])
+        if release is not None:
+            return {"status":"released","release_marker":release}
+        abort=_read_json(paths["abort"])
+        if abort is not None:
+            return {"status":"aborted","abort_marker":abort}
+        owned=_read_json(paths["owned"])
+        if owned is None:
+            recovered=lease_store.find_invocation_ownership(
+                intent["lease_repository"],intent["lease_source_ref"],intent["invocation_id"])
+            if recovered is None:
+                done=_read_json(paths["acquire_done"])
+                controller=_process(intent["controller_proc_pid"])
+                controller_live=bool(controller and controller["birth"]==intent["controller_birth"])
+                if done is None and controller_live:
+                    return {"status":"acquire_pending","reason":"exact acquisition controller is still live"}
+                if done is not None:
+                    expected={"schema","capability_ref","status","finished_at_utc"}
+                    if (set(done)!=expected or done.get("schema")!="managed-terminal-lease-acquire-done/v1"
+                            or done.get("capability_ref")!=intent["capability_ref"]
+                            or done.get("status") not in {"authoritative","error"}):
+                        raise ValueError("managed terminal acquire completion marker invalid")
+                marker={"schema":"managed-terminal-lease-abort/v1",
+                        "capability_ref":intent["capability_ref"],
+                        "aborted_at_utc":_utc(),
+                        "reason":"authoritative lease history and controller quiescence prove acquisition absent"}
+                _write(paths["abort"],marker)
+                return {"status":"aborted","abort_marker":marker}
+            owned={"schema":"managed-terminal-lease-owned/v1",
+                   "capability_ref":intent["capability_ref"],
+                   "owner_id":recovered["owner_id"],
+                   "generation":recovered["generation"],
+                   "invocation_id":intent["invocation_id"],
+                   "lease_revision":recovered["revision"]}
+            _write(paths["owned"],owned)
+        try:
+            released=lease_store.find_release_receipt(
+                owned["owner_id"],owned["generation"],owned["invocation_id"])
+        except ValueError as exc:
+            if str(exc)!="exact historical lease release was not found":
+                raise
+            return {"status":"owned","owned_marker":owned}
+        marker={"schema":"managed-terminal-lease-release/v1",
+                "capability_ref":intent["capability_ref"],
+                "owner_id":owned["owner_id"],"generation":owned["generation"],
+                "invocation_id":owned["invocation_id"],
+                "lease_revision":released["release_receipt"]["lease_revision"],
+                "release_receipt":released["release_receipt"]}
+        _write(paths["release"],marker)
+        return {"status":"released","owned_marker":owned,"release_marker":marker,
+                "release_record":released["release_record"],
+                "current_revision":released["current_revision"]}
+
+    def release_execution_lease(self,lease_store,expected_revision,repository,source_ref,owner_id,generation,invocation_id,task_id,attempt_id,at):
+        import execution_lease_v2
+        directory=self._terminal_hold_directory(task_id,attempt_id)
+        paths=_terminal_hold_paths(directory)
+        intent=_read_json(paths["intent"]);owned=_read_json(paths["owned"])
+        if intent is None:
+            raise ValueError("managed terminal hold marker missing")
+        if owned is None:
+            reconciled=self.reconcile_execution_lease_hold(lease_store,task_id,attempt_id)
+            if reconciled["status"]=="released":
+                receipt=reconciled["release_marker"]["release_receipt"]
+                return {"revision":reconciled["current_revision"],"record":lease_store.read()[1],
+                        "release_receipt":receipt,"release_record":reconciled["release_record"],
+                        "recovered_after_release":True}
+            if reconciled["status"]=="aborted":
+                raise ValueError("managed terminal hold proves lease acquisition absent")
+            owned=_read_json(paths["owned"])
+        if (owned.get("schema")!="managed-terminal-lease-owned/v1"
+                or owned.get("capability_ref")!=intent.get("capability_ref")
+                or owned.get("owner_id")!=owner_id or owned.get("generation")!=generation
+                or owned.get("invocation_id")!=invocation_id):
+            raise ValueError("managed terminal ownership marker mismatch")
+        current_revision,current_record=lease_store.read()
+        if current_record is None or current_record.get("repository")!=repository or current_record.get("source_ref")!=source_ref:
+            raise ValueError("managed terminal lease coordination binding mismatch")
+        if current_record.get("owner_id")==owner_id and current_record.get("generation")==generation:
+            if current_revision!=expected_revision:
+                raise ValueError("stale expected lease revision before release")
+            released=execution_lease_v2.release_cas(
+                lease_store,expected_revision,repository,source_ref,owner_id,generation,invocation_id,at)
+            receipt=released["release_receipt"]
+        else:
+            recovered=lease_store.find_release_receipt(owner_id,generation,invocation_id)
+            receipt=recovered["release_receipt"]
+            released={"revision":recovered["current_revision"],"record":current_record,
+                      "release_receipt":receipt,"release_record":recovered["release_record"],
+                      "recovered_after_release":True}
+        marker={"schema":"managed-terminal-lease-release/v1","capability_ref":intent["capability_ref"],
+                "owner_id":owner_id,"generation":generation,"invocation_id":invocation_id,
+                "lease_revision":receipt["lease_revision"],"release_receipt":receipt}
+        _write(paths["release"],marker)
+        return released
 
     def _task(self, task_id):
         return next(task for task in self.plan["tasks"] if task["id"] == task_id)
@@ -372,7 +632,7 @@ class ManagedExecutorRuntime:
                 or receipt.get("request_ref") != _digest(request)
                 or receipt.get("launch_id") != _digest(request)):
             raise ValueError("backend observation claim/receipt mismatch")
-        active = receipt.get("status") in {"running", "starting"}
+        active = receipt.get("status") in {"running", "starting", "awaiting_release"}
         terminal = receipt.get("status") in {"succeeded", "failed", "cancelled", "timed_out"}
         if not (active or terminal) or receipt.get("quiescent") is not terminal:
             raise ValueError("backend must prove descendant quiescence before terminal status")
