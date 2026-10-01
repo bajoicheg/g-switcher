@@ -1,0 +1,46 @@
+name: CDC 2.11.3 Managed Consumer Rollout
+
+on:
+  push:
+    branches:
+      - cdc/managed-rollout-2.11.3-35356edb
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cdc-2113-managed-rollout-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  managed-adoption:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout orchestration branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runner dependency
+        run: python -m pip install --disable-pip-version-check PyYAML
+
+      - name: Reconstruct and verify managed runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .cdc-rollout/runner.b64.part00               .cdc-rollout/runner.b64.part01               .cdc-rollout/runner.b64.part02               .cdc-rollout/runner.b64.part03               .cdc-rollout/runner.b64.part04               .cdc-rollout/runner.b64.part05 | base64 -d > /tmp/cdc_rollout_2_11_3.py
+          test "$(sha256sum /tmp/cdc_rollout_2_11_3.py | awk '{print $1}')" = "6e33647e12763301cce5ba92be52e5ccb731c10161a58b88c9bdf50be5f92ee6"
+          python -m py_compile /tmp/cdc_rollout_2_11_3.py
+
+      - name: Run package-managed atomic CDC adoption
+        env:
+          CDC_REPOSITORY: bajoicheg/g-switcher
+          CDC_SOURCE_REF: refs/heads/release/2.0.1
+        run: python -B /tmp/cdc_rollout_2_11_3.py
