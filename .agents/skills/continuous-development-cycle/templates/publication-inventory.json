@@ -1,0 +1,16 @@
+{
+  "schema": "publication-inventory/v1",
+  "repository": "owner/repository",
+  "target_visibility": "public",
+  "refs": [
+    "refs/heads/main"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "content": "Example public project."
+    }
+  ],
+  "conversations": [],
+  "artifacts": []
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "progress-enforcement/v1",
+  "progress_state": "HEALTHY",
+  "runnable_work": false,
+  "watchdog_enabled": true,
+  "external_wait": false,
+  "blocker_proven": false
+}

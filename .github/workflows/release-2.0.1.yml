@@ -1,4 +1,4 @@
-name: Release G-switcher 2.0.0
+name: Release G-switcher 2.0.1
 
 on:
   workflow_run:
@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v2.0.0 --repo $env:GITHUB_REPOSITORY *> $null
+          gh release view v2.0.1 --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
@@ -31,11 +31,23 @@ jobs:
           }
           $global:LASTEXITCODE = 0
 
+      - name: Checkout exact release commit
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Verify manual compatibility gate
+        if: steps.existing.outputs.exists != 'true'
+        shell: pwsh
+        run: ./scripts/verify-compatibility-v201.ps1 -Path COMPATIBILITY_2.0.1.md
+
       - name: Download checked Windows artifact
         if: steps.existing.outputs.exists != 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: g-switcher-2.0.0-windows-x64
+          name: g-switcher-2.0.1-windows-x64
           path: release
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -47,7 +59,7 @@ jobs:
         run: |
           $files = @(
             @{ Path = "release/g-switcher.exe"; Hash = "release/g-switcher.exe.sha256" },
-            @{ Path = "release/g-switcher-2.0.0-windows-x64.zip"; Hash = "release/g-switcher-2.0.0-windows-x64.zip.sha256" }
+            @{ Path = "release/g-switcher-2.0.1-windows-x64.zip"; Hash = "release/g-switcher-2.0.1-windows-x64.zip.sha256" }
           )
           foreach ($file in $files) {
             $expected = ((Get-Content -LiteralPath $file.Hash -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
@@ -58,30 +70,50 @@ jobs:
             Write-Host "SHA-256 verified for $($file.Path): $actual"
           }
 
-      - name: Verify packaged executable
+      - name: Verify packaged executable and release documents
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: |
-          Expand-Archive -LiteralPath release/g-switcher-2.0.0-windows-x64.zip -DestinationPath release/package-check
+          Expand-Archive -LiteralPath release/g-switcher-2.0.1-windows-x64.zip -DestinationPath release/package-check
+
           $standalone = (Get-FileHash -LiteralPath release/g-switcher.exe -Algorithm SHA256).Hash
           $packaged = (Get-FileHash -LiteralPath release/package-check/g-switcher.exe -Algorithm SHA256).Hash
           if ($standalone -ne $packaged) {
             throw "Packaged executable differs from the checked standalone executable"
           }
 
-      - name: Create v2.0.0 release
+          $requiredDocs = @(
+            "README.md",
+            "CHANGELOG.md",
+            "RELEASE_NOTES_2.0.1.md",
+            "COMPATIBILITY_2.0.1.md",
+            "THIRD_PARTY_DATA.md"
+          )
+          foreach ($doc in $requiredDocs) {
+            $packagedDoc = Join-Path "release/package-check" $doc
+            if (-not (Test-Path -LiteralPath $packagedDoc -PathType Leaf)) {
+              throw "Release package is missing $doc"
+            }
+            $sourceHash = (Get-FileHash -LiteralPath $doc -Algorithm SHA256).Hash
+            $packageHash = (Get-FileHash -LiteralPath $packagedDoc -Algorithm SHA256).Hash
+            if ($sourceHash -ne $packageHash) {
+              throw "Packaged $doc differs from the exact release commit"
+            }
+          }
+
+      - name: Create v2.0.1 release
         if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          gh release create v2.0.0 `
+          gh release create v2.0.1 `
             release/g-switcher.exe `
             release/g-switcher.exe.sha256 `
-            release/g-switcher-2.0.0-windows-x64.zip `
-            release/g-switcher-2.0.0-windows-x64.zip.sha256 `
+            release/g-switcher-2.0.1-windows-x64.zip `
+            release/g-switcher-2.0.1-windows-x64.zip.sha256 `
             --repo $env:GITHUB_REPOSITORY `
             --target $env:TARGET_SHA `
-            --title "G-switcher 2.0.0" `
-            --notes "G-switcher 2.0.0 is the public-release line built strictly from 1.0.10. It adds an optional local correction sound with real 0–100% amplitude control (enabled at 20% by default), exposes the choice during first launch and in Settings, compacts Settings for 768p desktops, rejects conflicting hotkeys, centers dialogs inside the Windows work area, and shows startup failures in a native dialog. The conservative RU/EN detector, generated OpenSubtitles2018 frequency layer, fail-open collision policy, local-only runtime, Undo, application modes and real Win32 regression suite remain intact. The ZIP includes the executable, checksum, documentation, changelog and third-party data attribution. The EXE is not Authenticode-signed; verify the attached SHA-256 before use."
+            --title "G-switcher 2.0.1" `
+            --notes-file RELEASE_NOTES_2.0.1.md

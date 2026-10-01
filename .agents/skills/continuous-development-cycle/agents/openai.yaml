@@ -1,0 +1,16 @@
+name: Continuous Development Cycle
+description: Durable CDC orchestration with behavioral verification, two-stage review and isolated parallel execution.
+version: 2.11.3
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
+interface:
+  display_name: Continuous Development Cycle
+  short_description: Fenced multi-subscription durable development
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 2.11.3 multi-subscription leader fencing, truthful liveness, fail-closed finalization and atomic adoption controls.

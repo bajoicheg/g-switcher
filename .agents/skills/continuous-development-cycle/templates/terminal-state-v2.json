@@ -1,0 +1,21 @@
+{
+  "schema": "terminal-state/v2",
+  "invocation_id": "template-invocation",
+  "scope_id": "template-scope",
+  "observed_head": "0000000000000000000000000000000000000000",
+  "decision": "BLOCKED",
+  "runnable_actions": [],
+  "pending_external": null,
+  "blocker": {
+    "code": "initial_recovery",
+    "evidence_refs": [
+      "checkpoint:current"
+    ],
+    "next_action": "Reconcile live repository and coordination state.",
+    "recheck_trigger": "explicit-kick"
+  },
+  "meaningful_progress_refs": [],
+  "completion_evidence_refs": [],
+  "checkpoint_ref": "docs/work-status/current.md",
+  "lease_released": true
+}

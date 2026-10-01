@@ -1,0 +1,15 @@
+{
+  "schema": "watchdog-repair-state/v1",
+  "desired_enabled": true,
+  "scheduler_state": "ok",
+  "chat_state": "active",
+  "backend_state": "ready",
+  "scheduler_fallback_configured": true,
+  "repair_attempts": 0,
+  "max_repair_attempts": 3,
+  "evidence_refs": [
+    "scheduler:readback",
+    "chat:binding",
+    "backend:registry"
+  ]
+}

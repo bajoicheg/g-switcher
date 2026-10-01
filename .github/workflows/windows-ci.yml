@@ -22,72 +22,349 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Verify exact source revision before building
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/verify_build_revision.py --require-clean
+
+      - name: Source provenance regression tests
+        run: python -m unittest discover -s scripts -p 'test_build_revision.py' -v
 
       - name: Rust toolchain
         shell: pwsh
         run: |
-          rustup set profile minimal
-          rustup toolchain install stable --component rustfmt --component clippy
-          rustup default stable
+          rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+          rustup override set 1.98.1
+          $active = rustup show active-toolchain
+          Write-Host $active
+          if (-not $active.StartsWith('1.98.1')) {
+            throw "Unexpected Rust toolchain: $active"
+          }
           rustc --version
           cargo --version
+
+      - name: Read-only 2.0.1 source and privacy gate
+        if: github.head_ref == 'release/2.0.1' || github.ref_name == 'release/2.0.1'
+        shell: pwsh
+        run: ./scripts/ci-normalize-v201.ps1
 
       - name: Format
         shell: pwsh
         run: cargo fmt --all -- --check
 
-      - name: Unit tests
+      - name: Locked dependency graph
         shell: pwsh
-        run: cargo test --locked --all-targets
-
-      - name: Windows E2E
-        shell: pwsh
-        run: cargo test --locked --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+        run: cargo metadata --locked --no-deps --format-version 1 > $null
 
       - name: Clippy
         shell: pwsh
         run: cargo clippy --locked --all-targets -- -D warnings
 
+      - name: Unit tests
+        shell: pwsh
+        run: cargo test --locked --all-targets
+
+      - name: Build compiled compatibility tool
+        shell: pwsh
+        run: cargo build --locked --bin g-switcher-compatibility
+
+      - name: Manual compatibility tooling smoke test
+        shell: pwsh
+        run: |
+          $windowsPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          if (-not (Test-Path -LiteralPath $windowsPowerShell -PathType Leaf)) {
+            throw 'Windows PowerShell 5.1 executable is missing from the runner.'
+          }
+
+          # Keep the legacy developer recorder compatible with Windows PowerShell
+          # 5.1, but human testing no longer depends on unsigned script execution.
+          $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
+          if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
+            throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
+          }
+
+          $output = Join-Path $env:RUNNER_TEMP "compatibility-results-2.0.1.md"
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-compatibility-v201.ps1 -ScaffoldOnly -OutputPath $output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows PowerShell 5.1 recorder smoke test failed with exit code $LASTEXITCODE."
+          }
+          if (-not (Test-Path -LiteralPath $output -PathType Leaf)) {
+            throw 'Manual compatibility recorder did not create its result file.'
+          }
+          $text = Get-Content -LiteralPath $output -Raw
+          if ($text -notmatch '## Manual application matrix' -or $text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
+            throw 'Manual compatibility recorder produced an incomplete scaffold.'
+          }
+
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
+          if ($LASTEXITCODE -eq 0) {
+            throw 'PowerShell compatibility verifier unexpectedly accepted a PENDING scaffold.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $compiledScaffold = Join-Path $env:RUNNER_TEMP "compatibility-compiled-scaffold-2.0.1.md"
+          & .\target\debug\g-switcher-compatibility.exe scaffold $compiledScaffold
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $compiledScaffold -PathType Leaf)) {
+            throw 'Compiled compatibility recorder failed to create a scaffold.'
+          }
+          & .\target\debug\g-switcher-compatibility.exe verify $compiledScaffold
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled compatibility verifier unexpectedly accepted a PENDING scaffold.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $valid = @'
+          # G-switcher 2.0.1 - compatibility verifier fixture
+
+          ## Manual application matrix
+
+          | Application | Version tested | Windows build | Auto | Manual current word | Selected text | Undo | Password/sensitive fields | Result / notes |
+          |---|---|---|---|---|---|---|---|---|
+          | Notepad | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Microsoft Word | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
+          | Google Chrome | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
+          | Telegram Desktop | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Visual Studio Code | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+          | Windows Terminal | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | N/A | fixture |
+
+          ## End fixture
+          '@
+          $validPath = Join-Path $env:RUNNER_TEMP "compatibility-valid-2.0.1.md"
+          Set-Content -LiteralPath $validPath -Value $valid -Encoding UTF8
+
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $validPath
+          if ($LASTEXITCODE -ne 0) {
+            throw 'PowerShell compatibility verifier rejected a complete non-blocking matrix.'
+          }
+          & .\target\debug\g-switcher-compatibility.exe verify $validPath
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Compiled compatibility verifier rejected a complete non-blocking matrix.'
+          }
+
+          $invalidBrowser = $valid.Replace(
+            '| Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS |',
+            '| Microsoft Edge | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | PASS | PASS | PASS | PASS |'
+          )
+          $invalidBrowserPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-browser-2.0.1.md"
+          Set-Content -LiteralPath $invalidBrowserPath -Value $invalidBrowser -Encoding UTF8
+          & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidBrowserPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'PowerShell verifier unexpectedly accepted unsupported Edge core behavior.'
+          }
+          $global:LASTEXITCODE = 0
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidBrowserPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled verifier unexpectedly accepted unsupported Edge core behavior.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $invalidCore = $valid.Replace(
+            '| Notepad | 1.0.0 | 26100 | PASS |',
+            '| Notepad | 1.0.0 | 26100 | N/A |'
+          )
+          $invalidCorePath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-core-2.0.1.md"
+          Set-Content -LiteralPath $invalidCorePath -Value $invalidCore -Encoding UTF8
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidCorePath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled verifier unexpectedly accepted N/A for a core text-operation column.'
+          }
+          $global:LASTEXITCODE = 0
+
+          $invalidMetadata = $valid.Replace(
+            '| Microsoft Word | 1.0.0 | 26100 |',
+            '| Microsoft Word | UNKNOWN | 26100 |'
+          )
+          $invalidMetadataPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-metadata-2.0.1.md"
+          Set-Content -LiteralPath $invalidMetadataPath -Value $invalidMetadata -Encoding UTF8
+          & .\target\debug\g-switcher-compatibility.exe verify $invalidMetadataPath
+          if ($LASTEXITCODE -eq 0) {
+            throw 'Compiled verifier unexpectedly accepted UNKNOWN application metadata.'
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Build cross-process E2E helper
+        shell: pwsh
+        run: cargo build --locked --bin g-switcher-e2e-helper
+
+      - name: Windows same-process E2E
+        shell: pwsh
+        run: cargo test --locked --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+
+      - name: Windows cross-process E2E
+        shell: pwsh
+        run: |
+          $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
+          cargo test --locked --lib real_cross_process_edit_e2e_release_gate -- --ignored --test-threads=1 --nocapture
+
+      - name: Real Edge and Chrome UIA adapter E2E
+        shell: pwsh
+        run: |
+          $arguments = @(
+            'test', '--locked', '--test', 'browser_uia_adapter', '--',
+            '--ignored', '--test-threads=1', '--nocapture'
+          )
+          $process = Start-Process -FilePath 'cargo.exe' -ArgumentList $arguments -PassThru -NoNewWindow
+          if (-not $process.WaitForExit(240000)) {
+            Write-Host 'Browser UIA E2E exceeded 240 seconds; terminating cargo and descendants.'
+            & taskkill.exe /PID $process.Id /T /F | Out-Host
+            throw 'Real Edge/Chrome UIA adapter E2E timed out.'
+          }
+          $process.WaitForExit()
+          if ($process.ExitCode -ne 0) {
+            throw "Real Edge/Chrome UIA adapter E2E failed with exit code $($process.ExitCode)."
+          }
+
+      - name: Windows hung and closing target E2E
+        shell: pwsh
+        run: |
+          $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
+          cargo run --locked --bin g-switcher-failure-e2e
+
       - name: Release build
         shell: pwsh
-        run: cargo build --locked --release --bin g-switcher
+        run: cargo build --locked --release --bin g-switcher --bin g-switcher-compatibility
 
       - name: Release and branding checks
         shell: pwsh
-        run: ./scripts/release-check.ps1
+        run: |
+          ./scripts/release-check.ps1
+          $compat = "target/release/g-switcher-compatibility.exe"
+          if (-not (Test-Path -LiteralPath $compat -PathType Leaf)) {
+            throw 'Compiled compatibility executable is missing from the release build.'
+          }
+          $compatHash = (Get-FileHash -LiteralPath $compat -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath "$compat.sha256" -Value "$compatHash  g-switcher-compatibility.exe" -Encoding ascii -NoNewline
+          Write-Host "Compatibility tool SHA256: $compatHash"
+
+      - name: Microsoft Defender scan
+        shell: pwsh
+        run: |
+          $mpCmd = @(
+            "$env:ProgramFiles\Windows Defender\MpCmdRun.exe",
+            "$env:ProgramData\Microsoft\Windows Defender\Platform\*\MpCmdRun.exe"
+          ) | ForEach-Object { Get-Item $_ -ErrorAction SilentlyContinue } | Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $mpCmd) {
+            Write-Warning 'Microsoft Defender command-line scanner is unavailable on this runner; other release gates continue.'
+            exit 0
+          }
+          foreach ($path in @('target/release/g-switcher.exe', 'target/release/g-switcher-compatibility.exe')) {
+            & $mpCmd.FullName -Scan -ScanType 3 -File (Resolve-Path $path).Path -DisableRemediation
+            if ($LASTEXITCODE -ne 0) {
+              throw "Microsoft Defender scan failed or detected a threat for $path (exit $LASTEXITCODE)."
+            }
+          }
+
+      - name: Verify exact clean source revision before packaging
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/verify_build_revision.py --require-clean
 
       - name: Prepare public release package
         shell: pwsh
         run: |
-          $packageRoot = "target/release/g-switcher-2.0.0"
+          $packageRoot = "target/release/g-switcher-2.0.1"
           New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
           Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $packageRoot
           Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $packageRoot
           Copy-Item -LiteralPath README.md -Destination $packageRoot
           Copy-Item -LiteralPath CHANGELOG.md -Destination $packageRoot
+          Copy-Item -LiteralPath RELEASE_NOTES_2.0.1.md -Destination $packageRoot
           Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
-          $zip = "target/release/g-switcher-2.0.0-windows-x64.zip"
+          Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $packageRoot
+
+          $head = (git rev-parse HEAD).Trim()
+          $rustVersion = (rustc --version).Trim()
+          $cargoVersion = (cargo --version).Trim()
+          $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $provenance = @(
+            'G-switcher 2.0.1 build provenance',
+            "commit=$head",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+            "rust=$rustVersion",
+            "cargo=$cargoVersion",
+            "cargo_lock_sha256=$lockHash",
+            "g-switcher.exe_sha256=$exeHash"
+          )
+          Set-Content -LiteralPath (Join-Path $packageRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
+
+          $zip = "target/release/g-switcher-2.0.1-windows-x64.zip"
           Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content -LiteralPath "$zip.sha256" -Value "$hash  g-switcher-2.0.0-windows-x64.zip" -Encoding ascii -NoNewline
+          Set-Content -LiteralPath "$zip.sha256" -Value "$hash  g-switcher-2.0.1-windows-x64.zip" -Encoding ascii -NoNewline
+
+      - name: Prepare manual compatibility kit
+        shell: pwsh
+        run: |
+          $kitRoot = "target/manual-compatibility/g-switcher-2.0.1"
+          New-Item -ItemType Directory -Path $kitRoot -Force | Out-Null
+          Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe -Destination $kitRoot
+          Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe.sha256 -Destination $kitRoot
+          Copy-Item -LiteralPath manual-browser-test-2.0.1.html -Destination $kitRoot
+          Copy-Item -LiteralPath scripts/manual-compatibility-v201.ps1 -Destination $kitRoot
+          Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
+          Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
+          Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+          Copy-Item -LiteralPath BROWSER_QUICK_TEST_2.0.1_RU.md -Destination $kitRoot
+
+          $head = (git rev-parse HEAD).Trim()
+          $rustVersion = (rustc --version).Trim()
+          $cargoVersion = (cargo --version).Trim()
+          $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $compatHash = (Get-FileHash -LiteralPath target/release/g-switcher-compatibility.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $provenance = @(
+            'G-switcher 2.0.1 manual compatibility kit provenance',
+            "commit=$head",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+            "rust=$rustVersion",
+            "cargo=$cargoVersion",
+            "cargo_lock_sha256=$lockHash",
+            "g-switcher.exe_sha256=$exeHash",
+            "g-switcher-compatibility.exe_sha256=$compatHash"
+          )
+          Set-Content -LiteralPath (Join-Path $kitRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
+
+          $manifest = Get-ChildItem -LiteralPath $kitRoot -File |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          Set-Content -LiteralPath (Join-Path $kitRoot 'SHA256SUMS.txt') -Value $manifest -Encoding ascii
 
       - name: Upload checked Windows artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: g-switcher-2.0.0-windows-x64
+          name: g-switcher-2.0.1-windows-x64
           path: |
             target/release/g-switcher.exe
             target/release/g-switcher.exe.sha256
-            target/release/g-switcher-2.0.0-windows-x64.zip
-            target/release/g-switcher-2.0.0-windows-x64.zip.sha256
+            target/release/g-switcher-2.0.1-windows-x64.zip
+            target/release/g-switcher-2.0.1-windows-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload manual compatibility kit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g-switcher-2.0.1-manual-compatibility-kit
+          path: target/manual-compatibility/g-switcher-2.0.1
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload generated lockfile
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: g-switcher-2.0.0-lockfile
+          name: g-switcher-2.0.1-lockfile
           path: Cargo.lock
           if-no-files-found: error
           retention-days: 7

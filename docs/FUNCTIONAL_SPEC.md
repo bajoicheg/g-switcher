@@ -1,4 +1,4 @@
-# G-switcher 2.0.0 functional specification
+# G-switcher 2.0.1 functional specification
 
 ## Product model
 
@@ -6,13 +6,19 @@ G-switcher runs in the current Windows user session and observes keyboard events
 
 The default decision rule is conservative: if evidence is ambiguous, leave the user's text unchanged. Automatic correction is performed only when Detector v3 reaches the confidence threshold selected by the current sensitivity profile.
 
-The 2.0.0 line starts strictly from 1.0.10 and preserves its fail-open detector rule. The pinned generated frequency layer contains 56,036 normalized RU/EN source forms of four or more letters and 26,990 deterministically restorable targets. Nine generated cross-layout collisions and ambiguous generated three-letter forms remain unchanged by design. Global sensitivity thresholds are not lowered.
+The 2.0 line starts strictly from 1.0.10 and preserves its fail-open detector rule. Version 2.0.1 keeps the same detector thresholds, pinned generated frequency layer and collision policy as 2.0.0, while hardening cross-process mutation and context validity. The generated layer contains 56,036 normalized RU/EN source forms of four or more letters and 26,990 deterministically restorable targets. Nine generated cross-layout collisions and ambiguous generated three-letter forms remain unchanged by design. Global sensitivity thresholds are not lowered.
+
+## Runtime dispatch and context validity
+
+Low-level keyboard and mouse hooks execute on a dedicated hook thread. Hook callbacks perform only bounded event capture/dispatch work; detector scoring, focused-control inspection, UI Automation and mutation logic run outside the callback. Release CI records callback counts, latency and dropped-event metrics and includes a 100,000-callback stress gate.
+
+Every mutable typing context is associated with a generation identifier. Operations that can change text re-check the current generation plus the relevant focus HWND, process, UI thread, keyboard layout and exact caret/selection state before mutation. Focus changes, cursor/navigation operations, Pause and other context-invalidating events advance or clear transient state. A stale queued correction or stale Undo must fail open and leave the current control unchanged.
 
 ## Layout behavior
 
 Supported pair: Russian and English. Other installed layouts are not modified automatically.
 
-A correction targets the actual focused input control, not merely the top-level foreground window. The application requests a concrete target input locale and confirms it before injecting corrected physical key events.
+A correction targets the actual focused input control, not merely the top-level foreground window. The application requests a concrete target input locale and confirms it before performing a verified replacement.
 
 The user's configured Windows layout shortcut is irrelevant to G-switcher correction.
 
@@ -22,11 +28,21 @@ Space, Enter and Tab are token boundaries. Supported punctuation may also termin
 
 A punctuation-looking OEM key may start or continue a candidate when the prospective physical-key sequence maps to a known prefix in the opposite language. This is required for cases such as English-layout `,kz` → Russian `бля` and `rjhj,jxrf.` → `коробочка.`, where OEM punctuation-looking keys participate in the opposite-layout word.
 
-Correction injection is loss-aware: if Windows accepts only part of a `SendInput` batch, G-switcher resumes from the first unsent INPUT with bounded retries instead of abandoning the batch after already-delivered Backspace events. If the initial `SendInput` call makes zero progress, the correction fails open before any synthetic deletion is delivered.
+Where raw `SendInput` is used by a supported path, delivery is loss-aware: if Windows accepts only part of a batch, G-switcher resumes from the first unsent INPUT with bounded retries instead of abandoning the batch after already-delivered events. If the initial `SendInput` call makes zero progress, the operation fails open before any synthetic deletion is delivered.
 
 Backspace updates the current candidate state instead of discarding all prior context. Cursor-moving operations, focus changes and unrelated command shortcuts invalidate transient text state when the runtime cannot prove that it remains applicable.
 
 When a token reaches a boundary without automatic replacement, G-switcher may retain that token plus its delimiter as the single previous-token record. Typing the next visible token, changing process/focus context, entering Disabled mode, entering a secure input control, or pausing clears stale previous-token state.
+
+## Verified text adapters
+
+Version 2.0.1 permits mutation only when the focused control exposes a synchronously verifiable adapter.
+
+Plain Win32 `Edit` controls use marshalled system messages with bounded `SendMessageTimeout` calls. The adapter reads the exact caret/selection state, verifies the expected source text before replacement and verifies the resulting text afterward. A failed or unexpected post-state is not accepted as success.
+
+Supported RichEdit controls use UI Automation TextPattern to obtain exact range state and a range-local documented replacement. UIA-derived character offsets, current selection and full post-state are verified around mutation. The clipboard is not used as a fallback.
+
+Adapter selection includes a bounded liveness preflight. A target whose UI thread is already hung, closing or otherwise unresponsive is treated as unsupported for that operation and left unchanged. If adapter availability is lost between queuing and execution, the operation does not fall through to an unverified raw mutation path.
 
 ## Detector v3 and sensitivity
 
@@ -61,25 +77,25 @@ The frequency model and common-word lexicons are compiled into the executable. N
 
 ## Selected-text conversion
 
-The user can explicitly convert the currently selected text in supported native Win32 Edit/RichEdit controls. Default hotkey: `Ctrl+Shift+F9`.
+The user can explicitly convert the currently selected text when the focused control exposes a verified text adapter. Default hotkey: `Ctrl+Shift+F9`.
 
-Selected text is read only when this hotkey is invoked. G-switcher infers whether the selection is RU-layout or EN-layout text, maps it through the opposite physical keyboard layout, replaces only the selected range, switches to the target layout, and stores a one-shot volatile Undo record.
+Selected text is read only when this hotkey is invoked. G-switcher verifies the focused control and selected range, infers whether the selection is RU-layout or EN-layout text, maps it through the opposite physical keyboard layout, replaces only that verified range, switches to the target layout, and stores a one-shot volatile Undo record.
 
-The clipboard is not read, written or modified. If the focused control does not provide a supported native selection interface, the action fails open and leaves text unchanged.
+The clipboard is not read, written or modified. If the focused control does not provide a supported verified adapter, the action fails open and leaves text unchanged.
 
 ## Secure input protection
 
 G-switcher must not build candidates, score text, perform manual conversion, convert selections, or restore text through Undo inside native password controls or recognized Windows credential/secure targets.
 
-Protection includes native password EDIT state and known secure/credential control or process families. When a secure input target is detected, transient G-switcher text state is cleared and the user's original input is passed through unchanged.
+Protection includes native password EDIT state and known secure/credential control or process families. For supported UI Automation targets, G-switcher additionally queries focused-element metadata including `IsPassword`; this secure-input decision does not request text-bearing UIA properties or patterns. When a secure input target is detected, transient G-switcher text state is cleared and the user's original input is passed through unchanged.
 
-Browser and custom-rendered controls may not expose their secure state through the native focused HWND. G-switcher does not claim to inspect browser DOM fields or arbitrary accessibility trees. Users can assign `Disabled` mode to an application when secure-state detection cannot be verified.
+UIA password verification is fail-open. If the metadata probe cannot safely verify an otherwise non-plain control, mutation is refused rather than guessed. Users can additionally assign `Disabled` mode to an application when they do not want G-switcher processing in that process at all.
 
 This rule overrides per-application mode and sensitivity settings.
 
 ## Configurable hotkeys
 
-Version 2.0.0 stores explicit per-user hotkey definitions for five actions. Defaults are:
+Version 2.0.1 stores explicit per-user hotkey definitions for five actions. Defaults are:
 
 - selected text: `Ctrl+Shift+F9`;
 - current-token manual conversion: `Ctrl+Shift+F12`;
@@ -99,7 +115,7 @@ Current-token conversion maps the in-progress RU/EN token to the opposite physic
 
 Previous-token conversion operates only on the immediately previous completed token retained in volatile memory. It removes that token and its delimiter, writes the opposite-layout text, then restores the original delimiter. It does not search the document or retain a text history.
 
-Both manual conversion paths use the same focused-control, secure-input and layout-switch safety checks as automatic correction. A successful conversion can be reverted by the configured undo hotkey while focus/caret state remains compatible.
+Both manual conversion paths use the same generation, focused-control, verified-adapter, secure-input and layout-switch safety checks as automatic correction. A successful conversion can be reverted by the configured undo hotkey while the verified context remains compatible.
 
 ## Per-application modes
 
@@ -115,7 +131,7 @@ Applications not present in either configured list use `Auto`. If a basename app
 
 Pause can be toggled from the tray or the configured hotkey. While paused, G-switcher does not build candidates or perform corrections; original keyboard input passes through unchanged.
 
-Pause clears transient candidate, previous-token, context, Undo and pending-correction/selection state. Pause state is intentionally process-local and resets to active on every new G-switcher start. It is not written to the registry.
+Pause clears transient candidate, previous-token, context, Undo and pending-correction/selection state and invalidates the current generation. Pause state is intentionally process-local and resets to active on every new G-switcher start. It is not written to the registry.
 
 ## User dictionary
 
@@ -129,19 +145,19 @@ Preserve lower case, Initial capital and ALL CAPS. Mixed case that resembles ide
 
 ## Code-safe mode
 
-Automatic correction is suppressed for tokens resembling technical identifiers, including common forms of URLs, email addresses, absolute paths, IP/CIDR values, GUID/UUID values, hexadecimal strings/hashes, variable names, command-line switches, and mixed alpha-numeric identifiers.
+Automatic correction is suppressed for tokens resembling technical identifiers, including common forms of URLs, email addresses, absolute paths, IP/CIDR values, GUID/UUID values, hexadecimal strings/hashes, variable names, command-line switches, and mixed alpha-numeric identifiers. Version 2.0.1 keeps digits and common technical separators inside the runtime candidate long enough for Code-safe classification, preventing such sequences from being split into misleading word fragments.
 
 Code-safe behavior is fail-open: the original text is never swallowed merely because correction was refused. Explicit manual conversion remains a user action except in Disabled mode, Pause or secure input.
 
 ## Undo
 
-Immediately after a successful automatic, current-token manual, previous-token manual or selected-text correction, the configured Undo hotkey can restore the original text and source layout when focus remains compatible. Undo state is transient and one-shot.
+Immediately after a successful automatic, current-token manual, previous-token manual or selected-text correction, the configured Undo hotkey can restore the original text and source layout only when the saved generation and verified focus/process/range context remain compatible. Undo state is transient and one-shot.
 
-Selected-text Undo restores exactly the replaced native selection range. Token-based Undo restores the original physical-key token and delimiter if present.
+Selected-text Undo restores exactly the replaced verified range. Token-based Undo restores the original token and delimiter if present. If the original adapter or exact expected corrected text cannot be verified, Undo fails open rather than switching to an unverified mutation path.
 
 ## Correction sound
 
-After a confirmed successful automatic, current-word, previous-word or selected-text conversion, G-switcher may play one short correction signal. Refused or failed conversions, Pause, secure native input and Undo do not produce the signal.
+After a confirmed successful automatic, current-word, previous-word or selected-text conversion, G-switcher may play one short correction signal. Refused or failed conversions, Pause, secure input and Undo do not produce the signal.
 
 The signal is enabled by default at 20% and can be disabled or adjusted from 0% to 100% in 5% steps on first launch and in Settings. Volume changes the PCM sample amplitude rather than the Windows master volume. The waveform is generated and cached in process memory; no external audio asset, recorded content, network access or text-derived sound is used.
 
@@ -157,15 +173,23 @@ The tray Settings window exposes:
 - explicit user-dictionary words;
 - five editable hotkey definitions.
 
-Settings take effect in the running process after Save and do not require elevation. Invalid or duplicate hotkeys block Save with a local warning. The UI states that typed context is volatile and identifies protection as applying to native secure fields.
+Settings take effect in the running process after Save and do not require elevation. Invalid or duplicate hotkeys block Save with a local warning. The UI states that typed context is volatile and identifies protection as applying to secure fields.
 
-The 2.0.0 native layout uses a 900×680 client area and centers inside the Windows work area so the complete form remains usable on a typical 1366×768 desktop with a taskbar. It provides a multiline user-dictionary editor, avoids non-functional vertical scrollbars on the read-only application-mode result lists, and identifies the Settings build dynamically from the package version.
+The 2.0.1 native layout uses a 900×680 client area and centers inside the Windows work area so the complete form remains usable on a typical 1366×768 desktop with a taskbar. It provides a multiline user-dictionary editor, avoids non-functional vertical scrollbars on the read-only application-mode result lists, and identifies the Settings build dynamically from the package version.
 
 The first-run dialog exposes autostart, correction-sound state and correction volume before activation. Closing it cancels startup without writing first-run completion, so onboarding is presented again next launch.
 
 ## Privilege model
 
-The application runs as a standard user and does not require elevation for normal use. If Windows integrity rules prevent input injection into an elevated target, G-switcher fails open and avoids partial correction where possible.
+The application runs as a standard user and does not require elevation for normal use. If Windows integrity rules prevent verified access or mutation of an elevated target, G-switcher fails open.
+
+## Failure-path requirements
+
+A hung target UI thread must not make G-switcher wait indefinitely or guess at mutation state. Verified adapter calls use bounded Win32 message timeouts and perform a liveness preflight before entering supported UIA text paths.
+
+If a target process closes or disappears during a pending operation, the operation must fail open without modifying any newly focused control. After such a failure, G-switcher must continue processing a fresh responsive target normally.
+
+These requirements are exercised by a dedicated separate-process release-gate harness in addition to the normal same-process and cross-process E2E tests.
 
 ## Privacy
 
