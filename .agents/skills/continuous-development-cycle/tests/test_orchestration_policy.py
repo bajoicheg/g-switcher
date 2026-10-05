@@ -13,6 +13,7 @@ from recovery import decide_recovery
 import operation_intent
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = (ROOT / "VERSION").read_text().strip()
 
 
 def configuration():
@@ -38,6 +39,7 @@ class OrchestrationPolicyTests(unittest.TestCase):
         data["checkpoint"]["schema"] = "development-work-status/v3"
         for name in ("routing", "recovery_recipes", "continuation", "fleet", "convergence", "progress_slo", "audit", "autonomy", "publication", "hardening", "maturity"):
             data.pop(name, None)
+        validate_adapter(data, VERSION)
         return data
 
     def test_v22_adapter_stays_compatible_without_new_section(self):
@@ -45,53 +47,53 @@ class OrchestrationPolicyTests(unittest.TestCase):
         data.pop("orchestration")
         data["policy"]["skill_min_version"] = "2.2.0"
         data["execution"]["lease"]["terminal_external_takeover_without_fresh_heartbeat"] = True
-        validate_adapter(data, "2.3.0")
+        validate_adapter(data, VERSION)
 
     def test_valid_v23_configuration_is_accepted(self):
-        validate_adapter(self.adapter(), "2.3.0")
+        validate_adapter(self.adapter(), VERSION)
 
     def test_new_controls_reject_legacy_timer_only_takeover(self):
         data = self.adapter()
         data["execution"]["lease"]["terminal_external_takeover_without_fresh_heartbeat"] = True
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
 
     def test_new_controls_require_version_floor(self):
         data = self.adapter()
         data["policy"]["skill_min_version"] = "2.2.0"
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
 
     def test_budget_cannot_override_exhausted_actions(self):
         data = self.adapter()
         data["ci"]["actions_budget"] = "exhausted"
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
 
     def test_git_lease_requires_separate_well_formed_coordination_ref(self):
         data = self.adapter()
         data["orchestration"]["execution_lease"].update(backend="git", remote="origin",
                                                        coordination_ref="refs/heads/../main")
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
         data["orchestration"]["execution_lease"]["coordination_ref"] = "refs/heads/cdc-coordination"
-        validate_adapter(data, "2.3.0")
+        validate_adapter(data, VERSION)
 
     def test_partial_designation_is_not_valid_single_writer_assignment(self):
         data = self.adapter()
         data["orchestration"]["execution_lease"]["designated_executor_id"] = "11111111-1111-4111-8111-111111111111"
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
 
     def test_wait_backoff_and_budget_types_are_validated(self):
         data = self.adapter()
         data["orchestration"]["wait"]["poll_cap_seconds"] = 1
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
         data = self.adapter()
         data["orchestration"]["budget"]["max_parallel_agents"] = True
         with self.assertRaises(ContractError):
-            validate_adapter(data, "2.3.0")
+            validate_adapter(data, VERSION)
 
     def test_old_intent_is_readable_and_new_intent_records_producer_version(self):
         old = json.loads((ROOT / "templates/operation-intent.json").read_text())

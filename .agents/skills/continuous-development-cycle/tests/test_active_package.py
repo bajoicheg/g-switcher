@@ -1,12 +1,14 @@
 """Installation witnesses must come from actual files, not cached version labels."""
 import importlib
 import json
+import os
 import py_compile
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
@@ -105,13 +107,18 @@ class ActivePackageTests(unittest.TestCase):
         target = self.saved / 'scripts/run.py'
         unpinned = Path(self.tmp.name) / 'unpinned.py'
         unpinned.write_text('print("unpinned runtime")\n')
-        cache = Path(importlib.util.cache_from_source(str(target)))
+        # The attack fixture is deliberately inside the installed package,
+        # independent of the runner's external bytecode-cache location.
+        with mock.patch.object(sys, 'pycache_prefix', None):
+            cache = Path(importlib.util.cache_from_source(str(target)))
         cache.parent.mkdir(exist_ok=True)
         py_compile.compile(str(unpinned), cfile=str(cache), dfile=str(target),
                            invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH,
                            doraise=True)
+        child_env = os.environ.copy()
+        child_env.pop('PYTHONPYCACHEPREFIX', None)
         observed = subprocess.check_output([sys.executable, '-B', '-c', 'import run'],
-                                          cwd=target.parent, text=True)
+                                          cwd=target.parent, text=True, env=child_env)
         self.assertEqual(observed.strip(), 'unpinned runtime')
         for host in (False, True):
             with self.subTest(host_normalization=host):

@@ -1,0 +1,144 @@
+name: Storage hygiene
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '12 3 * * *'
+  push:
+    branches: [main]
+    paths: ['.github/workflows/storage-hygiene.yml']
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/storage-hygiene.yml']
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: storage-hygiene
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    # Pull requests validate the embedded script without deleting anything.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate or apply classified storage policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PRESERVE_RUN_IDS: ''
+          ARTIFACT_RULES: '[["g-switcher-*-windows-x64",30,"release-candidate"],["g-switcher-*-lockfile",7,"dev-evidence"],["publication-audit-redacted-*",7,"diagnostics"],["publication-triage-redacted-*",7,"diagnostics"]]'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/storage_hygiene.py" <<'PY'
+          import datetime as dt
+          import fnmatch
+          import json
+          import os
+          import subprocess
+          
+          repo = os.environ["REPO"]
+          now = dt.datetime.now(dt.timezone.utc)
+          protected_runs = set(filter(None, os.environ.get("PRESERVE_RUN_IDS", "").split(",")))
+          rules = json.loads(os.environ["ARTIFACT_RULES"])
+          
+          def api(path, method="GET", paginate=False):
+              cmd = ["gh", "api", "--method", method]
+              if paginate:
+                  cmd += ["--paginate", "--slurp"]
+              cmd += [f"/repos/{repo}/{path}"]
+              result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+              return json.loads(result.stdout) if result.stdout.strip() else None
+          
+          def inventory(path, key):
+              pages = api(path + "?per_page=100", paginate=True)
+              return [item for page in pages for item in page[key]]
+          
+          def timestamp(value):
+              return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+          
+          def retention(artifact):
+              name = artifact["name"]
+              if str((artifact.get("workflow_run") or {}).get("id", 0)) in protected_runs:
+                  return None, "pinned-rollback"
+              # A type name alone never grants deletion of an unclassified artifact.
+              for pattern, days, category in rules:
+                  if fnmatch.fnmatchcase(name, pattern):
+                      return days, category
+              return None, "unclassified-preserved"
+          
+          def report(stage, artifacts, caches):
+              groups = {}
+              for artifact in artifacts:
+                  days, category = retention(artifact)
+                  label = category + ":" + artifact["name"]
+                  group = groups.setdefault(label, {"count": 0, "bytes": 0, "retention_days": days})
+                  group["count"] += 1
+                  group["bytes"] += artifact["size_in_bytes"]
+              summary = {
+                  "repository": repo, "stage": stage, "observed_at": now.isoformat(),
+                  "artifact_count": len(artifacts),
+                  "artifact_bytes": sum(a["size_in_bytes"] for a in artifacts),
+                  "expired_count": sum(bool(a["expired"]) for a in artifacts),
+                  "cache_count": len(caches),
+                  "cache_bytes": sum(c["size_in_bytes"] for c in caches),
+              }
+              print("INVENTORY " + json.dumps(summary, sort_keys=True))
+              for artifact in sorted(artifacts, key=lambda a: a["size_in_bytes"], reverse=True)[:20]:
+                  fields = {k: artifact.get(k) for k in ["id", "name", "size_in_bytes", "created_at", "expires_at", "expired"]}
+                  fields["run_id"] = (artifact.get("workflow_run") or {}).get("id")
+                  fields["classification"] = retention(artifact)[1]
+                  print("TOP_ARTIFACT " + json.dumps(fields, sort_keys=True))
+              for label, group in sorted(groups.items()):
+                  print("ARTIFACT_GROUP " + json.dumps({"group": label, **group}, sort_keys=True))
+              for cache in caches:
+                  print("CACHE " + json.dumps({k: cache.get(k) for k in ["id", "key", "ref", "last_accessed_at", "size_in_bytes"]}, sort_keys=True))
+              return summary
+          
+          artifacts = inventory("actions/artifacts", "artifacts")
+          caches = inventory("actions/caches", "actions_caches")
+          before = report("before", artifacts, caches)
+          preserved_ids = {a["id"] for a in artifacts if retention(a)[1] == "pinned-rollback"}
+          deleted_artifacts = deleted_artifact_bytes = deleted_caches = deleted_cache_bytes = 0
+          for artifact in artifacts:
+              days, category = retention(artifact)
+              if days is None or now - timestamp(artifact["created_at"]) < dt.timedelta(days=days):
+                  continue
+              run_id = (artifact.get("workflow_run") or {}).get("id")
+              # Preserve output of a currently running build or an unresolved run.
+              if run_id:
+                  run = api(f"actions/runs/{run_id}")
+                  if run["status"] != "completed":
+                      print(f"PRESERVE_ACTIVE_RUN artifact={artifact['id']} run={run_id}")
+                      continue
+              api(f"actions/artifacts/{artifact['id']}", method="DELETE")
+              deleted_artifacts += 1
+              deleted_artifact_bytes += artifact["size_in_bytes"]
+              print("DELETED_ARTIFACT " + json.dumps({"id": artifact["id"], "name": artifact["name"], "category": category, "bytes": artifact["size_in_bytes"]}))
+          for cache in caches:
+              if now - timestamp(cache["last_accessed_at"]) < dt.timedelta(days=7):
+                  continue
+              api(f"actions/caches/{cache['id']}", method="DELETE")
+              deleted_caches += 1
+              deleted_cache_bytes += cache["size_in_bytes"]
+          after_artifacts = inventory("actions/artifacts", "artifacts")
+          after_caches = inventory("actions/caches", "actions_caches")
+          after = report("after", after_artifacts, after_caches)
+          assert preserved_ids <= {a["id"] for a in after_artifacts}, "Pinned rollback artifacts disappeared"
+          summary = {"repository": repo, "before": before, "after": after,
+                     "deleted_artifacts": deleted_artifacts, "deleted_artifact_bytes": deleted_artifact_bytes,
+                     "deleted_caches": deleted_caches, "deleted_cache_bytes": deleted_cache_bytes,
+                     "preserved_rollback_ids": sorted(preserved_ids)}
+          print("STORAGE_RESULT " + json.dumps(summary, sort_keys=True))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write("### Actions storage hygiene\n\n```json\n" + json.dumps(summary, indent=2) + "\n```\n")
+          PY
+          python -m py_compile "$RUNNER_TEMP/storage_hygiene.py"
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            python "$RUNNER_TEMP/storage_hygiene.py"
+          fi

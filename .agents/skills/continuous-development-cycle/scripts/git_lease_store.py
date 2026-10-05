@@ -28,7 +28,7 @@ def validate_coordination_record(record):
     raise ValueError('unsupported lease schema')
 
 
-def _validate_submission_resolution_transition(previous, record):
+def _validate_submission_resolution_transition(previous, record, *, expected_revision=None):
     prev_res=previous.get("submission_resolutions",[])
     curr_res=record.get("submission_resolutions",[])
     appended=curr_res[len(prev_res):]
@@ -59,10 +59,17 @@ def _validate_submission_resolution_transition(previous, record):
         for name in all_fields-allowed:
             if previous.get(name)!=record.get(name):
                 raise ValueError("terminal submission resolution CAS contains unrelated mutation")
-        expected=execution_lease_v2.clear_guard(
-            previous,
-            previous["owner_id"],previous["generation"],previous["invocation"]["invocation_id"],
-            terminal["at_utc"],terminal["observation"],terminal["evidence_reference"])
+        if previous["owner_id"] is None:
+            from submission_recovery import resolve_released_guard
+            if expected_revision is not None and terminal["observation"].get("lease_revision") != expected_revision:
+                raise ValueError("taskless proof does not bind exact CAS lease revision")
+            expected=resolve_released_guard(previous,terminal["observation"],
+                                            terminal["evidence_reference"],terminal["at_utc"])
+        else:
+            expected=execution_lease_v2.clear_guard(
+                previous,
+                previous["owner_id"],previous["generation"],previous["invocation"]["invocation_id"],
+                terminal["at_utc"],terminal["observation"],terminal["evidence_reference"])
         if expected!=record:
             raise ValueError("submission resolution must equal the canonical terminal guard reconciliation")
     elif prev_claim is not None and guard_cleared:
@@ -70,7 +77,7 @@ def _validate_submission_resolution_transition(previous, record):
     return record
 
 
-def validate_coordination_transition(previous, record, *, ownership_capability=None):
+def validate_coordination_transition(previous, record, *, ownership_capability=None, expected_revision=None):
     validate_coordination_record(record)
     if previous is None:
         return record
@@ -83,6 +90,15 @@ def validate_coordination_transition(previous, record, *, ownership_capability=N
                 or record['owner_id']!=previous['owner_id']):
             raise ValueError('new execution-lease/v1 ownership is disabled; migrate to managed v2')
     if prev_schema=='execution-lease/v2' and new_schema=='execution-lease/v2':
+        if previous['owner_id'] is None and record['owner_id'] is None and record != previous:
+            if not (previous['external_guard'] is not None
+                    and previous['external_guard']['submission_claim'] is not None
+                    and record['external_guard'] is None
+                    and len(record.get('submission_resolutions', [])) == len(previous.get('submission_resolutions', [])) + 1):
+                raise ValueError('released v2 state is sealed except for canonical guarded resolution')
+        if (record.get('last_release') != previous.get('last_release')
+                and not (previous['owner_id'] is not None and record['owner_id'] is None)):
+            raise ValueError('release history can change only through canonical owner release')
         ownership_changed=(record['owner_id']!=previous['owner_id']
                            or record['generation']!=previous['generation'])
         if record['owner_id'] is not None and ownership_changed:
@@ -109,7 +125,7 @@ def validate_coordination_transition(previous, record, *, ownership_capability=N
         raise ValueError('execution-lease/v2 cannot downgrade to v1')
     if record['submission_claims'][:len(previous['submission_claims'])] != previous['submission_claims']:
         raise ValueError('consumed submission history cannot be removed or rewritten')
-    _validate_submission_resolution_transition(previous, record)
+    _validate_submission_resolution_transition(previous, record, expected_revision=expected_revision)
     previous_resolutions=previous.get('submission_resolutions', [])
     current_resolutions=record.get('submission_resolutions', [])
     if current_resolutions[:len(previous_resolutions)] != previous_resolutions:
@@ -247,7 +263,8 @@ class GitLeaseStore:
         current, previous = self.read()
         if current != expected_revision:
             raise ValueError('stale expected coordination revision')
-        validate_coordination_transition(previous, record, ownership_capability=ownership_capability)
+        validate_coordination_transition(previous, record, ownership_capability=ownership_capability,
+                                         expected_revision=expected_revision)
         blob = self._git('hash-object', '-w', '--stdin', input=op._canonical(record).decode() + '\n')
         tree = self._git('mktree', input=f'100644 blob {blob}\tlease.json\n')
         parent = ['-p', expected_revision] if expected_revision else []

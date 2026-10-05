@@ -183,7 +183,8 @@ def _now_utc():
 class GitLaneIntegrationPublisher(GitLaneResultVerifier):
     """Conditional publication with a durable, remote-bound one-shot attempt journal."""
 
-    def __init__(self, repo, remote, source_ref, remote_id, *, attempt_store=None, clock=None):
+    def __init__(self, repo, remote, source_ref, remote_id, *, attempt_store=None,
+                 attempt_store_id=None, clock=None):
         super().__init__(repo)
         if not isinstance(remote, str) or not remote.strip() or remote.startswith("-"):
             raise ValueError("integration remote must be a configured remote name")
@@ -203,7 +204,9 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
         if self.attempt_store is not None:
             if not isinstance(self.attempt_store, GitDocumentStore):
                 raise ValueError("publication attempt evidence requires the durable Git document store")
-            if self.attempt_store.store_id != self.remote_id:
+            expected_store_id = self.remote_id if attempt_store_id is None else attempt_store_id
+            if (not isinstance(expected_store_id, str) or not DIGEST.fullmatch(expected_store_id)
+                    or self.attempt_store.store_id != expected_store_id):
                 raise ValueError("publication attempt store remote identity mismatch")
             if (not isinstance(self.attempt_store.ref, str)
                     or not self.attempt_store.ref.startswith("refs/heads/cdc/")
@@ -367,6 +370,8 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
                 raise ValueError("durable publication attempt missing")
             self._assert_attempt_matches(attempt, item, intent)
             if attempt["status"] == target:
+                if target == "submitted":
+                    raise ValueError("publication submission claim was already consumed; transport cannot be replayed")
                 return copy.deepcopy(attempt)
             if attempt["status"] not in allowed:
                 raise ValueError("publication attempt state does not allow transition")
