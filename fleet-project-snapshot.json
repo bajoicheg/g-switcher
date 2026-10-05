@@ -2,7 +2,7 @@
   "schema": "fleet-project-snapshot/v1",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "observed_at_utc": "2026-10-05T05:07:39.555008Z",
+  "observed_at_utc": "2026-10-05T05:12:14.225324Z",
   "product_head": "e7be220ee37d924cacf84edcd8ad1ba32bcb2f62",
   "cdc_version": "2.11.5",
   "package_fingerprint": "git-tree:6e9fb338a83c532076a30e8feb0b6ce2ebbe4063",
@@ -14,15 +14,15 @@
   },
   "coordination": {
     "lease_schema": "execution-lease/v2",
-    "generation": 12,
+    "generation": 13,
     "owner_active": false,
     "guard_present": false
   },
   "progress": {
     "schema": "progress-observation/v1",
-    "observed_at_utc": "2026-10-05T05:07:39.555028Z",
-    "last_meaningful_progress_at_utc": "2026-10-05T05:07:39.555031Z",
-    "last_activity_at_utc": "2026-10-05T05:07:39.555034Z",
+    "observed_at_utc": "2026-10-05T05:12:14.225341Z",
+    "last_meaningful_progress_at_utc": "2026-10-05T05:12:14.225345Z",
+    "last_activity_at_utc": "2026-10-05T05:12:14.225347Z",
     "primitive_steps_since_progress": 0,
     "blocker": false,
     "waiting_external": false,
