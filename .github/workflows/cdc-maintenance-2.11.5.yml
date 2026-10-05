@@ -1,0 +1,2542 @@
+name: G-switcher CDC 2.11.5 Managed Maintenance
+'on':
+  push:
+    branches:
+    - cdc/maintenance-2.11.5-20261005
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: g-switcher-maintenance-2115-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  managed-adoption:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    outputs:
+      candidate_sha: ${{ steps.adoption.outputs.candidate_sha }}
+    steps:
+    - name: Checkout isolated orchestration branch
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        fetch-depth: 0
+        persist-credentials: true
+    - name: Setup Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - name: Install canonical validator dependency
+      run: python -m pip install --disable-pip-version-check "PyYAML>=6.0,<7"
+    - name: Verify durable owner-authorized intent
+      shell: bash
+      run: |
+        python -B - <<'INTENT'
+        import json
+        from pathlib import Path
+        intent=json.loads(Path('.cdc-maintenance/intent.json').read_text())
+        expected={'repository':'bajoicheg/g-switcher','source_ref':'refs/heads/release/2.0.1','expected_source_sha':'7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f','main_sha':'90c6dba064e1fbfccab204d6e1d086fca5b39e62','canonical_version':'2.11.5','release_commit':'bbe5d8c8e4249ad27735245033b6dd6549539809','package_tree':'6e9fb338a83c532076a30e8feb0b6ce2ebbe4063','scheduler_mutations':0,'public_promotion_authorized':False,'manual_acceptance_required':True,'no_force_push':True}
+        assert all(intent.get(k)==v for k,v in expected.items()), 'Durable maintenance intent drift'
+        print('PASS: exact maintenance intent; no scheduler or public-release authority')
+        INTENT
+    - name: Execute verified package-managed maintenance
+      id: adoption
+      env:
+        CDC_REPOSITORY: bajoicheg/g-switcher
+        CDC_SOURCE_REF: refs/heads/release/2.0.1
+        PYTHONPYCACHEPREFIX: ${{ runner.temp }}/cdc-bytecode
+      shell: bash
+      run: |
+        python -B - <<'CDC_RUNNER'
+
+        #!/usr/bin/env python3
+        from __future__ import annotations
+        import copy, hashlib, json, os, shutil, subprocess, sys, tempfile, time, uuid
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        import yaml
+
+        REPO = os.environ["CDC_REPOSITORY"]
+        SOURCE_REF = os.environ["CDC_SOURCE_REF"]
+        TARGET_VERSION = "2.11.5"
+        EXPECTED_SOURCE = "7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f"
+        MAIN_PIN = "90c6dba064e1fbfccab204d6e1d086fca5b39e62"
+        DRY_RUN = os.environ.get("CDC_DRY_RUN") == "1"
+        MODE = os.environ.get("CDC_MODE", "adopt")
+        MAIN_PATHS = [
+            ".github/workflows/publication-audit.yml", ".github/workflows/secret-scan.yml",
+            ".github/workflows/storage-hygiene.yml", ".gitignore", ".gitleaks.toml", "SECURITY.md",
+            "scripts/security/publication_audit.py", "scripts/security/repository_hygiene.py",
+            "scripts/security/test_publication_audit.py", "scripts/security/test_repository_hygiene.py",
+            "scripts/security/triage_publication.py", "scripts/security/verify_secret_rules.py",
+        ]
+        LAST_GREEN = "0b6f7e3cff9762f9508c8e42d1fd23298a496306"
+        LAST_RUN = "36259598328"
+        MANUAL_BLOCKER = "Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks."
+        MANUAL_NEXT = "Run the exact candidate g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain final review and explicit public-promotion approval."
+
+        TARGET_RELEASE_REF = "refs/heads/release/v2.11.5"
+        TARGET_RELEASE_COMMIT = "bbe5d8c8e4249ad27735245033b6dd6549539809"
+        TARGET_PACKAGE_TREE = "6e9fb338a83c532076a30e8feb0b6ce2ebbe4063"
+        RUN_ID = os.environ.get("GITHUB_RUN_ID", "local")
+        RUN_ATTEMPT = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+        RUN_KEY = f"{MODE}-{RUN_ID}-{RUN_ATTEMPT}"
+        ROOT = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
+        TMP = Path(tempfile.mkdtemp(prefix="cdc-2115-rollout-"))
+        CANON = TMP / "g-cdc"
+        ADOPT = TMP / "adopt"
+
+        def now():
+            return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        def run(*args, cwd=ROOT, env=None, check=True, input_text=None):
+            p = subprocess.run([str(x) for x in args], cwd=cwd, env=env, text=True,
+                               input=input_text, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if check and p.returncode:
+                raise RuntimeError(f"command failed: {args[0]} {args[1] if len(args)>1 else ''}; {p.stderr[-1500:]}")
+            return p.stdout.strip(), p.returncode
+
+        def git(*args, cwd=ROOT, env=None, check=True, input_text=None):
+            return run("git", *args, cwd=cwd, env=env, check=check, input_text=input_text)
+
+        def remote_head(ref):
+            out, _ = git("ls-remote", "--refs", "origin", ref)
+            rows = [x for x in out.splitlines() if x.strip()]
+            if len(rows) != 1:
+                raise RuntimeError(f"ref {ref} must resolve once")
+            sha, got = rows[0].split("\t")
+            if got != ref or len(sha) != 40:
+                raise RuntimeError(f"bad ref result for {ref}")
+            return sha
+
+        def json_bytes(value):
+            return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+
+        # Canonical CDC clone first; all package-owned imports come from the immutable release.
+        run("git", "clone", "-q", "--no-checkout", "https://github.com/bajoicheg/g-cdc.git", str(CANON), cwd=TMP)
+        git("fetch", "-q", "--no-tags", "origin", TARGET_RELEASE_COMMIT, cwd=CANON)
+        git("checkout", "-q", "--detach", TARGET_RELEASE_COMMIT, cwd=CANON)
+        pkg_tree, _ = git("rev-parse", f"{TARGET_RELEASE_COMMIT}:src/continuous-development-cycle", cwd=CANON)
+        if pkg_tree != TARGET_PACKAGE_TREE:
+            raise RuntimeError("canonical package tree mismatch")
+        SCRIPTS = CANON / "src/continuous-development-cycle/scripts"
+        sys.path.insert(0, str(SCRIPTS))
+
+        import resume_capsule
+        import execution_continuity
+        import execution_lease_v2 as leasev2
+        import final_response_gate
+        import git_lease_store
+        import managed_executor_pool as pool
+        import managed_executor_runtime as runtime
+        import migration_transaction as migration
+        from consumer_adoption import GitConsumerAdoptionPublisher, assess as assess_adoption
+        from git_document_store import GitDocumentStore
+        from git_object_integrity import git_object_environment
+        from git_remote_identity import isolated_remote_args, remote_identity
+        from managed_executor_store import GitManagedExecutorStore, coordination_store_id_for_endpoint
+        from validate_adapter import validate_adapter
+        from validate_checkpoint_24 import validate_checkpoint_24
+
+        class MultiDocLeaseStore:
+            """Equivalent durable lease CAS preserving every non-lease coordination path."""
+            def __init__(self, repo: Path, remote: str, ref: str):
+                self.repo = repo
+                self.remote = remote
+                self.ref = ref
+                self.store_id = remote_identity(repo, remote)
+                self._pending_aux = {}
+                git("check-ref-format", ref, cwd=repo)
+
+            def _env(self, **extra):
+                return git_object_environment(
+                    GIT_TERMINAL_PROMPT="0",
+                    GIT_AUTHOR_NAME="CDC 2.11.5 managed rollout",
+                    GIT_AUTHOR_EMAIL="cdc@example.invalid",
+                    GIT_COMMITTER_NAME="CDC 2.11.5 managed rollout",
+                    GIT_COMMITTER_EMAIL="cdc@example.invalid",
+                    **extra,
+                )
+
+            def _git(self, *args, env=None, input_text=None, check=True):
+                return git(*args, cwd=self.repo, env=env or self._env(), input_text=input_text, check=check)
+
+            def _remote_revision(self):
+                if remote_identity(self.repo, self.remote) != self.store_id:
+                    raise ValueError("coordination remote identity drift")
+                out, _ = self._git("ls-remote", "--refs", self.remote, self.ref)
+                rows = [x for x in out.splitlines() if x.strip()]
+                if not rows:
+                    return None
+                if len(rows) != 1:
+                    raise ValueError("ambiguous coordination ref")
+                sha, ref = rows[0].split("\t")
+                if ref != self.ref or len(sha) != 40:
+                    raise ValueError("invalid coordination revision")
+                return sha
+
+            def _fetch(self, revision=None):
+                config, alias = isolated_remote_args(self.repo, self.remote, self.store_id)
+                self._git(*config, "fetch", "--no-tags", "--no-write-fetch-head", "--refmap=", alias, self.ref)
+                if revision and self._git("cat-file", "-t", revision)[0] != "commit":
+                    raise ValueError("coordination revision is not a commit")
+
+            def _read_lease_at(self, revision):
+                self._fetch(revision)
+                raw, code = self._git("show", f"{revision}:lease.json", check=False)
+                if code:
+                    raise ValueError("coordination revision lacks lease.json")
+                value = json.loads(raw)
+                git_lease_store.validate_coordination_record(value)
+                return value
+
+            def read(self):
+                revision = self._remote_revision()
+                if revision is None:
+                    return None, None
+                value = self._read_lease_at(revision)
+                if self._remote_revision() != revision:
+                    raise ValueError("coordination ref moved during read")
+                return revision, value
+
+            def read_revision(self, revision):
+                current, _ = self.read()
+                if current is None:
+                    raise ValueError("coordination history absent")
+                self._fetch(revision)
+                base, code = self._git("merge-base", revision, current, check=False)
+                if code or base != revision:
+                    raise ValueError("historical revision not authoritative ancestry")
+                return self._read_lease_at(revision)
+
+            def _commit_tree(self, expected, updates, message):
+                if self._remote_revision() != expected:
+                    raise ValueError("stale expected coordination revision")
+                self._fetch(expected)
+                idx = TMP / ("index-" + uuid.uuid4().hex)
+                env = self._env(GIT_INDEX_FILE=str(idx))
+                self._git("read-tree", f"{expected}^{{tree}}", env=env)
+                for path, payload in updates.items():
+                    if isinstance(payload, (dict, list)):
+                        data = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+                    else:
+                        data = str(payload)
+                        if not data.endswith("\n"):
+                            data += "\n"
+                    blob, _ = self._git("hash-object", "-w", "--stdin", input_text=data)
+                    self._git("update-index", "--add", "--cacheinfo", "100644", blob, path, env=env)
+                tree, _ = self._git("write-tree", env=env)
+                commit, _ = self._git("commit-tree", tree, "-p", expected, input_text=message + "\n")
+                config, alias = isolated_remote_args(self.repo, self.remote, self.store_id)
+                self._git(*config, "-c", "push.followTags=false", "push", "--porcelain", alias, f"{commit}:{self.ref}")
+                if self._remote_revision() != commit:
+                    raise ValueError("coordination CAS did not become authoritative")
+                try:
+                    idx.unlink()
+                except FileNotFoundError:
+                    pass
+                return commit
+
+            def compare_and_swap(self, expected_revision, record, *, ownership_capability=None):
+                current, previous = self.read()
+                if current != expected_revision or previous is None:
+                    raise ValueError("stale expected coordination revision")
+                git_lease_store.validate_coordination_transition(
+                    previous, record, ownership_capability=ownership_capability
+                )
+                updates = {"lease.json": json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)}
+                updates.update(self._pending_aux)
+                self._pending_aux = {}
+                return self._commit_tree(expected_revision, updates, "Update managed CDC ownership")
+
+            def cas_aux_update(self, expected_revision, updates):
+                current, record = self.read()
+                if current != expected_revision or record is None:
+                    raise ValueError("stale coordination revision for auxiliary update")
+                return self._commit_tree(expected_revision, updates, "Update CDC rollout coordination")
+
+            def set_pending_aux(self, updates):
+                if self._pending_aux:
+                    raise ValueError("pending auxiliary updates already set")
+                self._pending_aux = dict(updates)
+
+            def find_invocation_ownership(self, repository, source_ref, invocation_id):
+                current, _ = self.read()
+                revisions, _ = self._git("rev-list", "--first-parent", current)
+                matches = []
+                for rev in revisions.splitlines()[:10000]:
+                    rec = self._read_lease_at(rev)
+                    inv = rec.get("invocation")
+                    if (rec.get("schema") == "execution-lease/v2"
+                        and rec.get("repository") == repository
+                        and rec.get("source_ref") == source_ref
+                        and rec.get("owner_id") is not None
+                        and isinstance(inv, dict)
+                        and inv.get("invocation_id") == invocation_id):
+                        matches.append({"revision": rev, "owner_id": rec["owner_id"],
+                                        "generation": rec["generation"], "record": rec})
+                identities = {(x["owner_id"], x["generation"]) for x in matches}
+                if len(identities) > 1:
+                    raise ValueError("managed invocation appears under multiple lease identities")
+                return matches[-1] if matches else None
+
+            def find_release_receipt(self, owner_id, generation, invocation_id):
+                current, _ = self.read()
+                revisions, _ = self._git("rev-list", "--first-parent", current)
+                for rev in revisions.splitlines()[:10000]:
+                    rec = self._read_lease_at(rev)
+                    rel = rec.get("last_release")
+                    if (rec.get("owner_id") is None and isinstance(rel, dict)
+                        and rel.get("owner_id") == owner_id and rel.get("generation") == generation
+                        and rel.get("invocation_id") == invocation_id and rec.get("generation") == generation):
+                        return {
+                            "release_receipt": {"schema":"execution-release-receipt/v1",
+                                                "lease_revision":rev,"release":copy.deepcopy(rel)},
+                            "release_record":rec,
+                            "current_revision":current,
+                        }
+                raise ValueError("exact historical lease release was not found")
+
+        def deep_fill(dst, src):
+            for k, v in src.items():
+                if k not in dst:
+                    dst[k] = copy.deepcopy(v)
+                elif isinstance(dst[k], dict) and isinstance(v, dict):
+                    deep_fill(dst[k], v)
+
+        def parse_frontmatter(path):
+            text = path.read_text(encoding="utf-8")
+            if not text.startswith("---\n"):
+                raise RuntimeError("checkpoint frontmatter missing")
+            marker = text.find("\n---\n", 4)
+            if marker < 0:
+                raise RuntimeError("checkpoint frontmatter terminator missing")
+            head = text[4:marker]
+            body = text[marker+5:]
+            return yaml.safe_load(head), body
+
+        def write_frontmatter(path, data, body):
+            encoded = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=1000).rstrip()
+            path.write_text("---\n" + encoded + "\n---\n" + body, encoding="utf-8")
+
+        # Pin exact live source and short-circuit an already complete adoption.
+        source_head = remote_head(SOURCE_REF)
+        if MODE == "adopt" and remote_head("refs/heads/main") != MAIN_PIN:
+            raise RuntimeError("main moved before execution; reconcile rather than use stale resolution")
+        if MODE == "record" and source_head != os.environ["CDC_CANDIDATE_SHA"]:
+            raise RuntimeError("candidate moved before exact CI evidence recording")
+        git("fetch", "-q", "--no-tags", "origin", SOURCE_REF)
+        lock_raw, code = git("show", f"{source_head}:docs/cdc-consumer-lock.json", check=False)
+        if code == 0 and MODE == "adopt":
+            lock = json.loads(lock_raw)
+            if (lock.get("version") == TARGET_VERSION and lock.get("package_tree") == TARGET_PACKAGE_TREE
+                    and lock.get("release_commit") == TARGET_RELEASE_COMMIT):
+                observed_tree, _ = git("rev-parse", f"{source_head}:.agents/skills/continuous-development-cycle")
+                if observed_tree == TARGET_PACKAGE_TREE:
+                    safe_store = MultiDocLeaseStore(ROOT, "origin", "refs/heads/cdc/coordination")
+                    safe_rev, safe_lease = safe_store.read()
+                    proof_raw, proof_code = git("show", f"{safe_rev}:adoptions/cdc-2.11.5.json", check=False)
+                    proof = json.loads(proof_raw) if proof_code == 0 else {}
+                    if (safe_lease.get("owner_id") is not None or safe_lease.get("external_guard") is not None
+                            or proof.get("status") != "applied_verified"
+                            or proof.get("source_head") != source_head or proof.get("source_base") != EXPECTED_SOURCE
+                            or proof.get("package_tree") != TARGET_PACKAGE_TREE
+                            or git("merge-base", "--is-ancestor", MAIN_PIN, source_head, check=False)[1]):
+                        raise RuntimeError("existing adoption lacks exact released/readback provenance")
+                    if os.environ.get("GITHUB_OUTPUT"):
+                        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+                            stream.write("candidate_sha=" + source_head + "\n")
+                    print(json.dumps({"status":"ALREADY_ADOPTED","source_head":source_head}, sort_keys=True))
+                    raise SystemExit(0)
+
+        if MODE == "adopt" and source_head != EXPECTED_SOURCE:
+            raise RuntimeError("source moved before execution; reconcile rather than overwrite")
+
+        lease_store = MultiDocLeaseStore(ROOT, "origin", "refs/heads/cdc/coordination")
+        initial_lease_revision, initial_lease = lease_store.read()
+        if initial_lease is None:
+            raise RuntimeError("live execution lease is absent")
+        if initial_lease.get("repository") != REPO or initial_lease.get("source_ref") != SOURCE_REF:
+            raise RuntimeError("lease binding disagrees with rollout target")
+        if initial_lease.get("owner_id") is not None or initial_lease.get("external_guard") is not None:
+            raise RuntimeError("consumer is not at a released/no-guard safe boundary")
+        if initial_lease.get("finalization") is not None:
+            raise RuntimeError("released safe boundary has unexpected finalization state")
+        prior_generation = initial_lease["generation"]
+
+        if DRY_RUN:
+            generation = prior_generation + 1
+            invocation_id = "dry-run-not-an-owner"
+        else:
+            # An unchanged dry-run push proves actual runner credential scope without
+            # changing any shared ref. Ownership is acquired only by the managed runtime.
+            git("push", "--dry-run", "origin", f"{source_head}:{SOURCE_REF}")
+            git("push", "--dry-run", "origin", f"{initial_lease_revision}:refs/heads/cdc/coordination")
+            # Start a real package-owned managed supervisor. The controller performs the atomic
+            # adoption while this exact running attempt supplies the terminal-lifecycle capability.
+            store_ref = f"refs/heads/cdc/managed-rollout-state/2.11.5-{RUN_KEY}"
+            store_id = coordination_store_id_for_endpoint(
+                git("remote", "get-url", "origin")[0], repo_root=ROOT
+            )
+            task_id = "cdc-2115-adoption"
+            attempt_id = "attempt-1"
+            plan = {
+                "schema":"managed-executor-pool-plan/v1",
+                "pool_id":f"cdc-2115-rollout-{RUN_KEY}",
+                "change_id":"cdc-2.11.5-consumer-adoption",
+                "parent_invocation_id":f"github-actions:{RUN_ID}:{RUN_ATTEMPT}",
+                "base_sha":source_head,
+                "integrator_id":"managed-rollout-controller",
+                "coordination_ref":store_ref,
+                "coordination_store_id":store_id,
+                "max_parallel":1,
+                "total_runtime_budget_seconds":1200,
+                "total_cost_budget_units":10,
+                "tasks":[{
+                    "id":task_id,
+                    "role":"writer",
+                    "required":True,
+                    "dependencies":[],
+                    "executor_id":"managed-rollout-worker",
+                    "branch":f"cdc-managed-rollout-worker-{RUN_KEY}",
+                    "worktree":f"worktrees/cdc-managed-rollout-{RUN_KEY}",
+                    "write_paths":[
+                        ".agents/skills/continuous-development-cycle",
+                        "AGENTS.md",
+                        "docs/cdc-consumer-lock.json",
+                        "docs/development-cycle.yaml",
+                        "docs/work-status/current.md",
+                        "docs/cdc-adoption-2.11.5.md",
+                    ],
+                    "expected_outputs":["consumer-adoption:2.11.5"],
+                    "expected_evidence":["exact-package-tree","atomic-readback"],
+                    "backend_preferences":["local_command"],
+                    "max_runtime_seconds":900,
+                    "max_cost_units":1,
+                }],
+            }
+            managed_store = GitManagedExecutorStore(
+                ROOT, "origin", store_ref, plan, protected_refs=[SOURCE_REF]
+            )
+            mrev, mstate = managed_store.read()
+            if mrev is None:
+                mrev = managed_store.compare_and_swap(None, pool.initial_state(plan, parallel_capable=False))
+            backend = runtime.LocalCommandBackend(TMP / "managed-journal")
+            rt = runtime.ManagedExecutorRuntime(plan, managed_store, ROOT, backend)
+            receipt = rt.start(
+                mrev, task_id, attempt_id,
+                reservation_token=f"reserve:{RUN_KEY}",
+                argv=[sys.executable, "-c", "import time; time.sleep(850)"],
+            )
+            deadline = time.monotonic() + 30
+            while True:
+                obs = rt.observe(task_id, attempt_id)
+                if obs["status"] == "running":
+                    break
+                if obs["status"] not in {"starting"} or time.monotonic() >= deadline:
+                    raise RuntimeError("managed supervisor did not become live")
+                time.sleep(0.2)
+
+            owner = str(uuid.uuid4())
+            acquired = rt.acquire_execution_lease(
+                lease_store, initial_lease_revision, REPO, SOURCE_REF, owner,
+                task_id, attempt_id, now(), ttl=1200
+            )
+            lease_revision = acquired["revision"]
+            lease_record = acquired["record"]
+            generation = acquired["generation"]
+            invocation_id = acquired["invocation"]["invocation_id"]
+
+
+        publication_started = False
+        publication_confirmed = False
+        try:
+            if MODE == "adopt":
+                # Assemble candidate completely detached from the shared source ref.
+                git("worktree", "add", "--quiet", "--detach", str(ADOPT), source_head)
+                git("config", "user.name", "CDC 2.11.5 managed rollout", cwd=ADOPT)
+                git("config", "user.email", "cdc@example.invalid", cwd=ADOPT)
+                git("fetch", "-q", "--no-tags", "origin", MAIN_PIN)
+                merged = subprocess.run(["git", "merge", "--no-ff", "--no-commit", MAIN_PIN], cwd=ADOPT,
+                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                conflicts = git("diff", "--name-only", "--diff-filter=U", cwd=ADOPT)[0].splitlines()
+                if merged.returncode and set(conflicts) != {".github/workflows/secret-scan.yml", ".gitleaks.toml"}:
+                    raise RuntimeError("unexpected merge conflict set: " + repr(conflicts))
+                if conflicts:
+                    git("checkout", MAIN_PIN, "--", *conflicts, cwd=ADOPT)
+                if git("diff", "--name-only", "--diff-filter=U", cwd=ADOPT)[0]:
+                    raise RuntimeError("unresolved main merge conflict")
+
+
+                dst_pkg = ADOPT / ".agents/skills/continuous-development-cycle"
+                shutil.rmtree(dst_pkg)
+                shutil.copytree(CANON / "src/continuous-development-cycle", dst_pkg, symlinks=True)
+
+                # Consumer lock.
+                lock_path = ADOPT / "docs/cdc-consumer-lock.json"
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                lock.update(
+                    version=TARGET_VERSION,
+                    release_ref=TARGET_RELEASE_REF,
+                    release_commit=TARGET_RELEASE_COMMIT,
+                    package_tree=TARGET_PACKAGE_TREE,
+                )
+                lock_path.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+                # Adapter: retain project-specific values and fill only newly required released controls.
+                adapter_path = ADOPT / "docs/development-cycle.yaml"
+                adapter = yaml.safe_load(adapter_path.read_text(encoding="utf-8"))
+                template = yaml.safe_load((CANON / "src/continuous-development-cycle/templates/development-cycle.yaml").read_text(encoding="utf-8"))
+                deep_fill(adapter, template)
+                adapter["policy"]["revision"] = "2026-10-05-cdc-2.11.5-reconciliation"
+                adapter["policy"]["skill_min_version"] = TARGET_VERSION
+                adapter["convergence"]["target_version"] = TARGET_VERSION
+                adapter_path.write_text(yaml.safe_dump(adapter, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
+                binding = validate_adapter(adapter, skill_version=TARGET_VERSION)
+                ci_path = ADOPT / ".github/workflows/cdc-policy.yml"
+                ci = ci_path.read_text(encoding="utf-8")
+                ci = ci.replace('= "2.9.2"', '= "2.11.5"').replace("f9087eacbffee774c143eabf854c2cf08d610ec7", TARGET_PACKAGE_TREE)
+                ci_path.write_text(ci, encoding="utf-8")
+
+                # Provenance and adoption note.
+                agents_path = ADOPT / "AGENTS.md"
+                agents = agents_path.read_text(encoding="utf-8")
+                provenance = f"""## CDC 2.11.5 authoritative provenance
+
+                Use canonical `bajoicheg/g-cdc` **v2.11.5**, release `{TARGET_RELEASE_REF}`, commit `{TARGET_RELEASE_COMMIT}`, exact package tree `{TARGET_PACKAGE_TREE}`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical. The owner explicitly requested this project update on 2026-10-05. The project target is 2.11.5; the separate Fleet target is not changed. Product acceptance gates and scheduler pause remain authoritative.
+
+                """
+                if not agents.startswith("## CDC 2.11.5 authoritative provenance"):
+                    agents_path.write_text(provenance + agents, encoding="utf-8")
+
+                adoption_path = ADOPT / "docs/cdc-adoption-2.11.5.md"
+                adoption_path.write_text(
+                    f"""# CDC 2.11.5 managed process-only adoption
+
+                Canonical release: `{TARGET_RELEASE_REF}`
+                Release commit: `{TARGET_RELEASE_COMMIT}`
+                Exact package tree: `{TARGET_PACKAGE_TREE}`
+                Source base: `{source_head}`
+
+                This adoption is assembled detached from the shared source ref and published once by the released 2.11.5 conditional fast-forward/readback path. Project product behavior, product acceptance/release gates, and owner-paused scheduler state are preserved. Live coordination ownership is authoritative over checkpoint projections.
+                """,
+                    encoding="utf-8",
+                )
+
+                # Checkpoint remains a projection of the pre-existing product task, but policy binding
+                # and live-owner projection are reconciled for the completed process-only adoption.
+                checkpoint_path = ADOPT / "docs/work-status/current.md"
+                checkpoint, checkpoint_body = parse_frontmatter(checkpoint_path)
+                checkpoint.update(
+                    active_change="G-switcher 2.0.1 compatibility acceptance",
+                    current_task="Complete real Windows acceptance after CDC 2.11.5 and main reconciliation",
+                    phase="blocked", implementation_sha=LAST_GREEN, candidate_sha="", release_candidate_sha="",
+                    last_green_sha=LAST_GREEN, last_green_evidence=f"https://github.com/{REPO}/actions/runs/{LAST_RUN}",
+                    last_ci_run_id=LAST_RUN, last_ci_status="completed/success: Windows Rust CI #410; historical runtime-equivalent evidence",
+                    active_ci_run_id="", release_state="blocked", blocker=MANUAL_BLOCKER,
+                    next_action="Complete fresh exact-candidate Windows CI, then " + MANUAL_NEXT,
+                )
+                checkpoint["execution_continuity"].update(
+                    runnable_next_action=True, completion_gate="continue",
+                )
+                checkpoint["policy_revision"] = binding["policy_revision"]
+                checkpoint["policy_digest"] = binding["policy_digest"]
+                checkpoint["observed_at_utc"] = now()
+                checkpoint["active_executor"] = "none"
+                if checkpoint.get("phase") != "waiting_external":
+                    checkpoint["lease_state"] = "released"
+                checkpoint["executor_heartbeat_at_utc"] = None
+                checkpoint["execution_lease_until_utc"] = None
+                if isinstance(checkpoint.get("control"), dict):
+                    checkpoint["control"]["execution_lease_revision"] = None
+                    checkpoint["control"]["executor_id"] = None
+                    checkpoint["control"]["lease_generation"] = generation
+                if isinstance(checkpoint.get("execution_continuity"), dict):
+                    checkpoint["execution_continuity"]["invocation_id"] = None
+                    checkpoint["execution_continuity"]["meaningful_progress"] = True
+                    checkpoint["execution_continuity"]["primitive_steps_since_progress"] = 0
+                    checkpoint["execution_continuity"]["last_progress_ref"] = "docs/cdc-adoption-2.11.5.md"
+                section = f"""## CDC 2.11.5 process-only adoption — managed atomic publication
+
+                This branch now binds canonical CDC **2.11.5** at `{TARGET_RELEASE_REF}`, release commit `{TARGET_RELEASE_COMMIT}`, package tree `{TARGET_PACKAGE_TREE}`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
+
+                """
+                write_frontmatter(checkpoint_path, checkpoint, section + """
+                ## Current product boundary — 2026-10-05
+
+                The active change is G-switcher 2.0.1 acceptance, not a historical CDC migration.
+                Current main security and storage-hygiene changes have been merged; the two add/add
+                security conflicts use the exact current-main versions. Product runtime, tests,
+                Cargo dependencies, assets and the Windows gate remain byte-identical to candidate
+                0b6f7e3cff9762f9508c8e42d1fd23298a496306 (Windows CI #410, run 36259598328).
+                This is historical runtime-equivalent evidence, not GREEN for this new root commit.
+
+                The authoritative exact candidate SHA and fresh CI result are stored in the
+                resume capsule on cdc/coordination. Candidate SHA fields here are intentionally
+                empty because this document is part of the candidate commit itself.
+
+                Fresh Windows CI follows atomic publication in the same managed-maintenance
+                workflow; final coordination recording replaces the pending result only after
+                that exact job is terminal. No public release or compatibility PASS is implied.
+
+                Remaining manual checks: ordinary Edge and Chrome Auto/Manual/Undo/Focus/Pause;
+                desktop Word; protected-input cases and valid application versions in the existing
+                matrix. Automated forced-accessibility browser adapter tests do not complete them.
+                PR #28 stays Draft. Final review and explicit public-promotion approval remain required.
+
+                Earlier CDC adoption sections below are historical evidence only.
+                """ + checkpoint_body)
+
+                # Validate the actual vendored package and project binding before commit/publication.
+                subprocess.run(
+                    [sys.executable, "-B", str(dst_pkg / "scripts/validate_package.py")],
+                    cwd=ADOPT, check=True
+                )
+                validate_adapter(yaml.safe_load(adapter_path.read_text(encoding="utf-8")), skill_version=TARGET_VERSION)
+                cp_check, _ = parse_frontmatter(checkpoint_path)
+                validate_checkpoint_24(cp_check, yaml.safe_load(adapter_path.read_text(encoding="utf-8")))
+
+                allowed_prefix = ".agents/skills/continuous-development-cycle/"
+                allowed_exact = {
+                    "AGENTS.md",
+                    "docs/cdc-consumer-lock.json",
+                    "docs/development-cycle.yaml",
+                    "docs/work-status/current.md",
+                    "docs/cdc-adoption-2.11.5.md",
+                    ".github/workflows/cdc-policy.yml",
+                    *MAIN_PATHS,
+                }
+                git("add", "-A", cwd=ADOPT)
+                changed, _ = git("diff", "--cached", "--name-only", cwd=ADOPT)
+                for path in changed.splitlines():
+                    if path not in allowed_exact and not path.startswith(allowed_prefix):
+                        raise RuntimeError("process-only adoption escaped allowed paths: " + path)
+                git("commit", "-q", "-m", "chore(cdc): adopt 2.11.5 and reconcile main security and acceptance state", cwd=ADOPT)
+                candidate, _ = git("rev-parse", "HEAD", cwd=ADOPT)
+                candidate_tree, _ = git("rev-parse", "HEAD^{tree}", cwd=ADOPT)
+                observed_package_tree, _ = git("rev-parse", "HEAD:.agents/skills/continuous-development-cycle", cwd=ADOPT)
+                if observed_package_tree != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("detached candidate package tree mismatch")
+
+                # A maintenance-only scope must preserve all product executable inputs exactly.
+                for path in ("src", "tests", "Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain.toml", "assets", ".github/workflows/windows-ci.yml"):
+                    if git("rev-parse", f"{candidate}:{path}", cwd=ADOPT)[0] != git("rev-parse", f"{LAST_GREEN}:{path}", cwd=ADOPT)[0]:
+                        raise RuntimeError("runtime-equivalence check failed: " + path)
+                if git("merge-base", "--is-ancestor", MAIN_PIN, candidate, cwd=ADOPT, check=False)[1]:
+                    raise RuntimeError("candidate does not include main ancestry")
+                if DRY_RUN:
+                    print(json.dumps({"status":"PREPARED", "candidate":candidate, "root_tree":candidate_tree,
+                                      "package_tree":observed_package_tree, "changed_paths":changed.splitlines()}, sort_keys=True))
+                    raise SystemExit(0)
+
+                # Refresh lease with the candidate as observable activity before the product write.
+                lease_record = leasev2.renew(
+                    lease_record, owner, generation, invocation_id, now(),
+                    activity_ref="git:" + candidate, ttl=1200
+                )
+                lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+                leasev2.check(
+                    lease_store, lease_revision, REPO, SOURCE_REF, owner, generation, invocation_id,
+                    now(), action="product_write"
+                )
+
+                required_paths = [
+                    ".agents/skills/continuous-development-cycle",
+                    "docs/cdc-consumer-lock.json",
+                    "docs/development-cycle.yaml",
+                    "docs/work-status/current.md",
+                    "docs/cdc-adoption-2.11.5.md",
+                    "AGENTS.md",
+                    ".github/workflows/cdc-policy.yml",
+                    *MAIN_PATHS,
+                ]
+                manifest = []
+                for path in required_paths:
+                    oid, _ = git("rev-parse", f"{candidate}:{path}", cwd=ADOPT)
+                    typ, _ = git("cat-file", "-t", oid, cwd=ADOPT)
+                    manifest.append({"path":path,"object_type":typ,"object_sha1":oid})
+
+                txn_id = f"cdc-2.11.5-{REPO.replace('/','-')}-{source_head[:12]}-{RUN_KEY}"
+                txn = {
+                    "schema":"migration-transaction/v1",
+                    "transaction_id":txn_id,
+                    "source_head":source_head,
+                    "target_ref":SOURCE_REF,
+                    "items":copy.deepcopy(manifest),
+                    "completed_paths":required_paths.copy(),
+                    "operation_budget":100,
+                    "per_item_operations":1,
+                    "batch_overhead_operations":0,
+                    "finalization_reserve_operations":1,
+                    "detached_checkpoints":[],
+                    "final_tree_sha":candidate_tree,
+                    "expected_subtree_tree":TARGET_PACKAGE_TREE,
+                    "observed_subtree_tree":TARGET_PACKAGE_TREE,
+                    "policy_reconciled":True,
+                }
+                if migration.plan(txn)["action"] != "READY_TO_ADVANCE_REF":
+                    raise RuntimeError("detached migration did not reach publication boundary")
+                assembly = migration.assembly_record(
+                    txn,
+                    target_version=TARGET_VERSION,
+                    target_release_ref=TARGET_RELEASE_REF,
+                    target_release_commit=TARGET_RELEASE_COMMIT,
+                    completed_at_utc=now(),
+                )
+
+                remote_id = remote_identity(ROOT, "origin")
+                assembly_ref = f"refs/heads/cdc/adoption-assembly/2.11.5-{RUN_KEY}"
+                attempt_ref = f"refs/heads/cdc/adoption-attempts/2.11.5-{RUN_KEY}"
+                assembly_store = GitDocumentStore(ROOT, "origin", assembly_ref, remote_id, protected_refs=[SOURCE_REF])
+                arev, existing = assembly_store.read()
+                if arev is None:
+                    arev = assembly_store.compare_and_swap(None, assembly)
+                else:
+                    if existing != assembly:
+                        raise RuntimeError("assembly ref already exists with different record")
+                attempt_store = GitDocumentStore(ROOT, "origin", attempt_ref, remote_id, protected_refs=[SOURCE_REF, assembly_ref])
+
+                state = {
+                    "schema":"consumer-adoption-publication/v1",
+                    "source_head":source_head,
+                    "target_ref":SOURCE_REF,
+                    "target_version":TARGET_VERSION,
+                    "target_release_ref":TARGET_RELEASE_REF,
+                    "target_release_commit":TARGET_RELEASE_COMMIT,
+                    "target_package_tree":TARGET_PACKAGE_TREE,
+                    "required_paths":required_paths,
+                    "prepared_paths":required_paths.copy(),
+                    "assembly_manifest":copy.deepcopy(assembly["manifest"]),
+                    "assembly_authority":{
+                        "schema":"migration-assembly-authority/v1",
+                        "store_ref":assembly_ref,
+                        "store_id":remote_id,
+                        "revision":arev,
+                        "transaction_id":txn_id,
+                        "manifest_digest":assembly["manifest_digest"],
+                    },
+                    "final_tree_sha":candidate_tree,
+                    "observed_package_tree":TARGET_PACKAGE_TREE,
+                    "candidate_commit":candidate,
+                    "live_source_head":source_head,
+                    "publication_claim":None,
+                    "published_head":None,
+                    "readback_package_tree":None,
+                }
+                claim_plan = assess_adoption(state)
+                if claim_plan["action"] != "CLAIM_CONDITIONAL_PUBLISH":
+                    raise RuntimeError("unexpected adoption claim plan: " + claim_plan["action"])
+                state["publication_claim"] = claim_plan["claim"]
+                publisher = GitConsumerAdoptionPublisher(
+                    ROOT, "origin", SOURCE_REF, remote_id, attempt_store, assembly_store
+                )
+                publication_started = True
+                result = publisher.publish(state)
+                if result["action"] in {"REJECTED", "TERMINAL_NO_REPLAY", "REPLAN_FRESH_HEAD"}:
+                    publication_started = False  # authoritative terminal no-publication outcome
+                if result["action"] not in {"PUBLISHED","CONFIRMED_FROM_READBACK","CONFIRMED","OBSERVED_EXISTING"}:
+                    raise RuntimeError("atomic publication not confirmed: " + result["action"])
+                if remote_head(SOURCE_REF) != candidate:
+                    raise RuntimeError("shared source ref did not read back exact candidate")
+                pub_tree, _ = git("rev-parse", f"{candidate}:.agents/skills/continuous-development-cycle", cwd=ADOPT)
+                if pub_tree != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("published package tree readback mismatch")
+
+            else:
+                candidate = source_head
+                git("worktree", "add", "--quiet", "--detach", str(ADOPT), source_head)
+                adapter = yaml.safe_load((ADOPT / "docs/development-cycle.yaml").read_text())
+                binding = validate_adapter(adapter, skill_version=TARGET_VERSION)
+                checkpoint, _ = parse_frontmatter(ADOPT / "docs/work-status/current.md")
+                validate_checkpoint_24(checkpoint, adapter)
+                if git("rev-parse", f"{candidate}:.agents/skills/continuous-development-cycle")[0] != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("record candidate CDC tree mismatch")
+
+            publication_confirmed = True
+
+            # Record coordination convergence while still owned.
+            adoption_evidence = {
+                "schema":"cdc-consumer-adoption-evidence/v1",
+                "repository":REPO,
+                "source_ref":SOURCE_REF,
+                "source_head":candidate,
+                "source_base":source_head,
+                "release":{
+                    "schema":"live-target-release/v1",
+                    "version":TARGET_VERSION,
+                    "canonical_repository":"bajoicheg/g-cdc",
+                    "release_ref":TARGET_RELEASE_REF,
+                    "release_commit":TARGET_RELEASE_COMMIT,
+                    "package_tree":TARGET_PACKAGE_TREE,
+                },
+                "package_tree":TARGET_PACKAGE_TREE,
+                "policy_digest":binding["policy_digest"],
+                "checkpoint_schema":"development-work-status/v4",
+                "status":"applied_verified",
+                "observed_at_utc":now(),
+                "safe_boundary":{
+                    "prior_generation":prior_generation,
+                    "prior_explicitly_released":initial_lease.get("last_release") is not None,
+                    "prior_guard":None,
+                    "recovery_kind":"released_safe_boundary",
+                    "adopting_generation":generation,
+                    "invocation_id":invocation_id,
+                },
+                "checks":{
+                    "exact_package_subtree":"PASS",
+                    "consumer_lock":"PASS",
+                    "adapter_semantic_digest":"PASS",
+                    "checkpoint_v4_readback":"PASS",
+                    "changed_path_containment":"PASS: CDC/policy/checkpoint paths and exact current-main security/storage merge only",
+                    "product_source_changes":0,
+                    "detached_tree_before_ref_move":"PASS",
+                    "atomic_conditional_fast_forward":"PASS",
+                    "published_readback":"PASS",
+                },
+                "scheduler_mutations":0,
+                "product_scope_preserved":checkpoint.get("active_change", ""),
+                "next_action":"Resume the pre-existing product task under CDC 2.11.5; scheduler pause remains authoritative.",
+            }
+            fleet_target = {
+                "schema":"version-convergence-target/v1",
+                "target_version":TARGET_VERSION,
+                "target_package_fingerprint":"git-tree:"+TARGET_PACKAGE_TREE,
+                "checkpoint_schema":"development-work-status/v4",
+                "safe_boundary_required":True,
+            }
+            current_revision, current_lease = lease_store.read()
+            if current_lease.get("owner_id") != owner or current_lease.get("generation") != generation:
+                raise RuntimeError("managed adoption lost exact lease before coordination evidence")
+            lease_revision = lease_store.cas_aux_update(
+                current_revision,
+                {
+                    "fleet-target.json":json.dumps(fleet_target, indent=2, ensure_ascii=False),
+                    **({"adoptions/cdc-2.11.5.json":json.dumps(adoption_evidence, indent=2, ensure_ascii=False)} if MODE == "adopt" else {}),
+                }
+            )
+            lease_record = lease_store.read()[1]
+
+            # Transactional finalization. The final release CAS also refreshes Fleet snapshot.
+            checkpoint_ref = f"https://github.com/{REPO}/blob/{candidate}/docs/work-status/current.md"
+
+            # The compact capsule binds the immutable source commit rather than embedding a
+            # self-referential SHA in a file belonging to that same commit.
+            fresh_green = MODE == "record" and os.environ["CDC_WINDOWS_RESULT"] == "success" and os.environ["CDC_POLICY_RESULT"] == "success"
+            capsule = {
+                "schema":"resume-capsule/v1", "updated_at_utc":now(), "repository":REPO,
+                "source_ref":SOURCE_REF, "head_sha":candidate, "policy_version":TARGET_VERSION,
+                "policy_revision":binding["policy_revision"], "policy_digest":binding["policy_digest"],
+                "checkpoint_ref":checkpoint_ref,
+                "checkpoint_digest":hashlib.sha256((ADOPT / "docs/work-status/current.md").read_bytes()).hexdigest(),
+                "task":{"phase":"blocked" if fresh_green else "validation",
+                        "current_task":checkpoint["current_task"],
+                        "next_action":MANUAL_NEXT if fresh_green else "Inspect and reconcile the exact managed-maintenance Windows/CDC/security job results; fix an observed failure before manual acceptance.",
+                        "blocker":MANUAL_BLOCKER if fresh_green else None},
+                "ownership":{"lease_schema":"execution-lease/v2", "owner_id":None, "invocation_id":None,
+                             "generation":generation, "revision":None},
+                "external":None,
+                "validation":{"candidate_sha":candidate, "last_green_sha":candidate if fresh_green else LAST_GREEN,
+                              "last_green_evidence":f"https://github.com/{REPO}/actions/runs/{RUN_ID}" if fresh_green else f"https://github.com/{REPO}/actions/runs/{LAST_RUN}",
+                              "missing_gates":["manual real-application compatibility", "final independent review", "explicit public-promotion approval"] + ([] if fresh_green else ["fresh exact-candidate Windows GREEN"])},
+                "health":{"state":"BLOCKED" if fresh_green else "DEGRADED", "fingerprint":None},
+                "budget":{"ref":checkpoint["control"]["budget_ref"], "summary":"Existing budget history preserved; public GitHub-hosted Actions are normal compute. Scheduler pause preserved."},
+                "recovery":{"recommended_action":"complete_manual_acceptance" if fresh_green else "reconcile_platform_checks",
+                            "reason":"No interactive Windows desktop backend is available to this invocation." if fresh_green else "The published candidate has a fresh exact-SHA platform gate in this workflow."},
+            }
+            resume_capsule.validate(capsule)
+            record = {"schema":"g-switcher-maintenance-validation/v1", "source_sha":candidate,
+                      "run_id":RUN_ID, "mode":MODE, "observed_at_utc":now(),
+                      "windows_result":os.environ.get("CDC_WINDOWS_RESULT", "pending"),
+                      "policy_security_result":os.environ.get("CDC_POLICY_RESULT", "pending"),
+                      "manual_compatibility":"pending", "scheduler_mutations":0,
+                      "checkpoint_ref":checkpoint_ref}
+            lease_revision = lease_store.cas_aux_update(lease_revision, {"resume.json":capsule,
+                                        "maintenance/2026-10-05-"+MODE+".json":record})
+            lease_record = lease_store.read()[1]
+
+            lease_record = leasev2.begin_finalization(
+                lease_record, owner, generation, invocation_id, now(), pending_shared_writes=False
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+            lease_record = leasev2.record_checkpoint(
+                lease_record, owner, generation, invocation_id, now(),
+                checkpoint_ref=checkpoint_ref, pending_shared_writes=False
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+            lease_record = leasev2.reconcile_finalization(
+                lease_record, owner, generation, invocation_id, now(), external_reconciliation="none"
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+
+            progress_refs = ["git:"+candidate, "adoption:cdc-2.11.5"]
+            continuity = {
+                "schema":"execution-continuity/v1",
+                "invocation_id":invocation_id,
+                "current_state":"COMPLETE",
+                "requested_terminal_outcome":"scope_complete",
+                "runnable_next_action":False,
+                "meaningful_progress_refs":progress_refs,
+                "primitive_steps":[],
+                "external_binding":None,
+                "blocker":None,
+                "checkpoint_ref":checkpoint_ref,
+                "next_action":None,
+                "lease_release_required":False,
+                "lease_released":False,
+                "terminal_state":{
+                    "schema":"terminal-state/v2",
+                    "invocation_id":invocation_id,
+                    "scope_id":"cdc-2.11.5-consumer-adoption:"+REPO,
+                    "observed_head":candidate,
+                    "decision":"COMPLETE",
+                    "runnable_actions":[],
+                    "pending_external":None,
+                    "blocker":None,
+                    "meaningful_progress_refs":progress_refs,
+                    "completion_evidence_refs":["scope:atomic-adoption-verified"],
+                    "checkpoint_ref":checkpoint_ref,
+                    "lease_released":False,
+                },
+            }
+            decision = execution_continuity.evaluate(continuity, now_utc=now())
+            if not decision["allowed"]:
+                raise RuntimeError("continuity pre-release rejected: " + decision["reason"])
+            lease_record = leasev2.mark_ready(
+                lease_record, owner, generation, invocation_id, now(), continuity_state=continuity
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+
+            try:
+                snap_raw, code = git("show", f"{lease_revision}:fleet-project-snapshot.json", check=False)
+                snapshot = json.loads(snap_raw) if code == 0 else None
+            except Exception:
+                snapshot = None
+            if isinstance(snapshot, dict):
+                snapshot["observed_at_utc"] = now()
+                snapshot["product_head"] = candidate
+                snapshot["cdc_version"] = TARGET_VERSION
+                snapshot["package_fingerprint"] = "git-tree:" + TARGET_PACKAGE_TREE
+                snapshot["policy_revision"] = binding["policy_revision"]
+                snapshot["coordination"]["generation"] = generation
+                snapshot["coordination"]["owner_active"] = False
+                snapshot["coordination"]["guard_present"] = False
+                snapshot["progress"]["observed_at_utc"] = now()
+                snapshot["progress"]["last_meaningful_progress_at_utc"] = now()
+                snapshot["progress"]["last_activity_at_utc"] = now()
+                refs = list(snapshot["progress"].get("evidence_refs", []))
+                for ref in ["git:"+candidate, "adoptions/cdc-2.11.5.json", "actions:"+RUN_ID]:
+                    if ref not in refs:
+                        refs.append(ref)
+                snapshot["progress"]["evidence_refs"] = refs
+                lease_store.set_pending_aux({
+                    "fleet-project-snapshot.json":json.dumps(snapshot, indent=2, ensure_ascii=False)
+                })
+
+            released = rt.release_execution_lease(
+                lease_store, lease_revision, REPO, SOURCE_REF, owner, generation, invocation_id,
+                task_id, attempt_id, now()
+            )
+            release_record = lease_store.read_revision(released["release_receipt"]["lease_revision"])
+            post = copy.deepcopy(continuity)
+            post["lease_release_required"] = True
+            post["lease_released"] = True
+            post["terminal_state"]["lease_released"] = True
+            gate = final_response_gate.evaluate(
+                invocation_id, released["record"], post,
+                {"owner_id":owner,"generation":generation},
+                released["release_receipt"], release_record, now()
+            )
+            if not gate["final_response_allowed"]:
+                raise RuntimeError("managed final-response gate rejected: " + gate["reason"])
+
+            # Stop sentinel only after durable lease release, then prove process quiescence.
+            rt.cancel(task_id, attempt_id)
+            deadline = time.monotonic() + 30
+            while True:
+                obs = rt.observe(task_id, attempt_id)
+                if obs.get("quiescent") is True:
+                    break
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("managed sentinel did not become quiescent after release")
+                time.sleep(0.2)
+
+            final_head = remote_head(SOURCE_REF)
+            final_lock_raw, _ = git("show", f"{final_head}:docs/cdc-consumer-lock.json")
+            final_lock = json.loads(final_lock_raw)
+            if final_head != candidate or final_lock.get("version") != TARGET_VERSION or final_lock.get("package_tree") != TARGET_PACKAGE_TREE:
+                raise RuntimeError("final source/lock readback mismatch")
+            final_lease_revision, final_lease = lease_store.read()
+            if final_lease.get("owner_id") is not None or final_lease.get("external_guard") is not None:
+                raise RuntimeError("final coordination is not released/no-guard")
+
+            if os.environ.get("GITHUB_OUTPUT"):
+                with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+                    stream.write("candidate_sha=" + candidate + "\n")
+            print(json.dumps({
+                "status":"ADOPTED" if MODE == "adopt" else "CI_RECORDED",
+                "repository":REPO,
+                "source_ref":SOURCE_REF,
+                "source_base":source_head,
+                "source_head":candidate,
+                "package_tree":TARGET_PACKAGE_TREE,
+                "policy_digest":binding["policy_digest"],
+                "lease_generation":generation,
+                "lease_revision":final_lease_revision,
+                "release_receipt_revision":released["release_receipt"]["lease_revision"],
+                "scheduler_mutations":0,
+                "final_response_gate":"GREEN",
+            }, sort_keys=True))
+
+        except BaseException as error:
+            if DRY_RUN or isinstance(error, SystemExit) and error.code == 0:
+                raise
+            # A terminal controller error must not silently orphan a known-safe lease.
+            # An uncertain publication is preserved for provider reconciliation instead.
+            current_revision, current_record = lease_store.read()
+            if current_record.get("owner_id") != owner:
+                recovered = rt.reconcile_execution_lease_hold(lease_store, task_id, attempt_id)
+                if recovered["status"] == "released":
+                    rt.cancel(task_id, attempt_id)
+                    deadline = time.monotonic() + 30
+                    while not rt.observe(task_id, attempt_id).get("quiescent"):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("released failure supervisor did not become quiescent") from error
+                        time.sleep(0.2)
+                raise
+            failed_head = remote_head(SOURCE_REF)
+            unknown_publication = bool(globals().get("publication_started") and not globals().get("publication_confirmed"))
+            failure = {"schema":"g-switcher-managed-maintenance-failure/v1", "run_id":RUN_ID,
+                       "mode":MODE, "observed_at_utc":now(), "source_head":failed_head,
+                       "error_type":type(error).__name__, "publication_outcome_unknown":unknown_publication,
+                       "next_action":"Reconcile the exact immutable adoption-attempt journal before any retry" if unknown_publication else "Diagnose this exact failed job and correct the bounded maintenance attempt"}
+            failure_revision = lease_store.cas_aux_update(current_revision, {"maintenance/failure-"+RUN_KEY+".json":failure})
+            if unknown_publication:
+                print(json.dumps({"status":"BLOCKED_PUBLICATION_RECONCILIATION", "checkpoint_revision":failure_revision}))
+                raise
+            # No publication was submitted, or the package publisher confirmed it and
+            # exact readback completed. There is no unresolved downstream effect here.
+            record = lease_store.read()[1]
+            if record.get("external_guard") is not None:
+                raise RuntimeError("failure finalization requires external guard reconciliation") from error
+            failure_checkpoint = f"https://github.com/{REPO}/blob/{failure_revision}/maintenance/failure-{RUN_KEY}.json"
+            if record["finalization"]["state"] not in {"active", "failed"}:
+                record = leasev2.fail_finalization(record, owner, generation, invocation_id, now(), failure=failure_checkpoint)
+                failure_revision = lease_store.compare_and_swap(failure_revision, record)
+            record = leasev2.begin_finalization(record, owner, generation, invocation_id, now(), pending_shared_writes=False)
+            revision = lease_store.compare_and_swap(failure_revision, record)
+            record = leasev2.record_checkpoint(record, owner, generation, invocation_id, now(), checkpoint_ref=failure_checkpoint, pending_shared_writes=False)
+            revision = lease_store.compare_and_swap(revision, record)
+            record = leasev2.reconcile_finalization(record, owner, generation, invocation_id, now(), external_reconciliation="none")
+            revision = lease_store.compare_and_swap(revision, record)
+            evidence = [failure_checkpoint, "actions:"+RUN_ID+":"+MODE+":failed"]
+            next_action = failure["next_action"]
+            blocked = {"schema":"execution-continuity/v1", "invocation_id":invocation_id,
+                       "current_state":"BLOCKED", "requested_terminal_outcome":"blocked",
+                       "runnable_next_action":False, "meaningful_progress_refs":[], "primitive_steps":[],
+                       "external_binding":None, "blocker":"managed-maintenance-failed", "checkpoint_ref":failure_checkpoint,
+                       "next_action":next_action, "lease_release_required":False, "lease_released":False,
+                       "blocker_proof":{"schema":"blocked-state-proof/v1", "dependency_id":"managed-maintenance-failed",
+                                        "category":"worker_terminal", "observed_at_utc":now(), "max_age_seconds":120,
+                                        "evidence_refs":evidence, "next_action":next_action,
+                                        "recheck_trigger":"corrected bounded maintenance attempt", "same_invocation_work_exhausted":True},
+                       "terminal_state":{"schema":"terminal-state/v2", "invocation_id":invocation_id,
+                                         "scope_id":"cdc-2.11.5-maintenance-attempt:"+REPO,
+                                         "observed_head":failed_head, "decision":"BLOCKED", "runnable_actions":[],
+                                         "pending_external":None, "blocker":{"code":"managed-maintenance-failed", "evidence_refs":evidence,
+                                         "next_action":next_action, "recheck_trigger":"corrected bounded maintenance attempt"},
+                                         "meaningful_progress_refs":[], "completion_evidence_refs":[],
+                                         "checkpoint_ref":failure_checkpoint, "lease_released":False}}
+            record = leasev2.mark_ready(record, owner, generation, invocation_id, now(), continuity_state=blocked)
+            revision = lease_store.compare_and_swap(revision, record)
+            released_error = rt.release_execution_lease(lease_store, revision, REPO, SOURCE_REF, owner, generation,
+                                                        invocation_id, task_id, attempt_id, now())
+            blocked["lease_release_required"] = True
+            blocked["lease_released"] = True
+            blocked["terminal_state"]["lease_released"] = True
+            checked_release = lease_store.read_revision(released_error["release_receipt"]["lease_revision"])
+            error_gate = final_response_gate.evaluate(invocation_id, released_error["record"], blocked,
+                                                     {"owner_id":owner,"generation":generation},
+                                                     released_error["release_receipt"], checked_release, now())
+            if not error_gate["final_response_allowed"]:
+                raise RuntimeError("failure release gate rejected") from error
+            rt.cancel(task_id, attempt_id)
+            deadline = time.monotonic() + 30
+            while not rt.observe(task_id, attempt_id).get("quiescent"):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("failure supervisor did not become quiescent after release") from error
+                time.sleep(0.2)
+            print(json.dumps({"status":"FAILED_RELEASED", "release_receipt":released_error["release_receipt"]}))
+            raise
+
+        CDC_RUNNER
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+    - name: Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: ${{ needs.managed-adoption.outputs.candidate_sha }}
+        persist-credentials: false
+    - name: Verify exact source revision before building
+      env:
+        EXPECTED_SOURCE_SHA: ${{ needs.managed-adoption.outputs.candidate_sha }}
+      run: python scripts/verify_build_revision.py --require-clean
+    - name: Source provenance regression tests
+      run: python -m unittest discover -s scripts -p 'test_build_revision.py' -v
+    - name: Rust toolchain
+      shell: pwsh
+      run: |
+        rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+        rustup override set 1.98.1
+        $active = rustup show active-toolchain
+        Write-Host $active
+        if (-not $active.StartsWith('1.98.1')) {
+          throw "Unexpected Rust toolchain: $active"
+        }
+        rustc --version
+        cargo --version
+    - name: Read-only 2.0.1 source and privacy gate
+      shell: pwsh
+      run: ./scripts/ci-normalize-v201.ps1
+    - name: Format
+      shell: pwsh
+      run: cargo fmt --all -- --check
+    - name: Locked dependency graph
+      shell: pwsh
+      run: cargo metadata --locked --no-deps --format-version 1 > $null
+    - name: Clippy
+      shell: pwsh
+      run: cargo clippy --locked --all-targets -- -D warnings
+    - name: Unit tests
+      shell: pwsh
+      run: cargo test --locked --all-targets
+    - name: Build compiled compatibility tool
+      shell: pwsh
+      run: cargo build --locked --bin g-switcher-compatibility
+    - name: Manual compatibility tooling smoke test
+      shell: pwsh
+      run: |
+        $windowsPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        if (-not (Test-Path -LiteralPath $windowsPowerShell -PathType Leaf)) {
+          throw 'Windows PowerShell 5.1 executable is missing from the runner.'
+        }
+
+        # Keep the legacy developer recorder compatible with Windows PowerShell
+        # 5.1, but human testing no longer depends on unsigned script execution.
+        $recorderBytes = [System.IO.File]::ReadAllBytes('scripts/manual-compatibility-v201.ps1')
+        if (@($recorderBytes | Where-Object { $_ -gt 127 }).Count -ne 0) {
+          throw 'manual-compatibility-v201.ps1 must remain ASCII-only for Windows PowerShell 5.1 compatibility.'
+        }
+
+        $output = Join-Path $env:RUNNER_TEMP "compatibility-results-2.0.1.md"
+        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-compatibility-v201.ps1 -ScaffoldOnly -OutputPath $output
+        if ($LASTEXITCODE -ne 0) {
+          throw "Windows PowerShell 5.1 recorder smoke test failed with exit code $LASTEXITCODE."
+        }
+        if (-not (Test-Path -LiteralPath $output -PathType Leaf)) {
+          throw 'Manual compatibility recorder did not create its result file.'
+        }
+        $text = Get-Content -LiteralPath $output -Raw
+        if ($text -notmatch '## Manual application matrix' -or $text -notmatch 'Notepad' -or $text -notmatch 'Windows Terminal' -or $text -notmatch 'PENDING') {
+          throw 'Manual compatibility recorder produced an incomplete scaffold.'
+        }
+
+        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $output
+        if ($LASTEXITCODE -eq 0) {
+          throw 'PowerShell compatibility verifier unexpectedly accepted a PENDING scaffold.'
+        }
+        $global:LASTEXITCODE = 0
+
+        $compiledScaffold = Join-Path $env:RUNNER_TEMP "compatibility-compiled-scaffold-2.0.1.md"
+        & .\target\debug\g-switcher-compatibility.exe scaffold $compiledScaffold
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $compiledScaffold -PathType Leaf)) {
+          throw 'Compiled compatibility recorder failed to create a scaffold.'
+        }
+        & .\target\debug\g-switcher-compatibility.exe verify $compiledScaffold
+        if ($LASTEXITCODE -eq 0) {
+          throw 'Compiled compatibility verifier unexpectedly accepted a PENDING scaffold.'
+        }
+        $global:LASTEXITCODE = 0
+
+        $valid = @'
+        # G-switcher 2.0.1 - compatibility verifier fixture
+
+        ## Manual application matrix
+
+        | Application | Version tested | Windows build | Auto | Manual current word | Selected text | Undo | Password/sensitive fields | Result / notes |
+        |---|---|---|---|---|---|---|---|---|
+        | Notepad | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+        | Microsoft Word | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+        | Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
+        | Google Chrome | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS | fixture |
+        | Telegram Desktop | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+        | Visual Studio Code | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | N/A | fixture |
+        | Windows Terminal | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | UNSUPPORTED/FAIL-OPEN | N/A | N/A | fixture |
+
+        ## End fixture
+        '@
+        $validPath = Join-Path $env:RUNNER_TEMP "compatibility-valid-2.0.1.md"
+        Set-Content -LiteralPath $validPath -Value $valid -Encoding UTF8
+
+        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $validPath
+        if ($LASTEXITCODE -ne 0) {
+          throw 'PowerShell compatibility verifier rejected a complete non-blocking matrix.'
+        }
+        & .\target\debug\g-switcher-compatibility.exe verify $validPath
+        if ($LASTEXITCODE -ne 0) {
+          throw 'Compiled compatibility verifier rejected a complete non-blocking matrix.'
+        }
+
+        $invalidBrowser = $valid.Replace(
+          '| Microsoft Edge | 1.0.0 | 26100 | PASS | PASS | PASS | PASS | PASS |',
+          '| Microsoft Edge | 1.0.0 | 26100 | UNSUPPORTED/FAIL-OPEN | PASS | PASS | PASS | PASS |'
+        )
+        $invalidBrowserPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-browser-2.0.1.md"
+        Set-Content -LiteralPath $invalidBrowserPath -Value $invalidBrowser -Encoding UTF8
+        & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-compatibility-v201.ps1 -Path $invalidBrowserPath
+        if ($LASTEXITCODE -eq 0) {
+          throw 'PowerShell verifier unexpectedly accepted unsupported Edge core behavior.'
+        }
+        $global:LASTEXITCODE = 0
+        & .\target\debug\g-switcher-compatibility.exe verify $invalidBrowserPath
+        if ($LASTEXITCODE -eq 0) {
+          throw 'Compiled verifier unexpectedly accepted unsupported Edge core behavior.'
+        }
+        $global:LASTEXITCODE = 0
+
+        $invalidCore = $valid.Replace(
+          '| Notepad | 1.0.0 | 26100 | PASS |',
+          '| Notepad | 1.0.0 | 26100 | N/A |'
+        )
+        $invalidCorePath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-core-2.0.1.md"
+        Set-Content -LiteralPath $invalidCorePath -Value $invalidCore -Encoding UTF8
+        & .\target\debug\g-switcher-compatibility.exe verify $invalidCorePath
+        if ($LASTEXITCODE -eq 0) {
+          throw 'Compiled verifier unexpectedly accepted N/A for a core text-operation column.'
+        }
+        $global:LASTEXITCODE = 0
+
+        $invalidMetadata = $valid.Replace(
+          '| Microsoft Word | 1.0.0 | 26100 |',
+          '| Microsoft Word | UNKNOWN | 26100 |'
+        )
+        $invalidMetadataPath = Join-Path $env:RUNNER_TEMP "compatibility-invalid-metadata-2.0.1.md"
+        Set-Content -LiteralPath $invalidMetadataPath -Value $invalidMetadata -Encoding UTF8
+        & .\target\debug\g-switcher-compatibility.exe verify $invalidMetadataPath
+        if ($LASTEXITCODE -eq 0) {
+          throw 'Compiled verifier unexpectedly accepted UNKNOWN application metadata.'
+        }
+        $global:LASTEXITCODE = 0
+    - name: Build cross-process E2E helper
+      shell: pwsh
+      run: cargo build --locked --bin g-switcher-e2e-helper
+    - name: Windows same-process E2E
+      shell: pwsh
+      run: cargo test --locked --lib real_windows_hook_to_edit_e2e -- --ignored --test-threads=1 --nocapture
+    - name: Windows cross-process E2E
+      shell: pwsh
+      run: |
+        $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
+        cargo test --locked --lib real_cross_process_edit_e2e_release_gate -- --ignored --test-threads=1 --nocapture
+    - name: Real Edge and Chrome UIA adapter E2E
+      shell: pwsh
+      run: |
+        $arguments = @(
+          'test', '--locked', '--test', 'browser_uia_adapter', '--',
+          '--ignored', '--test-threads=1', '--nocapture'
+        )
+        $process = Start-Process -FilePath 'cargo.exe' -ArgumentList $arguments -PassThru -NoNewWindow
+        if (-not $process.WaitForExit(240000)) {
+          Write-Host 'Browser UIA E2E exceeded 240 seconds; terminating cargo and descendants.'
+          & taskkill.exe /PID $process.Id /T /F | Out-Host
+          throw 'Real Edge/Chrome UIA adapter E2E timed out.'
+        }
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) {
+          throw "Real Edge/Chrome UIA adapter E2E failed with exit code $($process.ExitCode)."
+        }
+    - name: Windows hung and closing target E2E
+      shell: pwsh
+      run: |
+        $env:G_SWITCHER_E2E_HELPER = (Resolve-Path "target/debug/g-switcher-e2e-helper.exe").Path
+        cargo run --locked --bin g-switcher-failure-e2e
+    - name: Release build
+      shell: pwsh
+      run: cargo build --locked --release --bin g-switcher --bin g-switcher-compatibility
+    - name: Release and branding checks
+      shell: pwsh
+      run: |
+        ./scripts/release-check.ps1
+        $compat = "target/release/g-switcher-compatibility.exe"
+        if (-not (Test-Path -LiteralPath $compat -PathType Leaf)) {
+          throw 'Compiled compatibility executable is missing from the release build.'
+        }
+        $compatHash = (Get-FileHash -LiteralPath $compat -Algorithm SHA256).Hash.ToLowerInvariant()
+        Set-Content -LiteralPath "$compat.sha256" -Value "$compatHash  g-switcher-compatibility.exe" -Encoding ascii -NoNewline
+        Write-Host "Compatibility tool SHA256: $compatHash"
+    - name: Microsoft Defender scan
+      shell: pwsh
+      run: |
+        $mpCmd = @(
+          "$env:ProgramFiles\Windows Defender\MpCmdRun.exe",
+          "$env:ProgramData\Microsoft\Windows Defender\Platform\*\MpCmdRun.exe"
+        ) | ForEach-Object { Get-Item $_ -ErrorAction SilentlyContinue } | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($null -eq $mpCmd) {
+          Write-Warning 'Microsoft Defender command-line scanner is unavailable on this runner; other release gates continue.'
+          exit 0
+        }
+        foreach ($path in @('target/release/g-switcher.exe', 'target/release/g-switcher-compatibility.exe')) {
+          & $mpCmd.FullName -Scan -ScanType 3 -File (Resolve-Path $path).Path -DisableRemediation
+          if ($LASTEXITCODE -ne 0) {
+            throw "Microsoft Defender scan failed or detected a threat for $path (exit $LASTEXITCODE)."
+          }
+        }
+    - name: Verify exact clean source revision before packaging
+      env:
+        EXPECTED_SOURCE_SHA: ${{ needs.managed-adoption.outputs.candidate_sha }}
+      run: python scripts/verify_build_revision.py --require-clean
+    - name: Prepare public release package
+      shell: pwsh
+      run: |
+        $packageRoot = "target/release/g-switcher-2.0.1"
+        New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
+        Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $packageRoot
+        Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $packageRoot
+        Copy-Item -LiteralPath README.md -Destination $packageRoot
+        Copy-Item -LiteralPath CHANGELOG.md -Destination $packageRoot
+        Copy-Item -LiteralPath RELEASE_NOTES_2.0.1.md -Destination $packageRoot
+        Copy-Item -LiteralPath THIRD_PARTY_DATA.md -Destination $packageRoot
+        Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $packageRoot
+
+        $head = (git rev-parse HEAD).Trim()
+        $rustVersion = (rustc --version).Trim()
+        $cargoVersion = (cargo --version).Trim()
+        $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+        $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+        $provenance = @(
+          'G-switcher 2.0.1 build provenance',
+          "commit=$head",
+          "workflow_run_id=$env:GITHUB_RUN_ID",
+          "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+          "rust=$rustVersion",
+          "cargo=$cargoVersion",
+          "cargo_lock_sha256=$lockHash",
+          "g-switcher.exe_sha256=$exeHash"
+        )
+        Set-Content -LiteralPath (Join-Path $packageRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
+
+        $zip = "target/release/g-switcher-2.0.1-windows-x64.zip"
+        Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
+        $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+        Set-Content -LiteralPath "$zip.sha256" -Value "$hash  g-switcher-2.0.1-windows-x64.zip" -Encoding ascii -NoNewline
+    - name: Prepare manual compatibility kit
+      shell: pwsh
+      run: |
+        $kitRoot = "target/manual-compatibility/g-switcher-2.0.1"
+        New-Item -ItemType Directory -Path $kitRoot -Force | Out-Null
+        Copy-Item -LiteralPath target/release/g-switcher.exe -Destination $kitRoot
+        Copy-Item -LiteralPath target/release/g-switcher.exe.sha256 -Destination $kitRoot
+        Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe -Destination $kitRoot
+        Copy-Item -LiteralPath target/release/g-switcher-compatibility.exe.sha256 -Destination $kitRoot
+        Copy-Item -LiteralPath manual-browser-test-2.0.1.html -Destination $kitRoot
+        Copy-Item -LiteralPath scripts/manual-compatibility-v201.ps1 -Destination $kitRoot
+        Copy-Item -LiteralPath scripts/verify-compatibility-v201.ps1 -Destination $kitRoot
+        Copy-Item -LiteralPath COMPATIBILITY_2.0.1.md -Destination $kitRoot
+        Copy-Item -LiteralPath MANUAL_TESTING_2.0.1.md -Destination $kitRoot
+        Copy-Item -LiteralPath BROWSER_QUICK_TEST_2.0.1_RU.md -Destination $kitRoot
+
+        $head = (git rev-parse HEAD).Trim()
+        $rustVersion = (rustc --version).Trim()
+        $cargoVersion = (cargo --version).Trim()
+        $lockHash = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+        $exeHash = (Get-FileHash -LiteralPath target/release/g-switcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+        $compatHash = (Get-FileHash -LiteralPath target/release/g-switcher-compatibility.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+        $provenance = @(
+          'G-switcher 2.0.1 manual compatibility kit provenance',
+          "commit=$head",
+          "workflow_run_id=$env:GITHUB_RUN_ID",
+          "workflow_run_number=$env:GITHUB_RUN_NUMBER",
+          "rust=$rustVersion",
+          "cargo=$cargoVersion",
+          "cargo_lock_sha256=$lockHash",
+          "g-switcher.exe_sha256=$exeHash",
+          "g-switcher-compatibility.exe_sha256=$compatHash"
+        )
+        Set-Content -LiteralPath (Join-Path $kitRoot 'BUILD_PROVENANCE.txt') -Value $provenance -Encoding ascii
+
+        $manifest = Get-ChildItem -LiteralPath $kitRoot -File |
+          Sort-Object Name |
+          ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+        Set-Content -LiteralPath (Join-Path $kitRoot 'SHA256SUMS.txt') -Value $manifest -Encoding ascii
+    - name: Upload checked Windows artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: g-switcher-2.0.1-windows-x64
+        path: |
+          target/release/g-switcher.exe
+          target/release/g-switcher.exe.sha256
+          target/release/g-switcher-2.0.1-windows-x64.zip
+          target/release/g-switcher-2.0.1-windows-x64.zip.sha256
+        if-no-files-found: error
+        retention-days: 30
+    - name: Upload manual compatibility kit
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: g-switcher-2.0.1-manual-compatibility-kit
+        path: target/manual-compatibility/g-switcher-2.0.1
+        if-no-files-found: error
+        retention-days: 30
+    - name: Upload generated lockfile
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: g-switcher-2.0.1-lockfile
+        path: Cargo.lock
+        if-no-files-found: error
+        retention-days: 7
+    needs:
+    - managed-adoption
+    name: Windows Rust CI — exact maintenance candidate
+  policy-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: ${{ needs.managed-adoption.outputs.candidate_sha }}
+        persist-credentials: false
+        fetch-depth: 0
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - name: Install CDC validator dependency
+      run: python -m pip install -r .agents/skills/continuous-development-cycle/scripts/requirements.txt
+    - name: Verify canonical CDC package identity
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.11.5"
+        test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "6e9fb338a83c532076a30e8feb0b6ce2ebbe4063"
+    - name: Validate CDC package and project adapter
+      run: |
+        python -B .agents/skills/continuous-development-cycle/scripts/validate_package.py
+        python -B .agents/skills/continuous-development-cycle/scripts/validate_adapter.py docs/development-cycle.yaml --json
+        python -B .agents/skills/continuous-development-cycle/scripts/consumer_lock.py docs/cdc-consumer-lock.json
+        python -B .agents/skills/continuous-development-cycle/scripts/validate_checkpoint_24.py docs/work-status/current.md --adapter docs/development-cycle.yaml
+    - name: Cost-aware router regression
+      run: python -B -m unittest discover -s .agents/skills/continuous-development-cycle/tests -p 'test_cost_router.py' -v
+    - name: Require clean checkout
+      run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+    - name: Install checksum-verified secret scanner
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/gitleaks-bin"
+        cd "$RUNNER_TEMP/gitleaks-bin"
+        base='https://github.com/gitleaks/gitleaks/releases/download/v8.30.1'
+        curl --fail --silent --show-error --location "$base/gitleaks_8.30.1_checksums.txt" -o checksums.txt
+        echo '061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae  checksums.txt' | sha256sum --check --strict
+        curl --fail --silent --show-error --location "$base/gitleaks_8.30.1_linux_x64.tar.gz" -o gitleaks_8.30.1_linux_x64.tar.gz
+        grep '  gitleaks_8.30.1_linux_x64.tar.gz$' checksums.txt | sha256sum --check --strict
+        tar -xzf gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+        echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+        ./gitleaks version
+    - name: Scanner unit tests
+      run: python3 -m unittest discover -s scripts/security -p 'test_*.py' -v
+    - name: Prove credential detectors remain enabled
+      run: python3 scripts/security/verify_secret_rules.py
+    - name: Scan complete fetched history for secrets
+      shell: bash
+      run: |
+        set +e
+        gitleaks git . --config .gitleaks.toml --log-opts=--all --max-decode-depth=2 --redact=100 --no-banner --ignore-gitleaks-allow --gitleaks-ignore-path /dev/null --report-format json --report-path "$RUNNER_TEMP/history-redacted.json"
+        scanner_exit=$?
+        python3 - "$RUNNER_TEMP/history-redacted.json" <<'PY'
+        import json, pathlib, sys
+        report = pathlib.Path(sys.argv[1])
+        if report.exists():
+            for finding in json.loads(report.read_text()):
+                print(json.dumps({key: finding.get(key) for key in ["RuleID", "File", "StartLine", "Commit", "Fingerprint"]}, sort_keys=True))
+        PY
+        exit "$scanner_exit"
+    - name: Scan current files and archives for secrets
+      run: gitleaks dir . --config .gitleaks.toml --max-decode-depth=2 --max-archive-depth=3 --redact=100 --no-banner --ignore-gitleaks-allow --gitleaks-ignore-path /dev/null
+    - name: Block private material and corporate references in tracked files
+      run: python3 scripts/security/repository_hygiene.py
+    needs:
+    - managed-adoption
+    name: CDC and Repository Security — exact maintenance candidate
+  record-final-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout isolated orchestration branch
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        fetch-depth: 0
+        persist-credentials: true
+    - name: Setup Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - name: Install canonical validator dependency
+      run: python -m pip install --disable-pip-version-check "PyYAML>=6.0,<7"
+    - name: Verify durable owner-authorized intent
+      shell: bash
+      run: |
+        python -B - <<'INTENT'
+        import json
+        from pathlib import Path
+        intent=json.loads(Path('.cdc-maintenance/intent.json').read_text())
+        expected={'repository':'bajoicheg/g-switcher','source_ref':'refs/heads/release/2.0.1','expected_source_sha':'7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f','main_sha':'90c6dba064e1fbfccab204d6e1d086fca5b39e62','canonical_version':'2.11.5','release_commit':'bbe5d8c8e4249ad27735245033b6dd6549539809','package_tree':'6e9fb338a83c532076a30e8feb0b6ce2ebbe4063','scheduler_mutations':0,'public_promotion_authorized':False,'manual_acceptance_required':True,'no_force_push':True}
+        assert all(intent.get(k)==v for k,v in expected.items()), 'Durable maintenance intent drift'
+        print('PASS: exact maintenance intent; no scheduler or public-release authority')
+        INTENT
+    - name: Execute verified package-managed maintenance
+      id: adoption
+      env:
+        CDC_REPOSITORY: bajoicheg/g-switcher
+        CDC_SOURCE_REF: refs/heads/release/2.0.1
+        PYTHONPYCACHEPREFIX: ${{ runner.temp }}/cdc-bytecode
+        CDC_MODE: record
+        CDC_CANDIDATE_SHA: ${{ needs.managed-adoption.outputs.candidate_sha }}
+        CDC_WINDOWS_RESULT: ${{ needs.windows.result }}
+        CDC_POLICY_RESULT: ${{ needs.policy-security.result }}
+      shell: bash
+      run: |
+        python -B - <<'CDC_RUNNER'
+
+        #!/usr/bin/env python3
+        from __future__ import annotations
+        import copy, hashlib, json, os, shutil, subprocess, sys, tempfile, time, uuid
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        import yaml
+
+        REPO = os.environ["CDC_REPOSITORY"]
+        SOURCE_REF = os.environ["CDC_SOURCE_REF"]
+        TARGET_VERSION = "2.11.5"
+        EXPECTED_SOURCE = "7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f"
+        MAIN_PIN = "90c6dba064e1fbfccab204d6e1d086fca5b39e62"
+        DRY_RUN = os.environ.get("CDC_DRY_RUN") == "1"
+        MODE = os.environ.get("CDC_MODE", "adopt")
+        MAIN_PATHS = [
+            ".github/workflows/publication-audit.yml", ".github/workflows/secret-scan.yml",
+            ".github/workflows/storage-hygiene.yml", ".gitignore", ".gitleaks.toml", "SECURITY.md",
+            "scripts/security/publication_audit.py", "scripts/security/repository_hygiene.py",
+            "scripts/security/test_publication_audit.py", "scripts/security/test_repository_hygiene.py",
+            "scripts/security/triage_publication.py", "scripts/security/verify_secret_rules.py",
+        ]
+        LAST_GREEN = "0b6f7e3cff9762f9508c8e42d1fd23298a496306"
+        LAST_RUN = "36259598328"
+        MANUAL_BLOCKER = "Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks."
+        MANUAL_NEXT = "Run the exact candidate g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain final review and explicit public-promotion approval."
+
+        TARGET_RELEASE_REF = "refs/heads/release/v2.11.5"
+        TARGET_RELEASE_COMMIT = "bbe5d8c8e4249ad27735245033b6dd6549539809"
+        TARGET_PACKAGE_TREE = "6e9fb338a83c532076a30e8feb0b6ce2ebbe4063"
+        RUN_ID = os.environ.get("GITHUB_RUN_ID", "local")
+        RUN_ATTEMPT = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+        RUN_KEY = f"{MODE}-{RUN_ID}-{RUN_ATTEMPT}"
+        ROOT = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
+        TMP = Path(tempfile.mkdtemp(prefix="cdc-2115-rollout-"))
+        CANON = TMP / "g-cdc"
+        ADOPT = TMP / "adopt"
+
+        def now():
+            return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        def run(*args, cwd=ROOT, env=None, check=True, input_text=None):
+            p = subprocess.run([str(x) for x in args], cwd=cwd, env=env, text=True,
+                               input=input_text, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if check and p.returncode:
+                raise RuntimeError(f"command failed: {args[0]} {args[1] if len(args)>1 else ''}; {p.stderr[-1500:]}")
+            return p.stdout.strip(), p.returncode
+
+        def git(*args, cwd=ROOT, env=None, check=True, input_text=None):
+            return run("git", *args, cwd=cwd, env=env, check=check, input_text=input_text)
+
+        def remote_head(ref):
+            out, _ = git("ls-remote", "--refs", "origin", ref)
+            rows = [x for x in out.splitlines() if x.strip()]
+            if len(rows) != 1:
+                raise RuntimeError(f"ref {ref} must resolve once")
+            sha, got = rows[0].split("\t")
+            if got != ref or len(sha) != 40:
+                raise RuntimeError(f"bad ref result for {ref}")
+            return sha
+
+        def json_bytes(value):
+            return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+
+        # Canonical CDC clone first; all package-owned imports come from the immutable release.
+        run("git", "clone", "-q", "--no-checkout", "https://github.com/bajoicheg/g-cdc.git", str(CANON), cwd=TMP)
+        git("fetch", "-q", "--no-tags", "origin", TARGET_RELEASE_COMMIT, cwd=CANON)
+        git("checkout", "-q", "--detach", TARGET_RELEASE_COMMIT, cwd=CANON)
+        pkg_tree, _ = git("rev-parse", f"{TARGET_RELEASE_COMMIT}:src/continuous-development-cycle", cwd=CANON)
+        if pkg_tree != TARGET_PACKAGE_TREE:
+            raise RuntimeError("canonical package tree mismatch")
+        SCRIPTS = CANON / "src/continuous-development-cycle/scripts"
+        sys.path.insert(0, str(SCRIPTS))
+
+        import resume_capsule
+        import execution_continuity
+        import execution_lease_v2 as leasev2
+        import final_response_gate
+        import git_lease_store
+        import managed_executor_pool as pool
+        import managed_executor_runtime as runtime
+        import migration_transaction as migration
+        from consumer_adoption import GitConsumerAdoptionPublisher, assess as assess_adoption
+        from git_document_store import GitDocumentStore
+        from git_object_integrity import git_object_environment
+        from git_remote_identity import isolated_remote_args, remote_identity
+        from managed_executor_store import GitManagedExecutorStore, coordination_store_id_for_endpoint
+        from validate_adapter import validate_adapter
+        from validate_checkpoint_24 import validate_checkpoint_24
+
+        class MultiDocLeaseStore:
+            """Equivalent durable lease CAS preserving every non-lease coordination path."""
+            def __init__(self, repo: Path, remote: str, ref: str):
+                self.repo = repo
+                self.remote = remote
+                self.ref = ref
+                self.store_id = remote_identity(repo, remote)
+                self._pending_aux = {}
+                git("check-ref-format", ref, cwd=repo)
+
+            def _env(self, **extra):
+                return git_object_environment(
+                    GIT_TERMINAL_PROMPT="0",
+                    GIT_AUTHOR_NAME="CDC 2.11.5 managed rollout",
+                    GIT_AUTHOR_EMAIL="cdc@example.invalid",
+                    GIT_COMMITTER_NAME="CDC 2.11.5 managed rollout",
+                    GIT_COMMITTER_EMAIL="cdc@example.invalid",
+                    **extra,
+                )
+
+            def _git(self, *args, env=None, input_text=None, check=True):
+                return git(*args, cwd=self.repo, env=env or self._env(), input_text=input_text, check=check)
+
+            def _remote_revision(self):
+                if remote_identity(self.repo, self.remote) != self.store_id:
+                    raise ValueError("coordination remote identity drift")
+                out, _ = self._git("ls-remote", "--refs", self.remote, self.ref)
+                rows = [x for x in out.splitlines() if x.strip()]
+                if not rows:
+                    return None
+                if len(rows) != 1:
+                    raise ValueError("ambiguous coordination ref")
+                sha, ref = rows[0].split("\t")
+                if ref != self.ref or len(sha) != 40:
+                    raise ValueError("invalid coordination revision")
+                return sha
+
+            def _fetch(self, revision=None):
+                config, alias = isolated_remote_args(self.repo, self.remote, self.store_id)
+                self._git(*config, "fetch", "--no-tags", "--no-write-fetch-head", "--refmap=", alias, self.ref)
+                if revision and self._git("cat-file", "-t", revision)[0] != "commit":
+                    raise ValueError("coordination revision is not a commit")
+
+            def _read_lease_at(self, revision):
+                self._fetch(revision)
+                raw, code = self._git("show", f"{revision}:lease.json", check=False)
+                if code:
+                    raise ValueError("coordination revision lacks lease.json")
+                value = json.loads(raw)
+                git_lease_store.validate_coordination_record(value)
+                return value
+
+            def read(self):
+                revision = self._remote_revision()
+                if revision is None:
+                    return None, None
+                value = self._read_lease_at(revision)
+                if self._remote_revision() != revision:
+                    raise ValueError("coordination ref moved during read")
+                return revision, value
+
+            def read_revision(self, revision):
+                current, _ = self.read()
+                if current is None:
+                    raise ValueError("coordination history absent")
+                self._fetch(revision)
+                base, code = self._git("merge-base", revision, current, check=False)
+                if code or base != revision:
+                    raise ValueError("historical revision not authoritative ancestry")
+                return self._read_lease_at(revision)
+
+            def _commit_tree(self, expected, updates, message):
+                if self._remote_revision() != expected:
+                    raise ValueError("stale expected coordination revision")
+                self._fetch(expected)
+                idx = TMP / ("index-" + uuid.uuid4().hex)
+                env = self._env(GIT_INDEX_FILE=str(idx))
+                self._git("read-tree", f"{expected}^{{tree}}", env=env)
+                for path, payload in updates.items():
+                    if isinstance(payload, (dict, list)):
+                        data = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+                    else:
+                        data = str(payload)
+                        if not data.endswith("\n"):
+                            data += "\n"
+                    blob, _ = self._git("hash-object", "-w", "--stdin", input_text=data)
+                    self._git("update-index", "--add", "--cacheinfo", "100644", blob, path, env=env)
+                tree, _ = self._git("write-tree", env=env)
+                commit, _ = self._git("commit-tree", tree, "-p", expected, input_text=message + "\n")
+                config, alias = isolated_remote_args(self.repo, self.remote, self.store_id)
+                self._git(*config, "-c", "push.followTags=false", "push", "--porcelain", alias, f"{commit}:{self.ref}")
+                if self._remote_revision() != commit:
+                    raise ValueError("coordination CAS did not become authoritative")
+                try:
+                    idx.unlink()
+                except FileNotFoundError:
+                    pass
+                return commit
+
+            def compare_and_swap(self, expected_revision, record, *, ownership_capability=None):
+                current, previous = self.read()
+                if current != expected_revision or previous is None:
+                    raise ValueError("stale expected coordination revision")
+                git_lease_store.validate_coordination_transition(
+                    previous, record, ownership_capability=ownership_capability
+                )
+                updates = {"lease.json": json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)}
+                updates.update(self._pending_aux)
+                self._pending_aux = {}
+                return self._commit_tree(expected_revision, updates, "Update managed CDC ownership")
+
+            def cas_aux_update(self, expected_revision, updates):
+                current, record = self.read()
+                if current != expected_revision or record is None:
+                    raise ValueError("stale coordination revision for auxiliary update")
+                return self._commit_tree(expected_revision, updates, "Update CDC rollout coordination")
+
+            def set_pending_aux(self, updates):
+                if self._pending_aux:
+                    raise ValueError("pending auxiliary updates already set")
+                self._pending_aux = dict(updates)
+
+            def find_invocation_ownership(self, repository, source_ref, invocation_id):
+                current, _ = self.read()
+                revisions, _ = self._git("rev-list", "--first-parent", current)
+                matches = []
+                for rev in revisions.splitlines()[:10000]:
+                    rec = self._read_lease_at(rev)
+                    inv = rec.get("invocation")
+                    if (rec.get("schema") == "execution-lease/v2"
+                        and rec.get("repository") == repository
+                        and rec.get("source_ref") == source_ref
+                        and rec.get("owner_id") is not None
+                        and isinstance(inv, dict)
+                        and inv.get("invocation_id") == invocation_id):
+                        matches.append({"revision": rev, "owner_id": rec["owner_id"],
+                                        "generation": rec["generation"], "record": rec})
+                identities = {(x["owner_id"], x["generation"]) for x in matches}
+                if len(identities) > 1:
+                    raise ValueError("managed invocation appears under multiple lease identities")
+                return matches[-1] if matches else None
+
+            def find_release_receipt(self, owner_id, generation, invocation_id):
+                current, _ = self.read()
+                revisions, _ = self._git("rev-list", "--first-parent", current)
+                for rev in revisions.splitlines()[:10000]:
+                    rec = self._read_lease_at(rev)
+                    rel = rec.get("last_release")
+                    if (rec.get("owner_id") is None and isinstance(rel, dict)
+                        and rel.get("owner_id") == owner_id and rel.get("generation") == generation
+                        and rel.get("invocation_id") == invocation_id and rec.get("generation") == generation):
+                        return {
+                            "release_receipt": {"schema":"execution-release-receipt/v1",
+                                                "lease_revision":rev,"release":copy.deepcopy(rel)},
+                            "release_record":rec,
+                            "current_revision":current,
+                        }
+                raise ValueError("exact historical lease release was not found")
+
+        def deep_fill(dst, src):
+            for k, v in src.items():
+                if k not in dst:
+                    dst[k] = copy.deepcopy(v)
+                elif isinstance(dst[k], dict) and isinstance(v, dict):
+                    deep_fill(dst[k], v)
+
+        def parse_frontmatter(path):
+            text = path.read_text(encoding="utf-8")
+            if not text.startswith("---\n"):
+                raise RuntimeError("checkpoint frontmatter missing")
+            marker = text.find("\n---\n", 4)
+            if marker < 0:
+                raise RuntimeError("checkpoint frontmatter terminator missing")
+            head = text[4:marker]
+            body = text[marker+5:]
+            return yaml.safe_load(head), body
+
+        def write_frontmatter(path, data, body):
+            encoded = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=1000).rstrip()
+            path.write_text("---\n" + encoded + "\n---\n" + body, encoding="utf-8")
+
+        # Pin exact live source and short-circuit an already complete adoption.
+        source_head = remote_head(SOURCE_REF)
+        if MODE == "adopt" and remote_head("refs/heads/main") != MAIN_PIN:
+            raise RuntimeError("main moved before execution; reconcile rather than use stale resolution")
+        if MODE == "record" and source_head != os.environ["CDC_CANDIDATE_SHA"]:
+            raise RuntimeError("candidate moved before exact CI evidence recording")
+        git("fetch", "-q", "--no-tags", "origin", SOURCE_REF)
+        lock_raw, code = git("show", f"{source_head}:docs/cdc-consumer-lock.json", check=False)
+        if code == 0 and MODE == "adopt":
+            lock = json.loads(lock_raw)
+            if (lock.get("version") == TARGET_VERSION and lock.get("package_tree") == TARGET_PACKAGE_TREE
+                    and lock.get("release_commit") == TARGET_RELEASE_COMMIT):
+                observed_tree, _ = git("rev-parse", f"{source_head}:.agents/skills/continuous-development-cycle")
+                if observed_tree == TARGET_PACKAGE_TREE:
+                    safe_store = MultiDocLeaseStore(ROOT, "origin", "refs/heads/cdc/coordination")
+                    safe_rev, safe_lease = safe_store.read()
+                    proof_raw, proof_code = git("show", f"{safe_rev}:adoptions/cdc-2.11.5.json", check=False)
+                    proof = json.loads(proof_raw) if proof_code == 0 else {}
+                    if (safe_lease.get("owner_id") is not None or safe_lease.get("external_guard") is not None
+                            or proof.get("status") != "applied_verified"
+                            or proof.get("source_head") != source_head or proof.get("source_base") != EXPECTED_SOURCE
+                            or proof.get("package_tree") != TARGET_PACKAGE_TREE
+                            or git("merge-base", "--is-ancestor", MAIN_PIN, source_head, check=False)[1]):
+                        raise RuntimeError("existing adoption lacks exact released/readback provenance")
+                    if os.environ.get("GITHUB_OUTPUT"):
+                        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+                            stream.write("candidate_sha=" + source_head + "\n")
+                    print(json.dumps({"status":"ALREADY_ADOPTED","source_head":source_head}, sort_keys=True))
+                    raise SystemExit(0)
+
+        if MODE == "adopt" and source_head != EXPECTED_SOURCE:
+            raise RuntimeError("source moved before execution; reconcile rather than overwrite")
+
+        lease_store = MultiDocLeaseStore(ROOT, "origin", "refs/heads/cdc/coordination")
+        initial_lease_revision, initial_lease = lease_store.read()
+        if initial_lease is None:
+            raise RuntimeError("live execution lease is absent")
+        if initial_lease.get("repository") != REPO or initial_lease.get("source_ref") != SOURCE_REF:
+            raise RuntimeError("lease binding disagrees with rollout target")
+        if initial_lease.get("owner_id") is not None or initial_lease.get("external_guard") is not None:
+            raise RuntimeError("consumer is not at a released/no-guard safe boundary")
+        if initial_lease.get("finalization") is not None:
+            raise RuntimeError("released safe boundary has unexpected finalization state")
+        prior_generation = initial_lease["generation"]
+
+        if DRY_RUN:
+            generation = prior_generation + 1
+            invocation_id = "dry-run-not-an-owner"
+        else:
+            # An unchanged dry-run push proves actual runner credential scope without
+            # changing any shared ref. Ownership is acquired only by the managed runtime.
+            git("push", "--dry-run", "origin", f"{source_head}:{SOURCE_REF}")
+            git("push", "--dry-run", "origin", f"{initial_lease_revision}:refs/heads/cdc/coordination")
+            # Start a real package-owned managed supervisor. The controller performs the atomic
+            # adoption while this exact running attempt supplies the terminal-lifecycle capability.
+            store_ref = f"refs/heads/cdc/managed-rollout-state/2.11.5-{RUN_KEY}"
+            store_id = coordination_store_id_for_endpoint(
+                git("remote", "get-url", "origin")[0], repo_root=ROOT
+            )
+            task_id = "cdc-2115-adoption"
+            attempt_id = "attempt-1"
+            plan = {
+                "schema":"managed-executor-pool-plan/v1",
+                "pool_id":f"cdc-2115-rollout-{RUN_KEY}",
+                "change_id":"cdc-2.11.5-consumer-adoption",
+                "parent_invocation_id":f"github-actions:{RUN_ID}:{RUN_ATTEMPT}",
+                "base_sha":source_head,
+                "integrator_id":"managed-rollout-controller",
+                "coordination_ref":store_ref,
+                "coordination_store_id":store_id,
+                "max_parallel":1,
+                "total_runtime_budget_seconds":1200,
+                "total_cost_budget_units":10,
+                "tasks":[{
+                    "id":task_id,
+                    "role":"writer",
+                    "required":True,
+                    "dependencies":[],
+                    "executor_id":"managed-rollout-worker",
+                    "branch":f"cdc-managed-rollout-worker-{RUN_KEY}",
+                    "worktree":f"worktrees/cdc-managed-rollout-{RUN_KEY}",
+                    "write_paths":[
+                        ".agents/skills/continuous-development-cycle",
+                        "AGENTS.md",
+                        "docs/cdc-consumer-lock.json",
+                        "docs/development-cycle.yaml",
+                        "docs/work-status/current.md",
+                        "docs/cdc-adoption-2.11.5.md",
+                    ],
+                    "expected_outputs":["consumer-adoption:2.11.5"],
+                    "expected_evidence":["exact-package-tree","atomic-readback"],
+                    "backend_preferences":["local_command"],
+                    "max_runtime_seconds":900,
+                    "max_cost_units":1,
+                }],
+            }
+            managed_store = GitManagedExecutorStore(
+                ROOT, "origin", store_ref, plan, protected_refs=[SOURCE_REF]
+            )
+            mrev, mstate = managed_store.read()
+            if mrev is None:
+                mrev = managed_store.compare_and_swap(None, pool.initial_state(plan, parallel_capable=False))
+            backend = runtime.LocalCommandBackend(TMP / "managed-journal")
+            rt = runtime.ManagedExecutorRuntime(plan, managed_store, ROOT, backend)
+            receipt = rt.start(
+                mrev, task_id, attempt_id,
+                reservation_token=f"reserve:{RUN_KEY}",
+                argv=[sys.executable, "-c", "import time; time.sleep(850)"],
+            )
+            deadline = time.monotonic() + 30
+            while True:
+                obs = rt.observe(task_id, attempt_id)
+                if obs["status"] == "running":
+                    break
+                if obs["status"] not in {"starting"} or time.monotonic() >= deadline:
+                    raise RuntimeError("managed supervisor did not become live")
+                time.sleep(0.2)
+
+            owner = str(uuid.uuid4())
+            acquired = rt.acquire_execution_lease(
+                lease_store, initial_lease_revision, REPO, SOURCE_REF, owner,
+                task_id, attempt_id, now(), ttl=1200
+            )
+            lease_revision = acquired["revision"]
+            lease_record = acquired["record"]
+            generation = acquired["generation"]
+            invocation_id = acquired["invocation"]["invocation_id"]
+
+
+        publication_started = False
+        publication_confirmed = False
+        try:
+            if MODE == "adopt":
+                # Assemble candidate completely detached from the shared source ref.
+                git("worktree", "add", "--quiet", "--detach", str(ADOPT), source_head)
+                git("config", "user.name", "CDC 2.11.5 managed rollout", cwd=ADOPT)
+                git("config", "user.email", "cdc@example.invalid", cwd=ADOPT)
+                git("fetch", "-q", "--no-tags", "origin", MAIN_PIN)
+                merged = subprocess.run(["git", "merge", "--no-ff", "--no-commit", MAIN_PIN], cwd=ADOPT,
+                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                conflicts = git("diff", "--name-only", "--diff-filter=U", cwd=ADOPT)[0].splitlines()
+                if merged.returncode and set(conflicts) != {".github/workflows/secret-scan.yml", ".gitleaks.toml"}:
+                    raise RuntimeError("unexpected merge conflict set: " + repr(conflicts))
+                if conflicts:
+                    git("checkout", MAIN_PIN, "--", *conflicts, cwd=ADOPT)
+                if git("diff", "--name-only", "--diff-filter=U", cwd=ADOPT)[0]:
+                    raise RuntimeError("unresolved main merge conflict")
+
+
+                dst_pkg = ADOPT / ".agents/skills/continuous-development-cycle"
+                shutil.rmtree(dst_pkg)
+                shutil.copytree(CANON / "src/continuous-development-cycle", dst_pkg, symlinks=True)
+
+                # Consumer lock.
+                lock_path = ADOPT / "docs/cdc-consumer-lock.json"
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                lock.update(
+                    version=TARGET_VERSION,
+                    release_ref=TARGET_RELEASE_REF,
+                    release_commit=TARGET_RELEASE_COMMIT,
+                    package_tree=TARGET_PACKAGE_TREE,
+                )
+                lock_path.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+                # Adapter: retain project-specific values and fill only newly required released controls.
+                adapter_path = ADOPT / "docs/development-cycle.yaml"
+                adapter = yaml.safe_load(adapter_path.read_text(encoding="utf-8"))
+                template = yaml.safe_load((CANON / "src/continuous-development-cycle/templates/development-cycle.yaml").read_text(encoding="utf-8"))
+                deep_fill(adapter, template)
+                adapter["policy"]["revision"] = "2026-10-05-cdc-2.11.5-reconciliation"
+                adapter["policy"]["skill_min_version"] = TARGET_VERSION
+                adapter["convergence"]["target_version"] = TARGET_VERSION
+                adapter_path.write_text(yaml.safe_dump(adapter, sort_keys=False, allow_unicode=True, width=1000), encoding="utf-8")
+                binding = validate_adapter(adapter, skill_version=TARGET_VERSION)
+                ci_path = ADOPT / ".github/workflows/cdc-policy.yml"
+                ci = ci_path.read_text(encoding="utf-8")
+                ci = ci.replace('= "2.9.2"', '= "2.11.5"').replace("f9087eacbffee774c143eabf854c2cf08d610ec7", TARGET_PACKAGE_TREE)
+                ci_path.write_text(ci, encoding="utf-8")
+
+                # Provenance and adoption note.
+                agents_path = ADOPT / "AGENTS.md"
+                agents = agents_path.read_text(encoding="utf-8")
+                provenance = f"""## CDC 2.11.5 authoritative provenance
+
+                Use canonical `bajoicheg/g-cdc` **v2.11.5**, release `{TARGET_RELEASE_REF}`, commit `{TARGET_RELEASE_COMMIT}`, exact package tree `{TARGET_PACKAGE_TREE}`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical. The owner explicitly requested this project update on 2026-10-05. The project target is 2.11.5; the separate Fleet target is not changed. Product acceptance gates and scheduler pause remain authoritative.
+
+                """
+                if not agents.startswith("## CDC 2.11.5 authoritative provenance"):
+                    agents_path.write_text(provenance + agents, encoding="utf-8")
+
+                adoption_path = ADOPT / "docs/cdc-adoption-2.11.5.md"
+                adoption_path.write_text(
+                    f"""# CDC 2.11.5 managed process-only adoption
+
+                Canonical release: `{TARGET_RELEASE_REF}`
+                Release commit: `{TARGET_RELEASE_COMMIT}`
+                Exact package tree: `{TARGET_PACKAGE_TREE}`
+                Source base: `{source_head}`
+
+                This adoption is assembled detached from the shared source ref and published once by the released 2.11.5 conditional fast-forward/readback path. Project product behavior, product acceptance/release gates, and owner-paused scheduler state are preserved. Live coordination ownership is authoritative over checkpoint projections.
+                """,
+                    encoding="utf-8",
+                )
+
+                # Checkpoint remains a projection of the pre-existing product task, but policy binding
+                # and live-owner projection are reconciled for the completed process-only adoption.
+                checkpoint_path = ADOPT / "docs/work-status/current.md"
+                checkpoint, checkpoint_body = parse_frontmatter(checkpoint_path)
+                checkpoint.update(
+                    active_change="G-switcher 2.0.1 compatibility acceptance",
+                    current_task="Complete real Windows acceptance after CDC 2.11.5 and main reconciliation",
+                    phase="blocked", implementation_sha=LAST_GREEN, candidate_sha="", release_candidate_sha="",
+                    last_green_sha=LAST_GREEN, last_green_evidence=f"https://github.com/{REPO}/actions/runs/{LAST_RUN}",
+                    last_ci_run_id=LAST_RUN, last_ci_status="completed/success: Windows Rust CI #410; historical runtime-equivalent evidence",
+                    active_ci_run_id="", release_state="blocked", blocker=MANUAL_BLOCKER,
+                    next_action="Complete fresh exact-candidate Windows CI, then " + MANUAL_NEXT,
+                )
+                checkpoint["execution_continuity"].update(
+                    runnable_next_action=True, completion_gate="continue",
+                )
+                checkpoint["policy_revision"] = binding["policy_revision"]
+                checkpoint["policy_digest"] = binding["policy_digest"]
+                checkpoint["observed_at_utc"] = now()
+                checkpoint["active_executor"] = "none"
+                if checkpoint.get("phase") != "waiting_external":
+                    checkpoint["lease_state"] = "released"
+                checkpoint["executor_heartbeat_at_utc"] = None
+                checkpoint["execution_lease_until_utc"] = None
+                if isinstance(checkpoint.get("control"), dict):
+                    checkpoint["control"]["execution_lease_revision"] = None
+                    checkpoint["control"]["executor_id"] = None
+                    checkpoint["control"]["lease_generation"] = generation
+                if isinstance(checkpoint.get("execution_continuity"), dict):
+                    checkpoint["execution_continuity"]["invocation_id"] = None
+                    checkpoint["execution_continuity"]["meaningful_progress"] = True
+                    checkpoint["execution_continuity"]["primitive_steps_since_progress"] = 0
+                    checkpoint["execution_continuity"]["last_progress_ref"] = "docs/cdc-adoption-2.11.5.md"
+                section = f"""## CDC 2.11.5 process-only adoption — managed atomic publication
+
+                This branch now binds canonical CDC **2.11.5** at `{TARGET_RELEASE_REF}`, release commit `{TARGET_RELEASE_COMMIT}`, package tree `{TARGET_PACKAGE_TREE}`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
+
+                """
+                write_frontmatter(checkpoint_path, checkpoint, section + """
+                ## Current product boundary — 2026-10-05
+
+                The active change is G-switcher 2.0.1 acceptance, not a historical CDC migration.
+                Current main security and storage-hygiene changes have been merged; the two add/add
+                security conflicts use the exact current-main versions. Product runtime, tests,
+                Cargo dependencies, assets and the Windows gate remain byte-identical to candidate
+                0b6f7e3cff9762f9508c8e42d1fd23298a496306 (Windows CI #410, run 36259598328).
+                This is historical runtime-equivalent evidence, not GREEN for this new root commit.
+
+                The authoritative exact candidate SHA and fresh CI result are stored in the
+                resume capsule on cdc/coordination. Candidate SHA fields here are intentionally
+                empty because this document is part of the candidate commit itself.
+
+                Fresh Windows CI follows atomic publication in the same managed-maintenance
+                workflow; final coordination recording replaces the pending result only after
+                that exact job is terminal. No public release or compatibility PASS is implied.
+
+                Remaining manual checks: ordinary Edge and Chrome Auto/Manual/Undo/Focus/Pause;
+                desktop Word; protected-input cases and valid application versions in the existing
+                matrix. Automated forced-accessibility browser adapter tests do not complete them.
+                PR #28 stays Draft. Final review and explicit public-promotion approval remain required.
+
+                Earlier CDC adoption sections below are historical evidence only.
+                """ + checkpoint_body)
+
+                # Validate the actual vendored package and project binding before commit/publication.
+                subprocess.run(
+                    [sys.executable, "-B", str(dst_pkg / "scripts/validate_package.py")],
+                    cwd=ADOPT, check=True
+                )
+                validate_adapter(yaml.safe_load(adapter_path.read_text(encoding="utf-8")), skill_version=TARGET_VERSION)
+                cp_check, _ = parse_frontmatter(checkpoint_path)
+                validate_checkpoint_24(cp_check, yaml.safe_load(adapter_path.read_text(encoding="utf-8")))
+
+                allowed_prefix = ".agents/skills/continuous-development-cycle/"
+                allowed_exact = {
+                    "AGENTS.md",
+                    "docs/cdc-consumer-lock.json",
+                    "docs/development-cycle.yaml",
+                    "docs/work-status/current.md",
+                    "docs/cdc-adoption-2.11.5.md",
+                    ".github/workflows/cdc-policy.yml",
+                    *MAIN_PATHS,
+                }
+                git("add", "-A", cwd=ADOPT)
+                changed, _ = git("diff", "--cached", "--name-only", cwd=ADOPT)
+                for path in changed.splitlines():
+                    if path not in allowed_exact and not path.startswith(allowed_prefix):
+                        raise RuntimeError("process-only adoption escaped allowed paths: " + path)
+                git("commit", "-q", "-m", "chore(cdc): adopt 2.11.5 and reconcile main security and acceptance state", cwd=ADOPT)
+                candidate, _ = git("rev-parse", "HEAD", cwd=ADOPT)
+                candidate_tree, _ = git("rev-parse", "HEAD^{tree}", cwd=ADOPT)
+                observed_package_tree, _ = git("rev-parse", "HEAD:.agents/skills/continuous-development-cycle", cwd=ADOPT)
+                if observed_package_tree != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("detached candidate package tree mismatch")
+
+                # A maintenance-only scope must preserve all product executable inputs exactly.
+                for path in ("src", "tests", "Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain.toml", "assets", ".github/workflows/windows-ci.yml"):
+                    if git("rev-parse", f"{candidate}:{path}", cwd=ADOPT)[0] != git("rev-parse", f"{LAST_GREEN}:{path}", cwd=ADOPT)[0]:
+                        raise RuntimeError("runtime-equivalence check failed: " + path)
+                if git("merge-base", "--is-ancestor", MAIN_PIN, candidate, cwd=ADOPT, check=False)[1]:
+                    raise RuntimeError("candidate does not include main ancestry")
+                if DRY_RUN:
+                    print(json.dumps({"status":"PREPARED", "candidate":candidate, "root_tree":candidate_tree,
+                                      "package_tree":observed_package_tree, "changed_paths":changed.splitlines()}, sort_keys=True))
+                    raise SystemExit(0)
+
+                # Refresh lease with the candidate as observable activity before the product write.
+                lease_record = leasev2.renew(
+                    lease_record, owner, generation, invocation_id, now(),
+                    activity_ref="git:" + candidate, ttl=1200
+                )
+                lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+                leasev2.check(
+                    lease_store, lease_revision, REPO, SOURCE_REF, owner, generation, invocation_id,
+                    now(), action="product_write"
+                )
+
+                required_paths = [
+                    ".agents/skills/continuous-development-cycle",
+                    "docs/cdc-consumer-lock.json",
+                    "docs/development-cycle.yaml",
+                    "docs/work-status/current.md",
+                    "docs/cdc-adoption-2.11.5.md",
+                    "AGENTS.md",
+                    ".github/workflows/cdc-policy.yml",
+                    *MAIN_PATHS,
+                ]
+                manifest = []
+                for path in required_paths:
+                    oid, _ = git("rev-parse", f"{candidate}:{path}", cwd=ADOPT)
+                    typ, _ = git("cat-file", "-t", oid, cwd=ADOPT)
+                    manifest.append({"path":path,"object_type":typ,"object_sha1":oid})
+
+                txn_id = f"cdc-2.11.5-{REPO.replace('/','-')}-{source_head[:12]}-{RUN_KEY}"
+                txn = {
+                    "schema":"migration-transaction/v1",
+                    "transaction_id":txn_id,
+                    "source_head":source_head,
+                    "target_ref":SOURCE_REF,
+                    "items":copy.deepcopy(manifest),
+                    "completed_paths":required_paths.copy(),
+                    "operation_budget":100,
+                    "per_item_operations":1,
+                    "batch_overhead_operations":0,
+                    "finalization_reserve_operations":1,
+                    "detached_checkpoints":[],
+                    "final_tree_sha":candidate_tree,
+                    "expected_subtree_tree":TARGET_PACKAGE_TREE,
+                    "observed_subtree_tree":TARGET_PACKAGE_TREE,
+                    "policy_reconciled":True,
+                }
+                if migration.plan(txn)["action"] != "READY_TO_ADVANCE_REF":
+                    raise RuntimeError("detached migration did not reach publication boundary")
+                assembly = migration.assembly_record(
+                    txn,
+                    target_version=TARGET_VERSION,
+                    target_release_ref=TARGET_RELEASE_REF,
+                    target_release_commit=TARGET_RELEASE_COMMIT,
+                    completed_at_utc=now(),
+                )
+
+                remote_id = remote_identity(ROOT, "origin")
+                assembly_ref = f"refs/heads/cdc/adoption-assembly/2.11.5-{RUN_KEY}"
+                attempt_ref = f"refs/heads/cdc/adoption-attempts/2.11.5-{RUN_KEY}"
+                assembly_store = GitDocumentStore(ROOT, "origin", assembly_ref, remote_id, protected_refs=[SOURCE_REF])
+                arev, existing = assembly_store.read()
+                if arev is None:
+                    arev = assembly_store.compare_and_swap(None, assembly)
+                else:
+                    if existing != assembly:
+                        raise RuntimeError("assembly ref already exists with different record")
+                attempt_store = GitDocumentStore(ROOT, "origin", attempt_ref, remote_id, protected_refs=[SOURCE_REF, assembly_ref])
+
+                state = {
+                    "schema":"consumer-adoption-publication/v1",
+                    "source_head":source_head,
+                    "target_ref":SOURCE_REF,
+                    "target_version":TARGET_VERSION,
+                    "target_release_ref":TARGET_RELEASE_REF,
+                    "target_release_commit":TARGET_RELEASE_COMMIT,
+                    "target_package_tree":TARGET_PACKAGE_TREE,
+                    "required_paths":required_paths,
+                    "prepared_paths":required_paths.copy(),
+                    "assembly_manifest":copy.deepcopy(assembly["manifest"]),
+                    "assembly_authority":{
+                        "schema":"migration-assembly-authority/v1",
+                        "store_ref":assembly_ref,
+                        "store_id":remote_id,
+                        "revision":arev,
+                        "transaction_id":txn_id,
+                        "manifest_digest":assembly["manifest_digest"],
+                    },
+                    "final_tree_sha":candidate_tree,
+                    "observed_package_tree":TARGET_PACKAGE_TREE,
+                    "candidate_commit":candidate,
+                    "live_source_head":source_head,
+                    "publication_claim":None,
+                    "published_head":None,
+                    "readback_package_tree":None,
+                }
+                claim_plan = assess_adoption(state)
+                if claim_plan["action"] != "CLAIM_CONDITIONAL_PUBLISH":
+                    raise RuntimeError("unexpected adoption claim plan: " + claim_plan["action"])
+                state["publication_claim"] = claim_plan["claim"]
+                publisher = GitConsumerAdoptionPublisher(
+                    ROOT, "origin", SOURCE_REF, remote_id, attempt_store, assembly_store
+                )
+                publication_started = True
+                result = publisher.publish(state)
+                if result["action"] in {"REJECTED", "TERMINAL_NO_REPLAY", "REPLAN_FRESH_HEAD"}:
+                    publication_started = False  # authoritative terminal no-publication outcome
+                if result["action"] not in {"PUBLISHED","CONFIRMED_FROM_READBACK","CONFIRMED","OBSERVED_EXISTING"}:
+                    raise RuntimeError("atomic publication not confirmed: " + result["action"])
+                if remote_head(SOURCE_REF) != candidate:
+                    raise RuntimeError("shared source ref did not read back exact candidate")
+                pub_tree, _ = git("rev-parse", f"{candidate}:.agents/skills/continuous-development-cycle", cwd=ADOPT)
+                if pub_tree != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("published package tree readback mismatch")
+
+            else:
+                candidate = source_head
+                git("worktree", "add", "--quiet", "--detach", str(ADOPT), source_head)
+                adapter = yaml.safe_load((ADOPT / "docs/development-cycle.yaml").read_text())
+                binding = validate_adapter(adapter, skill_version=TARGET_VERSION)
+                checkpoint, _ = parse_frontmatter(ADOPT / "docs/work-status/current.md")
+                validate_checkpoint_24(checkpoint, adapter)
+                if git("rev-parse", f"{candidate}:.agents/skills/continuous-development-cycle")[0] != TARGET_PACKAGE_TREE:
+                    raise RuntimeError("record candidate CDC tree mismatch")
+
+            publication_confirmed = True
+
+            # Record coordination convergence while still owned.
+            adoption_evidence = {
+                "schema":"cdc-consumer-adoption-evidence/v1",
+                "repository":REPO,
+                "source_ref":SOURCE_REF,
+                "source_head":candidate,
+                "source_base":source_head,
+                "release":{
+                    "schema":"live-target-release/v1",
+                    "version":TARGET_VERSION,
+                    "canonical_repository":"bajoicheg/g-cdc",
+                    "release_ref":TARGET_RELEASE_REF,
+                    "release_commit":TARGET_RELEASE_COMMIT,
+                    "package_tree":TARGET_PACKAGE_TREE,
+                },
+                "package_tree":TARGET_PACKAGE_TREE,
+                "policy_digest":binding["policy_digest"],
+                "checkpoint_schema":"development-work-status/v4",
+                "status":"applied_verified",
+                "observed_at_utc":now(),
+                "safe_boundary":{
+                    "prior_generation":prior_generation,
+                    "prior_explicitly_released":initial_lease.get("last_release") is not None,
+                    "prior_guard":None,
+                    "recovery_kind":"released_safe_boundary",
+                    "adopting_generation":generation,
+                    "invocation_id":invocation_id,
+                },
+                "checks":{
+                    "exact_package_subtree":"PASS",
+                    "consumer_lock":"PASS",
+                    "adapter_semantic_digest":"PASS",
+                    "checkpoint_v4_readback":"PASS",
+                    "changed_path_containment":"PASS: CDC/policy/checkpoint paths and exact current-main security/storage merge only",
+                    "product_source_changes":0,
+                    "detached_tree_before_ref_move":"PASS",
+                    "atomic_conditional_fast_forward":"PASS",
+                    "published_readback":"PASS",
+                },
+                "scheduler_mutations":0,
+                "product_scope_preserved":checkpoint.get("active_change", ""),
+                "next_action":"Resume the pre-existing product task under CDC 2.11.5; scheduler pause remains authoritative.",
+            }
+            fleet_target = {
+                "schema":"version-convergence-target/v1",
+                "target_version":TARGET_VERSION,
+                "target_package_fingerprint":"git-tree:"+TARGET_PACKAGE_TREE,
+                "checkpoint_schema":"development-work-status/v4",
+                "safe_boundary_required":True,
+            }
+            current_revision, current_lease = lease_store.read()
+            if current_lease.get("owner_id") != owner or current_lease.get("generation") != generation:
+                raise RuntimeError("managed adoption lost exact lease before coordination evidence")
+            lease_revision = lease_store.cas_aux_update(
+                current_revision,
+                {
+                    "fleet-target.json":json.dumps(fleet_target, indent=2, ensure_ascii=False),
+                    **({"adoptions/cdc-2.11.5.json":json.dumps(adoption_evidence, indent=2, ensure_ascii=False)} if MODE == "adopt" else {}),
+                }
+            )
+            lease_record = lease_store.read()[1]
+
+            # Transactional finalization. The final release CAS also refreshes Fleet snapshot.
+            checkpoint_ref = f"https://github.com/{REPO}/blob/{candidate}/docs/work-status/current.md"
+
+            # The compact capsule binds the immutable source commit rather than embedding a
+            # self-referential SHA in a file belonging to that same commit.
+            fresh_green = MODE == "record" and os.environ["CDC_WINDOWS_RESULT"] == "success" and os.environ["CDC_POLICY_RESULT"] == "success"
+            capsule = {
+                "schema":"resume-capsule/v1", "updated_at_utc":now(), "repository":REPO,
+                "source_ref":SOURCE_REF, "head_sha":candidate, "policy_version":TARGET_VERSION,
+                "policy_revision":binding["policy_revision"], "policy_digest":binding["policy_digest"],
+                "checkpoint_ref":checkpoint_ref,
+                "checkpoint_digest":hashlib.sha256((ADOPT / "docs/work-status/current.md").read_bytes()).hexdigest(),
+                "task":{"phase":"blocked" if fresh_green else "validation",
+                        "current_task":checkpoint["current_task"],
+                        "next_action":MANUAL_NEXT if fresh_green else "Inspect and reconcile the exact managed-maintenance Windows/CDC/security job results; fix an observed failure before manual acceptance.",
+                        "blocker":MANUAL_BLOCKER if fresh_green else None},
+                "ownership":{"lease_schema":"execution-lease/v2", "owner_id":None, "invocation_id":None,
+                             "generation":generation, "revision":None},
+                "external":None,
+                "validation":{"candidate_sha":candidate, "last_green_sha":candidate if fresh_green else LAST_GREEN,
+                              "last_green_evidence":f"https://github.com/{REPO}/actions/runs/{RUN_ID}" if fresh_green else f"https://github.com/{REPO}/actions/runs/{LAST_RUN}",
+                              "missing_gates":["manual real-application compatibility", "final independent review", "explicit public-promotion approval"] + ([] if fresh_green else ["fresh exact-candidate Windows GREEN"])},
+                "health":{"state":"BLOCKED" if fresh_green else "DEGRADED", "fingerprint":None},
+                "budget":{"ref":checkpoint["control"]["budget_ref"], "summary":"Existing budget history preserved; public GitHub-hosted Actions are normal compute. Scheduler pause preserved."},
+                "recovery":{"recommended_action":"complete_manual_acceptance" if fresh_green else "reconcile_platform_checks",
+                            "reason":"No interactive Windows desktop backend is available to this invocation." if fresh_green else "The published candidate has a fresh exact-SHA platform gate in this workflow."},
+            }
+            resume_capsule.validate(capsule)
+            record = {"schema":"g-switcher-maintenance-validation/v1", "source_sha":candidate,
+                      "run_id":RUN_ID, "mode":MODE, "observed_at_utc":now(),
+                      "windows_result":os.environ.get("CDC_WINDOWS_RESULT", "pending"),
+                      "policy_security_result":os.environ.get("CDC_POLICY_RESULT", "pending"),
+                      "manual_compatibility":"pending", "scheduler_mutations":0,
+                      "checkpoint_ref":checkpoint_ref}
+            lease_revision = lease_store.cas_aux_update(lease_revision, {"resume.json":capsule,
+                                        "maintenance/2026-10-05-"+MODE+".json":record})
+            lease_record = lease_store.read()[1]
+
+            lease_record = leasev2.begin_finalization(
+                lease_record, owner, generation, invocation_id, now(), pending_shared_writes=False
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+            lease_record = leasev2.record_checkpoint(
+                lease_record, owner, generation, invocation_id, now(),
+                checkpoint_ref=checkpoint_ref, pending_shared_writes=False
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+            lease_record = leasev2.reconcile_finalization(
+                lease_record, owner, generation, invocation_id, now(), external_reconciliation="none"
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+
+            progress_refs = ["git:"+candidate, "adoption:cdc-2.11.5"]
+            continuity = {
+                "schema":"execution-continuity/v1",
+                "invocation_id":invocation_id,
+                "current_state":"COMPLETE",
+                "requested_terminal_outcome":"scope_complete",
+                "runnable_next_action":False,
+                "meaningful_progress_refs":progress_refs,
+                "primitive_steps":[],
+                "external_binding":None,
+                "blocker":None,
+                "checkpoint_ref":checkpoint_ref,
+                "next_action":None,
+                "lease_release_required":False,
+                "lease_released":False,
+                "terminal_state":{
+                    "schema":"terminal-state/v2",
+                    "invocation_id":invocation_id,
+                    "scope_id":"cdc-2.11.5-consumer-adoption:"+REPO,
+                    "observed_head":candidate,
+                    "decision":"COMPLETE",
+                    "runnable_actions":[],
+                    "pending_external":None,
+                    "blocker":None,
+                    "meaningful_progress_refs":progress_refs,
+                    "completion_evidence_refs":["scope:atomic-adoption-verified"],
+                    "checkpoint_ref":checkpoint_ref,
+                    "lease_released":False,
+                },
+            }
+            decision = execution_continuity.evaluate(continuity, now_utc=now())
+            if not decision["allowed"]:
+                raise RuntimeError("continuity pre-release rejected: " + decision["reason"])
+            lease_record = leasev2.mark_ready(
+                lease_record, owner, generation, invocation_id, now(), continuity_state=continuity
+            )
+            lease_revision = lease_store.compare_and_swap(lease_revision, lease_record)
+
+            try:
+                snap_raw, code = git("show", f"{lease_revision}:fleet-project-snapshot.json", check=False)
+                snapshot = json.loads(snap_raw) if code == 0 else None
+            except Exception:
+                snapshot = None
+            if isinstance(snapshot, dict):
+                snapshot["observed_at_utc"] = now()
+                snapshot["product_head"] = candidate
+                snapshot["cdc_version"] = TARGET_VERSION
+                snapshot["package_fingerprint"] = "git-tree:" + TARGET_PACKAGE_TREE
+                snapshot["policy_revision"] = binding["policy_revision"]
+                snapshot["coordination"]["generation"] = generation
+                snapshot["coordination"]["owner_active"] = False
+                snapshot["coordination"]["guard_present"] = False
+                snapshot["progress"]["observed_at_utc"] = now()
+                snapshot["progress"]["last_meaningful_progress_at_utc"] = now()
+                snapshot["progress"]["last_activity_at_utc"] = now()
+                refs = list(snapshot["progress"].get("evidence_refs", []))
+                for ref in ["git:"+candidate, "adoptions/cdc-2.11.5.json", "actions:"+RUN_ID]:
+                    if ref not in refs:
+                        refs.append(ref)
+                snapshot["progress"]["evidence_refs"] = refs
+                lease_store.set_pending_aux({
+                    "fleet-project-snapshot.json":json.dumps(snapshot, indent=2, ensure_ascii=False)
+                })
+
+            released = rt.release_execution_lease(
+                lease_store, lease_revision, REPO, SOURCE_REF, owner, generation, invocation_id,
+                task_id, attempt_id, now()
+            )
+            release_record = lease_store.read_revision(released["release_receipt"]["lease_revision"])
+            post = copy.deepcopy(continuity)
+            post["lease_release_required"] = True
+            post["lease_released"] = True
+            post["terminal_state"]["lease_released"] = True
+            gate = final_response_gate.evaluate(
+                invocation_id, released["record"], post,
+                {"owner_id":owner,"generation":generation},
+                released["release_receipt"], release_record, now()
+            )
+            if not gate["final_response_allowed"]:
+                raise RuntimeError("managed final-response gate rejected: " + gate["reason"])
+
+            # Stop sentinel only after durable lease release, then prove process quiescence.
+            rt.cancel(task_id, attempt_id)
+            deadline = time.monotonic() + 30
+            while True:
+                obs = rt.observe(task_id, attempt_id)
+                if obs.get("quiescent") is True:
+                    break
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("managed sentinel did not become quiescent after release")
+                time.sleep(0.2)
+
+            final_head = remote_head(SOURCE_REF)
+            final_lock_raw, _ = git("show", f"{final_head}:docs/cdc-consumer-lock.json")
+            final_lock = json.loads(final_lock_raw)
+            if final_head != candidate or final_lock.get("version") != TARGET_VERSION or final_lock.get("package_tree") != TARGET_PACKAGE_TREE:
+                raise RuntimeError("final source/lock readback mismatch")
+            final_lease_revision, final_lease = lease_store.read()
+            if final_lease.get("owner_id") is not None or final_lease.get("external_guard") is not None:
+                raise RuntimeError("final coordination is not released/no-guard")
+
+            if os.environ.get("GITHUB_OUTPUT"):
+                with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+                    stream.write("candidate_sha=" + candidate + "\n")
+            print(json.dumps({
+                "status":"ADOPTED" if MODE == "adopt" else "CI_RECORDED",
+                "repository":REPO,
+                "source_ref":SOURCE_REF,
+                "source_base":source_head,
+                "source_head":candidate,
+                "package_tree":TARGET_PACKAGE_TREE,
+                "policy_digest":binding["policy_digest"],
+                "lease_generation":generation,
+                "lease_revision":final_lease_revision,
+                "release_receipt_revision":released["release_receipt"]["lease_revision"],
+                "scheduler_mutations":0,
+                "final_response_gate":"GREEN",
+            }, sort_keys=True))
+
+        except BaseException as error:
+            if DRY_RUN or isinstance(error, SystemExit) and error.code == 0:
+                raise
+            # A terminal controller error must not silently orphan a known-safe lease.
+            # An uncertain publication is preserved for provider reconciliation instead.
+            current_revision, current_record = lease_store.read()
+            if current_record.get("owner_id") != owner:
+                recovered = rt.reconcile_execution_lease_hold(lease_store, task_id, attempt_id)
+                if recovered["status"] == "released":
+                    rt.cancel(task_id, attempt_id)
+                    deadline = time.monotonic() + 30
+                    while not rt.observe(task_id, attempt_id).get("quiescent"):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("released failure supervisor did not become quiescent") from error
+                        time.sleep(0.2)
+                raise
+            failed_head = remote_head(SOURCE_REF)
+            unknown_publication = bool(globals().get("publication_started") and not globals().get("publication_confirmed"))
+            failure = {"schema":"g-switcher-managed-maintenance-failure/v1", "run_id":RUN_ID,
+                       "mode":MODE, "observed_at_utc":now(), "source_head":failed_head,
+                       "error_type":type(error).__name__, "publication_outcome_unknown":unknown_publication,
+                       "next_action":"Reconcile the exact immutable adoption-attempt journal before any retry" if unknown_publication else "Diagnose this exact failed job and correct the bounded maintenance attempt"}
+            failure_revision = lease_store.cas_aux_update(current_revision, {"maintenance/failure-"+RUN_KEY+".json":failure})
+            if unknown_publication:
+                print(json.dumps({"status":"BLOCKED_PUBLICATION_RECONCILIATION", "checkpoint_revision":failure_revision}))
+                raise
+            # No publication was submitted, or the package publisher confirmed it and
+            # exact readback completed. There is no unresolved downstream effect here.
+            record = lease_store.read()[1]
+            if record.get("external_guard") is not None:
+                raise RuntimeError("failure finalization requires external guard reconciliation") from error
+            failure_checkpoint = f"https://github.com/{REPO}/blob/{failure_revision}/maintenance/failure-{RUN_KEY}.json"
+            if record["finalization"]["state"] not in {"active", "failed"}:
+                record = leasev2.fail_finalization(record, owner, generation, invocation_id, now(), failure=failure_checkpoint)
+                failure_revision = lease_store.compare_and_swap(failure_revision, record)
+            record = leasev2.begin_finalization(record, owner, generation, invocation_id, now(), pending_shared_writes=False)
+            revision = lease_store.compare_and_swap(failure_revision, record)
+            record = leasev2.record_checkpoint(record, owner, generation, invocation_id, now(), checkpoint_ref=failure_checkpoint, pending_shared_writes=False)
+            revision = lease_store.compare_and_swap(revision, record)
+            record = leasev2.reconcile_finalization(record, owner, generation, invocation_id, now(), external_reconciliation="none")
+            revision = lease_store.compare_and_swap(revision, record)
+            evidence = [failure_checkpoint, "actions:"+RUN_ID+":"+MODE+":failed"]
+            next_action = failure["next_action"]
+            blocked = {"schema":"execution-continuity/v1", "invocation_id":invocation_id,
+                       "current_state":"BLOCKED", "requested_terminal_outcome":"blocked",
+                       "runnable_next_action":False, "meaningful_progress_refs":[], "primitive_steps":[],
+                       "external_binding":None, "blocker":"managed-maintenance-failed", "checkpoint_ref":failure_checkpoint,
+                       "next_action":next_action, "lease_release_required":False, "lease_released":False,
+                       "blocker_proof":{"schema":"blocked-state-proof/v1", "dependency_id":"managed-maintenance-failed",
+                                        "category":"worker_terminal", "observed_at_utc":now(), "max_age_seconds":120,
+                                        "evidence_refs":evidence, "next_action":next_action,
+                                        "recheck_trigger":"corrected bounded maintenance attempt", "same_invocation_work_exhausted":True},
+                       "terminal_state":{"schema":"terminal-state/v2", "invocation_id":invocation_id,
+                                         "scope_id":"cdc-2.11.5-maintenance-attempt:"+REPO,
+                                         "observed_head":failed_head, "decision":"BLOCKED", "runnable_actions":[],
+                                         "pending_external":None, "blocker":{"code":"managed-maintenance-failed", "evidence_refs":evidence,
+                                         "next_action":next_action, "recheck_trigger":"corrected bounded maintenance attempt"},
+                                         "meaningful_progress_refs":[], "completion_evidence_refs":[],
+                                         "checkpoint_ref":failure_checkpoint, "lease_released":False}}
+            record = leasev2.mark_ready(record, owner, generation, invocation_id, now(), continuity_state=blocked)
+            revision = lease_store.compare_and_swap(revision, record)
+            released_error = rt.release_execution_lease(lease_store, revision, REPO, SOURCE_REF, owner, generation,
+                                                        invocation_id, task_id, attempt_id, now())
+            blocked["lease_release_required"] = True
+            blocked["lease_released"] = True
+            blocked["terminal_state"]["lease_released"] = True
+            checked_release = lease_store.read_revision(released_error["release_receipt"]["lease_revision"])
+            error_gate = final_response_gate.evaluate(invocation_id, released_error["record"], blocked,
+                                                     {"owner_id":owner,"generation":generation},
+                                                     released_error["release_receipt"], checked_release, now())
+            if not error_gate["final_response_allowed"]:
+                raise RuntimeError("failure release gate rejected") from error
+            rt.cancel(task_id, attempt_id)
+            deadline = time.monotonic() + 30
+            while not rt.observe(task_id, attempt_id).get("quiescent"):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("failure supervisor did not become quiescent after release") from error
+                time.sleep(0.2)
+            print(json.dumps({"status":"FAILED_RELEASED", "release_receipt":released_error["release_receipt"]}))
+            raise
+
+        CDC_RUNNER
+    needs:
+    - managed-adoption
+    - windows
+    - policy-security
+    if: always() && needs.managed-adoption.result == 'success'
+    name: Record exact CI and transactionally release ownership
