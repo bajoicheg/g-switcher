@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.11.3
+# Continuous Development Cycle v2.11.4
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 
@@ -249,3 +249,14 @@ CDC can coordinate disjoint foreground/watchdog/Work/Codex project lanes under o
 - Consumer adoption binds every required path to an immutable assembly-manifest Git object, validates consumer-lock target semantics, then publishes once by conditional fast-forward and exact readback.
 
 Read `references/multi-subscription-coordination-and-ownership.md`.
+
+
+## v2.11.4 managed host bridge
+
+- `scripts/managed_host_bridge.py` exposes a transport-neutral `start / observe / cancel / finish` contract around the real package-owned managed runtime.
+- Hosts receive only durable handles; the non-serializable managed terminal capability remains inside the package.
+- A package-owned worker gate prevents fast tasks from racing lease acquisition.
+- Successful writer completion is exact-head conditional publication plus transactional lease release and immutable release-receipt verification.
+- The bridge is a host adapter contract, not proof that a ChatGPT plugin/service is installed.
+
+Read `references/managed-host-bridge.md`.

@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.11.3
+# Continuous Development Cycle v2.11.5
 
 ## Active execution contract — apply before recovery detail
 
@@ -17,6 +17,8 @@ A request to continue/develop/fix means execute the authorized scope through its
 6. Honor an explicit owner scheduler pause. Never enable paused watchdogs merely to make the system appear continuous. Continue eligible foreground work.
 
 These are cooperative agent/runtime controls. Python validators do not intercept ChatGPT's final-response channel or autonomously launch workers; the active executor must actually invoke them and obey the decision. Test the real lease path and agent behavior, not just words in a response.
+
+Minimum supported CDC runtime is **2.11.3**. Older executable runtime compatibility is retired. Historical checkpoint, lease, operation-intent and audit records remain readable as data for current-runtime recovery. Historical producer labels do not authorize executing an older runtime.
 
 Durable repository state is the project state. Sessions, agents and schedulers are disposable. Apply the instruction hierarchy, preserve the source/scope of existing user authorization, and reconcile repository policy. Live remote facts override stale checkpoint/chat claims. A spinner, lease or submitted request is not progress evidence.
 
@@ -349,3 +351,18 @@ Immediately before any terminal/final response use `scripts/final_response_gate.
 Watchdog survivability `create/enable/run/disable` effects use the same pinned Fleet leader binding and recheck it immediately before provider I/O; leader/HEAD loss before I/O is blocked, not recorded as an unknown provider effect.
 
 Consumer CDC adoption is atomic. Use `scripts/consumer_adoption.py` with detached migration assembly: prepare the immutable package, lock, adapter, checkpoint and adoption/provenance paths off the shared source ref; bind every required path to an immutable Git object in the assembly manifest; include the manifest digest in the publication claim/journal; verify consumer-lock version/package-tree/release bindings plus the exact target package subtree and candidate root tree; then perform one conditional fast-forward and exact readback. VERSION-only or metadata-only shared-ref exposure is not a valid adoption state. Read `references/multi-subscription-coordination-and-ownership.md`.
+
+
+## CDC 2.11.4 managed host bridge
+
+When a host needs to turn observer/orchestrator intent into actual project execution, use `scripts/managed_host_bridge.py` rather than weakening the 2.11.3 lease admission rule. The bridge launches the exact package-owned `ManagedExecutorRuntime`, acquires execution-lease/v2 only through its live non-serializable managed-terminal capability, and returns an opaque durable handle to the host.
+
+The v1 host contract is `start → observe|cancel → finish`. `start` verifies exact repository/remote/source HEAD and an immutable single-writer managed-pool plan before effects, holds the real worker behind a package-owned gate until managed lease acquisition is durable, and never publishes the shared source ref. `observe` and `cancel` address only the exact durable task/attempt/launch and never replay a start. A successful `finish` requires the worker's managed `awaiting_release` state, verifies exact result ancestry/full-history write scope, uses a durable expected-head conditional publication journal, runs transactional finalization/release, waits for supervisor quiescence, closes the pool result, and validates the immutable release receipt through the final-response gate.
+
+Hosts may wrap this JSON contract as a ChatGPT plugin/tool, Work adapter, scheduler adapter or another service. The package does not infer that such transport is installed. `LocalCommandBackend` remains cooperative and inherits the invoking host's privileges; the host must apply its own command/user/repository authorization before supplying argv. Read `references/managed-host-bridge.md`.
+
+
+## Taskless submission recovery
+
+After an authenticated pre-acceptance GitHub 403 or an immutable cancellation-before-send barrier, use `scripts/submission_recovery.py` on an explicitly released v2 lease. Independently authenticate, persist and read back the exact provider, worker and parent-dispatcher evidence first. Empty provider results, a missing grant, elapsed time, a cancellation request or a lost reply alone never clear an operation. The canonical CAS preserves the original claim and release history, appends its resolution and grants no submission authority. Released records are sealed against ordinary rewrites; new ownership still requires the managed terminal capability. See `references/submission-recovery.md`.
+

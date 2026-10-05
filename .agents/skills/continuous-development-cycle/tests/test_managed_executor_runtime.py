@@ -100,17 +100,23 @@ class RuntimeTests(unittest.TestCase):
                 break
             time.sleep(.03)
 
-    def worker(self, task, delay=.5, fail=False):
+    def worker(self, task, delay=.5, fail=False, barrier=None):
         # A real interval plus a real committed result; no synthetic backend events.
         code = '''import json, pathlib, subprocess, time, sys
 p=pathlib.Path("src")/sys.argv[1]; p.mkdir(parents=True)
-start=time.monotonic(); time.sleep(float(sys.argv[2])); end=time.monotonic()
+start=time.monotonic()
+if sys.argv[4] != "-":
+    barrier=pathlib.Path(sys.argv[4])
+    barrier.with_name(barrier.name+"."+sys.argv[1]+".ready").touch()
+    while not barrier.exists(): time.sleep(.01)
+time.sleep(float(sys.argv[2])); end=time.monotonic()
 (p/"interval.json").write_text(json.dumps([start,end]))
 if sys.argv[3]=="fail": sys.exit(7)
 subprocess.run(["git","add",str(p)],check=True)
 subprocess.run(["git","commit","-qm","worker result"],check=True)
 '''
-        return [sys.executable, "-c", code, task, str(delay), "fail" if fail else "ok"]
+        return [sys.executable, "-c", code, task, str(delay), "fail" if fail else "ok",
+                str(barrier) if barrier is not None else "-"]
 
     def launch(self, task="a", argv=None):
         rev, _ = self.store.read()
@@ -345,7 +351,8 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         self.assertEqual(final["status"],"succeeded");self.assertTrue(final["quiescent"])
 
     def test_terminal_hold_aborts_only_when_authoritative_history_proves_no_acquire(self):
-        self.launch("a", self.worker("a", .4))
+        barrier = self.root / "no-acquire-worker-go"
+        self.launch("a", self.worker("a", 0, barrier=barrier))
         end=time.monotonic()+4
         while time.monotonic()<end:
             observed=self.rt.observe("a","a1")
@@ -363,6 +370,7 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         self.rt._mark_terminal_acquire_done(capability,"error")
         reconciled=self.rt.reconcile_execution_lease_hold(lease_store,"a","a1")
         self.assertEqual(reconciled["status"],"aborted")
+        barrier.touch()
         final=self.wait("a")
         self.assertEqual(final["status"],"succeeded");self.assertTrue(final["quiescent"])
 
@@ -428,8 +436,15 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         self.assertEqual(final["status"],"succeeded");self.assertTrue(final["quiescent"])
 
     def test_two_workers_really_overlap_and_commit_in_isolated_worktrees(self):
-        self.launch("a", self.worker("a", .8))
-        self.launch("b", self.worker("b", .8))
+        barrier = self.root / "overlap-workers-go"
+        self.launch("a", self.worker("a", 0, barrier=barrier))
+        self.launch("b", self.worker("b", 0, barrier=barrier))
+        end = time.monotonic() + 5
+        ready = [barrier.with_name(barrier.name + "." + task + ".ready") for task in ("a", "b")]
+        while not all(path.exists() for path in ready) and time.monotonic() < end:
+            time.sleep(.01)
+        self.assertTrue(all(path.exists() for path in ready), "both real workers must reach the barrier")
+        barrier.touch()
         for task in ("a", "b"):
             receipt = self.wait(task)
             self.assertEqual(receipt["status"], "succeeded")

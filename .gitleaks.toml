@@ -26,3 +26,10 @@ condition = "AND"
 paths = ['''(^|/)scripts/security/test_repository_hygiene\.py$''']
 regexTarget = "secret"
 regexes = ['''^(Ctrl\+Shift\+F12|docs/FUNCTIONAL_SPEC\.md|generic-api-key)$''']
+
+[[rules.allowlists]]
+description = "Exact historical CDC access-category timestamp fixture; no credential"
+condition = "AND"
+paths = ['''^\.agents/skills/continuous-development-cycle/tests/continuity_fixtures\.py$''']
+regexTarget = "line"
+regexes = ['''category="access", observed_at_utc=at or datetime\.now\(timezone\.utc\)\.isoformat\(\)\.replace\("\+00:00", "Z"\),''']

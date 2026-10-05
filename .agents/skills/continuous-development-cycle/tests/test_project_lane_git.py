@@ -1,8 +1,10 @@
 import importlib.util
+import concurrent.futures
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -159,6 +161,62 @@ class GitLaneResultVerifierTests(unittest.TestCase):
         self.assertEqual(remote_head, result_commit)
         # Lost-reply/retry reconciliation is idempotent once exact readback matches.
         self.assertEqual(publisher(item, integrator, intent), evidence)
+
+    def test_racing_publishers_submit_one_transport_for_the_same_attempt(self):
+        remote = self.repo / "remote-race.git"
+        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
+        git(self.repo, "remote", "add", "origin", str(remote))
+        git(self.repo, "push", "-q", "origin", self.base + ":refs/heads/integration")
+        result = self.commit(Path("src/a/race.py"), "ok\n", "race result")
+        other = self.repo / "other"
+        subprocess.run(["git", "clone", "-q", str(self.repo), str(other)], check=True)
+        git(other, "remote", "set-url", "origin", str(remote))
+        remote_id = project_lane_git.remote_identity(self.repo, "origin")
+        publishers = []
+        for checkout in (self.repo, other):
+            store = GitDocumentStore(checkout, "origin", "refs/heads/cdc/race-attempts",
+                                     remote_id, protected_refs=("refs/heads/integration",))
+            publishers.append(project_lane_git.GitLaneIntegrationPublisher(
+                checkout, "origin", "refs/heads/integration", remote_id, attempt_store=store))
+        integrator = LaneClaim("integrator", "inv", LaneKind.INTEGRATOR, self.base,
+                               str(self.repo), self.primary, executor_id="e", role="integrator")
+        item = {"lane_id": "lane", "result_commit": result}
+        intent = dict(item, observed_shared_head=self.base, intended_integrated_head=result,
+                      operation_id="race-operation")
+        ready = threading.Barrier(2)
+        calls = []
+        transition = project_lane_git.GitLaneIntegrationPublisher._transition_attempt
+        push = project_lane_git.GitLaneIntegrationPublisher._push_cas
+
+        def synchronized_transition(publisher, item, intent, target, allowed):
+            if target == "submitted":
+                ready.wait(timeout=20)
+            return transition(publisher, item, intent, target, allowed)
+
+        def observed_push(publisher, observed, intended):
+            calls.append((observed, intended))
+            return push(publisher, observed, intended)
+
+        def publish(publisher):
+            try:
+                return publisher(item, integrator, intent)
+            except ValueError as exc:
+                return str(exc)
+
+        with mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,
+                               "_transition_attempt", synchronized_transition), \
+             mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,
+                               "_push_cas", observed_push):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(executor.map(publish, publishers))
+        self.assertEqual(calls, [(self.base, result)],
+                         "one durable attempt must authorize one provider transport")
+        successes = [value for value in results if isinstance(value, dict)]
+        self.assertEqual(len(successes), 1, results)
+        self.assertTrue(successes[0]["conditional_update"])
+        self.assertEqual(git(remote, "rev-parse", "refs/heads/integration"), result)
+        self.assertEqual(publishers[1](item, integrator, intent), successes[0])
+        self.assertEqual(publishers[0].publication_attempt("race-operation")["status"], "confirmed")
 
     def test_preexisting_intended_remote_head_is_readback_only_without_this_intents_cas(self):
         remote = self.repo / "remote-preexisting.git"

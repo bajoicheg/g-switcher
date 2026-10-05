@@ -2,9 +2,9 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-01-cdc-2.11.3-managed-adoption
-policy_digest: 9c47e340e1e248b7efd2a9dc15fcda5ea58c065374e0f78c459ad9f28975a338
-observed_at_utc: '2026-10-01T17:19:10.336682Z'
+policy_revision: 2026-10-05-cdc-2.11.5-reconciliation
+policy_digest: 863b1140c2d68f2407ac584c387bc8dd2fd999ebc4fb3d0f645fc8f1f195e7f2
+observed_at_utc: '2026-10-05T05:07:04.072736Z'
 orchestration_origin: chat
 active_executor: none
 lease_state: released
@@ -19,26 +19,26 @@ control:
   execution_lease_ref: refs/heads/cdc/coordination
   execution_lease_revision: null
   executor_id: null
-  lease_generation: 10
+  lease_generation: 12
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
-active_change: CDC 2.9.2 adoption
-current_task: CDC 2.11.2 process-only adoption
-phase: validation
-implementation_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-last_green_sha: db9b91088f7b92c2d35e887c744fcbf48c6b95c3
-last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36235152300
+active_change: G-switcher 2.0.1 compatibility acceptance
+current_task: Complete real Windows acceptance after CDC 2.11.5 and main reconciliation
+phase: blocked
+implementation_sha: 0b6f7e3cff9762f9508c8e42d1fd23298a496306
+candidate_sha: ''
+last_green_sha: 0b6f7e3cff9762f9508c8e42d1fd23298a496306
+last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/36259598328
 active_compute: ''
 active_ci_run_id: ''
-last_ci_run_id: '36235152300'
-last_ci_status: 'completed/success: Windows Rust CI #409 exact-head GREEN for CDC 2.8.2 adoption'
+last_ci_run_id: '36259598328'
+last_ci_status: 'completed/success: Windows Rust CI #410; historical runtime-equivalent evidence'
 release_version: 2.0.1
-release_candidate_sha: cbe09e4eec2547d24826d1b7ecb0e2e9800f7d3b
-release_state: candidate
-blocker: none
-next_action: Validate exact CDC 2.11.2 subtree, lock, semantic adapter/checkpoint binding and portability fixture; then record adoption/RCA evidence and explicitly release generation 9.
+release_candidate_sha: ''
+release_state: blocked
+blocker: 'Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks.'
+next_action: Complete fresh exact-candidate Windows CI, then Run the exact candidate g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain final review and explicit public-promotion approval.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
   invocation_id: null
@@ -46,9 +46,37 @@ execution_continuity:
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: continue
-  last_progress_ref: docs/cdc-adoption-2.11.3.md
+  last_progress_ref: docs/cdc-adoption-2.11.5.md
 ---
-## CDC 2.11.3 process-only adoption — managed atomic publication
+## CDC 2.11.5 process-only adoption — managed atomic publication
+
+        This branch now binds canonical CDC **2.11.5** at `refs/heads/release/v2.11.5`, release commit `bbe5d8c8e4249ad27735245033b6dd6549539809`, package tree `6e9fb338a83c532076a30e8feb0b6ce2ebbe4063`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
+
+        
+        ## Current product boundary — 2026-10-05
+
+        The active change is G-switcher 2.0.1 acceptance, not a historical CDC migration.
+        Current main security and storage-hygiene changes have been merged; the two add/add
+        security conflicts use the exact current-main versions. Product runtime, tests,
+        Cargo dependencies, assets and the Windows gate remain byte-identical to candidate
+        0b6f7e3cff9762f9508c8e42d1fd23298a496306 (Windows CI #410, run 36259598328).
+        This is historical runtime-equivalent evidence, not GREEN for this new root commit.
+
+        The authoritative exact candidate SHA and fresh CI result are stored in the
+        resume capsule on cdc/coordination. Candidate SHA fields here are intentionally
+        empty because this document is part of the candidate commit itself.
+
+        Fresh Windows CI follows atomic publication in the same managed-maintenance
+        workflow; final coordination recording replaces the pending result only after
+        that exact job is terminal. No public release or compatibility PASS is implied.
+
+        Remaining manual checks: ordinary Edge and Chrome Auto/Manual/Undo/Focus/Pause;
+        desktop Word; protected-input cases and valid application versions in the existing
+        matrix. Automated forced-accessibility browser adapter tests do not complete them.
+        PR #28 stays Draft. Final review and explicit public-promotion approval remain required.
+
+        Earlier CDC adoption sections below are historical evidence only.
+        ## CDC 2.11.3 process-only adoption — managed atomic publication
 
 This branch now binds canonical CDC **2.11.3** at `refs/heads/release/v2.11.3`, release commit `ed8256d1b80cc3f5424890e5488d5fbbcb57a304`, package tree `39f733127ac130de4f647cf9e5ec55afcca0769c`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
 

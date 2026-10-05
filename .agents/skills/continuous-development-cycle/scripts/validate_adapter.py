@@ -267,6 +267,8 @@ def validate_adapter(data, skill_version=None):
     check(data, schema)
     policy = data["policy"]
     version = semver(skill_version or (ROOT / "VERSION").read_text().strip())
+    if version < (2, 11, 3):
+        raise ContractError("minimum supported CDC runtime is 2.11.3")
     lower, upper = semver(policy["skill_min_version"]), semver(policy["skill_max_version_exclusive"])
     if not lower <= version < upper:
         raise ContractError("policy skill version range is incompatible with installed skill")
@@ -369,3 +371,4 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
