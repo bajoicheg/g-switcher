@@ -2,27 +2,27 @@
   "schema": "fleet-project-snapshot/v1",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "observed_at_utc": "2026-10-01T17:19:40.799403Z",
-  "product_head": "7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f",
-  "cdc_version": "2.11.3",
-  "package_fingerprint": "git-tree:39f733127ac130de4f647cf9e5ec55afcca0769c",
+  "observed_at_utc": "2026-10-05T05:07:39.555008Z",
+  "product_head": "e7be220ee37d924cacf84edcd8ad1ba32bcb2f62",
+  "cdc_version": "2.11.5",
+  "package_fingerprint": "git-tree:6e9fb338a83c532076a30e8feb0b6ce2ebbe4063",
   "checkpoint_schema": "development-work-status/v4",
-  "policy_revision": "2026-10-01-cdc-2.11.3-managed-adoption",
+  "policy_revision": "2026-10-05-cdc-2.11.5-reconciliation",
   "watchdog": {
     "enabled": true,
     "last_run_at_utc": null
   },
   "coordination": {
     "lease_schema": "execution-lease/v2",
-    "generation": 10,
+    "generation": 12,
     "owner_active": false,
     "guard_present": false
   },
   "progress": {
     "schema": "progress-observation/v1",
-    "observed_at_utc": "2026-10-01T17:19:40.799419Z",
-    "last_meaningful_progress_at_utc": "2026-10-01T17:19:40.799422Z",
-    "last_activity_at_utc": "2026-10-01T17:19:40.799424Z",
+    "observed_at_utc": "2026-10-05T05:07:39.555028Z",
+    "last_meaningful_progress_at_utc": "2026-10-05T05:07:39.555031Z",
+    "last_activity_at_utc": "2026-10-05T05:07:39.555034Z",
     "primitive_steps_since_progress": 0,
     "blocker": false,
     "waiting_external": false,
@@ -33,7 +33,10 @@
       "rca/orphan-lease-generation-8.json",
       "git:7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f",
       "adoptions/cdc-2.11.3.json",
-      "actions:36898417530"
+      "actions:36898417530",
+      "git:e7be220ee37d924cacf84edcd8ad1ba32bcb2f62",
+      "adoptions/cdc-2.11.5.json",
+      "actions:37266308055"
     ]
   }
 }
