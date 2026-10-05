@@ -140,6 +140,22 @@ jobs:
         from validate_adapter import validate_adapter
         from validate_checkpoint_24 import validate_checkpoint_24
 
+        class DiagnosedAdoptionPublisher(GitConsumerAdoptionPublisher):
+            """Preserve the native publication contract while exposing bounded diagnostics."""
+            def _push(self, expected, candidate):
+                if self._remote_head() != expected:
+                    raise ValueError("consumer target ref moved before publication")
+                config, alias = isolated_remote_args(self.repo, self.remote, self.remote_id)
+                process = subprocess.run(["git", "-C", str(self.repo), *config, "-c", "push.followTags=false",
+                                          "push", "--porcelain", alias, f"{candidate}:{self.target_ref}"],
+                                         text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                         env=git_object_environment(GIT_TERMINAL_PROMPT="0"), timeout=30)
+                if process.returncode:
+                    reason = process.stderr.lower()
+                    category = "workflow_write_permission" if "workflow" in reason and "permission" in reason else "protected_branch" if "protected" in reason else "native_git_rejection"
+                    print(json.dumps({"native_publication_rejection":category, "exit_code":process.returncode}))
+                    raise ValueError("consumer conditional publication transport failed")
+
         class MultiDocLeaseStore:
             """Equivalent durable lease CAS preserving every non-lease coordination path."""
             def __init__(self, repo: Path, remote: str, ref: str):
@@ -729,7 +745,7 @@ jobs:
                 if claim_plan["action"] != "CLAIM_CONDITIONAL_PUBLISH":
                     raise RuntimeError("unexpected adoption claim plan: " + claim_plan["action"])
                 state["publication_claim"] = claim_plan["claim"]
-                publisher = GitConsumerAdoptionPublisher(
+                publisher = DiagnosedAdoptionPublisher(
                     ROOT, "origin", SOURCE_REF, remote_id, attempt_store, assembly_store
                 )
                 publication_started = True
@@ -1603,6 +1619,22 @@ jobs:
         from validate_adapter import validate_adapter
         from validate_checkpoint_24 import validate_checkpoint_24
 
+        class DiagnosedAdoptionPublisher(GitConsumerAdoptionPublisher):
+            """Preserve the native publication contract while exposing bounded diagnostics."""
+            def _push(self, expected, candidate):
+                if self._remote_head() != expected:
+                    raise ValueError("consumer target ref moved before publication")
+                config, alias = isolated_remote_args(self.repo, self.remote, self.remote_id)
+                process = subprocess.run(["git", "-C", str(self.repo), *config, "-c", "push.followTags=false",
+                                          "push", "--porcelain", alias, f"{candidate}:{self.target_ref}"],
+                                         text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                         env=git_object_environment(GIT_TERMINAL_PROMPT="0"), timeout=30)
+                if process.returncode:
+                    reason = process.stderr.lower()
+                    category = "workflow_write_permission" if "workflow" in reason and "permission" in reason else "protected_branch" if "protected" in reason else "native_git_rejection"
+                    print(json.dumps({"native_publication_rejection":category, "exit_code":process.returncode}))
+                    raise ValueError("consumer conditional publication transport failed")
+
         class MultiDocLeaseStore:
             """Equivalent durable lease CAS preserving every non-lease coordination path."""
             def __init__(self, repo: Path, remote: str, ref: str):
@@ -2192,7 +2224,7 @@ jobs:
                 if claim_plan["action"] != "CLAIM_CONDITIONAL_PUBLISH":
                     raise RuntimeError("unexpected adoption claim plan: " + claim_plan["action"])
                 state["publication_claim"] = claim_plan["claim"]
-                publisher = GitConsumerAdoptionPublisher(
+                publisher = DiagnosedAdoptionPublisher(
                     ROOT, "origin", SOURCE_REF, remote_id, attempt_store, assembly_store
                 )
                 publication_started = True
