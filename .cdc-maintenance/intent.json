@@ -1,0 +1,25 @@
+{
+  "schema": "g-switcher-managed-maintenance-intent/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source_sha": "7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f",
+  "main_sha": "90c6dba064e1fbfccab204d6e1d086fca5b39e62",
+  "canonical_repository": "bajoicheg/g-cdc",
+  "canonical_version": "2.11.5",
+  "release_commit": "bbe5d8c8e4249ad27735245033b6dd6549539809",
+  "package_tree": "6e9fb338a83c532076a30e8feb0b6ce2ebbe4063",
+  "orchestration_branch": "cdc/maintenance-2.11.5-20261005",
+  "authorization": "Owner 2026-10-05: Обнови CDC и делай шаги; bounded CDC adoption/main reconciliation/current checkpoint/exact Windows CI.",
+  "transport": "GitHub Actions real package-owned managed supervisor and conditional Git publisher",
+  "technical_scope": [
+    "atomic CDC 2.11.5 adoption",
+    "merge exact main security and storage hygiene",
+    "repair CDC policy workflow/checkpoint/resume",
+    "full exact-source Windows CI and security",
+    "record durable terminal boundary"
+  ],
+  "scheduler_mutations": 0,
+  "public_promotion_authorized": false,
+  "manual_acceptance_required": true,
+  "no_force_push": true
+}
