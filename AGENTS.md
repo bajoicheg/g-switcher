@@ -1,3 +1,7 @@
+## CDC 2.11.6 authoritative provenance
+
+Canonical bajoicheg/g-cdc v2.11.6; release refs/heads/release/v2.11.6; commit b3b517fb70e2deea4006e265f708f29881377885; exact package tree 79257a06c40de6f514f9b059be05d610885a50e7. Vendored package: .agents/skills/continuous-development-cycle/. Earlier CDC sections are historical. Process-only adoption; product acceptance gates and scheduler pause remain authoritative.
+
 ## CDC 2.11.5 authoritative provenance
 
         Use canonical `bajoicheg/g-cdc` **v2.11.5**, release `refs/heads/release/v2.11.5`, commit `bbe5d8c8e4249ad27735245033b6dd6549539809`, exact package tree `6e9fb338a83c532076a30e8feb0b6ce2ebbe4063`. The immutable package is vendored at `.agents/skills/continuous-development-cycle/`; lower-version CDC statements below are historical. The owner explicitly requested this project update on 2026-10-05. The project target is 2.11.5; the separate Fleet target is not changed. Product acceptance gates and scheduler pause remain authoritative.

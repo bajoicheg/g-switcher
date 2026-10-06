@@ -1,6 +1,7 @@
 {
   "schema": "compute-cost-policy/v1",
   "primary_kind": "codex_compute",
+  "portable_primary_preferred": true,
   "kind_cost_weights": {
     "codex_compute": 1,
     "local": 1,

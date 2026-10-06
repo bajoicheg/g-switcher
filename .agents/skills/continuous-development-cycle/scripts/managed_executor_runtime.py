@@ -244,6 +244,10 @@ def _supervise(directory):
         else:
             command += ["--detach"]
         _git(request["repo_root"], *command, str(cwd), request["identity"]["base_sha"])
+        if request['identity']['role'] == 'read_only':
+            history = _git(cwd, 'reflog', 'show', '--format=%H', 'HEAD').splitlines()
+            if not history or any(sha != request['identity']['base_sha'] for sha in history):
+                raise ValueError('read_only worker requires initial exact-base reflog history')
         # Preparation is inside the admitted interval. Never create a new worker
         # after its deadline/cancellation, but still reap any preparation descendants.
         termination = ("cancelled" if (directory / "cancel.json").exists() else

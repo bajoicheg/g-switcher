@@ -92,6 +92,12 @@ def resolve_released_guard(record, proof, evidence_reference, at):
     elif intent['binding']['mode'] == 'MERGE_VALIDATION':
         target_ok = (dispatch['method'] == 'PUT' and isinstance(dispatch['target'], str)
                      and re.fullmatch(re.escape(prefix) + r'/[1-9][0-9]*/merge', dispatch['target']) is not None)
+    elif (intent['binding']['mode'] == 'COMPUTE_ONLY'
+            and intent['binding']['backend'] == 'codex_cloud_cli'):
+        # Bind every immutable execution field, not a mutable environment label.
+        target_ok = (dispatch['method'] == 'EXEC'
+                     and dispatch['target'] == 'codex-cloud-cli:' + op._canonical(intent['binding']).decode('utf-8')
+                     and dispatch['outcome'] == 'not_submitted')
     else:
         target_ok = False
     if not target_ok:

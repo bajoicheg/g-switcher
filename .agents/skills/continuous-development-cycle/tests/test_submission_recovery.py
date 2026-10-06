@@ -61,6 +61,42 @@ def fixture(outcome='rejected'):
     return record, proof
 
 class Tests(unittest.TestCase):
+    def compute_fixture(self):
+        record,proof=fixture('not_submitted')
+        guard=record['external_guard'];intent=guard['intent']
+        intent['binding'].update(mode='COMPUTE_ONLY',backend='codex_cloud_cli',environment_id='d'*32)
+        intent['operation_key']=op.operation_key(intent['binding'])
+        # Preserve a valid durable readback after changing this independent fixture.
+        prepared=copy.deepcopy(intent);prepared.update(state='prepared',durable_intent=None,updated_at_utc=intent['created_at_utc'])
+        receipt=op.verify_readback(prepared,copy.deepcopy(prepared),'git:'+'b'*40,'2026-10-04T17:00:00Z')
+        intent=op.transition(prepared,'submitting','2026-10-04T17:00:01Z',receipt=receipt)
+        guard.update(intent=intent,operation_key=intent['operation_key'],intent_digest=op._hash(intent))
+        claim=guard['submission_claim'];claim.update(operation_key=intent['operation_key'],intent_digest=guard['intent_digest'])
+        record['submission_claims']=[copy.deepcopy(claim)]
+        proof.update(lease_digest=op._hash(record),claim=copy.deepcopy(claim))
+        proof['provider_observation']['operation_key']=intent['operation_key']
+        proof['dispatch'].update(claim_digest=op._hash(claim),intent_digest=guard['intent_digest'],method='EXEC',
+            target='codex-cloud-cli:'+json.dumps(intent['binding'],sort_keys=True,separators=(',',':')))
+        lease.validate(record)
+        return record,proof
+
+    def test_compute_only_exact_before_send_barrier_resolves_without_submission_authority(self):
+        old,proof=self.compute_fixture()
+        new=self.resolve(old,proof)
+        self.assertIsNone(new['external_guard'])
+        self.assertEqual(new['submission_claims'],old['submission_claims'])
+        self.assertEqual(new['last_release'],old['last_release'])
+        self.assertIsNone(new['owner_id'])
+        self.assertIs(validate_coordination_transition(old,new),new)
+
+    def test_compute_only_never_accepts_github_rejection_or_wrong_execution_binding(self):
+        old,proof=self.compute_fixture()
+        for change in ({'outcome':'rejected','http_status':403,'barrier_state':None},
+                       {'target':'codex-cloud-cli:wrong-environment'}, {'method':'POST'},
+                       {'barrier_state':None}, {'outcome':'unknown'}):
+            bad=copy.deepcopy(proof);bad['dispatch'].update(change)
+            with self.subTest(change=change),self.assertRaises(ValueError):self.resolve(old,bad)
+
     def resolve(self, record, proof, at=NOW):
         try:
             module = importlib.import_module('submission_recovery')

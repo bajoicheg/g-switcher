@@ -60,4 +60,18 @@ class T(unittest.TestCase):
   r=self.route()
   for k in ("authorizes_external_start","authorizes_product_write","authorizes_takeover","authorizes_scheduler_mutation"):self.assertFalse(r[k])
 
+class OwnerPreferenceTests(unittest.TestCase):
+ def setUp(self):
+  self.pol=copy.deepcopy(POL);self.pol['portable_primary_preferred']=True
+  self.ctx=copy.deepcopy(CTX);self.ctx['repository_visibility']='public'
+ def route(self,reg=REG,req=REQ):return m.route(reg,req,self.pol,self.ctx,'2026-09-25T10:01:00Z')
+ def test_owner_portable_preference_beats_unmetered_actions(self):
+  self.assertEqual(self.route()['backend_id'],'codex')
+ def test_transient_cloud_failure_recovers_instead_of_free_actions(self):
+  reg=copy.deepcopy(REG);reg['backends'][0]['state']='degraded';self.ctx.update(primary_failure_class='provider',last_primary_failure_at_utc='2026-09-25T09:40:00Z')
+  self.assertEqual(self.route(reg)['action'],'probe_primary')
+ def test_platform_gate_still_routes_required_actions(self):
+  req=copy.deepcopy(REQ);req['required_capabilities'].append('feature:emulator');self.ctx['evidence_class']='platform'
+  self.assertEqual(self.route(req=req)['backend_id'],'gha')
+
 if __name__=="__main__":unittest.main()

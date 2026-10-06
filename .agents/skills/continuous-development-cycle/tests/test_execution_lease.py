@@ -266,15 +266,17 @@ class GitStoreTests(unittest.TestCase):
     def test_read_rejects_remote_movement_during_fetch_and_decode(self):
         revision = self.stores[0].compare_and_swap(None, self.record)
         changed = self.lease.renew(self.record, self.owner, 1, AT, activity_ref='log:movement')
-        original_git = self.stores[0]._git
-        def moving_git(*args, **kwargs):
-            result = original_git(*args, **kwargs)
-            if args[0] == 'show':
-                self.stores[1].compare_and_swap(revision, changed)
+        original_reader = self.stores[0]._read_record
+        published = []
+        def moving_reader(read_revision):
+            result = original_reader(read_revision)
+            published.append(self.stores[1].compare_and_swap(revision, changed))
             return result
-        self.stores[0]._git = moving_git
+        self.stores[0]._read_record = moving_reader
         with self.assertRaises(ValueError):
             self.stores[0].read()
+        self.assertEqual(len(published), 1)
+        self.assertEqual(self.stores[1].read(), (published[0], changed))
 
 if __name__ == '__main__':
     unittest.main()

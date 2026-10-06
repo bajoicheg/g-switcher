@@ -1,6 +1,6 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.11.5",
+  "version": "2.11.6",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
   "description": "Project-independent durable development with managed host bridging, multi-subscription ownership fencing, truthful liveness, fail-closed finalization, and atomic adoption."

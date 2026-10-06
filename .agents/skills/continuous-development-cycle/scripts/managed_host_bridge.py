@@ -148,6 +148,14 @@ def _remote_head(repo, remote, source_ref):
     return parts[0]
 
 
+def _require_read_only_reflog(repo):
+    value, code = _git(repo, 'config', '--get', 'core.logAllRefUpdates', check=False)
+    if code == 1 and _git(repo, 'rev-parse', '--is-bare-repository')[0] == 'false':
+        return  # Git enables reflogs by default for a non-bare repository.
+    if code or value.lower() not in {'true', 'yes', 'on', '1', 'always'}:
+        raise ValueError('read_only execution requires enabled reflog history recording')
+
+
 def _isolated_path(path, repo, name):
     value = Path(path)
     if not value.is_absolute():
@@ -163,8 +171,8 @@ def _task(plan, task_id):
     row = next((item for item in plan["tasks"] if item["id"] == task_id), None)
     if row is None:
         raise ValueError("managed host task_id is not in the plan")
-    if row["role"] != "writer" or not row["required"]:
-        raise ValueError("managed host v1 requires one required writer task")
+    if row["role"] not in {"writer", "read_only"} or not row["required"]:
+        raise ValueError("managed host v1 requires one required writer or read_only task")
     return row
 
 
@@ -391,6 +399,8 @@ def _start_locked(request, repo, journal_root, handle_root, handle_id):
         session = existing
     if _remote_head(repo, request["remote"], request["lease_source_ref"]) != plan["base_sha"]:
         raise ValueError("source HEAD drifted from managed host plan base")
+    if _task(plan, request['task_id'])['role'] == 'read_only':
+        _require_read_only_reflog(repo)
     _save_session(session)
 
     gate = _gate_paths(session)
@@ -623,7 +633,7 @@ def cancel(request):
     }
 
 
-def _renew_for_result(session, lease_store, observation):
+def _renew_for_result(session, lease_store, observation, *, action="product_write"):
     revision, record = lease_store.read()
     if (record is None or record.get("owner_id") != session["owner_id"]
             or record.get("generation") != session["generation"]
@@ -639,7 +649,7 @@ def _renew_for_result(session, lease_store, observation):
         record = renewed
     leasev2.check_record(
         record, session["owner_id"], session["generation"], session["invocation_id"],
-        _utc(), action="product_write",
+        _utc(), action=action,
     )
     return revision, record
 
@@ -663,6 +673,27 @@ def _result(session, runtime):
     if {pool.portable_path_key(x) for x in changed} != {pool.portable_path_key(x) for x in touched}:
         raise ValueError("managed host worker history changed-path mismatch")
     return result_commit, changed, request
+
+
+def _read_only_result(session, runtime):
+    request = runtime._request(session["task_id"], session["attempt_id"])
+    if request is None:
+        raise ValueError("managed host worker request is unavailable")
+    cwd = request["cwd"]
+    base = session["plan"]["base_sha"]
+    if _git(cwd, "status", "--porcelain", "--untracked-files=all")[0]:
+        raise ValueError("read_only worker checkout must remain clean")
+    if _git(cwd, "rev-parse", "HEAD")[0] != base:
+        raise ValueError("read_only worker changed its Git head")
+    branch, code = _git(cwd, "symbolic-ref", "-q", "HEAD", check=False)
+    if code != 1 or branch:
+        raise ValueError("read_only worker checkout must remain detached")
+    _require_read_only_reflog(cwd)
+    history = _git(cwd, "reflog", "show", "--format=%H", "HEAD")[0].splitlines()
+    if not history or any(sha != base for sha in history):
+        raise ValueError("read_only worker changed its Git history")
+    if _remote_head(session["repo_root"], session["remote"], session["lease_source_ref"]) != base:
+        raise ValueError("read_only source HEAD drifted from the plan base")
 
 
 def _publish(session, result_commit):
@@ -714,7 +745,9 @@ def _publish(session, result_commit):
 
 
 def _continuity(session, result_commit, checkpoint_ref, publication, *, released):
-    progress = ["git:" + result_commit]
+    read_only = _task(session["plan"], session["task_id"])["role"] == "read_only"
+    progress = (["managed-host:result:" + session["handle_id"], checkpoint_ref]
+                if read_only else ["git:" + result_commit])
     completion = ["managed-host:worker:" + str(session["runtime_launch_id"])]
     if publication is not None:
         completion.append("managed-host:publication:" + publication["evidence_ref"])
@@ -722,7 +755,7 @@ def _continuity(session, result_commit, checkpoint_ref, publication, *, released
         "schema": "terminal-state/v2",
         "invocation_id": session["invocation_id"],
         "scope_id": session["plan"]["change_id"],
-        "observed_head": result_commit,
+        "observed_head": session["plan"]["base_sha"] if read_only else result_commit,
         "decision": "COMPLETE",
         "runnable_actions": [],
         "pending_external": None,
@@ -748,7 +781,7 @@ def _continuity(session, result_commit, checkpoint_ref, publication, *, released
         "lease_released": released,
         "terminal_state": terminal,
     }
-    if publication is None:
+    if session.get("worker_status") != "succeeded":
         # A failed attempt is resumable, never project-scope completion. The
         # exact supervisor still holds the lease until this BLOCKED transaction
         # has persisted the terminal observation and release receipt.
@@ -782,6 +815,8 @@ def _finalize_release(session, runtime, lease_store, result_commit, checkpoint_r
         return recovered["release_marker"]["release_receipt"]
 
     at = _utc()
+    if session.get('worker_status') == 'succeeded' and record['external_guard'] is not None:
+        raise ValueError('successful managed worker cannot complete with unresolved external guard')
     if record["finalization"]["state"] in {"active", "failed"}:
         record = leasev2.begin_finalization(
             record, session["owner_id"], session["generation"], session["invocation_id"], at,
@@ -799,7 +834,7 @@ def _finalize_release(session, runtime, lease_store, result_commit, checkpoint_r
     if record["finalization"]["state"] == "checkpointed":
         record = leasev2.reconcile_finalization(
             record, session["owner_id"], session["generation"], session["invocation_id"], _utc(),
-            external_reconciliation="none",
+            external_reconciliation=("unknown_preserved" if session.get('worker_status') in {'failed', 'cancelled', 'timed_out'} and publication is None and record['external_guard'] is not None else "none"),
         )
         revision = lease_store.compare_and_swap(revision, record)
     if record["finalization"]["state"] == "reconciled":
@@ -867,10 +902,21 @@ def finish(request):
         _text(request["checkpoint_ref"], "checkpoint_ref")
     session = _load_session(request["handle_root"], request["handle_id"])
     task = _task(session["plan"], session["task_id"])
-    if not set(task["expected_outputs"]) <= set(output_refs):
-        raise ValueError("worker result missing expected outputs")
-    if not set(task["expected_evidence"]) <= set(evidence_refs):
-        raise ValueError("worker result missing expected evidence")
+    # Read the exact terminal observation before recovering ownership. A failed
+    # attempt supplies failure evidence; successful output labels cannot be
+    # required for its no-publication release. Nonterminal/unknown stays strict.
+    if session.get('release_receipt') is not None:
+        observed_status = session.get('worker_status')
+    else:
+        prevalidation_observation = _runtime(session).observe(session['task_id'], session['attempt_id'])
+        observed_status = prevalidation_observation.get('pending_terminal_status')
+        if observed_status is None and prevalidation_observation.get('status') in {'failed', 'cancelled', 'timed_out'}:
+            observed_status = prevalidation_observation['status']
+    if observed_status not in {'failed','cancelled','timed_out'}:
+        if not set(task["expected_outputs"]) <= set(output_refs):
+            raise ValueError("worker result missing expected outputs")
+        if not set(task["expected_evidence"]) <= set(evidence_refs):
+            raise ValueError("worker result missing expected evidence")
     session, runtime, lease_store = _recover_session(request["handle_root"], request["handle_id"])
     if session.get("release_receipt") is not None and (session.get("final_response_gate") or {}).get("final_response_allowed") is True:
         return {
@@ -889,13 +935,23 @@ def finish(request):
             raise ValueError("managed host finish requires a terminal worker awaiting managed lease release")
         session["worker_status"] = status
         if status == "succeeded":
-            if session.get("publication") is None:
+            if not set(task["expected_outputs"]) <= set(output_refs) or not set(task["expected_evidence"]) <= set(evidence_refs):
+                raise ValueError('successful worker result missing expected outputs/evidence')
+            if task["role"] == "read_only":
+                if request["checkpoint_ref"] is None:
+                    raise ValueError("read_only finish requires a persisted result checkpoint")
+                _renew_for_result(session, lease_store, observation, action="observe")
+                _read_only_result(session, runtime)
+                result_commit, publication = None, None
+                default_checkpoint = request["checkpoint_ref"]
+            elif session.get("publication") is None:
                 _renew_for_result(session, lease_store, observation)
                 result_commit, changed_paths, _ = _result(session, runtime)
                 publication = _publish(session, result_commit)
             else:
                 result_commit, publication = session["result_commit"], session["publication"]
-            default_checkpoint = "git:" + session["lease_source_ref"] + "@" + result_commit
+            if task["role"] == "writer":
+                default_checkpoint = "git:" + session["lease_source_ref"] + "@" + result_commit
         else:
             result_commit, publication = session["plan"]["base_sha"], None
             default_checkpoint = "managed-host:terminal:" + session["handle_id"] + ":" + status

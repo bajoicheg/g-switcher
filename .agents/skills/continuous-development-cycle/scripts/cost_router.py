@@ -33,7 +33,7 @@ def validate_policy(policy):
               "product_failure_classes","bounded_primary_recovery_attempts","probe_cooldown_seconds",
               "provider_outage_confirmation_required","expensive_fallback_reasons",
               "portable_wait_instead_of_expensive_fallback","github_actions_requires_reason"}
-    optional={"public_github_actions_unmetered","public_github_actions_cost_weight"}
+    optional={"public_github_actions_unmetered","public_github_actions_cost_weight","portable_primary_preferred"}
     if not isinstance(policy,dict) or required-set(policy) or set(policy)-(required|optional) or policy["schema"]!=POLICY_SCHEMA:
         raise ValueError("invalid compute cost policy")
     if policy["primary_kind"] not in capability.KINDS:raise ValueError("unsupported primary kind")
@@ -53,6 +53,8 @@ def validate_policy(policy):
         if type(policy[name]) is not bool:raise ValueError(f"{name} must be boolean")
     if "public_github_actions_unmetered" in policy and type(policy["public_github_actions_unmetered"]) is not bool:
         raise ValueError("public_github_actions_unmetered must be boolean")
+    if "portable_primary_preferred" in policy and type(policy["portable_primary_preferred"]) is not bool:
+        raise ValueError("portable_primary_preferred must be boolean")
     if "public_github_actions_cost_weight" in policy and (type(policy["public_github_actions_cost_weight"]) is not int or policy["public_github_actions_cost_weight"]<0):
         raise ValueError("public_github_actions_cost_weight must be nonnegative integer")
     reasons=set(_tokens(policy["expensive_fallback_reasons"],"expensive_fallback_reasons"))
@@ -121,6 +123,23 @@ def route(registry,request,policy,context,now_utc):
 
     if failure in set(policy["product_failure_classes"]):
         return _result("blocked","product_failure_requires_fix_before_more_compute",missing=missing)
+
+    if policy.get("portable_primary_preferred",False) and context["evidence_class"]=="portable" and primary:
+        primary_ready=[b for b in primary if b["state"]=="ready"]
+        if primary_ready and failure=="none":
+            return _result("route","owner_preferred_portable_primary",primary_ready[0],missing=missing)
+        if failure in set(policy["transient_failure_classes"]):
+            last=_time(context["last_primary_failure_at_utc"],"last_primary_failure_at_utc",nullable=True)
+            if last is not None:
+                elapsed=(now-last).total_seconds()
+                if elapsed<0:return _result("blocked","primary_failure_from_future")
+                if elapsed<policy["probe_cooldown_seconds"]:
+                    return _result("waiting_compute","primary_probe_cooldown",retry_after_seconds=policy["probe_cooldown_seconds"]-int(elapsed),missing=missing)
+            if context["distinct_primary_recovery_attempts"]<policy["bounded_primary_recovery_attempts"]:
+                return _result("probe_primary","bounded_owner_preferred_primary_recovery",primary[0],missing=missing)
+            return _result("waiting_compute","owner_preferred_primary_recovery_exhausted",missing=missing)
+        if not primary_ready and failure!="incompatible" and not context["required_capability_gap_on_primary"]:
+            return _result("waiting_compute","owner_preferred_primary_not_ready",missing=missing)
 
     if cheap_ready:
         return _result("route","lowest_cost_compatible_ready_backend",cheap_ready[0],missing=missing)
