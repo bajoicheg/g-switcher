@@ -1,0 +1,23 @@
+{
+  "schema": "g-switcher-managed-product-intent/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source_sha": "e1cf0257f626cb5301a2847b0c895fb8abe3771a",
+  "expected_released_generation": 18,
+  "canonical_version": "2.11.9",
+  "package_tree": "6867b012d01d776c2c0236b110980ba2c1292c26",
+  "orchestration_branch": "cdc/word-native-adapter-20261007-37933c",
+  "payload_sha256": "37933c41c7f65a278a2bae553a78c6aba98fd44bd3aead0ab8c94e4e6bd3f4f3",
+  "task_scope": "guarded Word native range adapter; native format Undo evidence",
+  "write_paths": [
+    "src/windows_runtime/selection.rs",
+    "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/word_native_plan.rs",
+    "docs/work-status/word-native-evidence-2026-10-07.json",
+    "docs/work-status/word-native-plan-2026-10-07.md"
+  ],
+  "scheduler_mutations": 0,
+  "public_promotion_authorized": false,
+  "manual_acceptance_required": true,
+  "no_force_push": true
+}
