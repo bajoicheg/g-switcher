@@ -210,8 +210,12 @@ def _fresh(snapshot, identity, ref, now, maximum):
 
 def _release_binding(binding, target, canonical_repository):
     fields = {"schema", "version", "canonical_repository", "release_ref", "release_commit", "package_tree"}
-    if (not isinstance(binding, dict) or set(binding) != fields
-            or binding.get("schema") != "live-target-release/v1"):
+    if not isinstance(binding, dict):
+        raise ValueError("invalid live target release provenance")
+    schema = binding.get("schema")
+    if schema == "live-target-release/v2":
+        fields = fields | {"evidence_binding"}
+    if schema not in {"live-target-release/v1", "live-target-release/v2"} or set(binding) != fields:
         raise ValueError("invalid live target release provenance")
     expected = {
         "version": target["target_version"], "canonical_repository": canonical_repository,
@@ -225,6 +229,25 @@ def _release_binding(binding, target, canonical_repository):
             raise ValueError("live target release provenance disagrees: " + name)
     _sha(binding["release_commit"])
     _sha(binding["package_tree"])
+
+
+
+def _evidence_binding(binding, canonical_identity):
+    value = binding.get("evidence_binding")
+    fields = {"schema", "source_identity", "ref", "commit", "path"}
+    if (not isinstance(value, dict) or set(value) != fields
+            or value.get("schema") != "canonical-release-evidence-binding/v1"):
+        raise ValueError("invalid canonical evidence binding")
+    if _identity(value["source_identity"]) != canonical_identity:
+        raise ValueError("canonical evidence source identity disagrees")
+    ref = _path(value["ref"])
+    if (not ref.startswith("refs/heads/") or ".." in ref or ref.endswith(".")
+            or any(part.endswith(".lock") for part in ref.split("/"))):
+        raise ValueError("canonical evidence ref must be an exact branch ref")
+    _sha(value["commit"])
+    if _path(value["path"]) != "release/evidence-" + binding["version"] + ".json":
+        raise ValueError("canonical evidence path disagrees with release version")
+    return value
 
 
 def resolve_live_target(registry_source: RegistrySource, canonical_source: ReleaseSource, *, registry_ref,
@@ -271,14 +294,29 @@ def resolve_live_target(registry_source: RegistrySource, canonical_source: Relea
         raise ValueError("canonical package tree disagrees with live target")
     if canonical_source.read_file(release_revision, package_path + "/VERSION").strip() != binding["version"]:
         raise ValueError("canonical package VERSION disagrees with live target")
-    evidence = _json(canonical_source, release_revision,
-                     "release/evidence-" + binding["version"] + ".json")
+    evidence_revision = release_revision
+    evidence_path = "release/evidence-" + binding["version"] + ".json"
+    split_evidence = binding["schema"] == "live-target-release/v2"
+    if split_evidence:
+        evidence_binding = _evidence_binding(binding, canonical_identity)
+        evidence_revision = canonical_source.pin(evidence_binding["ref"])
+        _fresh(evidence_revision, canonical_identity, evidence_binding["ref"], clock(), max_age_seconds)
+        if evidence_revision.revision != evidence_binding["commit"]:
+            raise ValueError("canonical evidence commit disagrees with pinned binding")
+        if not canonical_source.is_ancestor(release_revision.revision, evidence_revision.revision):
+            raise ValueError("canonical release is not an evidence ancestor")
+        if canonical_source.tree_oid(evidence_revision, package_path) != binding["package_tree"]:
+            raise ValueError("canonical evidence package tree disagrees")
+        evidence_path = evidence_binding["path"]
+    evidence = _json(canonical_source, evidence_revision, evidence_path)
     if (not isinstance(evidence, dict) or evidence.get("schema") != "cdc-release-evidence/v1"
             or evidence.get("status") != "released"):
         raise ValueError("canonical release evidence is missing or unreleased")
     for name in ("version", "canonical_repository", "release_ref", "package_tree"):
         if evidence.get(name) != binding[name]:
             raise ValueError("canonical release evidence disagrees: " + name)
+    if split_evidence and "release_commit" not in evidence:
+        raise ValueError("canonical split evidence requires release_commit")
     if "release_commit" in evidence and evidence["release_commit"] != binding["release_commit"]:
         raise ValueError("canonical evidence release_commit disagrees")
     candidate = _sha(evidence.get("candidate_source_commit"))
@@ -288,10 +326,14 @@ def resolve_live_target(registry_source: RegistrySource, canonical_source: Relea
         raise ValueError("canonical candidate package tree disagrees")
     registry_source.assert_current(registry_revision)
     canonical_source.assert_current(release_revision)
+    if split_evidence:
+        canonical_source.assert_current(evidence_revision)
     finished = clock()
     _fresh(registry_revision, registry_source.identity(), registry_ref, finished, max_age_seconds)
     _fresh(release_revision, canonical_source.identity(), binding["release_ref"], finished, max_age_seconds)
-    return {
+    if split_evidence:
+        _fresh(evidence_revision, canonical_source.identity(), evidence_binding["ref"], finished, max_age_seconds)
+    result = {
         "schema": "live-target-resolution/v1", "observed_at_utc": _stamp(finished),
         "registry_source_identity": registry_identity, "registry_ref": registry_ref,
         "registry_revision": registry_revision.revision,
@@ -301,3 +343,10 @@ def resolve_live_target(registry_source: RegistrySource, canonical_source: Relea
         "registry": registry, "target": target, "release": binding,
         "authorizes_adoption": False, "authorizes_scheduler_write": False,
     }
+    if split_evidence:
+        result["evidence_observation"] = {
+            "source_identity": evidence_revision.source_identity,
+            "ref": evidence_revision.ref, "revision": evidence_revision.revision,
+            "observed_at_utc": evidence_revision.observed_at_utc,
+        }
+    return result

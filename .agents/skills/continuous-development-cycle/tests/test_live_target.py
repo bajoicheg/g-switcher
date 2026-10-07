@@ -274,6 +274,167 @@ class LiveTargetTests(unittest.TestCase):
                      "coordination ref", "checkpoint", "same exact registry revision"):
             self.assertIn(term, prompt)
 
+    def split_metadata(self):
+        # Model actual8: immutable tested package, released evidence on descendant metadata.
+        self.release = self.candidate
+        self.evidence["release_commit"] = self.release
+        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.metadata = self.commit(self.canonical)
+        self.evidence_ref = "refs/heads/cdc/release-evidence/v3.2.1"
+        self.git(self.canonical, "update-ref", self.evidence["release_ref"], self.release)
+        self.git(self.canonical, "update-ref", self.evidence_ref, self.metadata)
+        self.provenance.update(schema="live-target-release/v2", release_commit=self.release,
+                               evidence_binding={"schema": "canonical-release-evidence-binding/v1",
+                                   "source_identity": git_remote_identity.remote_identity(self.cache, "canonical"),
+                                   "ref": self.evidence_ref, "commit": self.metadata,
+                                   "path": "release/evidence-3.2.1.json"})
+        self.publish_registry()
+
+    def repin_metadata(self):
+        self.metadata = self.commit(self.canonical)
+        self.git(self.canonical, "update-ref", self.evidence_ref, self.metadata)
+        self.provenance["evidence_binding"]["commit"] = self.metadata
+        self.publish_registry()
+
+    def test_split_metadata_explicit_binding_resolves_real_git(self):
+        self.split_metadata()
+        before = self.git(self.cache, "for-each-ref")
+        result = self.resolve(target_path="fleet/target.json")
+        self.assertEqual(result["release"]["release_commit"], self.candidate)
+        self.assertEqual(result["evidence_observation"]["revision"], self.metadata)
+        self.assertEqual(result["evidence_observation"]["ref"], self.evidence_ref)
+        self.assertEqual(result["evidence_observation"]["source_identity"], self.source("canonical").identity())
+        self.assertFalse(result["authorizes_adoption"])
+        self.assertFalse(result["authorizes_scheduler_write"])
+        self.assertEqual(before, self.git(self.cache, "for-each-ref"))
+
+    def test_split_metadata_legacy_without_binding_still_rejects(self):
+        self.split_metadata()
+        self.provenance["schema"] = "live-target-release/v1"
+        del self.provenance["evidence_binding"]
+        self.publish_registry()
+        with self.assertRaisesRegex(ValueError, "Git source operation failed"):
+            self.resolve()
+
+    def test_split_evidence_foreign_endpoint_rejected(self):
+        self.split_metadata()
+        self.provenance["evidence_binding"]["source_identity"] = "sha256:" + "0" * 64
+        self.publish_registry()
+        with self.assertRaisesRegex(ValueError, "evidence.*identity"):
+            self.resolve()
+
+    def test_split_evidence_binding_schema_fields_and_path_rejected(self):
+        for field, value in (("schema", "unsupported"), ("ref", "main"),
+                             ("commit", "short"), ("path", "../secret"),
+                             ("path", "release/other.json")):
+            self.split_metadata()
+            self.provenance["evidence_binding"][field] = value
+            self.publish_registry()
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.resolve()
+        self.split_metadata()
+        self.provenance["evidence_binding"]["extra"] = True
+        self.publish_registry()
+        with self.assertRaises(ValueError):
+            self.resolve()
+
+    def test_split_evidence_commit_mismatch_rejected(self):
+        self.split_metadata()
+        self.provenance["evidence_binding"]["commit"] = self.release
+        self.publish_registry()
+        with self.assertRaisesRegex(ValueError, "evidence.*commit"):
+            self.resolve()
+
+    def test_split_evidence_ref_moved_before_read_rejected(self):
+        self.split_metadata()
+        moved = self.commit(self.canonical)
+        self.git(self.canonical, "update-ref", self.evidence_ref, moved)
+        with self.assertRaisesRegex(ValueError, "evidence.*commit"):
+            self.resolve()
+
+    def test_split_evidence_ref_moved_during_read_rejected(self):
+        self.split_metadata()
+        test = self
+        class MovingEvidence(live_target.GitSource):
+            def read_file(self, snapshot, path):
+                value = super().read_file(snapshot, path)
+                if snapshot.ref == test.evidence_ref:
+                    test.git(test.canonical, "update-ref", test.evidence_ref, test.commit(test.canonical))
+                return value
+        with self.assertRaisesRegex(ValueError, "moved"):
+            self.resolve(canonical_source=self.source("canonical", MovingEvidence))
+
+    def test_split_evidence_stale_or_future_pin_rejected(self):
+        self.split_metadata()
+        test = self
+        for stamp in ("2026-09-28T11:00:00Z", "2026-09-28T12:00:01Z"):
+            class DatedEvidence(live_target.GitSource):
+                def pin(self, ref):
+                    observed = super().pin(ref)
+                    return replace(observed, observed_at_utc=stamp) if ref == test.evidence_ref else observed
+            with self.subTest(stamp=stamp), self.assertRaisesRegex(ValueError, "stale|future"):
+                self.resolve(canonical_source=self.source("canonical", DatedEvidence), max_age_seconds=60)
+
+    def test_split_evidence_must_descend_from_release(self):
+        self.split_metadata()
+        self.git(self.canonical, "checkout", "--orphan", "unrelated")
+        self.git(self.canonical, "rm", "-r", "--cached", ".")
+        self.repin_metadata()
+        with self.assertRaisesRegex(ValueError, "ancestor"):
+            self.resolve()
+
+    def test_split_evidence_package_tree_mismatch_rejected(self):
+        self.split_metadata()
+        self.write(self.canonical, PACKAGE + "/VERSION", "3.2.2\n")
+        self.repin_metadata()
+        with self.assertRaisesRegex(ValueError, "evidence.*package tree"):
+            self.resolve()
+
+    def test_split_evidence_release_fields_and_status_rejected(self):
+        for field, value in (("status", "candidate"), ("release_commit", "0" * 40),
+                             ("version", "3.2.2"), ("package_tree", "0" * 40),
+                             ("candidate_source_commit", "0" * 40)):
+            self.split_metadata()
+            original = dict(self.evidence)
+            self.evidence[field] = value
+            self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+            self.repin_metadata()
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.resolve()
+            self.evidence = original
+
+    def test_split_evidence_requires_explicit_release_commit(self):
+        self.split_metadata()
+        del self.evidence["release_commit"]
+        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.repin_metadata()
+        with self.assertRaisesRegex(ValueError, "release_commit"):
+            self.resolve()
+
+    def test_split_evidence_missing_document_rejected(self):
+        self.split_metadata()
+        (self.canonical / "release/evidence-3.2.1.json").unlink()
+        self.repin_metadata()
+        with self.assertRaisesRegex(ValueError, "Git source operation failed"):
+            self.resolve()
+
+    def test_split_evidence_explicit_pin_needed_even_for_colocated_evidence(self):
+        self.provenance["schema"] = "live-target-release/v2"
+        self.publish_registry()
+        with self.assertRaises(ValueError):
+            self.resolve()
+
+    def test_split_evidence_stable_ref_survives_main_advancement(self):
+        self.split_metadata()
+        pinned = self.metadata
+        self.write(self.canonical, "later-development.md", "unrelated later canonical main development\n")
+        moved_main = self.commit(self.canonical)
+        self.assertNotEqual(moved_main, pinned)
+        result = self.resolve()
+        self.assertEqual(result["evidence_observation"]["revision"], pinned)
+        self.assertEqual(result["evidence_observation"]["ref"], self.evidence_ref)
+        self.assertEqual(result["release"]["release_commit"], self.candidate)
+
 
 if __name__ == "__main__":
     unittest.main()

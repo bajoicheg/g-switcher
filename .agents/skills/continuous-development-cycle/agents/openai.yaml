@@ -1,6 +1,6 @@
 name: Continuous Development Cycle
 description: Durable CDC orchestration with behavioral verification, two-stage review and isolated parallel execution.
-version: 2.11.8
+version: 2.11.9
 policy:
   products:
   - chatgpt

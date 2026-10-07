@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.11.8
+# Continuous Development Cycle v2.11.9
 
 ## Active execution contract — apply before recovery detail
 
@@ -375,3 +375,7 @@ For the verified 2.11.6 stale-finish defect, follow references/managed-host-fini
 ## Codex Cloud Development and transitioned guards
 
 Cloud Development is a separate scoped editing contract returning an existing managed handoff; COMPUTE_ONLY remains read-only. Provider READY waits for an observed report. Unknown submissions retain guards and reservations. The conditional lease store binds a terminal resolution to the original consumed claim digest and terminal evidence to the current transitioned guard digest, while retaining full canonical clear_guard equality, immutable history and unrelated-field rejection. See references/codex-compute.md.
+
+## Explicit separate canonical release evidence
+
+Use live-target-release/v2 only with an exact canonical evidence endpoint identity, stable ref, pinned commit and derived evidence path. Never substitute current main or relabel old metadata as a current snapshot. Recheck registry/release/evidence refs, ancestry, exact package/version and released evidence before returning. Legacy v1 remains strict colocated-only. Resolution grants no Fleet/adoption/scheduler authority; see references/live-target-resolution.md.

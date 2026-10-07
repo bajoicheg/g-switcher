@@ -2,8 +2,8 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-07-cdc-2.11.8-atomic-adoption
-policy_digest: 9a7fa8532b86e50af96a13f7734732b0d580f6d4ec36de00a388d1efb18d6619
+policy_revision: 2026-10-07-cdc-2.11.9-atomic-adoption
+policy_digest: 1c5b09ed91b2c1ed0fe7f6400473c6e0fe4964bcf5c1bb9a877f97a31e6f418f
 observed_at_utc: '2026-10-06T14:12:14.840106Z'
 orchestration_origin: chat
 active_executor: none
@@ -245,3 +245,8 @@ compatibility/final-review release gates remain unchanged. Exact-head validation
 ## CDC 2.11.8 atomic process adoption
 
 Canonical immutable release 97706dd78a82cfb9ff9e1ce9191d21a42222db37, package 38a05d37af38d8a42f30e9e59dfa8af8d985d40e. Only policy bindings change in frontmatter; existing product state/evidence/platform blockers remain historical facts. This complete detached assembly does not claim publication, new product tests or a future ownership release. Actual managed publication and terminal release receipts are authoritative on separate control refs. Schedulers remain paused.
+
+
+## CDC 2.11.9 atomic process adoption
+
+Canonical immutable release 62cd32e91446675799d42247eac2a0312c33d363, package 6867b012d01d776c2c0236b110980ba2c1292c26. Only policy bindings change in frontmatter; existing product state/evidence/platform blockers remain historical facts. This complete detached assembly does not claim publication, new product tests or a future ownership release. Actual managed publication and terminal release receipts are authoritative on separate control refs. Schedulers remain paused.

@@ -1,4 +1,4 @@
-# Continuous Development Cycle v2.11.8
+# Continuous Development Cycle v2.11.9
 
 Installable ChatGPT/Codex/agent skill for recoverable, long-running software development.
 

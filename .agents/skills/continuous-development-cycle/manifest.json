@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.11.8",
+  "version": "2.11.9",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Managed Codex Cloud Development with separate compute-only verification, existing admission/handoff guards, and canonical transitioned-guard resolution."
+  "description": "Strict explicit pinned split release-evidence provenance with unchanged legacy colocated release semantics."
 }
