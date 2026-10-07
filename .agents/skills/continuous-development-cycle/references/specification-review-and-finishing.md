@@ -55,3 +55,7 @@ CDC 2.10.1 release evidence must prove:
 - open findings keep the change non-terminal; resolved/dispositioned findings require durable evidence;
 - branch finishing fails on stale validation, moved HEAD, wrong check SHA or unresolved findings;
 - all new controls remain evidence-only and create no merge/release authority.
+
+## Explicit quality migration (2.12)
+
+The two-stage and branch-finish/v1 rules above retain their legacy meaning. New migrated policies use review-pipeline/v2 and branch-finish/v2: FAST self-review, MEDIUM one independent combined review, FULL two ordered independent reviews. Branch finishing binds review evidence to the exact candidate and enforces mandatory assessment checks. It can validate explicit evidence reuse, preserving original source SHA. All remaining ownership/release gates still apply.

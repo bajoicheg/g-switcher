@@ -2,9 +2,9 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-07-cdc-2.11.9-atomic-adoption
-policy_digest: 1c5b09ed91b2c1ed0fe7f6400473c6e0fe4964bcf5c1bb9a877f97a31e6f418f
-observed_at_utc: '2026-10-06T14:12:14.840106Z'
+policy_revision: 2026-10-07-cdc-2.12.0-atomic-adoption
+policy_digest: c9a9443f599285a5d66f8b68d1b5478bc5d350e86d8834363ec3b4af6b6313f4
+observed_at_utc: '2026-10-07T16:08:08.676006Z'
 orchestration_origin: chat
 active_executor: none
 lease_state: released
@@ -19,7 +19,7 @@ control:
   execution_lease_ref: refs/heads/cdc/coordination
   execution_lease_revision: null
   executor_id: null
-  lease_generation: 12
+  lease_generation: 24
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
@@ -33,17 +33,12 @@ last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/362595
 active_compute: ''
 active_ci_run_id: ''
 last_ci_run_id: '36259598328'
-last_ci_status: 'completed/success: Windows Rust CI #410; historical runtime-equivalent
-  evidence'
+last_ci_status: 'completed/success: Windows Rust CI #410; historical runtime-equivalent evidence'
 release_version: 2.0.1
 release_candidate_sha: ''
 release_state: blocked
-blocker: 'Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome
-  Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks.'
-next_action: Complete fresh exact-candidate Windows CI, then Run the exact candidate
-  g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md
-  and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain
-  final review and explicit public-promotion approval.
+blocker: 'Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks.'
+next_action: Complete fresh exact-candidate Windows CI, then Run the exact candidate g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain final review and explicit public-promotion approval.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
   invocation_id: null
@@ -51,8 +46,17 @@ execution_continuity:
   meaningful_progress: true
   primitive_steps_since_progress: 0
   completion_gate: continue
-  last_progress_ref: docs/cdc-adoption-2.11.6.md
+  last_progress_ref: docs/cdc-adoption-2.12.0.md
 ---
+## CDC 2.12.0 process-only adoption — managed atomic publication
+
+This branch now binds canonical CDC **2.12.0** at `refs/heads/release/v2.12.0`, release commit `540d42b5a8b06b11d7aeae78585cffbff99da231`, package tree `247facf39eadf073883c5f1fe3b4a291278da7f8`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.
+
+
+## Unfinished authorized repair
+
+First-run text clipping and slow Word correction: prepared immutable payload 7d4d1986e07c9c18012f4c430f100cd158e4d22842f309df7e6b12b5ab324203 at orchestration commit 549adc01b91e7bc4516f8f79cba29753afa97be1. Continue on this adopted base; keep whole-range/focus/protection checks, mixed formatting and one Undo. Product repair effective quality FULL (Word text mutation); adoption reuses released CDC1116 tests with exact installation/consumer compatibility checks, no fabricated new suite run.
+
 
 ## CDC 2.11.6 process-only adoption
 

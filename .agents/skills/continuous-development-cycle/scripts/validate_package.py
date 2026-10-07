@@ -84,6 +84,14 @@ from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
+    'scripts/quality_levels.py', 'scripts/evidence_reuse.py',
+    'tests/test_quality_levels.py', 'tests/test_evidence_reuse.py',
+    'tests/test_review_levels.py', 'tests/test_validation_cycles.py',
+    'tests/test_quality_behavior.py', 'tests/test_branch_finish_levels.py', 'tests/test_quality_package.py',
+    'references/quality-levels.md', 'templates/quality-assessment.json',
+    'templates/review-pipeline-v2.json', 'templates/evidence-reuse.json',
+    'templates/verification-gate-v2.json', 'templates/validation-cycle.json',
+    'templates/branch-finish-v2.json', 'templates/behavioral-quality-suite.json',
     "scripts/codex_development_bridge.py",
     "tests/test_codex_development_bridge.py",
     "scripts/codex_cloud_development.py",
@@ -618,6 +626,7 @@ def validate():
     improvement = harvest_fleet_improvement(json.loads((ROOT / 'templates/fleet-improvement-harvest.json').read_text()))
     if improvement['proposal_count'] != 1 or improvement['action'] != 'REINFORCE_EXISTING' or improvement['authorizes_roadmap_write']:
         raise ContractError('invalid fleet improvement template')
+    validate_quality_templates(ROOT)
     behavioral = evaluate_behavioral_suite(json.loads((ROOT / 'templates/behavioral-eval-suite.json').read_text()))
     if (not behavioral['all_regressions_green'] or behavioral['case_count'] < 6 or
             any(behavioral[name] for name in ('authorizes_product_write','authorizes_takeover','authorizes_release','authorizes_scope_expansion'))):
@@ -761,6 +770,22 @@ def validate():
     return version
 
 
+def validate_quality_templates(root):
+    from quality_levels import evaluate as assess, evaluate_cycle
+    from evidence_reuse import evaluate as reuse
+    def load(name):return json.loads((root/'templates'/name).read_text())
+    checks=[(assess,'quality-assessment.json','effective_level','MEDIUM'),
+            (evaluate_cycle,'validation-cycle.json','validation_recommended',True),
+            (reuse,'evidence-reuse.json','reusable',True),
+            (evaluate_review_pipeline,'review-pipeline-v2.json','review_green',True),
+            (evaluate_verification_gate,'verification-gate-v2.json','allowed',True),
+            (evaluate_branch_finish,'branch-finish-v2.json','ready',True),
+            (evaluate_behavioral_suite,'behavioral-quality-suite.json','all_regressions_green',True)]
+    for function,name,key,want in checks:
+        result=function(load(name))
+        if result[key]!=want or any(v for k,v in result.items() if k.startswith('authorizes_')):
+            raise ContractError('invalid quality template: '+name)
+
 def main():
     try:
         version = validate()
@@ -773,4 +798,3 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
-

@@ -1,7 +1,7 @@
 schema: continuous-development-cycle/v3
 policy:
-  revision: 2026-10-07-cdc-2.11.9-atomic-adoption
-  skill_min_version: 2.11.9
+  revision: 2026-10-07-cdc-2.12.0-atomic-adoption
+  skill_min_version: 2.12.0
   skill_max_version_exclusive: 3.0.0
   approved_exceptions: []
 repository:
@@ -18,11 +18,9 @@ checkpoint:
   path: docs/work-status/current.md
   schema: development-work-status/v4
 validation:
-  quick: cargo fmt --all -- --check && cargo clippy --locked --all-targets -- -D warnings
-    && cargo test --locked --all-targets
+  quick: cargo fmt --all -- --check && cargo clippy --locked --all-targets -- -D warnings && cargo test --locked --all-targets
   full: 'GitHub Actions: .github/workflows/windows-ci.yml on exact candidate SHA'
-  release: Windows Rust CI GREEN + completed COMPATIBILITY_2.0.1.md + release workflow
-    on main
+  release: Windows Rust CI GREEN + completed COMPATIBILITY_2.0.1.md + release workflow on main
   final_platform: windows
   final_remote_required: true
   evidence_schema: command-evidence/v1
@@ -218,8 +216,8 @@ fleet:
   merge_authority: false
   assessment_max_age_seconds: 900
 convergence:
-  target_version: 2.11.9
-  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/62cd32e91446675799d42247eac2a0312c33d363/src/continuous-development-cycle
+  target_version: 2.12.0
+  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/540d42b5a8b06b11d7aeae78585cffbff99da231/src/continuous-development-cycle
   exact_package_fingerprint_required: true
   safe_boundary_required: true
 progress_slo:
@@ -277,3 +275,6 @@ maturity:
   new_public_history_required: true
   dogfood_schema: cdc-dogfood-input/v1
   dogfood_is_authority: false
+quality:
+  default_level: FULL
+  max_validation_cycles: 2

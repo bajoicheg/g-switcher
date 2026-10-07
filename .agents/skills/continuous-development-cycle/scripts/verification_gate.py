@@ -17,6 +17,17 @@ def _refs(v,n,allow_empty=False):
     if len(v)!=len(set(v)): raise ValueError(f"{n} contains duplicates")
 
 def validate(data):
+    if isinstance(data,dict) and data.get('schema')=='verification-gate/v2':
+        base=dict(data);base['schema']=SCHEMA
+        reused=base.pop('reused_checks',None)
+        validate(base)
+        if not isinstance(reused,list):raise ValueError('reused_checks must be list')
+        from evidence_reuse import validate as validate_reuse
+        ids=[c['id'] for c in base['required_checks']]
+        for record in reused:
+            validate_reuse(record);ids.append(record['check_id'])
+        if len(ids)!=len(set(ids)):raise ValueError('duplicate check id')
+        return data
     fields={"schema","claim_id","claim_kind","expected_head","observed_head","authoritative_source_fresh",
             "required_checks","checkpoint","ownership","artifacts","clean_state","completion_evidence_refs"}
     if not isinstance(data,dict) or set(data)!=fields or data.get("schema")!=SCHEMA:
@@ -54,6 +65,20 @@ def validate(data):
     return data
 
 def evaluate(data):
+    if isinstance(data,dict) and data.get('schema')=='verification-gate/v2':
+        validate(data)
+        base=dict(data);base['schema']=SCHEMA;reused=base.pop('reused_checks')
+        result=evaluate(base)
+        from evidence_reuse import evaluate as evaluate_reuse
+        observations=[]
+        for record in reused:
+            r=evaluate_reuse(record);observations.append(r)
+            if record['target_candidate_sha']!=data['expected_head']:
+                result['blockers'].append('reused_check_wrong_target:'+record['check_id'])
+            result['blockers'].extend('reused_check:'+record['check_id']+':'+b for b in r['blockers'])
+        result.update(schema='verification-gate-result/v2',reused_checks=observations,
+                      allowed=not result['blockers'],final_claim_allowed=not result['blockers'])
+        return result
     validate(data);b=[]
     expected=data["expected_head"]
     if not data["authoritative_source_fresh"]: b.append("authoritative_source_stale")

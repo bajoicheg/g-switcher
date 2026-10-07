@@ -18,6 +18,7 @@ SCENARIOS={
     "partial_consumer_adoption",
     "successor_release_receipt",
 }
+QUALITY_SCENARIOS={'unchanged_validation_repeat','critical_quality_downgrade','validation_budget_overrun'}
 
 def _text(v,n):
     if not isinstance(v,str) or not v.strip():
@@ -42,7 +43,7 @@ def validate_case(case):
     if not isinstance(case,dict) or set(case)!=fields or case.get("schema")!=CASE_SCHEMA:
         raise ValueError("behavioral case fields/schema mismatch")
     _text(case["scenario_id"],"scenario_id")
-    if case["scenario_type"] not in SCENARIOS:
+    if case["scenario_type"] not in SCENARIOS|QUALITY_SCENARIOS:
         raise ValueError("unsupported behavioral scenario")
     _trace(case["baseline_trace"],"baseline_trace");_trace(case["corrected_trace"],"corrected_trace")
     kind=case["scenario_type"]
@@ -78,6 +79,15 @@ def validate_case(case):
         f=_facts(case,{"first_generation":int,"successor_generation":int})
         if f["successor_generation"]<=f["first_generation"]:
             raise ValueError("successor release pressure generations invalid")
+    elif kind=='unchanged_validation_repeat':
+        f=_facts(case,{'inputs_unchanged':bool})
+        if not f['inputs_unchanged']:raise ValueError('unchanged-input pressure required')
+    elif kind=='critical_quality_downgrade':
+        f=_facts(case,{'risk_category':str})
+        if f['risk_category']!='ad_write':raise ValueError('critical AD pressure required')
+    elif kind=='validation_budget_overrun':
+        f=_facts(case,{'cycle_number':int,'max_validation_cycles':int})
+        if not f['cycle_number']>f['max_validation_cycles']>=1:raise ValueError('cycle overrun pressure required')
     return case
 
 def _before(trace,a,b):
@@ -86,6 +96,16 @@ def _before(trace,a,b):
 def judge(case,trace):
     validate_case(case)
     kind=case["scenario_type"];facts=case["facts"]
+    if kind=='unchanged_validation_repeat':
+        ok=_before(trace,'verify_coverage','reuse_evidence') and 'repeat_validation' not in trace
+        return ok,'reuse_without_repeat' if ok else 'unchanged_validation_repeated'
+    if kind=='critical_quality_downgrade':
+        events=('assess_risk:FULL','review:spec','review:quality','verify_required_checks')
+        ok=all(e in trace for e in events) and all(_before(trace,a,b) for a,b in zip(events,events[1:])) and 'quality:FAST' not in trace
+        return ok,'critical_full_verified' if ok else 'critical_risk_downgraded'
+    if kind=='validation_budget_overrun':
+        ok='replan_strategy' in trace and 'repeat_validation' not in trace
+        return ok,'strategy_replanned' if ok else 'unjustified_additional_cycle'
     if kind=="premature_milestone_stop":
         if not facts["runnable_work"]:
             return True,"no_runnable_pressure"

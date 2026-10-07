@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.11.9
+# Continuous Development Cycle v2.12.0
 
 ## Active execution contract — apply before recovery detail
 
@@ -252,9 +252,9 @@ For material new or scope-changing work, use **selective brainstorming** only wh
 
 Bind **spec → plan → continuation queue** with `scripts/spec_plan_queue.py`. Each plan task references the specification requirement and expected evidence. A complete task without evidence is invalid; every runnable non-blocked task remains in the continuation queue so a task milestone cannot silently end the authorized scope.
 
-Material implementation passes two ordered independent reviews: first **spec-compliance review**, then **code-quality review**. Use `scripts/review_pipeline.py`. The code-quality review cannot substitute for or precede spec compliance, and completed stages use **independent reviewers**. Any unresolved finding keeps the change non-terminal.
+For explicit migrated quality policies, use `scripts/quality_levels.py` and `review-pipeline/v2`: FAST self-review, MEDIUM one independent combined requirements/quality review, FULL ordered spec-compliance review and code-quality review by separate independent reviewers. Critical CDC/authority/authentication/AD-write/migration risk requires FULL. Legacy policies and review-pipeline/v1 retain their existing ordered two-review requirements. Open findings block completion. Authenticate policy, risk classification and review evidence against the actual scoped change; a self-declared lower category is not proof. Read `references/quality-levels.md`.
 
-Use **branch finishing** through `scripts/branch_finish.py` before handing a candidate to CDC terminal/release handling. Require fresh validation, exact candidate/HEAD binding, diff/spec reconciliation, both reviews GREEN, no unresolved findings, exact-SHA required checks and clean state.
+Use **branch finishing** through `scripts/branch_finish.py` before handing a candidate to CDC terminal/release handling. Require fresh validation, exact candidate/HEAD binding, diff/spec reconciliation, required level-specific reviews GREEN, no unresolved findings, required checks and clean state. Legacy branch-finish/v1 retains both reviews and strict exact-SHA checks; branch-finish/v2 accepts explicit validated reuse without relabeling the original run.
 
 Review and branch-finishing results are evidence-only: they create no product-write, merge, release or scope-expansion authority. CDC ownership, verification-before-terminal and release controls remain independently mandatory. Read `references/specification-review-and-finishing.md`.
 
@@ -379,3 +379,12 @@ Cloud Development is a separate scoped editing contract returning an existing ma
 ## Explicit separate canonical release evidence
 
 Use live-target-release/v2 only with an exact canonical evidence endpoint identity, stable ref, pinned commit and derived evidence path. Never substitute current main or relabel old metadata as a current snapshot. Recheck registry/release/evidence refs, ancestry, exact package/version and released evidence before returning. Legacy v1 remains strict colocated-only. Resolution grants no Fleet/adoption/scheduler authority; see references/live-target-resolution.md.
+
+
+## Quality levels and evidence reuse
+
+Use the explicit project quality policy and risk assessment before selecting checks. Missing quality settings preserve legacy behavior; new templates recommend MEDIUM. Record the effective level and escalation reason in the existing durable checkpoint/continuation record. Required platform/product/release and authority gates remain mandatory.
+
+Reuse verified test results while dependencies, command, parameters, check definition and relevant environment are unchanged and independently justified coverage is recorded. Preserve the original candidate SHA and evidence reference. Use evidence-reuse/v1, verification-gate/v2 and branch-finish/v2 explicitly; v1 exact-SHA semantics remain unchanged. Fresh source/ownership observations are not reusable test results. Report-only edits do not invalidate unrelated product evidence. A released package adoption needs exact installation/compatibility evidence, not an automatic rerun of its unchanged full package suite.
+
+Before repeated validation use validation-cycle/v1 through quality_levels.py. A repeat needs changed inputs, concrete risk and why the prior proof is insufficient. Default budget permits two cycles; exceeding it requires a revised strategy. Budget exhaustion never grants a waiver or resets historical usage. Carry time/token/start observations and unknown metrics honestly. See references/quality-levels.md.

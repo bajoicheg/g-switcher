@@ -8,6 +8,25 @@ SCHEMA="branch-finish/v1";SHA=re.compile(r"^[0-9a-f]{40}$")
 def _text(v,n):
     if not isinstance(v,str) or not v.strip(): raise ValueError(f"{n} must be nonempty text")
 def validate(d):
+    if isinstance(d,dict) and d.get('schema')=='branch-finish/v2':
+        from quality_levels import fields
+        expected={'schema','branch','candidate_sha','observed_head','validation_fresh','diff_spec_reconciled',
+                  'candidate_bound','clean_worktree','unresolved_findings','required_checks',
+                  'review_pipeline','review_candidate_sha','reused_checks'}
+        fields(d,expected,'branch finish v2')
+        base=_legacy_base(d);validate(base)
+        if not isinstance(d['review_candidate_sha'],str) or not SHA.fullmatch(d['review_candidate_sha']):
+            raise ValueError('review_candidate_sha invalid')
+        from review_pipeline import validate as validate_review
+        if not isinstance(d['review_pipeline'],dict) or d['review_pipeline'].get('schema')!='review-pipeline/v2':
+            raise ValueError('v2 finishing requires review pipeline v2')
+        validate_review(d['review_pipeline'])
+        if not isinstance(d['reused_checks'],list):raise ValueError('reused_checks must be list')
+        from evidence_reuse import validate as validate_reuse
+        ids=[c['id'] for c in d['required_checks']]
+        for record in d['reused_checks']:validate_reuse(record);ids.append(record['check_id'])
+        if len(ids)!=len(set(ids)):raise ValueError('duplicate check ids')
+        return d
     fields={"schema","branch","candidate_sha","observed_head","validation_fresh","diff_spec_reconciled",
             "spec_compliance_green","code_quality_green","candidate_bound","clean_worktree",
             "unresolved_findings","required_checks"}
@@ -28,6 +47,23 @@ def validate(d):
     return d
 
 def evaluate(d):
+    if isinstance(d,dict) and d.get('schema')=='branch-finish/v2':
+        validate(d);result=evaluate(_legacy_base(d))
+        from review_pipeline import evaluate as evaluate_review
+        from evidence_reuse import evaluate as evaluate_reuse
+        review=evaluate_review(d['review_pipeline'])
+        if not review['review_green']:result['blockers'].extend('review:'+b for b in review['blockers'])
+        if d['review_candidate_sha']!=d['candidate_sha']:result['blockers'].append('review_wrong_candidate')
+        ids={c['id'] for c in d['required_checks']}
+        for record in d['reused_checks']:
+            ids.add(record['check_id']);r=evaluate_reuse(record)
+            result['blockers'].extend('reuse:'+record['check_id']+':'+b for b in r['blockers'])
+            if record['target_candidate_sha']!=d['candidate_sha']:result['blockers'].append('reuse_wrong_candidate')
+        for check_id in d['review_pipeline']['assessment']['mandatory_check_ids']:
+            if check_id not in ids:result['blockers'].append('mandatory_check_missing:'+check_id)
+        result.update(schema='branch-finish-result/v2',ready=not result['blockers'],review=review,
+                      action='READY_FOR_CDC_TERMINAL' if not result['blockers'] else 'CONTINUE')
+        return result
     validate(d);b=[];sha=d["candidate_sha"]
     if d["observed_head"]!=sha:b.append("candidate_head_mismatch")
     if not d["validation_fresh"]:b.append("validation_stale")
@@ -44,6 +80,11 @@ def evaluate(d):
     return {"schema":"branch-finish-result/v1","action":"READY_FOR_CDC_TERMINAL" if ready else "CONTINUE",
             "ready":ready,"blockers":b,"authorizes_merge":False,"authorizes_release":False,
             "authorizes_product_write":False,"authorizes_scope_expansion":False}
+
+def _legacy_base(d):
+    base={k:v for k,v in d.items() if k not in ('review_pipeline','review_candidate_sha','reused_checks')}
+    base.update(schema=SCHEMA,spec_compliance_green=True,code_quality_green=True)
+    return base
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument("input");a=p.parse_args(argv)

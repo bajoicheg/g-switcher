@@ -42,6 +42,8 @@ def _review(v,n):
     return v
 
 def validate(data):
+    if isinstance(data,dict) and data.get("schema")=="review-pipeline/v2":
+        return validate_v2(data)
     if not isinstance(data,dict) or set(data)!={"schema","change_id","material_change","spec_compliance","code_quality"} or data.get("schema")!=SCHEMA:
         raise ValueError("review pipeline fields/schema mismatch")
     _text(data["change_id"],"change_id")
@@ -50,6 +52,8 @@ def validate(data):
     return data
 
 def evaluate(data):
+    if isinstance(data,dict) and data.get("schema")=="review-pipeline/v2":
+        return evaluate_v2(data)
     validate(data);s=data["spec_compliance"];q=data["code_quality"];b=[]
     if not data["material_change"] and s["state"]=="not_run" and q["state"]=="not_run":
         return {
@@ -78,6 +82,50 @@ def evaluate(data):
       "authorizes_product_write":False,"authorizes_merge":False,"authorizes_release":False,
       "authorizes_scope_expansion":False,
     }
+
+def validate_v2(data):
+    from quality_levels import fields,evaluate as assess,texts
+    fields(data,{"schema","change_id","implementer_ref","assessment","self_review",
+                 "combined_review","spec_compliance","code_quality"},"review pipeline v2")
+    _text(data['change_id'],'change_id');_text(data['implementer_ref'],'implementer_ref')
+    assess(data['assessment'])
+    for name in ('self_review','spec_compliance','code_quality'):_review(data[name],name)
+    combined=data['combined_review']
+    if not isinstance(combined,dict) or 'covers' not in combined:raise ValueError('combined review fields mismatch')
+    _review({k:v for k,v in combined.items() if k!='covers'},'combined_review')
+    texts(combined['covers'],'covers',allow_empty=True)
+    if not set(combined['covers']) <= {'requirements','quality'}:raise ValueError('unknown review coverage')
+    if combined['state']=='not_run' and combined['covers']:raise ValueError('not_run review coverage must be empty')
+    return data
+
+def evaluate_v2(data):
+    from quality_levels import evaluate as assess
+    validate_v2(data);level=assess(data['assessment'])['effective_level'];b=[]
+    required={'FAST':('self_review',),'MEDIUM':('combined_review',),
+              'FULL':('spec_compliance','code_quality')}[level]
+    for name in ('self_review','combined_review','spec_compliance','code_quality'):
+        review=data[name]
+        if name not in required:
+            if review['state']!='not_run':b.append('unused_review_present:'+name)
+            continue
+        if review['state']!='green':b.append('required_review_not_green:'+name)
+        if any(f['state']=='open' for f in review['findings']):b.append('open_findings:'+name)
+        if name=='self_review':
+            if review['reviewer_ref']!=data['implementer_ref']:b.append('self_review_wrong_executor')
+        elif review['reviewer_ref']==data['implementer_ref']:b.append('reviewer_is_implementer:'+name)
+    if level=='MEDIUM' and set(data['combined_review']['covers'])!={'requirements','quality'}:
+        b.append('combined_review_incomplete')
+    if level=='FULL':
+        s=data['spec_compliance'];q=data['code_quality']
+        if q['state']!='not_run' and s['state']!='green':b.append('quality_review_before_spec_green')
+        if s['state']!='not_run' and q['state']!='not_run':
+            if s['reviewer_ref']==q['reviewer_ref']:b.append('reviewers_not_independent')
+            if s['sequence']>=q['sequence']:b.append('review_order_invalid')
+    return {'schema':'review-pipeline-result/v2','change_id':data['change_id'],
+            'effective_level':level,'review_green':not b,'blockers':b,
+            'action':'REVIEW_GREEN' if not b else 'REVIEW_REQUIRED',
+            'authorizes_product_write':False,'authorizes_merge':False,'authorizes_release':False,
+            'authorizes_scope_expansion':False}
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument("input");a=p.parse_args(argv)

@@ -1,5 +1,10 @@
 schema: continuous-development-cycle/v3
 
+# Explicit migration is required for legacy consumers without this block.
+quality:
+  default_level: MEDIUM
+  max_validation_cycles: 2
+
 policy:
   revision: "1"
   skill_min_version: "2.11.3"
@@ -304,4 +309,3 @@ maturity:
   new_public_history_required: true
   dogfood_schema: cdc-dogfood-input/v1
   dogfood_is_authority: false
-

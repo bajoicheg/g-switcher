@@ -70,3 +70,7 @@ CDC 2.10.0 release evidence must include:
 - the normal canonical multi-consumer validation required by CDC release policy.
 
 A behavioral evaluator or verification result never replaces platform-specific product gates. It only proves CDC control behavior.
+
+## Explicit quality policy and valid reuse
+
+For explicitly migrated projects, FAST/MEDIUM/FULL determine applicable review depth; legacy behavior remains unchanged. Verification-gate/v2 validates explicit dependency-bound reused checks in addition to exact candidate checks. It retains fresh source/checkpoint/ownership and artifact gates. Reuse never relabels the original command run. Current exact-final-SHA requirements override cross-SHA reuse. Run templates/behavioral-quality-suite.json for unchanged-validation, critical-risk and cycle-budget pressure regressions; these deterministic traces do not prove that an LLM actually obeyed instructions.
