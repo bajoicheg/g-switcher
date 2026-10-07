@@ -1,0 +1,18 @@
+{
+  "source_base": "e2159a7856ea12b4c6237820965263f5d6f92a4b",
+  "task": "word-speed-layout",
+  "payload_sha256": "7d4d1986e07c9c18012f4c430f100cd158e4d22842f309df7e6b12b5ab324203",
+  "paths": [
+    "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/ui.rs",
+    "src/windows_runtime/first_run_layout.rs",
+    "docs/work-status/word-speed-layout-2026-10-07.json"
+  ],
+  "no_merge_or_public_release": true,
+  "scheduler_paused": true,
+  "recovery": {
+    "failed_run": 37641887178,
+    "cause": "UTF-8 wrapper appended one newline to original content; verified raw base64 source bytes and pinned SHA256",
+    "failed_lease_released_revision": "5cf9a61364c8ee501f6945fc094848054b399667"
+  }
+}
