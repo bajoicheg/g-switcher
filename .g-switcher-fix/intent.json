@@ -1,0 +1,22 @@
+{
+  "schema": "g-switcher-managed-product-intent/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source_sha": "06e1498e36dc497b41eaa3fd294c733db65fd943",
+  "expected_released_generation": 17,
+  "canonical_version": "2.11.9",
+  "package_tree": "6867b012d01d776c2c0236b110980ba2c1292c26",
+  "orchestration_branch": "cdc/settings-word-preparation-20261007-1516",
+  "payload_sha256": "77c8c7780df32932fd1a28ac843143cbc20183a0f1af3c396eba8d4719d1cb3b",
+  "task_scope": "settings layout repair and proven Word evidence/implementation plan",
+  "word_runtime_fix_implemented": false,
+  "write_paths": [
+    "src/windows_runtime/ui/settings_dialog.rs",
+    "docs/work-status/word-native-evidence-2026-10-07.json",
+    "docs/work-status/word-native-plan-2026-10-07.md"
+  ],
+  "scheduler_mutations": 0,
+  "public_promotion_authorized": false,
+  "manual_acceptance_required": true,
+  "no_force_push": true
+}
