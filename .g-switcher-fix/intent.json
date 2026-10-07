@@ -1,0 +1,26 @@
+{
+  "schema": "g-switcher-managed-product-intent/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source_sha": "e1cf0257f626cb5301a2847b0c895fb8abe3771a",
+  "expected_released_generation": 19,
+  "canonical_version": "2.11.9",
+  "package_tree": "6867b012d01d776c2c0236b110980ba2c1292c26",
+  "orchestration_branch": "cdc/word-native-adapter-recovery-20261007-8669f449",
+  "payload_sha256": "8669f449beb5e1696d2fe29302bb54c1244df6e2f0d82b150dca40869bce99b7",
+  "task_scope": "guarded Word native range adapter; native format Undo evidence",
+  "write_paths": [
+    "src/windows_runtime/selection.rs",
+    "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/word_native_plan.rs",
+    "src/windows_runtime_v201.rs",
+    "docs/work-status/word-native-evidence-2026-10-07.json",
+    "docs/work-status/word-native-plan-2026-10-07.md"
+  ],
+  "scheduler_mutations": 0,
+  "public_promotion_authorized": false,
+  "manual_acceptance_required": true,
+  "no_force_push": true,
+  "recovery_from_run": 37628467515,
+  "recovery_reason": "Linux all-target test tried Windows-only compatibility binary; corrected library-only portable gate with full Windows all-target gates retained"
+}
