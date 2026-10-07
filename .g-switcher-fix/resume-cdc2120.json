@@ -1,0 +1,47 @@
+{
+  "schema": "g-switcher-cdc2120-continuation/v1",
+  "observed_at_utc": "2026-10-07T16:13:19.126Z",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "adoption": {
+    "version": "2.12.0",
+    "source_head": "6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+    "package_tree": "247facf39eadf073883c5f1fe3b4a291278da7f8",
+    "run_id": 37649600984,
+    "status": "verified_success",
+    "release_receipt_revision": "79ecb4aa54d34153eee7c4c474212c3478eb13a6",
+    "generation": 24,
+    "final_response_gate": "GREEN"
+  },
+  "product": {
+    "run_id": 37649832579,
+    "orchestration_commit": "b9aa6773b6e243fb476c9e2719e73211c5197f54",
+    "branch": "cdc/word-speed-cdc2120-20261007-c5eaa62a",
+    "source_base": "6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+    "worker_sha256": "c5eaa62a (full pin in immutable intent.json/workflow)",
+    "last_observed_state": "in_progress, managed job112889956634 executing canonical task",
+    "latest_status": "unknown: repeated ReadTimeout from generic GitHub fetch and purpose-built workflow jobs",
+    "quality_level": "FULL",
+    "source_reviews": "Independent requirements and quality PASS; exact reports embedded in immutable intent.json",
+    "result_not_claimed": true
+  },
+  "scheduler_paused": true,
+  "merge_or_public_release_authorized": false,
+  "remaining": [
+    "Resolve exact run37649832579 and authoritative source/lease; do not invent new worker or take over unknown active lease",
+    "If managed worker failed, download exact validation/runtime artifacts, reconcile release and correct actual failure within fresh budget",
+    "After worker success inspect full Windows gates and actual first-run layout screenshot",
+    "Rebind source reviews if rustfmt altered bytes; verify candidate/provenance/PE AMD64/Cargo.lock/all kit manifests",
+    "Save verified portable test kit and deliver EXE",
+    "Actual installed Word timing, mixed formatting and one Undo acceptance remains required"
+  ],
+  "budget": {
+    "external_starts": 4,
+    "external_starts_limit": 4,
+    "tool_call_limit": 60,
+    "tool_calls": "limit reached; exact platform-wide total unavailable",
+    "token_usage": null,
+    "reason": "Token counter unavailable"
+  },
+  "next_action": "Read exact existing run and lease when GitHub connector responds; preserve watchdog pause."
+}
