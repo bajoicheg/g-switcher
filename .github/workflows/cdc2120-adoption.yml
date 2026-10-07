@@ -31,18 +31,13 @@ jobs:
         persist-credentials: true
     - name: Validation dependency
       run: python -m pip install --disable-pip-version-check "PyYAML>=6,<7"
-    - name: Diagnose Git connection before ownership
-      working-directory: product
-      run: 'git ls-remote --refs origin refs/heads/release/2.0.1
-
-        git -c protocol.version=2 ls-remote --refs origin refs/heads/cdc/coordination'
     - name: Atomic managed adoption
       id: adopt
       env:
         CDC_REPOSITORY: bajoicheg/g-switcher
         CDC_SOURCE_REF: refs/heads/release/2.0.1
-        GITHUB_WORKSPACE: ${{ github.workspace }}/product
         PYTHONPYCACHEPREFIX: ${{ runner.temp }}/cdc2120-bytecode
+        CDC_REPO_ROOT: ${{ github.workspace }}/product
       run: python -B orchestration/.g-switcher-cdc2120/adopt.py
     - name: Preserve adoption and terminal ownership evidence
       if: always()
