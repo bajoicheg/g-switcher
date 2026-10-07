@@ -43,8 +43,8 @@ jobs:
       env:
         CDC_REPO_ROOT: ${{ github.workspace }}/product
         CDC_WORKER_PATH: ${{ github.workspace }}/orchestration/.g-switcher-fix/worker.py
-        CDC_PAYLOAD_SHA256: 8669f449beb5e1696d2fe29302bb54c1244df6e2f0d82b150dca40869bce99b7
-        CDC_WRITE_PATHS_JSON: '["src/windows_runtime/selection.rs", "src/windows_runtime/word_native.rs", "src/windows_runtime/word_native_plan.rs", "src/windows_runtime_v201.rs", "docs/work-status/word-native-evidence-2026-10-07.json", "docs/work-status/word-native-plan-2026-10-07.md"]'
+        CDC_PAYLOAD_SHA256: e1a718ab04f3906e13cc0debda7751b83ae670a1063e78c0074f6e7011b6bff1
+        CDC_WRITE_PATHS_JSON: '["src/windows_runtime/selection.rs", "src/windows_runtime/word_native.rs", "src/windows_runtime/word_native_plan.rs", "src/windows_runtime_v201.rs", "docs/work-status/word-native-evidence-2026-10-07.json", "docs/work-status/word-native-plan-2026-10-07.md", "Cargo.toml"]'
         CDC_TASK_ID: word-native-adapter
         CDC_EXPECTED_OUTPUTS_JSON: '["out:word-native-product-candidate"]'
         CDC_EXPECTED_EVIDENCE_JSON: '["evidence:pinned-payload-and-worker-checks"]'
