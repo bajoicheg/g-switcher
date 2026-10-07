@@ -19,7 +19,8 @@ RUN_KEY = f"{RUN_ID}-{RUN_ATTEMPT}"
 DRY_RUN = False
 MODE = "adopt"
 EXPECTED_SOURCE = "e2159a7856ea12b4c6237820965263f5d6f92a4b"
-ROOT = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
+ROOT = Path(os.environ["CDC_REPO_ROOT"]).resolve()
+assert (ROOT / ".git").exists(), "Explicit product checkout is absent"
 TMP = Path(os.environ["RUNNER_TEMP"]) / ("cdc-2120-adoption-" + RUN_KEY)
 TMP.mkdir(parents=True, exist_ok=True)
 OUT = TMP / "evidence"
