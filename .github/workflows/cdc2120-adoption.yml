@@ -1,0 +1,53 @@
+name: G-switcher atomic CDC 2.12.0 adoption
+'on':
+  push:
+    branches:
+    - cdc/adopt-2120-switcher-20261007-2ec9de9b
+permissions:
+  contents: read
+concurrency:
+  group: g-switcher-cdc2120-adoption
+  cancel-in-progress: false
+jobs:
+  adopt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    outputs:
+      candidate_sha: ${{ steps.adopt.outputs.candidate_sha }}
+    steps:
+    - name: Checkout immutable orchestration
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        path: orchestration
+        persist-credentials: false
+    - name: Checkout exact released source boundary
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        path: product
+        ref: e2159a7856ea12b4c6237820965263f5d6f92a4b
+        fetch-depth: 0
+        persist-credentials: true
+    - name: Validation dependency
+      run: python -m pip install --disable-pip-version-check "PyYAML>=6,<7"
+    - name: Atomic managed adoption
+      id: adopt
+      env:
+        CDC_REPOSITORY: bajoicheg/g-switcher
+        CDC_SOURCE_REF: refs/heads/release/2.0.1
+        GITHUB_WORKSPACE: ${{ github.workspace }}/product
+        PYTHONPYCACHEPREFIX: ${{ runner.temp }}/cdc2120-bytecode
+      run: python -B orchestration/.g-switcher-cdc2120/adopt.py
+    - name: Preserve adoption and terminal ownership evidence
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: g-switcher-cdc2120-adoption-evidence
+        path: '${{ runner.temp }}/cdc-2120-adoption-${{ github.run_id }}-${{ github.run_attempt
+          }}/evidence
+
+          ${{ runner.temp }}/cdc-2120-adoption-${{ github.run_id }}-${{ github.run_attempt
+          }}/managed-journal'
+        include-hidden-files: true
+        if-no-files-found: error
