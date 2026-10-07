@@ -1,0 +1,42 @@
+{
+  "schema": "cdc-consumer-adoption-evidence/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "source_head": "6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+  "source_base": "e2159a7856ea12b4c6237820965263f5d6f92a4b",
+  "release": {
+    "schema": "live-target-release/v1",
+    "version": "2.12.0",
+    "canonical_repository": "bajoicheg/g-cdc",
+    "release_ref": "refs/heads/release/v2.12.0",
+    "release_commit": "540d42b5a8b06b11d7aeae78585cffbff99da231",
+    "package_tree": "247facf39eadf073883c5f1fe3b4a291278da7f8"
+  },
+  "package_tree": "247facf39eadf073883c5f1fe3b4a291278da7f8",
+  "policy_digest": "c9a9443f599285a5d66f8b68d1b5478bc5d350e86d8834363ec3b4af6b6313f4",
+  "checkpoint_schema": "development-work-status/v4",
+  "status": "applied_verified",
+  "observed_at_utc": "2026-10-07T16:08:21.167895Z",
+  "safe_boundary": {
+    "prior_generation": 23,
+    "prior_explicitly_released": true,
+    "prior_guard": null,
+    "recovery_kind": "released_safe_boundary",
+    "adopting_generation": 24,
+    "invocation_id": "managed-terminal:53c436d978243529a052e500306263bd43d13e253e80e1d31178475314d2e13d"
+  },
+  "checks": {
+    "exact_package_subtree": "PASS",
+    "consumer_lock": "PASS",
+    "adapter_semantic_digest": "PASS",
+    "checkpoint_v4_readback": "PASS",
+    "changed_path_containment": "PASS: vendored CDC, AGENTS.md and docs only",
+    "product_source_changes": 0,
+    "detached_tree_before_ref_move": "PASS",
+    "atomic_conditional_fast_forward": "PASS",
+    "published_readback": "PASS"
+  },
+  "scheduler_mutations": 0,
+  "product_scope_preserved": "G-switcher 2.0.1 compatibility acceptance",
+  "next_action": "Resume the pre-existing product task under CDC 2.12.0; scheduler pause remains authoritative."
+}

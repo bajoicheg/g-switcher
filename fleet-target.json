@@ -1,7 +1,7 @@
 {
   "schema": "version-convergence-target/v1",
-  "target_version": "2.11.5",
-  "target_package_fingerprint": "git-tree:6e9fb338a83c532076a30e8feb0b6ce2ebbe4063",
+  "target_version": "2.12.0",
+  "target_package_fingerprint": "git-tree:247facf39eadf073883c5f1fe3b4a291278da7f8",
   "checkpoint_schema": "development-work-status/v4",
   "safe_boundary_required": true
 }
