@@ -1,0 +1,24 @@
+{
+  "schema": "g-switcher-adoption-recovery-strategy/v1",
+  "strategy_revision": "explicit-product-root",
+  "previous_runs": [
+    37648931583,
+    37649134042
+  ],
+  "observed_failure": "Both failed before project lease or publication at Python ROOT Git ls-remote; explicit product working-directory preflight succeeded in second run.",
+  "diagnosis": "Reserved GITHUB_WORKSPACE override is unsupported. Script requires explicit CDC_REPO_ROOT and verifies .git before execution.",
+  "documentation": "https://docs.github.com/en/actions/reference/workflows-and-actions/variables",
+  "changed_inputs": [
+    "adopt.py ROOT environment input",
+    "workflow CDC_REPO_ROOT environment"
+  ],
+  "controller_sha256": "30898f1f0d94c2d304f8944fcfab4ab60c77b037fa328f92e4e1d886a833641d",
+  "quality_level": "FULL",
+  "cycle_number": 3,
+  "max_validation_cycles": 2,
+  "prior_evidence_insufficient_reason": "Previous observations executed a different working-directory binding and never reached adoption controls.",
+  "scheduler_mutations": 0,
+  "product_scope": "Preserve UI/Word repair task and existing released source bytes until atomic package adoption.",
+  "external_starts_used_this_invocation": 2,
+  "external_starts_limit": 4
+}
