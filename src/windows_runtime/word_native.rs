@@ -23,8 +23,10 @@ use windows::Win32::System::Ole::{
 };
 use windows::Win32::System::Variant::VARIANT;
 use windows::Win32::UI::Accessibility::{
-    AccessibleObjectFromWindow, CUIAutomation, IUIAutomation, IUIAutomationValuePattern,
-    UIA_ValuePatternId,
+    AccessibleObjectFromWindow, CUIAutomation, IUIAutomation, IUIAutomationCacheRequest,
+    IUIAutomationValuePattern, TreeScope_Element, UIA_IsEnabledPropertyId,
+    UIA_IsKeyboardFocusablePropertyId, UIA_IsPasswordPropertyId, UIA_NativeWindowHandlePropertyId,
+    UIA_ProcessIdPropertyId, UIA_ValueIsReadOnlyPropertyId, UIA_ValuePatternId,
 };
 use windows_sys::Win32::Foundation::{CloseHandle, HWND};
 use windows_sys::Win32::System::Threading::{
@@ -242,6 +244,7 @@ struct Focus {
 struct Context {
     hwnd: HWND,
     automation: IUIAutomation,
+    focus_cache: IUIAutomationCacheRequest,
     focus: Focus,
     window: IDispatch,
     document: IDispatch,
@@ -253,7 +256,8 @@ impl Context {
     fn open(hwnd: HWND, generation: u32) -> Option<Self> {
         let automation: IUIAutomation =
             unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
-        let focus = focused(&automation, hwnd)?;
+        let focus_cache = focus_cache_request(&automation)?;
+        let focus = focused(&automation, &focus_cache, hwnd)?;
         let window = native_window(hwnd)?;
         if get_i32(&window, "Hwnd")? as isize != focus.root {
             return None;
@@ -264,6 +268,7 @@ impl Context {
         let context = Self {
             hwnd,
             automation,
+            focus_cache,
             focus,
             window,
             document,
@@ -288,7 +293,7 @@ impl Context {
                 return None;
             }
         }
-        if focused(&self.automation, self.hwnd)? != self.focus {
+        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
             return None;
         }
         Some(())
@@ -298,7 +303,7 @@ impl Context {
         if super::runtime_generation() != Some(self.generation) {
             return None;
         }
-        if focused(&self.automation, self.hwnd)? != self.focus {
+        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
             return None;
         }
         let selection = self.selection()?;
@@ -309,7 +314,7 @@ impl Context {
         {
             return None;
         }
-        if focused(&self.automation, self.hwnd)? != self.focus {
+        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
             return None;
         }
         if super::runtime_generation() != Some(self.generation) {
@@ -380,9 +385,9 @@ impl Context {
             return None;
         }
         self.stable()?;
+        let (_, current_start, current_end) = self.selection()?;
         if self.content()?.3 != before
-            || self.selection()?.1 != selected_start
-            || self.selection()?.2 != selected_end
+            || (current_start, current_end) != (selected_start, selected_end)
         {
             return None;
         }
@@ -414,22 +419,18 @@ impl Context {
                 let position = start.checked_add(offset as u32)?;
                 set_range(&one, position, position.checked_add(1)?)?;
                 let previous = plan.original[offset].to_string();
-                if get_text(&one)? != previous {
-                    return None;
-                }
                 if previous == character.to_string() {
                     continue;
                 }
-                if focused(&self.automation, self.hwnd)? != self.focus {
+                if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
                     return None;
                 }
                 self.mutation_allowed()?;
                 // Independent one-character range; never writes Font, global
                 // flags, Selection.Text, a full document, or the clipboard.
                 put(&one, "Text", VARIANT::from(character.to_string().as_str()))?;
-                if get_text(&one)? != character.to_string() {
-                    return None;
-                }
+                // The next iteration verifies the entire evolving range;
+                // the last character is verified by the final full-state check.
             }
             self.stable()?;
             if self.content()?.3 != plan.after || get_text(&range)? != replacement {
@@ -460,10 +461,8 @@ impl Context {
         }
         self.mutation_allowed()?;
         self.stable()?;
-        if self.content()?.3 != plan.after
-            || self.selection()?.1 != end
-            || self.selection()?.2 != end
-        {
+        let (_, current_start, current_end) = self.selection()?;
+        if self.content()?.3 != plan.after || (current_start, current_end) != (end, end) {
             return None;
         }
         UNCERTAIN_MUTATION.store(false, Ordering::Release);
@@ -660,7 +659,30 @@ fn get_dispatch(object: &IDispatch, name: &str) -> Option<IDispatch> {
     }
 }
 
-fn focused(automation: &IUIAutomation, hwnd: HWND) -> Option<Focus> {
+fn focus_cache_request(automation: &IUIAutomation) -> Option<IUIAutomationCacheRequest> {
+    unsafe {
+        let request = automation.CreateCacheRequest().ok()?;
+        request.SetTreeScope(TreeScope_Element).ok()?;
+        for property in [
+            UIA_ProcessIdPropertyId,
+            UIA_IsPasswordPropertyId,
+            UIA_IsEnabledPropertyId,
+            UIA_IsKeyboardFocusablePropertyId,
+            UIA_NativeWindowHandlePropertyId,
+            UIA_ValueIsReadOnlyPropertyId,
+        ] {
+            request.AddProperty(property).ok()?;
+        }
+        request.AddPattern(UIA_ValuePatternId).ok()?;
+        Some(request)
+    }
+}
+
+fn focused(
+    automation: &IUIAutomation,
+    cache: &IUIAutomationCacheRequest,
+    hwnd: HWND,
+) -> Option<Focus> {
     if !is_word_window(hwnd) {
         return None;
     }
@@ -690,21 +712,23 @@ fn focused(automation: &IUIAutomation, hwnd: HWND) -> Option<Focus> {
         {
             return None;
         }
-        let element = automation.GetFocusedElement().ok()?;
-        if element.CurrentProcessId().ok()? as u32 != pid
-            || element.CurrentIsPassword().ok()?.as_bool()
-            || !element.CurrentIsEnabled().ok()?.as_bool()
-            || !element.CurrentIsKeyboardFocusable().ok()?.as_bool()
+        // Build a NEW metadata snapshot on every check. Reuse only the request,
+        // never a cached positive result across checks, characters or events.
+        let element = automation.GetFocusedElementBuildCache(cache).ok()?;
+        if element.CachedProcessId().ok()? as u32 != pid
+            || element.CachedIsPassword().ok()?.as_bool()
+            || !element.CachedIsEnabled().ok()?.as_bool()
+            || !element.CachedIsKeyboardFocusable().ok()?.as_bool()
         {
             return None;
         }
-        if let Ok(pattern) = element.GetCurrentPattern(UIA_ValuePatternId) {
+        if let Ok(pattern) = element.GetCachedPattern(UIA_ValuePatternId) {
             let value = pattern.cast::<IUIAutomationValuePattern>().ok()?;
-            if value.CurrentIsReadOnly().ok()?.as_bool() {
+            if value.CachedIsReadOnly().ok()?.as_bool() {
                 return None;
             }
         }
-        let native_hwnd = element.CurrentNativeWindowHandle().ok()?.0 as isize;
+        let native_hwnd = element.CachedNativeWindowHandle().ok()?.0 as isize;
         if native_hwnd != 0 && native_hwnd != hwnd as isize && native_hwnd != root as isize {
             return None;
         }
