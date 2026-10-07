@@ -257,6 +257,7 @@ pub fn run() -> Result<()> {
     }
 
     publish_hotkeys(&settings::runtime_settings());
+    selection::configure_runtime_policy(current_generation, settings::paused);
     let tray = ui::TrayGuard::install()?;
     ENGINE.get_or_init(|| Mutex::new(Engine::default()));
     let hook = KeyboardHook::install()?;
