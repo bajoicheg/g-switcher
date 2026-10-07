@@ -2,27 +2,27 @@
   "schema": "fleet-project-snapshot/v1",
   "repository": "bajoicheg/g-switcher",
   "source_ref": "refs/heads/release/2.0.1",
-  "observed_at_utc": "2026-10-05T05:12:14.225324Z",
-  "product_head": "e7be220ee37d924cacf84edcd8ad1ba32bcb2f62",
-  "cdc_version": "2.11.5",
-  "package_fingerprint": "git-tree:6e9fb338a83c532076a30e8feb0b6ce2ebbe4063",
+  "observed_at_utc": "2026-10-07T16:08:33.258378Z",
+  "product_head": "6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+  "cdc_version": "2.12.0",
+  "package_fingerprint": "git-tree:247facf39eadf073883c5f1fe3b4a291278da7f8",
   "checkpoint_schema": "development-work-status/v4",
-  "policy_revision": "2026-10-05-cdc-2.11.5-reconciliation",
+  "policy_revision": "2026-10-07-cdc-2.12.0-atomic-adoption",
   "watchdog": {
     "enabled": true,
     "last_run_at_utc": null
   },
   "coordination": {
     "lease_schema": "execution-lease/v2",
-    "generation": 13,
+    "generation": 24,
     "owner_active": false,
     "guard_present": false
   },
   "progress": {
     "schema": "progress-observation/v1",
-    "observed_at_utc": "2026-10-05T05:12:14.225341Z",
-    "last_meaningful_progress_at_utc": "2026-10-05T05:12:14.225345Z",
-    "last_activity_at_utc": "2026-10-05T05:12:14.225347Z",
+    "observed_at_utc": "2026-10-07T16:08:33.258393Z",
+    "last_meaningful_progress_at_utc": "2026-10-07T16:08:33.258396Z",
+    "last_activity_at_utc": "2026-10-07T16:08:33.258398Z",
     "primitive_steps_since_progress": 0,
     "blocker": false,
     "waiting_external": false,
@@ -36,7 +36,10 @@
       "actions:36898417530",
       "git:e7be220ee37d924cacf84edcd8ad1ba32bcb2f62",
       "adoptions/cdc-2.11.5.json",
-      "actions:37266308055"
+      "actions:37266308055",
+      "git:6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+      "adoptions/cdc-2.12.0.json",
+      "actions:37649600984"
     ]
   }
 }
