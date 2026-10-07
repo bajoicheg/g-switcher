@@ -1,0 +1,18 @@
+{
+  "schema": "g-switcher-word-native-evidence/v1",
+  "word_version": "16.0.5569.1000",
+  "legacy_set_value_hresult": "0x80004001",
+  "nativeom_accessible_hresult": "0x00000000",
+  "native_range_writer_succeeded": true,
+  "post_matches_replacement": true,
+  "terminal_paragraph_preserved": true,
+  "product_word_adapter_implemented": false,
+  "formatting_tested": false,
+  "undo_tested": false,
+  "evidence": [
+    "user:GSwitcher-Word-Writer-20261007-142509-8ae726ec.json",
+    "user:GSwitcher-Word-Range-20261007-150533-16aa995f.json"
+  ],
+  "source_base": "06e1498e36dc497b41eaa3fd294c733db65fd943",
+  "next_action": "Implement Word-specific native range adapter with format/Undo preservation; test full runtime and installed Word before compatibility claim."
+}
