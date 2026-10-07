@@ -1,0 +1,34 @@
+name: Read exact Word validation failure
+on:
+  push:
+    branches: [cdc/word-native-validation-readback-37628467515]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extract bounded failed validation logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/bajoicheg/g-switcher/actions/artifacts/11484509241/zip > /tmp/word-validation.zip
+          python3 - <<'PY'
+          import zipfile,json
+          z=zipfile.ZipFile('/tmp/word-validation.zip')
+          for name in z.namelist():
+              if 'cargo-target/' in name:
+                  continue
+              if name.endswith('checks.json'):
+                  print('CHECK_RESULTS',z.read(name).decode())
+          for name in z.namelist():
+              if 'cargo-target/' in name:
+                  continue
+              if name.endswith('.log'):
+                  data=z.read(name).decode(errors='replace')
+                  if 'error' in data.lower() or 'FAILED' in data:
+                      print('FAILED_LOG',name)
+                      print(data[-24000:])
+          PY
