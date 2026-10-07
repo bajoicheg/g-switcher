@@ -91,3 +91,51 @@ Before submitting, follow `references/external-operations.md` to persist/read ba
 Native CLI subprocesses execute in the caller-selected journal directory so provider diagnostic files cannot contaminate an ambient candidate checkout. Keep that directory outside the frozen checkout. Explicit environment and source-branch arguments retain provider binding; changing command working directory creates no launch authority.
 
 On 2026-10-05 an actual native Cloud checkout had the exact requested clean SHA but no configured Git remotes. The submitting host verifies the canonical repository/environment association and exact remote branch before launch. Absence of origin inside that provider checkout is not itself conflicting identity and must not stop portable tests. Inspect available identity without changing Git configuration; reject a conflicting configured remote. Report host-bound identity separately from independent observations. Preserve the failed initial task/report and charge when correcting this preflight contract; a retry needs a fresh reviewed correction and remaining admission budget.
+
+### Isolated development transport
+
+`scripts/codex_cloud_development.py` implements a separate development request
+using `templates/codex-cloud-development-request.json`. It does not change the
+COMPUTE_ONLY contract. A parent supplies a live authority callback which checks
+its exact lease, guard, immutable source/branch bindings, reserved budget and
+one-use submission claim immediately before official CLI dispatch.
+
+The durable journal records dispatch uncertainty before invoking `cloud exec`.
+Restarting never recreates authority or dispatches again. Recovery fully paginates
+official inventory and requires unique exact operation/attempt/environment
+association; a previously independently verified environment label is usable
+when official metadata omits the ID. READY means waiting_result, not acceptance.
+
+Official `cloud diff TASK --attempt 1` exports actual bytes with a SHA256 digest.
+The export is untrusted evidence: its base_sha is the request binding, not an
+independently observed worker HEAD. Parent report/base/scope/log validation and
+the existing managed handoff/integrator remain mandatory before publication.
+The transport never applies, commits, pushes, cancels or clears a guard.
+
+### Development admission and handoff
+
+`scripts/codex_development_bridge.py` accepts parent-observed released runtime
+lease/pool snapshots and durable budget-ledger evidence. All seven named
+controller capability checks must pass. A free ready writer slot, matching
+base/branch/scope, fresh owned lease and accepted exact reservation are required.
+Snapshot validation is not launch authority: the caller must refresh official
+inventory before its short-lived claim and recheck the exact live guard, source,
+claim and budget in the transport callback immediately before dispatch.
+Unknown outcomes remain charged and permit observation only. Unsupported cancel
+does not prove provider quiescence and never clears an external guard.
+
+The bridge requires the exact observed report task/attempt/environment/base,
+complete planned argv/exits/counts/log hashes and actual patch scope. Exported
+bytes are resolved and hashed by the existing managed handoff validator; Git
+parses their path manifest. The returned content_artifact handoff grants no
+publication permissions. The parent imports it only into its assigned isolated
+branch, then uses existing validate_publication_proof plus live lease/source
+checks before publishing. Cloud unit success cannot satisfy platform gates.
+
+Capability qualification is specific to the verified repository, environment
+ID/label and supported stable CLI version. Mismatched or blocked receipts are
+rejected even if their check booleans claim success. Diff evidence is installed
+from a complete fsynced temporary inode; an interrupted export can restart
+without a partial final artifact or any second provider submission.
+
+Development transport interprets official stable 0.160 status exit codes with their typed status: READY exits 0; PENDING and ERROR exit 1. Other status/exit combinations remain unknown. PENDING is running, while ERROR records provider failure without redispatch.

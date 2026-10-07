@@ -9,6 +9,7 @@ import sys
 
 sys.dont_write_bytecode = True
 from contracts import ContractError, load_yaml, semver
+from codex_cloud_development import validate_development_request
 from validate_adapter import ADAPTER_SCHEMA, validate_adapter
 from validate_checkpoint import validate_checkpoint
 from validate_checkpoint_24 import validate_checkpoint_24
@@ -83,6 +84,11 @@ from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
+    "scripts/codex_development_bridge.py",
+    "tests/test_codex_development_bridge.py",
+    "scripts/codex_cloud_development.py",
+    "tests/test_codex_cloud_development.py",
+    "templates/codex-cloud-development-request.json",
     'SKILL.md',
     'VERSION',
     'manifest.json',
@@ -736,6 +742,9 @@ def validate():
                                                 'authorizes_force_push','authorizes_merge','authorizes_release',
                                                 'authorizes_scope_expansion','authorizes_scheduler_mutation'))):
         raise ContractError('invalid CDC 2.11.0 managed executor handoff template')
+    validate_development_request(json.loads((ROOT / 'templates/codex-cloud-development-request.json').read_text()))
+    for required in ('scripts/codex_cloud_development.py', 'tests/test_codex_cloud_development.py'):
+        if not (ROOT / required).is_file():raise ContractError('missing development transport file: ' + required)
     for path in ROOT.rglob('*.md'):
         content = path.read_text()
         # Only portable package paths; repository paths in examples remain project-specific inputs.

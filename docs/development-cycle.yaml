@@ -1,7 +1,7 @@
 schema: continuous-development-cycle/v3
 policy:
-  revision: 2026-10-06-cdc-2.11.6-switcher
-  skill_min_version: 2.11.6
+  revision: 2026-10-07-cdc-2.11.8-atomic-adoption
+  skill_min_version: 2.11.8
   skill_max_version_exclusive: 3.0.0
   approved_exceptions: []
 repository:
@@ -218,8 +218,8 @@ fleet:
   merge_authority: false
   assessment_max_age_seconds: 900
 convergence:
-  target_version: 2.11.6
-  target_package_fingerprint_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/fleet-target.json
+  target_version: 2.11.8
+  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/97706dd78a82cfb9ff9e1ce9191d21a42222db37/src/continuous-development-cycle
   exact_package_fingerprint_required: true
   safe_boundary_required: true
 progress_slo:

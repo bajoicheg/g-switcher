@@ -1,3 +1,7 @@
+## CDC 2.11.8 authoritative process provenance
+
+Use canonical bajoicheg/g-cdc, immutable refs/heads/release/v2.11.8, release commit 97706dd78a82cfb9ff9e1ce9191d21a42222db37, exact 335-file package tree 38a05d37af38d8a42f30e9e59dfa8af8d985d40e. Complete core is vendored at .agents/skills/continuous-development-cycle. This is process-only adoption; historical product/platform gates, budgets, prior work and owner scheduler pause remain unchanged. Direct explicit release binding is independently verified; global Fleet resolution/convergence is separate. Earlier version sections below remain historical. Actual publication/release receipts must be read from coordination; this preparation does not fabricate them.
+
 ## CDC 2.11.6 authoritative provenance
 
 Canonical bajoicheg/g-cdc v2.11.6; release refs/heads/release/v2.11.6; commit b3b517fb70e2deea4006e265f708f29881377885; exact package tree 79257a06c40de6f514f9b059be05d610885a50e7. Vendored package: .agents/skills/continuous-development-cycle/. Earlier CDC sections are historical. Process-only adoption; product acceptance gates and scheduler pause remain authoritative.

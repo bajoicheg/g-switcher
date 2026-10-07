@@ -639,14 +639,38 @@ def _renew_for_result(session, lease_store, observation, *, action="product_writ
             or record.get("generation") != session["generation"]
             or record.get("invocation", {}).get("invocation_id") != session["invocation_id"]):
         raise ValueError("managed host exact lease ownership is not live")
-    activity_ref = "managed-host:awaiting-release:" + str(observation.get("launch_id"))
-    if activity_ref not in record["activity_refs"]:
-        renewed = leasev2.renew(
-            record, session["owner_id"], session["generation"], session["invocation_id"],
-            _utc(), activity_ref=activity_ref,
-        )
-        revision = lease_store.compare_and_swap(revision, renewed)
-        record = renewed
+    # Only verified finish admission is observable owner activity. Polling
+    # and rejected results must never refresh ownership.
+    runtime = _runtime(session)
+    current = runtime.observe(session["task_id"], session["attempt_id"])
+    if (current.get("status") != "awaiting_release"
+            or current.get("pending_terminal_status") != "succeeded"
+            or current.get("quiescent") is True
+            or current.get("launch_id") != observation.get("launch_id")):
+        raise ValueError("finish admission requires the exact held successful supervisor")
+    if action == "product_write" and record.get("external_guard") is not None:
+        raise ValueError("finish admission is blocked by unresolved external guard")
+    task = _task(session["plan"], session["task_id"])
+    if task["role"] == "read_only":
+        _read_only_result(session, runtime)
+        result_commit, changed_paths = session["plan"]["base_sha"], []
+    else:
+        result_commit, changed_paths, _ = _result(session, runtime)
+    admission = {
+        "schema": "managed-host-finish-admission/v1",
+        "handle_id": session["handle_id"], "owner_id": session["owner_id"],
+        "generation": session["generation"], "invocation_id": session["invocation_id"],
+        "launch_id": current.get("launch_id"), "result_commit": result_commit,
+        "changed_paths": sorted(changed_paths), "validated_at_utc": _utc(),
+        "admission_id": str(uuid.uuid4()),
+    }
+    admission_path = Path(session["gate_directory"]) / ("finish-admission-" + admission["admission_id"] + ".json")
+    _write(admission_path, admission)
+    activity_ref = "managed-host:finish-admission:" + str(admission_path) + ":" + _digest(admission)
+    renewed = leasev2.renew(record, session["owner_id"], session["generation"],
+                            session["invocation_id"], admission["validated_at_utc"], activity_ref=activity_ref)
+    revision = lease_store.compare_and_swap(revision, renewed)
+    record = renewed
     leasev2.check_record(
         record, session["owner_id"], session["generation"], session["invocation_id"],
         _utc(), action=action,

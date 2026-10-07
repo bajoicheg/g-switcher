@@ -191,6 +191,41 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertTrue(after is None or after['state'] in ('Z','X'),
                         'cleanup returned before the actual supervisor stopped')
 
+
+    def test_finish_retry_after_stale_activity_revalidates_same_owner_result(self):
+        from datetime import datetime, timedelta, timezone
+        handle = bridge.start(self.start_request())
+        self.wait_for(handle, 'awaiting_release')
+        with patch.object(bridge, '_publish', side_effect=OSError('transient before publication')):
+            with self.assertRaisesRegex(OSError, 'transient before publication'):
+                bridge.finish(self.finish_request(handle))
+        _, first = self.lease_store.read()
+        identity = (first['owner_id'], first['generation'], first['invocation']['invocation_id'])
+        delayed = (datetime.now(timezone.utc) + timedelta(seconds=601)).isoformat().replace('+00:00','Z')
+        with patch.object(bridge, '_utc', return_value=delayed):
+            finished = bridge.finish(self.finish_request(handle))
+        self.assertEqual(finished['state'], 'released')
+        self.assertTrue(finished['scope_complete'])
+        self.assertEqual(self.remote_head(), finished['published_commit'])
+        _, released = self.lease_store.read()
+        self.assertIsNone(released['owner_id'])
+        session = bridge._load_session(str(self.root / 'handles'), handle['handle_id'])
+        self.assertEqual(identity, (session['owner_id'],session['generation'],session['invocation_id']))
+        self.assertEqual(first['submission_claims'],released['submission_claims'])
+        before=self.lease_store.read()
+        bridge.finish(self.finish_request(handle))
+        self.assertEqual(before,self.lease_store.read())
+
+    def test_dirty_finish_and_observe_do_not_renew_activity(self):
+        handle=bridge.start(self.start_request()); self.wait_for(handle,'awaiting_release')
+        session=bridge._load_session(str(self.root/'handles'),handle['handle_id']); runtime=bridge._runtime(session)
+        cwd=Path(runtime._request(session['task_id'],session['attempt_id'])['cwd'])
+        (cwd/'uncommitted').write_text('dirty'); before=self.lease_store.read()
+        with self.assertRaisesRegex(ValueError,'clean'): bridge.finish(self.finish_request(handle))
+        self.assertEqual(before,self.lease_store.read())
+        bridge.observe({'schema':'managed-host-observe/v1','handle_root':str(self.root/'handles'),'handle_id':handle['handle_id']})
+        self.assertEqual(before,self.lease_store.read())
+
     def split_request(self):
         private = self.root / "private.git"
         subprocess.run(["git", "init", "--bare", "-q", str(private)], check=True)

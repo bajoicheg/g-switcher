@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.11.6",
+  "version": "2.11.8",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Project-independent durable development with managed host bridging, multi-subscription ownership fencing, truthful liveness, fail-closed finalization, and atomic adoption."
+  "description": "Managed Codex Cloud Development with separate compute-only verification, existing admission/handoff guards, and canonical transitioned-guard resolution."
 }

@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.11.6
+# Continuous Development Cycle v2.11.8
 
 ## Active execution contract — apply before recovery detail
 
@@ -367,3 +367,11 @@ Hosts may wrap this JSON contract as a ChatGPT plugin/tool, Work adapter, schedu
 ## Taskless submission recovery
 
 After an authenticated pre-acceptance GitHub 403 or an immutable cancellation-before-send barrier, use `scripts/submission_recovery.py` on an explicitly released v2 lease. The barrier path also supports `COMPUTE_ONLY` on `codex_cloud_cli` with the entire original execution binding pinned in its exact target. Independently authenticate, persist and read back the exact provider, worker and parent-dispatcher evidence first. Empty provider results, a missing grant, elapsed time, a cancellation request or a lost reply alone never clear an operation. Never reconstruct a missing historical barrier from a traceback. The canonical CAS preserves the original claim and release history, appends its resolution and grants no submission authority. Released records are sealed against ordinary rewrites; new ownership still requires the managed terminal capability. See `references/submission-recovery.md`.
+
+## Compatible managed finish recovery
+
+For the verified 2.11.6 stale-finish defect, follow references/managed-host-finish-recovery.md. A verified immutable corrected controller may finish the same held handle without replacing the consumer package or owner. Ordinary atomic adoption remains gated on release and quiescence.
+
+## Codex Cloud Development and transitioned guards
+
+Cloud Development is a separate scoped editing contract returning an existing managed handoff; COMPUTE_ONLY remains read-only. Provider READY waits for an observed report. Unknown submissions retain guards and reservations. The conditional lease store binds a terminal resolution to the original consumed claim digest and terminal evidence to the current transitioned guard digest, while retaining full canonical clear_guard equality, immutable history and unrelated-field rejection. See references/codex-compute.md.

@@ -147,4 +147,28 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"cannot downgrade"):
             validate_coordination_transition(previous,legacy)
 
+
+    def transitioned_resolution(self):
+        previous,intent=self.unresolved_claim()
+        observation=self.terminal_observation(intent)
+        accepted=op.transition(intent,"accepted","2026-01-01T10:00:04Z",task=dict(observation["tasks"][0],state="accepted",conclusion=None))
+        previous=v2.set_guard(previous,OWNER,1,"wake-1","2026-01-01T10:00:04Z",accepted,"store:intent/accepted")
+        current=v2.clear_guard(previous,OWNER,1,"wake-1","2026-01-01T10:00:05Z",observation,"provider:terminal/1")
+        return previous,current
+
+    def test_transitioned_claim_and_guard_digests_are_independently_bound(self):
+        previous,current=self.transitioned_resolution()
+        self.assertNotEqual(previous["external_guard"]["intent_digest"],previous["external_guard"]["submission_claim"]["intent_digest"])
+        self.assertIs(validate_coordination_transition(previous,current),current)
+
+    def test_transitioned_resolution_tampering_is_rejected(self):
+        previous,current=self.transitioned_resolution()
+        for field in ["claim_digest","guard_digest","observation","unrelated"]:
+            altered=copy.deepcopy(current)
+            if field=="claim_digest": altered["submission_resolutions"][-1]["intent_digest"]="sha256:"+"0"*64
+            elif field=="guard_digest": altered["last_terminal"]["intent_digest"]="sha256:"+"0"*64
+            elif field=="observation": altered["last_terminal"]["observation"]["tasks"][0]["task_id"]="unrelated-task"
+            else: altered["heartbeat_at_utc"]="2026-01-01T10:00:05Z"
+            with self.subTest(field=field),self.assertRaises(ValueError): validate_coordination_transition(previous,altered)
+
 if __name__=="__main__": unittest.main()

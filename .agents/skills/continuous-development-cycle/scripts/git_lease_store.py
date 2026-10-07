@@ -49,7 +49,8 @@ def _validate_submission_resolution_transition(previous, record, *, expected_rev
                 or resolution["evidence_reference"]!=terminal.get("evidence_reference")
                 or resolution["observation_digest"]!=op._hash(terminal.get("observation"))
                 or resolution["operation_key"]!=terminal.get("operation_key")
-                or resolution["intent_digest"]!=terminal.get("intent_digest")
+                or resolution["intent_digest"]!=prev_claim["intent_digest"]
+                or terminal.get("intent_digest")!=prev_guard["intent_digest"]
                 or resolution["resolved_at_utc"]!=terminal.get("at_utc")):
             raise ValueError("submission resolution is not bound to exact persisted terminal evidence")
         # A resolution is an atomic guard->terminal transition. No unrelated state
