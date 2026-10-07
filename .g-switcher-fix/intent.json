@@ -1,0 +1,13 @@
+{
+  "source_base": "e2159a7856ea12b4c6237820965263f5d6f92a4b",
+  "task": "word-speed-layout",
+  "payload_sha256": "41ca50c369e328696bed196b4b035a5ac26c5e34329d63e7cfbb170e04ccb6f1",
+  "paths": [
+    "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/ui.rs",
+    "src/windows_runtime/first_run_layout.rs",
+    "docs/work-status/word-speed-layout-2026-10-07.json"
+  ],
+  "no_merge_or_public_release": true,
+  "scheduler_paused": true
+}
