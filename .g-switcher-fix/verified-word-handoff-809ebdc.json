@@ -1,0 +1,47 @@
+{
+  "schema": "g-switcher-word-candidate-handoff/v1",
+  "repository": "bajoicheg/g-switcher",
+  "branch": "release/2.0.1",
+  "candidate_sha": "809ebdc13d0bd546856b0536b59a379e9540da96",
+  "ci_run": 37631468358,
+  "ci_conclusion": "success",
+  "windows_job": 112828006619,
+  "lease_released_revision": "ae23de60adc93badd49bd294ad7afb3066e67de2",
+  "artifact_verification": {
+    "candidate_sha": "809ebdc13d0bd546856b0536b59a379e9540da96",
+    "run_id": 37631468358,
+    "kit_zip_sha256": "6b41313c1cf3202c5755aff810c004b3392d11c753952fb4912948254f532539",
+    "exe_sha256": "5fd2df17424ef8ae527f58b4c7101c6302a794da5e39949525fe4098184e0b20",
+    "manifest_files_verified": 11,
+    "exact_provenance": true,
+    "cargo_lock_unchanged": true,
+    "exe_identical_in_all_packages": true,
+    "managed_release_verified": true,
+    "word_manual_acceptance": "pending",
+    "next_action": "Run this exact candidate in installed Word; Auto/current-word/selection/mixed-format/Undo/latency and other-app regressions"
+  },
+  "delivered_file": "libfile_4c125432a59c8191aa73c9c305d7910a",
+  "phase": "blocked_manual_acceptance",
+  "blocker": "No installed Word or interactive Windows desktop is available in this executor. Exact compiled candidate still requires owner Word/runtime acceptance.",
+  "next_action": "Owner: close old switcher, extract and start g-switcher.exe from candidate 809ebdc kit; test Word Auto/current word/selection/speed/mixed-format/Ctrl+Z and configured G-switcher Undo; check other applications.",
+  "scheduler_mutations": 0,
+  "public_promotion_authorized": false,
+  "rca": {
+    "failures": [
+      {
+        "run": 37628467515,
+        "cause": "Linux all-target test attempted the baseline Windows-only compatibility binary",
+        "correction": "Portable gate uses library tests; complete Windows all-target gates retained"
+      },
+      {
+        "run": 37630666318,
+        "cause": "Typed API assumed core VARIANT and older BSTR API; missing Variant/StructuredStorage features",
+        "correction": "Windows 0.59 Variant module, vt(), owned dispatch clone and BSTR slice conversions; explicit feature activation"
+      }
+    ],
+    "prevention_backlog": [
+      "Verify crate-package version in reference source before relying on a repository tag.",
+      "Run typed Windows all-target compile before declaring static review complete."
+    ]
+  }
+}
