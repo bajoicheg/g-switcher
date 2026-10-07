@@ -24,7 +24,7 @@ Use canonical `bajoicheg/g-cdc` **v2.11.2**, release `refs/heads/release/v2.11.2
 
 The owner's scheduler pause remains in force. Do not enable, run, rebind or reschedule paused automations. Foreground work remains eligible under normal ownership, guard and budget controls. A paused scheduler, elapsed lease or terminal CI never proves that an owning invocation has stopped.
 
-For live target resolution use the authoritative `bajoicheg-private/g-supervisor` ref `refs/heads/cdc/fleet`, paths `fleet/registry.json` and `fleet/target.json`. Resolve both at one fresh revision and verify the canonical released identity. Read `references/live-target-resolution.md` and `references/watchdog-liveness-runtime.md`. Archived targets and prompt version strings cannot override that live authority. Existing product release, security, review and platform gates remain in force.
+For live target resolution use the authoritative `bajoicheg/g-cdc` ref `refs/heads/cdc/fleet`, paths `fleet/registry.json` and `fleet/target.json`. Resolve both at one fresh revision and verify the canonical released identity. Read `references/live-target-resolution.md` and `references/watchdog-liveness-runtime.md`. Archived targets and prompt version strings cannot override that live authority. Existing product release, security, review and platform gates remain in force.
 
 ## CDC 2.9.2 authoritative provenance
 
