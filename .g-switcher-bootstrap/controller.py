@@ -81,9 +81,9 @@ def main():
         current_revision, current = store.read()
         assert current_revision == revision == pinned['prior_release_revision']
         leasev2.validate(current)
-        assert current['generation'] == pinned['prior_generation'] == 32
+        assert current['generation'] == pinned['prior_generation'] == 33
         assert current['owner_id'] is None and current['invocation'] is None
-        assert current['external_guard'] is None and current['finalization'] is None
+        assert current['external_guard'] == pinned['prior_external_guard'] and current['finalization'] is None
         assert current['last_release'] == pinned['prior_release']
         assert current['repository'] == REPO and current['source_ref'] == SOURCE
         assert bridge._remote_head(repo, 'origin', SOURCE) == BASE
@@ -139,7 +139,12 @@ def main():
     try:
         handle = bridge.start(request)
         write(protocol / 'handle.json', handle)
-        assert handle['generation'] == pinned['expected_generation'] == 33
+        assert handle['generation'] == pinned['expected_generation'] == 34
+        assert source_id == pinned['coordination_store_id']
+        from reconcile_prior import reconcile
+        prior_resolution = reconcile(repo, lease_store, handle, pinned, utc, GitDocumentStore, leasev2)
+        write(protocol / 'prior-validation-reconciled.json', prior_resolution)
+        write(output / 'controller-reconciled.json', {'candidate': RESULT, 'prior_external_guard_reconciled': True})
         observe = {'schema': 'managed-host-observe/v1', 'handle_root': str(handles), 'handle_id': handle['handle_id']}
         deadline = time.monotonic() + 35 * 60
         while not (output / 'bundle-ready.json').exists():
@@ -275,9 +280,17 @@ def main():
         logs = api('actions/jobs/' + str(child_job['id']) + '/logs', binary=True).decode('utf-8-sig', errors='replace')
         # An authenticated actual gate log independently binds the provider to the leased request and loaded bundle.
         marker = 'WORD_BUNDLE_GATE_PASS candidate=' + RESULT + ' operation=' + intent['operation_key'] + ' grant=' + claim['grant']['grant_id'] + ' run=' + str(known_run) + ' attempt=1'
-        assert marker in logs, 'Provider candidate binding not independently proven'
-        conclusion = 'succeeded' if child['conclusion'] == 'success' else (
-            'cancelled' if child['conclusion'] == 'cancelled' else 'failed')
+        candidate_admitted = marker in logs
+        if not candidate_admitted:
+            request_marker = marker.replace('WORD_BUNDLE_GATE_PASS', 'WORD_BUNDLE_GATE_REQUEST')
+            by_name = {s['name']: s for s in child_job['steps']}
+            assert request_marker in logs and child['conclusion'] == 'failure'
+            assert by_name['Admit exact one-use child and load verified bundle']['conclusion'] == 'failure'
+            assert all(by_name[s['name']]['conclusion'] == 'skipped' for s in contract['steps'])
+            conclusion = 'setup_failed'  # Requested CI failed before candidate admission; no validation success.
+        else:
+            conclusion = 'succeeded' if child['conclusion'] == 'success' else (
+                'cancelled' if child['conclusion'] == 'cancelled' else 'failed')
         task = {'task_id': str(known_run) + ':1', 'task_url': child['html_url'], 'operation_key': intent['operation_key'],
                 'attempt_id': intent['attempt_id'], 'binding': binding, 'state': 'terminal',
                 'conclusion': conclusion, 'evidence_refs': [child['html_url'],
@@ -285,7 +298,8 @@ def main():
         observation = {'schema': 'operation-observation/v1', 'operation_key': intent['operation_key'],
                        'observed_at_utc': utc(), 'lookup_complete': True, 'tasks': [task]}
         document.update(state='terminal', terminal_observation=observation,
-                        windows_run=child, windows_job=child_job, actual_gate_marker=marker)
+                        windows_run=child, windows_job=child_job, actual_gate_marker=marker if candidate_admitted else request_marker,
+                        candidate_admitted=candidate_admitted, candidate_validation_succeeded=conclusion == 'succeeded')
         revision = operation_store.compare_and_swap(revision, document)
         read_revision, readback = operation_store.read()
         assert read_revision == revision and readback == document

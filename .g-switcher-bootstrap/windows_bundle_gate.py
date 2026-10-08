@@ -11,6 +11,7 @@ import time
 
 from github_api import api, archive, member
 from admission import BASE, RESULT
+from stable_reader import read_document, read_lease_document
 
 
 def validate_child(admission, inputs, run_id, run_attempt, job_id):
@@ -24,6 +25,12 @@ def validate_child(admission, inputs, run_id, run_attempt, job_id):
 def main():
     inputs = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())['inputs']
     assert inputs['candidate_sha'] == RESULT
+    run_id = os.environ['GITHUB_RUN_ID']
+    run_attempt = os.environ['GITHUB_RUN_ATTEMPT']
+    assert inputs['operation_key'].startswith('sha256:') and len(inputs['operation_key']) == 71
+    assert len(inputs['grant_id']) == 36 and run_id.isdigit() and run_attempt.isdigit()
+    print('WORD_BUNDLE_GATE_REQUEST candidate=' + RESULT + ' operation=' + inputs['operation_key'] +
+          ' grant=' + inputs['grant_id'] + ' run=' + run_id + ' attempt=' + run_attempt, flush=True)
     repo = Path.cwd()
 
     def git(*args):
@@ -39,13 +46,10 @@ def main():
     import execution_lease_v2 as leasev2
 
     def read_lease():
-        ref = api('git/ref/heads/cdc/coordination')['object']['sha']
-        payload = api('contents/lease.json?ref=' + ref)
-        record = json.loads(base64.b64decode(payload['content']))
-        assert api('git/ref/heads/cdc/coordination')['object']['sha'] == ref
+        _, record = read_lease_document(api)
         leasev2.validate(record)
         assert record['owner_id'] == inputs['owner_id']
-        assert record['generation'] == int(inputs['generation']) == 33
+        assert record['generation'] == int(inputs['generation']) == 34
         assert record['invocation']['invocation_id'] == inputs['invocation_id']
         assert record['repository'] == 'bajoicheg/g-switcher'
         assert record['source_ref'] == 'refs/heads/release/2.0.1'
@@ -81,9 +85,7 @@ def main():
     job_id = jobs['jobs'][0]['id']
 
     def admitted_child():
-        revision = api('git/ref/' + operation_ref)['object']['sha']
-        live = json.loads(base64.b64decode(api('contents/document.json?ref=' + revision)['content']))
-        assert api('git/ref/' + operation_ref)['object']['sha'] == revision
+        _, live = read_document(api, operation_ref)
         assert live['intent'] == document['intent']
         assert live['windows_head'] == os.environ['GITHUB_SHA']
         admission = live.get('child_admission')

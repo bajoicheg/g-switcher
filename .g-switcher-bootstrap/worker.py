@@ -5,8 +5,16 @@ from pathlib import Path
 import time
 import bundle_worker
 
-bundle_worker.main()
 root = Path(os.environ['CDC_PREFLIGHT_OUTPUT'])
+reconciliation_deadline = time.monotonic() + 5 * 60
+while not (root / 'controller-reconciled.json').exists():
+    if (root / 'abort-worker.json').exists():
+        raise RuntimeError('Inherited validation was not reconciled')
+    assert time.monotonic() < reconciliation_deadline, 'Prior validation reconciliation deadline'
+    time.sleep(1)
+proof = json.loads((root / 'controller-reconciled.json').read_text())
+assert proof['candidate'] == bundle_worker.RESULT and proof['prior_external_guard_reconciled'] is True
+bundle_worker.main()
 (root / 'bundle-ready.json').write_text(json.dumps({'candidate': bundle_worker.RESULT, 'waiting_for_terminal_validation': True}))
 deadline = time.monotonic() + 38 * 60
 while time.monotonic() < deadline:

@@ -8,7 +8,7 @@
   },
   "syntax": "all Python AST and both workflow YAML parsed",
   "payload": "all intent hashes matched",
-  "windows_head": "5e74b6428967d77d15c8bbb07f628545327083b3",
+  "windows_head": "ff2aeaf76a98df223905b865f39c274c7a12da2e",
   "product_checks_repeated": false,
   "no_scheduler_mutations": true,
   "ttl_delta": {
@@ -17,7 +17,6 @@
     "tests": 1,
     "duration_seconds": 8.723
   },
-  "remote_windows_bytes": "four reviewed files matched exact ed20bc246b56b8d0522c4af6915805ed8d1fb9ba via fresh git fetch/show",
   "source_ref_regression": {
     "red": "authentic canonical external guard binding mismatch with workflow ref",
     "green": "real acquired project guard accepts controller SOURCE intent",
@@ -30,6 +29,19 @@
     "candidate": "3407a2d0570b88864fd265de61a8761999995380",
     "validation_repeated": false
   },
-  "current_expected_generation": 33,
-  "intent_sha256": "f1f1c524dba470275e0d0dff8b202e14386d26cf4bc94c3e631622e73780e072"
+  "current_expected_generation": 34,
+  "intent_sha256": "a9105dce3551139c3ce4043b5d44ee737cc5b9a34ffcc6c23266e56661d4909a",
+  "snapshot_race": {
+    "red": "old single-read assertion reproduced authentic race",
+    "green_tests": 2,
+    "exit_code": 0
+  },
+  "inherited_guard": {
+    "real_canonical_generations": 2,
+    "old_failed_release_preserved_claim": true,
+    "new_owned_reconciliation_and_release": true,
+    "tests": 1,
+    "exit_code": 0,
+    "duration_seconds": 15.767
+  }
 }
