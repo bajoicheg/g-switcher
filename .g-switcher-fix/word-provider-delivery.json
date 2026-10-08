@@ -1,0 +1,296 @@
+{
+  "schema": "word-provider-delivery/v1",
+  "observed_at_utc": "2026-10-08T10:52:21.594107+00:00",
+  "repository": "bajoicheg/g-switcher",
+  "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+  "cdc_version": "2.12.1",
+  "ci_run_id": 37764984577,
+  "ci_conclusion": "success",
+  "managed_release_receipt": {
+    "lease_revision": "e6c9ca81cf72cc786aa17bd25e3a19012410265a",
+    "release": {
+      "at_utc": "2026-10-08T10:42:52.729824Z",
+      "checkpoint_ref": "git:refs/heads/release/2.0.1@cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "completion_reason": "scope_complete",
+      "external_reconciliation": "none",
+      "generation": 29,
+      "invocation_id": "managed-terminal:2e1aef9b29cf2a45f1de58f27719a0953940c71a9ad9d06b6cfdd3e39771b9dd",
+      "owner_id": "642aa452-f4a1-4926-ae7f-5b868c53f89f"
+    },
+    "schema": "execution-release-receipt/v1"
+  },
+  "reviews": {
+    "schema": "review-pipeline/v2",
+    "change_id": "word-provider-hang-cycle2",
+    "implementer_ref": "executor:/root",
+    "assessment": {
+      "schema": "quality-assessment/v1",
+      "project_level": "FULL",
+      "risk_level": "MEDIUM",
+      "risk_categories": [
+        "ordinary_feature"
+      ],
+      "risk_reason": "Isolate Word UIA metadata and prevent stalled-reader replacement without changing native mutation safeguards",
+      "mandatory_check_ids": [
+        "windows-ci",
+        "reader-regression"
+      ]
+    },
+    "self_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": []
+    },
+    "combined_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": [],
+      "covers": []
+    },
+    "spec_compliance": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "evidence_refs": [
+        "report:requirements-review-cycle2.md@sha256:373f4df707683d74d5bc80687e070de8b9ec78d20476f12f279c0dcb1423ab90"
+      ],
+      "findings": []
+    },
+    "code_quality": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_quality",
+      "sequence": 2,
+      "evidence_refs": [
+        "report:quality-review-cycle2.md@sha256:0ae9111e51c1211dcf58777ed10fd94569a8ea66f23fd65f0830ac4ecb62b8c4"
+      ],
+      "findings": []
+    }
+  },
+  "review_binding": "Exact reviewed payload independently bound through worker hash and manifest; only deterministic rustfmt transform before candidate commit, all-target CI and clean-source checks passed.",
+  "branch_finish": {
+    "input": {
+      "schema": "branch-finish/v2",
+      "branch": "release/2.0.1",
+      "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "observed_head": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "validation_fresh": true,
+      "diff_spec_reconciled": true,
+      "candidate_bound": true,
+      "clean_worktree": true,
+      "unresolved_findings": [],
+      "required_checks": [
+        {
+          "id": "windows-ci",
+          "state": "success",
+          "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "evidence_ref": "https://github.com/bajoicheg/g-switcher/actions/runs/37764984577/job/113271459816"
+        },
+        {
+          "id": "reader-regression",
+          "state": "success",
+          "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "evidence_ref": "artifact:11543583246:worker-evidence/reader-tests.log"
+        }
+      ],
+      "review_pipeline": {
+        "schema": "review-pipeline/v2",
+        "change_id": "word-provider-hang-cycle2",
+        "implementer_ref": "executor:/root",
+        "assessment": {
+          "schema": "quality-assessment/v1",
+          "project_level": "FULL",
+          "risk_level": "MEDIUM",
+          "risk_categories": [
+            "ordinary_feature"
+          ],
+          "risk_reason": "Isolate Word UIA metadata and prevent stalled-reader replacement without changing native mutation safeguards",
+          "mandatory_check_ids": [
+            "windows-ci",
+            "reader-regression"
+          ]
+        },
+        "self_review": {
+          "state": "not_run",
+          "reviewer_ref": null,
+          "sequence": null,
+          "evidence_refs": [],
+          "findings": []
+        },
+        "combined_review": {
+          "state": "not_run",
+          "reviewer_ref": null,
+          "sequence": null,
+          "evidence_refs": [],
+          "findings": [],
+          "covers": []
+        },
+        "spec_compliance": {
+          "state": "green",
+          "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+          "sequence": 1,
+          "evidence_refs": [
+            "report:requirements-review-cycle2.md@sha256:373f4df707683d74d5bc80687e070de8b9ec78d20476f12f279c0dcb1423ab90"
+          ],
+          "findings": []
+        },
+        "code_quality": {
+          "state": "green",
+          "reviewer_ref": "agent:/root/cdc_adoption_quality",
+          "sequence": 2,
+          "evidence_refs": [
+            "report:quality-review-cycle2.md@sha256:0ae9111e51c1211dcf58777ed10fd94569a8ea66f23fd65f0830ac4ecb62b8c4"
+          ],
+          "findings": []
+        }
+      },
+      "review_candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "reused_checks": []
+    },
+    "result": {
+      "schema": "branch-finish-result/v2",
+      "action": "READY_FOR_CDC_TERMINAL",
+      "ready": true,
+      "blockers": [],
+      "authorizes_merge": false,
+      "authorizes_release": false,
+      "authorizes_product_write": false,
+      "authorizes_scope_expansion": false,
+      "review": {
+        "schema": "review-pipeline-result/v2",
+        "change_id": "word-provider-hang-cycle2",
+        "effective_level": "FULL",
+        "review_green": true,
+        "blockers": [],
+        "action": "REVIEW_GREEN",
+        "authorizes_product_write": false,
+        "authorizes_merge": false,
+        "authorizes_release": false,
+        "authorizes_scope_expansion": false
+      }
+    }
+  },
+  "verification": {
+    "input": {
+      "schema": "verification-gate/v1",
+      "claim_id": "word-provider-build-artifact-delivery-cb1dd4c",
+      "claim_kind": "COMPLETE",
+      "expected_head": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "observed_head": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+      "authoritative_source_fresh": true,
+      "required_checks": [
+        {
+          "id": "windows-ci",
+          "state": "success",
+          "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "evidence_ref": "https://github.com/bajoicheg/g-switcher/actions/runs/37764984577/job/113271459816"
+        },
+        {
+          "id": "reader-regression",
+          "state": "success",
+          "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "evidence_ref": "artifact:11543583246:worker-evidence/reader-tests.log"
+        }
+      ],
+      "checkpoint": {
+        "required": true,
+        "valid": true,
+        "policy_current": true,
+        "evidence_ref": "git:cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0:docs/work-status/word-provider-hang-2026-10-08.json"
+      },
+      "ownership": {
+        "authoritative_source": "coordination",
+        "lease_state": "released",
+        "guard_state": "none",
+        "evidence_ref": "git:e6c9ca81cf72cc786aa17bd25e3a19012410265a:lease.json"
+      },
+      "artifacts": [
+        {
+          "id": "g-switcher.exe",
+          "required": true,
+          "verified": true,
+          "candidate_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "evidence_ref": "sha256:372cfea66db6a0a9662c907c481c54efd24e9a256aeacbf0200438964246f2c1"
+        }
+      ],
+      "clean_state": {
+        "required": true,
+        "clean": true,
+        "evidence_ref": "artifact:11543583246:worker-evidence/result.json"
+      },
+      "completion_evidence_refs": [
+        "scope:verified-candidate-build-only;installed-Word-pending",
+        "artifact:11543489761",
+        "managed-release:e6c9ca81cf72cc786aa17bd25e3a19012410265a"
+      ]
+    },
+    "result": {
+      "schema": "verification-gate-result/v1",
+      "claim_id": "word-provider-build-artifact-delivery-cb1dd4c",
+      "claim_kind": "COMPLETE",
+      "allowed": true,
+      "final_claim_allowed": true,
+      "blockers": [],
+      "authorizes_product_write": false,
+      "authorizes_takeover": false,
+      "authorizes_external_start": false,
+      "authorizes_merge": false,
+      "authorizes_release": false,
+      "authorizes_scope_expansion": false
+    }
+  },
+  "artifacts": {
+    "source_sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+    "workflow_run_id": 37764984577,
+    "windows_job_id": 113271459816,
+    "archive_sha256": {
+      "g-switcher-2.0.1-windows-x64": "0bc191e4537e293d01cff71681d4dc3cba11d80df9c1e141bf8d199541184f7d",
+      "g-switcher-2.0.1-manual-compatibility-kit": "d9a2554e66ce0900b0e2ec72849a083f824f3a4f23fe3bd142ce6f69c64e0d95",
+      "g-switcher-2.0.1-lockfile": "ac01d1c50c2cc1c71d0dc7ae4399e157b65c89352330ccc53876f1be143e6f97"
+    },
+    "exe_sha256": "372cfea66db6a0a9662c907c481c54efd24e9a256aeacbf0200438964246f2c1",
+    "exe_size": 2706944,
+    "exe_path": "/workspace/scratch/a6405d04ffef/GSwitcher-2.0.1-Word-Responsiveness-cb1dd4c.exe",
+    "manifest_files_verified": 11,
+    "provenance_exact_candidate": true,
+    "cargo_lock_matches_committed": true,
+    "identical_exe_in_three_artifacts": true,
+    "new_exe_differs_from_hanging_8ad780a": true,
+    "pe_architecture": "AMD64",
+    "pe_format": "PE32+",
+    "installed_word_verdict": false
+  },
+  "saved_exe": {
+    "operation": "create_library_file",
+    "status": "succeeded",
+    "path": "/G Switcher/GSwitcher-2.0.1-Word-Responsiveness-cb1dd4c.exe",
+    "file_id": "file_00000000e4e481f4add3273a8337251c",
+    "library_file_id": "libfile_c1040699d5788191b66454e9443c1a85",
+    "file_name": "GSwitcher-2.0.1-Word-Responsiveness-cb1dd4c.exe",
+    "current_version_number": 0,
+    "restored_from_version_number": null,
+    "xattrs": [
+      {
+        "name": "user.library-file-version",
+        "value": "0"
+      }
+    ],
+    "directory_id": "6ac324edf2e0819183d309dfcc26ab76",
+    "mime_type": "application/octet-stream",
+    "library_artifact_type": "other",
+    "file_size_bytes": 2706944,
+    "external_connectors_accessed": false
+  },
+  "installed_word_verdict": false,
+  "remaining": [
+    "actual installed Word responsiveness: repeated Ghbdtn/ghbdtn corrections, mixed formatting and one Undo",
+    "remaining manual app/protected-input acceptance",
+    "final public-promotion review/approval"
+  ],
+  "next_action": "Run this exact cb1dd4c EXE in installed Word after exiting old switcher; on repeated hang collect stage-only %TEMP%/GSwitcher-Word-Runtime.log and reconcile actual COM stage. No hard NativeOM whole-operation deadline claimed.",
+  "scheduler_mutations": 0,
+  "merge_or_public_release": false
+}
