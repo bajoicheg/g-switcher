@@ -1,0 +1,170 @@
+{
+  "at_utc": "2026-10-08T14:11:30.859Z",
+  "lease": {
+    "content": "eyJhY3F1aXJlZF9hdF91dGMiOiIyMDI2LTEwLTA4VDEzOjE5OjQ5LjkzNzU2\nMVoiLCJhY3Rpdml0eV9yZWZzIjpbIm1hbmFnZWQtaG9zdDpmaW5pc2gtYWRt\naXNzaW9uOi9ob21lL3J1bm5lci93b3JrL190ZW1wL2NkYy13b3JkLW5hdGl2\nZS0zNzc4MzQxOTgzOC0xL2hhbmRsZXMvZ2F0ZXMvZWVmNTRjMzgtNGVjYi01\nMjQ4LTg3M2YtODA2MThiMWQ2NThjL2ZpbmlzaC1hZG1pc3Npb24tMjUzNTBk\nYzAtZjEyMS00NmVhLWIzNGMtODIzYjcxMjdhOTA2Lmpzb246c2hhMjU2OmNm\nMWJhYTMwMGViZDM2YmM5MTlkZWE0OTc4YmJlN2I0OWNlYjU3NWMzNmQzNjZi\nZjUwMGQ2MDgwM2JjODMzZmMiXSwiZXhwaXJlc19hdF91dGMiOiIyMDI2LTEw\nLTA4VDEzOjQxOjMyLjE4OTg1MVoiLCJleHRlcm5hbF9ndWFyZCI6bnVsbCwi\nZmluYWxpemF0aW9uIjp7ImNoZWNrcG9pbnRfcmVmIjpudWxsLCJjb21wbGV0\naW9uX3JlYXNvbiI6bnVsbCwiZXh0ZXJuYWxfcmVjb25jaWxpYXRpb24iOiJw\nZW5kaW5nIiwiZmFpbHVyZSI6bnVsbCwicGVuZGluZ19zaGFyZWRfd3JpdGVz\nIjpmYWxzZSwic3RhdGUiOiJhY3RpdmUiLCJ1cGRhdGVkX2F0X3V0YyI6IjIw\nMjYtMTAtMDhUMTM6MTk6NDkuOTM3NTYxWiJ9LCJnZW5lcmF0aW9uIjozMSwi\naGVhcnRiZWF0X2F0X3V0YyI6IjIwMjYtMTAtMDhUMTM6MjE6MzIuMTg5ODUx\nWiIsImludm9jYXRpb24iOnsiYXV0b21hdGlvbl9pZCI6bnVsbCwiY29udmVy\nc2F0aW9uX2lkIjpudWxsLCJleGVjdXRpb25fc3VyZmFjZSI6Im1hbmFnZWQi\nLCJpbnZvY2F0aW9uX2lkIjoibWFuYWdlZC10ZXJtaW5hbDoxMzU3NjAyY2U2\nMTJmMTBmMGI2M2I1MWFlMTljNzQ0NTY4N2MwOTJhNGM1ZTUzMDZlNWY1YTQ2\nYzJhMmE5NWRiIiwic3RhcnRlZF9hdF91dGMiOiIyMDI2LTEwLTA4VDEzOjE5\nOjQ4Ljk4OTU0MVoifSwibGFzdF9yZWxlYXNlIjp7ImF0X3V0YyI6IjIwMjYt\nMTAtMDhUMTI6MjY6MTIuMzgwMjUyWiIsImNoZWNrcG9pbnRfcmVmIjoiZ2l0\nOnJlZnMvaGVhZHMvcmVsZWFzZS8yLjAuMUAxMGI3ZTkwZGZhOTUyMTE3MGM0\nOGQ5ZjA5ZTJjNWE0ZDZkNzdjM2MzIiwiY29tcGxldGlvbl9yZWFzb24iOiJz\nY29wZV9jb21wbGV0ZSIsImV4dGVybmFsX3JlY29uY2lsaWF0aW9uIjoibm9u\nZSIsImdlbmVyYXRpb24iOjMwLCJpbnZvY2F0aW9uX2lkIjoibWFuYWdlZC10\nZXJtaW5hbDpmZTk3Njc1NjA3ZDU3M2E3ZmVmZWJmNjRiNjgxODg2NDZmYzVj\nOGFhYjMxOGZmY2QyM2YwM2UxZjkxZTMzMmQ4Iiwib3duZXJfaWQiOiIzZTgz\nMGZkMy1lODYyLTQ4ZDQtOGI4NC02MGU3MjZkMDU3MTcifSwibGFzdF90ZXJt\naW5hbCI6eyJhdF91dGMiOiIyMDI2LTEwLTA4VDEwOjIyOjU1LjY5ODc4M1oi\nLCJldmlkZW5jZV9yZWZlcmVuY2UiOiJnaXQ6N2NlNDdiOTg1NWQ4MjljMDIx\nNmIzNWI2YjY5NDMzNzE4YWYwM2FhOTpkb2N1bWVudC5qc29uIiwiaW50ZW50\nX2RpZ2VzdCI6InNoYTI1Njo5NWQxNmRlOTZkYzIyMTdlNWNiZTMxZjJlOTBl\nZTA3N2M3NWNhZGM1MDJmYTFhZjZiY2FkZjViMjI2MTFhMGMyIiwiaW50ZW50\nX3JlZmVyZW5jZSI6ImdpdDphYmUxYWEyMTY0ODIxMWFiNjE1NmYxZTJlODlj\nMWZlMzJiZWFiOTBmOmRvY3VtZW50Lmpzb24iLCJvYnNlcnZhdGlvbiI6eyJs\nb29rdXBfY29tcGxldGUiOnRydWUsIm9ic2VydmVkX2F0X3V0YyI6IjIwMjYt\nMTAtMDhUMTA6MjI6NTIuNzMyNDM0WiIsIm9wZXJhdGlvbl9rZXkiOiJzaGEy\nNTY6MTI5NDg4MDYxM2MyNDY3ODg2ZjlkZjA3YTBjODI2NzhiNjVlOGZmNDMy\nNGY2OGU1ZmMwZTAwYTU4NWY5YThmOCIsInNjaGVtYSI6Im9wZXJhdGlvbi1v\nYnNlcnZhdGlvbi92MSIsInRhc2tzIjpbeyJhdHRlbXB0X2lkIjoiYWRvcHQy\nMTIxLXN3aXRjaGVyLWExLWxpdmUtYTEiLCJiaW5kaW5nIjp7ImJhY2tlbmQi\nOiJuYXRpdmVfZ2l0IiwiY2FuZGlkYXRlX3NoYSI6IjUzZDNkNWNjOTU5N2Y0\nODBkNWY3NzYwYTJiOGFmNjZjY2M2NDBlYzQiLCJjaGVja19wbGFuX2RpZ2Vz\ndCI6InNoYTI1NjoxZDMxMjU3MWIyNDZiZTFhM2MyNDJlZWQ1MWMxYTI2MTk5\nNzFlNzZjMDY4OTlkNGJmMjRkNTMwOWM3N2UyNDk1IiwiY2hlY2tfc3VpdGVf\nZmluZ2VycHJpbnQiOiJzaGEyNTY6NzcyMDJiNjc4NjI3MDgzMWM5ZGM4NGRi\nNWI1MzA5NjZjMDYyYzNhMTgwYTNjYzBjM2U2YmRjYzUyNWY5ZGYxYiIsImVu\ndmlyb25tZW50X2ZpbmdlcnByaW50Ijoic2hhMjU2OjgxOWEyYWIyOTIzODli\nNDVmZDIzODlhYzM1ZDhkNDljYjdhYWYyZWI4MmFmZjQ1ODI2M2MwOWI0OTll\nMDVhOGYiLCJlbnZpcm9ubWVudF9pZCI6ImNsb3VkLWNvbnRpbnVhdGlvbi1h\nMSIsIm1vZGUiOiJBVE9NSUNfQ09OU1VNRVJfQURPUFRJT04iLCJyZXBvc2l0\nb3J5IjoiYmFqb2ljaGVnL2ctc3dpdGNoZXIifSwiY29uY2x1c2lvbiI6InN1\nY2NlZWRlZCIsImV2aWRlbmNlX3JlZnMiOlsiZ2l0OjdjZTQ3Yjk4NTVkODI5\nYzAyMTZiMzViNmI2OTQzMzcxOGFmMDNhYTk6ZG9jdW1lbnQuanNvbiJdLCJv\ncGVyYXRpb25fa2V5Ijoic2hhMjU2OjEyOTQ4ODA2MTNjMjQ2Nzg4NmY5ZGYw\nN2EwYzgyNjc4YjY1ZThmZjQzMjRmNjhlNWZjMGUwMGE1ODVmOWE4ZjgiLCJz\ndGF0ZSI6InRlcm1pbmFsIiwidGFza19pZCI6IjUzZDNkNWNjOTU5N2Y0ODBk\nNWY3NzYwYTJiOGFmNjZjY2M2NDBlYzQiLCJ0YXNrX3VybCI6Imh0dHBzOi8v\nZ2l0aHViLmNvbS9iYWpvaWNoZWcvZy1zd2l0Y2hlci90cmVlLzUzZDNkNWNj\nOTU5N2Y0ODBkNWY3NzYwYTJiOGFmNjZjY2M2NDBlYzQifV19LCJvcGVyYXRp\nb25fa2V5Ijoic2hhMjU2OjEyOTQ4ODA2MTNjMjQ2Nzg4NmY5ZGYwN2EwYzgy\nNjc4YjY1ZThmZjQzMjRmNjhlNWZjMGUwMGE1ODVmOWE4ZjgifSwibGVnYWN5\nX21pZ3JhdGlvbiI6bnVsbCwib3duZXJfaWQiOiIzYzdmNTM4MS0yMzM3LTQz\nYmMtOGY2My1iNjQxOTE5YmU4OTEiLCJyZXBvc2l0b3J5IjoiYmFqb2ljaGVn\nL2ctc3dpdGNoZXIiLCJzY2hlbWEiOiJleGVjdXRpb24tbGVhc2UvdjIiLCJz\nb3VyY2VfcmVmIjoicmVmcy9oZWFkcy9yZWxlYXNlLzIuMC4xIiwic3VibWlz\nc2lvbl9jbGFpbXMiOlt7ImF0dGVtcHRfaWQiOiJhZG9wdDIxMjEtc3dpdGNo\nZXItYTEtcmV2aWV3LXB1YmxpY2F0aW9uIiwiY2xhaW1lZF9hdF91dGMiOiIy\nMDI2LTEwLTA4VDA5OjM0OjAzLjIxOTM2NFoiLCJnZW5lcmF0aW9uIjoyNywi\nZ3JhbnRfaWQiOiJmMDczNzkzNS1iZjY3LTRmNDAtOGI1OS1kYmE0ODU4OWZi\nZTMiLCJpbnRlbnRfZGlnZXN0Ijoic2hhMjU2OjJiMzVkMDc0YzZlMTA4ZDA5\nOTcxOGQxNTQ3MzM5NDQ4ZGUxZWM4OGRjYTQyYmE1ZGY4MTAwZmQ4YzNlZjUz\nYTciLCJvcGVyYXRpb25fa2V5Ijoic2hhMjU2OjM0MTBhOTU0M2Q3ZDJlNDlk\nMDdmODUwMmUzMjBlMDNjZDZiMTc0ZWRiMjY5MDA5MDI4YTNiODk2Y2RmZDNj\nZGQiLCJvd25lcl9pZCI6ImQ3N2U1YmZhLTI3NTAtNGU0NC04ZTlhLTJhNGM4\nODRjMGU0NCJ9LHsiYXR0ZW1wdF9pZCI6ImFkb3B0MjEyMS1zd2l0Y2hlci1h\nMS1yZXZpZXctcHJvb2YtcHVibGljYXRpb24iLCJjbGFpbWVkX2F0X3V0YyI6\nIjIwMjYtMTAtMDhUMDk6NDI6NDQuNjM3MTIwWiIsImdlbmVyYXRpb24iOjI3\nLCJncmFudF9pZCI6IjQxYWYzOGEzLTY1NjgtNGE4Ny1hOGJmLWVkMDZlZmQ1\nZTMwNSIsImludGVudF9kaWdlc3QiOiJzaGEyNTY6MjgzNzk4YTU1ZmExZTIy\nOTQ4ODg0NzE4YTAyMDRmMmE2NDY0MDBmMGY5YmM2Njk2NTBiMGFjYWQwMTQ0\nNzNlOCIsIm9wZXJhdGlvbl9rZXkiOiJzaGEyNTY6NDE3YjI1YjVlNmJlYmRh\nMTVmNTBlYzljZmEzZjFiNmM3ZTUyYjA3M2I1M2UzMzUwYzhlMmJjMDA2YjRj\nOWRlOCIsIm93bmVyX2lkIjoiZDc3ZTViZmEtMjc1MC00ZTQ0LThlOWEtMmE0\nYzg4NGMwZTQ0In0seyJhdHRlbXB0X2lkIjoiYWRvcHQyMTIxLXN3aXRjaGVy\nLWExLWxpdmUtYTEiLCJjbGFpbWVkX2F0X3V0YyI6IjIwMjYtMTAtMDhUMTA6\nMjI6MDguNTQ0NTk2WiIsImdlbmVyYXRpb24iOjI3LCJncmFudF9pZCI6ImQ4\nODI3NGYxLTczMzgtNGUwZC1iN2RhLWUzZjc5ZjYxOGMyZCIsImludGVudF9k\naWdlc3QiOiJzaGEyNTY6OTVkMTZkZTk2ZGMyMjE3ZTVjYmUzMWYyZTkwZWUw\nNzdjNzVjYWRjNTAyZmExYWY2YmNhZGY1YjIyNjExYTBjMiIsIm9wZXJhdGlv\nbl9rZXkiOiJzaGEyNTY6MTI5NDg4MDYxM2MyNDY3ODg2ZjlkZjA3YTBjODI2\nNzhiNjVlOGZmNDMyNGY2OGU1ZmMwZTAwYTU4NWY5YThmOCIsIm93bmVyX2lk\nIjoiZDc3ZTViZmEtMjc1MC00ZTQ0LThlOWEtMmE0Yzg4NGMwZTQ0In1dLCJz\ndWJtaXNzaW9uX3Jlc29sdXRpb25zIjpbeyJhdHRlbXB0X2lkIjoiYWRvcHQy\nMTIxLXN3aXRjaGVyLWExLXJldmlldy1wdWJsaWNhdGlvbiIsImV2aWRlbmNl\nX3JlZmVyZW5jZSI6ImdpdDo1M2QzZDVjYzk1OTdmNDgwZDVmNzc2MGEyYjhh\nZjY2Y2NjNjQwZWM0IiwiZ2VuZXJhdGlvbiI6MjcsImdyYW50X2lkIjoiZjA3\nMzc5MzUtYmY2Ny00ZjQwLThiNTktZGJhNDg1ODlmYmUzIiwiaW50ZW50X2Rp\nZ2VzdCI6InNoYTI1NjoyYjM1ZDA3NGM2ZTEwOGQwOTk3MThkMTU0NzMzOTQ0\nOGRlMWVjODhkY2E0MmJhNWRmODEwMGZkOGMzZWY1M2E3Iiwib2JzZXJ2YXRp\nb25fZGlnZXN0Ijoic2hhMjU2OmYwMGMwY2U5M2M0YmU2MDE0Y2RhZWIwZjNh\nY2Q1NzRmNDFkMjE3MWZiMjg5NWE5YjI1ZWMzNjEwMzdlNTcwZTUiLCJvcGVy\nYXRpb25fa2V5Ijoic2hhMjU2OjM0MTBhOTU0M2Q3ZDJlNDlkMDdmODUwMmUz\nMjBlMDNjZDZiMTc0ZWRiMjY5MDA5MDI4YTNiODk2Y2RmZDNjZGQiLCJvd25l\ncl9pZCI6ImQ3N2U1YmZhLTI3NTAtNGU0NC04ZTlhLTJhNGM4ODRjMGU0NCIs\nInJlc29sdmVkX2F0X3V0YyI6IjIwMjYtMTAtMDhUMDk6MzQ6MTguNjUxOTE3\nWiJ9LHsiYXR0ZW1wdF9pZCI6ImFkb3B0MjEyMS1zd2l0Y2hlci1hMS1yZXZp\nZXctcHJvb2YtcHVibGljYXRpb24iLCJldmlkZW5jZV9yZWZlcmVuY2UiOiJn\naXQ6YzMyZDY4ZGZhMjMwMzM2YzVmMjJhMzNkOGEyZWIzZTU1NDdlMDZlNiIs\nImdlbmVyYXRpb24iOjI3LCJncmFudF9pZCI6IjQxYWYzOGEzLTY1NjgtNGE4\nNy1hOGJmLWVkMDZlZmQ1ZTMwNSIsImludGVudF9kaWdlc3QiOiJzaGEyNTY6\nMjgzNzk4YTU1ZmExZTIyOTQ4ODg0NzE4YTAyMDRmMmE2NDY0MDBmMGY5YmM2\nNjk2NTBiMGFjYWQwMTQ0NzNlOCIsIm9ic2VydmF0aW9uX2RpZ2VzdCI6InNo\nYTI1Njo3MjlmNDk4MzhhNzQ4ZWMzMzk5NmNlZmQ1OGVjN2QzNjU2YzY3NmZk\nZmZkZjlhYWNiYzUwMDMwYmU2MjBkZDk3Iiwib3BlcmF0aW9uX2tleSI6InNo\nYTI1Njo0MTdiMjViNWU2YmViZGExNWY1MGVjOWNmYTNmMWI2YzdlNTJiMDcz\nYjUzZTMzNTBjOGUyYmMwMDZiNGM5ZGU4Iiwib3duZXJfaWQiOiJkNzdlNWJm\nYS0yNzUwLTRlNDQtOGU5YS0yYTRjODg0YzBlNDQiLCJyZXNvbHZlZF9hdF91\ndGMiOiIyMDI2LTEwLTA4VDA5OjQyOjU5LjYzNjUxNloifSx7ImF0dGVtcHRf\naWQiOiJhZG9wdDIxMjEtc3dpdGNoZXItYTEtbGl2ZS1hMSIsImV2aWRlbmNl\nX3JlZmVyZW5jZSI6ImdpdDo3Y2U0N2I5ODU1ZDgyOWMwMjE2YjM1YjZiNjk0\nMzM3MThhZjAzYWE5OmRvY3VtZW50Lmpzb24iLCJnZW5lcmF0aW9uIjoyNywi\nZ3JhbnRfaWQiOiJkODgyNzRmMS03MzM4LTRlMGQtYjdkYS1lM2Y3OWY2MThj\nMmQiLCJpbnRlbnRfZGlnZXN0Ijoic2hhMjU2Ojk1ZDE2ZGU5NmRjMjIxN2U1\nY2JlMzFmMmU5MGVlMDc3Yzc1Y2FkYzUwMmZhMWFmNmJjYWRmNWIyMjYxMWEw\nYzIiLCJvYnNlcnZhdGlvbl9kaWdlc3QiOiJzaGEyNTY6OTdkMmNhOTY3MGVj\nOGQzM2U3MzYzMzI4YzJlMDhiMmExOTJiN2JlNTlmNDA5NzIzOWNkNDE5YmEw\nMmY3YjY5NiIsIm9wZXJhdGlvbl9rZXkiOiJzaGEyNTY6MTI5NDg4MDYxM2My\nNDY3ODg2ZjlkZjA3YTBjODI2NzhiNjVlOGZmNDMyNGY2OGU1ZmMwZTAwYTU4\nNWY5YThmOCIsIm93bmVyX2lkIjoiZDc3ZTViZmEtMjc1MC00ZTQ0LThlOWEt\nMmE0Yzg4NGMwZTQ0IiwicmVzb2x2ZWRfYXRfdXRjIjoiMjAyNi0xMC0wOFQx\nMDoyMjo1NS42OTg3ODNaIn1dLCJ0YWtlb3Zlcl9ldmlkZW5jZSI6bnVsbH0K\n",
+    "encoding": "base64",
+    "sha": "1e64d7a45ed470c42bd0cdeb9b6560acb9f545a7",
+    "display_url": "https://github.com/bajoicheg/g-switcher/blob/refs/heads/cdc/coordination/lease.json",
+    "display_title": "lease.json"
+  },
+  "publication": {
+    "content": "eyJhdHRlbXB0X3N0b3JlX3JlZiI6InJlZnMvaGVhZHMvY2RjL21hbmFnZWQt\naG9zdC1wdWJsaXNoLWVlZjU0YzM4NGVjYjUyNDg4NzNmODA2MThiMWQ2NThj\nIiwiYXR0ZW1wdHMiOnsic2hhMjU2Ojc3MDllMzU3ZTcyZmMyNTEyODE2OTJm\nMTQwYWI3OWI4YmZmMjA2ZDE4OTg5MjhmM2M3YThmNzExNTYxM2VkODAiOnsi\nYXR0ZW1wdF9pZCI6InB1YmxpY2F0aW9uLWF0dGVtcHQtNDM4MGRkYTA2OWQ1\nNTE3MWJkNDlkZWQ4ZWJmM2Y3YzVlOGVlZWRmZGJlOWYwMmQyIiwiaW50ZW5k\nZWRfaW50ZWdyYXRlZF9oZWFkIjoiMzQwN2EyZDA1NzBiODg4NjRmZDI2NWRl\nNjFhODc2MTk5OTk5NTM4MCIsImxhbmVfaWQiOiJ3b3JkLXJlZnVzYWwtZGlh\nZ25vc3RpY3MiLCJvYnNlcnZlZF9zaGFyZWRfaGVhZCI6IjEwYjdlOTBkZmE5\nNTIxMTcwYzQ4ZDlmMDllMmM1YTRkNmQ3N2MzYzMiLCJvcGVyYXRpb25faWQi\nOiJzaGEyNTY6NzcwOWUzNTdlNzJmYzI1MTI4MTY5MmYxNDBhYjc5YjhiZmYy\nMDZkMTg5ODkyOGYzYzdhOGY3MTE1NjEzZWQ4MCIsInByZXBhcmVkX2F0X3V0\nYyI6IjIwMjYtMTAtMDhUMTM6MjE6MzYuMDQ3MTA4WiIsInJlbW90ZV9pZCI6\nInNoYTI1Njo0NDQ0NjYyZWEwYjA3OTJiNjgzOGViODg3ZDRlZWJmYzQ4NTI2\nYzhiZDU5NTkyZWEwNDRiNzlmNTk5ZDk1NTM2IiwicmVzb2x2ZWRfYXRfdXRj\nIjoiMjAyNi0xMC0wOFQxMzoyMTo0NC43NTQxNDVaIiwicmVzdWx0X2NvbW1p\ndCI6IjM0MDdhMmQwNTcwYjg4ODY0ZmQyNjVkZTYxYTg3NjE5OTk5OTUzODAi\nLCJzaGFyZWRfcmVmIjoicmVmcy9oZWFkcy9yZWxlYXNlLzIuMC4xIiwic3Rh\ndHVzIjoicmVqZWN0ZWQiLCJzdWJtaXR0ZWRfYXRfdXRjIjoiMjAyNi0xMC0w\nOFQxMzoyMTozOS42NTEyNzNaIn19LCJyZW1vdGVfaWQiOiJzaGEyNTY6NDQ0\nNDY2MmVhMGIwNzkyYjY4MzhlYjg4N2Q0ZWViZmM0ODUyNmM4YmQ1OTU5MmVh\nMDQ0Yjc5ZjU5OWQ5NTUzNiIsInNjaGVtYSI6InByb2plY3QtbGFuZS1wdWJs\naWNhdGlvbi1hdHRlbXB0cy92MSIsInNoYXJlZF9yZWYiOiJyZWZzL2hlYWRz\nL3JlbGVhc2UvMi4wLjEifQo=\n",
+    "encoding": "base64",
+    "sha": "74fd53123c05725ffe611fc65a010b1edc09c131",
+    "display_url": "https://github.com/bajoicheg/g-switcher/blob/refs/heads/cdc/managed-host-publish-eef54c384ecb5248873f80618b1d658c/document.json",
+    "display_title": "document.json"
+  },
+  "source": {
+    "ref": "refs/heads/release/2.0.1",
+    "node_id": "REF_kwDOULubnLhyZWZzL2hlYWRzL3JlbGVhc2UvMi4wLjE",
+    "url": "https://api.github.com/repos/bajoicheg/g-switcher/git/refs/heads/release/2.0.1",
+    "object": {
+      "sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+      "type": "commit",
+      "url": "https://api.github.com/repos/bajoicheg/g-switcher/git/commits/10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3"
+    }
+  },
+  "jobs": {
+    "jobs": [
+      {
+        "id": 113331980853,
+        "name": "managed",
+        "status": "completed",
+        "conclusion": "failure",
+        "run_id": 37783419838,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Checkout exact immutable orchestration",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Checkout pinned product for managed ownership",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Validator dependency",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Prepare Rust checks and Windows cross target",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Execute canonical managed task",
+            "status": "completed",
+            "conclusion": "failure",
+            "number": 6
+          },
+          {
+            "name": "Preserve exact managed runtime and release evidence",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Checkout pinned product for managed ownership",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Checkout exact immutable orchestration",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 113333159937,
+        "name": "Windows CI — exact Word diagnostics candidate",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 37783419838,
+        "logs_url": null,
+        "steps": null
+      }
+    ]
+  },
+  "branch": {
+    "name": "release/2.0.1",
+    "commit": {
+      "sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+      "node_id": "C_kwDOULubnNoAKDEwYjdlOTBkZmE5NTIxMTcwYzQ4ZDlmMDllMmM1YTRkNmQ3N2MzYzM",
+      "commit": {
+        "author": {
+          "name": "G-switcher managed executor",
+          "email": "g-switcher@example.invalid",
+          "date": "2026-10-08T12:25:47Z"
+        },
+        "committer": {
+          "name": "G-switcher managed executor",
+          "email": "g-switcher@example.invalid",
+          "date": "2026-10-08T12:25:47Z"
+        },
+        "message": "[skip ci] recover same UIA reader after completed transient timeout",
+        "tree": {
+          "sha": "703d4fe050201d084d35d4f9792c314f0e5fa13c",
+          "url": "https://api.github.com/repos/bajoicheg/g-switcher/git/trees/703d4fe050201d084d35d4f9792c314f0e5fa13c"
+        },
+        "url": "https://api.github.com/repos/bajoicheg/g-switcher/git/commits/10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/bajoicheg/g-switcher/commits/10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+      "html_url": "https://github.com/bajoicheg/g-switcher/commit/10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+      "comments_url": "https://api.github.com/repos/bajoicheg/g-switcher/commits/10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3/comments",
+      "author": null,
+      "committer": null,
+      "parents": [
+        {
+          "sha": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "url": "https://api.github.com/repos/bajoicheg/g-switcher/commits/cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+          "html_url": "https://github.com/bajoicheg/g-switcher/commit/cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0"
+        }
+      ]
+    },
+    "_links": {
+      "self": "https://api.github.com/repos/bajoicheg/g-switcher/branches/release/2.0.1",
+      "html": "https://github.com/bajoicheg/g-switcher/tree/release/2.0.1"
+    },
+    "protected": false,
+    "protection": {
+      "enabled": false,
+      "required_status_checks": {
+        "enforcement_level": "off",
+        "contexts": [],
+        "checks": []
+      }
+    },
+    "protection_url": "https://api.github.com/repos/bajoicheg/g-switcher/branches/release/2.0.1/protection"
+  },
+  "available_managed_launch_tools": []
+}

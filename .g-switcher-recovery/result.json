@@ -1,0 +1,78 @@
+{
+  "source_base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "result_commit": "3407a2d0570b88864fd265de61a8761999995380",
+  "changed_paths": [
+    "src/windows_runtime/word_native.rs",
+    "docs/work-status/word-refusal-diagnostics-2026-10-08.json"
+  ],
+  "checks": [
+    {
+      "label": "format",
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "src/windows_runtime/word_native.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.064
+    },
+    {
+      "label": "portable-cargo-library-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 54.873
+    },
+    {
+      "label": "windows-typed-compile",
+      "argv": [
+        "cargo",
+        "check",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 16.13
+    },
+    {
+      "label": "windows-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.482
+    },
+    {
+      "label": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.008
+    }
+  ],
+  "rca_report_sha256": "36921c9535be3f4a9b31c97da68f125ac25469c0543dc678dc831ae7ddb4c758",
+  "task_scope_complete": true,
+  "full_product_word_verdict": false,
+  "output_ref": "out:word-native-product-candidate",
+  "evidence_ref": "evidence:pinned-payload-and-worker-checks"
+}

@@ -1,0 +1,230 @@
+{
+  "schema": "word-result-recovery-handoff/v1",
+  "observed_at_utc": "2026-10-08T14:11:30.859Z",
+  "repository": "bajoicheg/g-switcher",
+  "source_head": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "coordination_generation": 31,
+  "coordination_owner": "3c7f5381-2337-43bc-8f63-b641919be891",
+  "prior_invocation": "managed-terminal:1357602ce612f10f0b63b51ae19c7445687c092a4c5e5306e5f5a46c2a2a95db",
+  "prepared_branch": "cdc/word-result-recovery-20261008-b68d84f8-prepared",
+  "preflight_sha256": "b68d84f81adaf0a7d9145f263e426d6b9d915464db33bc87cd1a65e90f8d12d1",
+  "current_state": "BLOCKED",
+  "old_managed_owner_released": false,
+  "new_managed_owner_acquired": false,
+  "old_publication_replayed": false,
+  "exact_result_reconstructed": false,
+  "bundle_created": false,
+  "new_ci_started": false,
+  "new_exe_built": false,
+  "product_word_fixed": false,
+  "budget_ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328",
+      "reader-recovery-20261008-1509",
+      "word-refusal-diagnostics-20261008-1604"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 121
+        },
+        "failure": {
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+          "category": "code"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "kind": "code_correction",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-3607936d",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci2-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:48:06Z",
+        "reservation_id": "word-provider-hang-ci-3607936d",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 475.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "reader-recovery-ci-35c9f5f9",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:22:47.588804Z",
+        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+        "attempt_id": "reader-recovery-35c9f5f9-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/reader-recovery",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "reader-recovery-ci-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:31:34Z",
+        "reservation_id": "reader-recovery-ci-35c9f5f9",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 458.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-refusal-ci-04a9e38e",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-refusal-diagnostics-20261008-1604",
+        "at_utc": "2026-10-08T13:18:33.625196Z",
+        "operation_key": "sha256:bf7ff5d8d25ad99ebdc3cfe55e7f278daf612e43ce6699c4c198fd9b9ac11382",
+        "attempt_id": "word-refusal-04a9e38e-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-refusal-diagnostics",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-refusal-ci-publication-rejected",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-refusal-diagnostics-20261008-1604",
+        "at_utc": "2026-10-08T13:21:58Z",
+        "reservation_id": "word-refusal-ci-04a9e38e",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 163.0
+        },
+        "failure": {
+          "signature": "managed-publication-explicit-rejection-no-replay",
+          "category": "infrastructure"
+        }
+      }
+    ]
+  },
+  "budget_attempt_note": "No CI reservation consumed. Initial local reservation draft rejected because recovery_ref did not match that new probe scope; no provider effect. Original nine historical events retained.",
+  "findings": [
+    "Source remains10b and old generation31 remains owned; publication journal explicitly rejected, normal finish cannot replay",
+    "Branch metadata protected=false; job token contents=write. Exact prior rejection reason unavailable",
+    "Compatible finish recovery requires original live supervisor; Actions terminated2943 in exact original job cleanup",
+    "Canonical runtime supports genuine package-managed acquisition with authenticated prior executor-stopped evidence; TTL is not authority",
+    "Exact content-addressed reconstruction preflight prepared with ordered SPEC/QUALITY checks; original successful worker evidence pinned, no successful product checks rerun",
+    "Initial GitHub CI start still needs normal external-start authority. No available managed-host launch transport or canonical authenticated local Git write backend in this invocation; standalone branch push would not exempt CI",
+    "Prepared workflow remains inert inside transfer.json; no .github workflow or CI start installed"
+  ],
+  "validation": [
+    "Python syntax",
+    "Git raw commit hash agrees with git hash-object",
+    "Static sanitized rejection classes",
+    "Independent SPEC and QUALITY source review"
+  ],
+  "remaining": [
+    "Restore exact3407 candidate bundle in authorized managed host",
+    "Authenticate complete prior process-tree quiescence and use public runtime quiescence acquisition for new managed owner",
+    "Claim full exact3407 Windows CI under normal durable operation/guard/budget gates",
+    "Build and deliver diagnostic EXE with exact originalcandidateprovenance",
+    "Obtain updated installed Word/Chrome log and repair proven native failure",
+    "Resolve original required unintegrated result without fakefailedstatus or erasedrejectedjournal"
+  ],
+  "next_action": "On an authorized managed host with authenticated Git access, use canonical runtime.acquire_execution_lease(quiescence=exact fresh generation31 evidence), preserving prior successful result and rejection; run prepared preflight in read_only checkout, then claim exact3407 Windows validation and finalize/release through canonical bridge.",
+  "recheck_trigger": "Managed host launch transport or authenticated local Git execution becomes available, or a canonical recovery release for this stopped handle is independently released.",
+  "scheduler_mutations": 0,
+  "merge_or_public_release": false,
+  "automatic_approval_rejection": false
+}
