@@ -1,0 +1,90 @@
+{
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source": "53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+  "branch": "cdc/word-provider-hang-20261008-304073d6",
+  "worker_sha256": "304073d6f2bf7ff46922e78783d41a6da351271fdfdb75e886ad8ab5f61dc803",
+  "scope": "managed repair RED/GREEN and full exact-candidate Windows artifact",
+  "no_public_release": true,
+  "scheduler_paused": true,
+  "budget_normalization": "original authoritative ledger has zero events and zero wakes; preserve exact policy and task, initialize required nonempty wake without resetting charges",
+  "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+  "budget_reservation": {
+    "type": "reserve",
+    "event_id": "word-provider-hang-ci-304073d6",
+    "task_id": "g-switcher/2.0.1",
+    "wake_id": "word-provider-hang-20261008-1328",
+    "at_utc": "2026-10-08T10:31:24.752813Z",
+    "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+    "attempt_id": "word-provider-hang-304073d6-a1",
+    "kind": "ci_start",
+    "scope": "github-actions/g-switcher/word-provider-hang",
+    "recovery_ref": null,
+    "cost": {
+      "tool_calls": 1,
+      "tokens": null,
+      "elapsed_seconds": null
+    }
+  },
+  "budget_decision": {
+    "allow_reservation": true,
+    "allow_launch": false,
+    "already_recorded": false,
+    "reasons": [],
+    "provider": {}
+  },
+  "ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      }
+    ]
+  }
+}
