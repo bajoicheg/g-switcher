@@ -1,0 +1,21 @@
+{
+  "schema": "word-bootstrap-local-verification/v1",
+  "tests": {
+    "command": "python -B -m unittest discover -s word-refusal-bootstrap -p 'test_*.py'",
+    "exit_code": 0,
+    "tests": 16,
+    "includes": "real canonical local runtime capability/acquisition/read_only finish/release isolated Git fixture"
+  },
+  "syntax": "all Python AST and both workflow YAML parsed",
+  "payload": "all intent hashes matched",
+  "windows_head": "ed20bc246b56b8d0522c4af6915805ed8d1fb9ba",
+  "product_checks_repeated": false,
+  "no_scheduler_mutations": true,
+  "ttl_delta": {
+    "actual_acquisition_ttl_seconds": 2700,
+    "canonical_acquire_finish_release_test_exit": 0,
+    "tests": 1,
+    "duration_seconds": 8.723
+  },
+  "remote_windows_bytes": "four reviewed files matched exact ed20bc246b56b8d0522c4af6915805ed8d1fb9ba via fresh git fetch/show"
+}
