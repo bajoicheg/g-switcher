@@ -19,7 +19,7 @@
     "checks.json": "ac2e93b0bd2d87265713dc92d071673f04f04fdc68de0aace2700ccbfb7549b9",
     "result.json": "17511970d1c9e3ad68e656e88c08884112b95dbdf0f36467d031735f38205950",
     "windows-ci.yml": "52f433e73683b47a53b27d2fba4de4664bb4ce5f8c2800dc74966b6402d37d5f",
-    "word-bootstrap.yml": "124b1e0d0297f8be9e20783bd1013bf291d093ae00c9c003601bede2536ba931"
+    "word-bootstrap.yml": "c83fe6ddc19c5cf26e8f4946119262c8cd790594b0b266838d6376ff86acfa7b"
   },
   "windows_contract": {
     "steps": [
@@ -379,11 +379,57 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-bootstrap-host-a1-invalid-context",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "reservation_id": "word-bootstrap-host-20261008-1716",
+        "status": "setup_failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 0
+        },
+        "failure": {
+          "signature": "github-job-env-unrecognized-runner-context",
+          "category": "configuration"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-bootstrap-runner-env-corrected",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "signature": "github-job-env-unrecognized-runner-context",
+        "reference": "report:word-bootstrap-host-context-correction-a2",
+        "kind": "configuration_correction",
+        "detail": "Provider annotation identifies runner context at job env. Moved PYTHONPYCACHEPREFIX to start/wait step env, where runner context is supported; no job or product computation occurred."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-bootstrap-host-20261008-1716-a2",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "operation_key": "sha256:c6f01f84540910b2fcc9875b01c73b86f40cc888b782c78f58ab5f0acbeb0070",
+        "attempt_id": "word-bootstrap-host-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "recovery_ref": "report:word-bootstrap-host-context-correction-a2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
       }
     ]
   },
   "user_authorization": "Continue autonomously, user command 2026-10-08 17:16:48 MSK; existing GitHub Actions managed host authorized",
   "no_scheduler_mutations": true,
   "no_product_publication": true,
-  "bootstrap_admission_ref": "refs/heads/cdc/word-bootstrap-admission/20261008-1716"
+  "bootstrap_admission_ref": "refs/heads/cdc/word-bootstrap-admission/20261008-1716-a2"
 }

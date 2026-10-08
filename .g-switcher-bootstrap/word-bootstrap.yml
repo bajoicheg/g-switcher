@@ -18,7 +18,6 @@ jobs:
     env:
       CDC_REPO_ROOT: ${{ github.workspace }}/product
       GH_TOKEN: ${{ github.token }}
-      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/word-python-cache
     steps:
     - name: Checkout reviewed host controller
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -41,6 +40,8 @@ jobs:
         '
     - name: Start gated managed host and wait for exact bundle
       run: python -B orchestration/.g-switcher-bootstrap/host_step.py start
+      env:
+        PYTHONPYCACHEPREFIX: ${{ runner.temp }}/word-python-cache
     - name: Upload reconstructed exact candidate
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
@@ -50,6 +51,8 @@ jobs:
         retention-days: 30
     - name: Await owned Windows validation and managed release
       run: python -B orchestration/.g-switcher-bootstrap/host_step.py wait
+      env:
+        PYTHONPYCACHEPREFIX: ${{ runner.temp }}/word-python-cache
     - name: Preserve authenticated managed lifecycle evidence
       if: always()
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
