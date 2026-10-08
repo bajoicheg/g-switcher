@@ -213,6 +213,15 @@ struct UiaSecurityCache {
     native_hwnd: isize,
     checked: bool,
     is_password: Option<bool>,
+    retry_after: Option<Instant>,
+}
+
+impl UiaSecurityCache {
+    fn reusable_at(&self, now: Instant) -> bool {
+        self.checked
+            && (self.is_password.is_some()
+                || self.retry_after.is_some_and(|deadline| now < deadline))
+    }
 }
 
 #[derive(Default)]
@@ -673,7 +682,7 @@ fn decode_hook_event(wparam: WPARAM, lparam: LPARAM) -> HookEvent {
 
 impl Engine {
     fn uia_password_state(&mut self, target: FocusTarget, generation: u32) -> Option<bool> {
-        let cache_matches = self.uia_cache.checked
+        let cache_matches = self.uia_cache.reusable_at(Instant::now())
             && self.uia_cache.generation == generation
             && self.uia_cache.process_id == target.process_id
             && self.uia_cache.focus == target.hwnd as isize
@@ -691,6 +700,11 @@ impl Engine {
             native_hwnd: probe.map(|value| value.native_hwnd).unwrap_or_default(),
             checked: true,
             is_password: probe.map(|value| value.is_password),
+            // Unknown metadata never grants permission. Retry after a short
+            // cooldown, without polling the provider on every keystroke.
+            retry_after: probe
+                .is_none()
+                .then(|| Instant::now() + std::time::Duration::from_secs(1)),
         };
         self.uia_cache.is_password
     }
@@ -2143,5 +2157,41 @@ mod tests {
         });
         assert!(!delivered);
         assert_eq!(calls, 1);
+    }
+}
+
+#[cfg(test)]
+mod uia_cache_recovery_tests {
+    use super::UiaSecurityCache;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn unknown_security_cache_expires_without_becoming_writable() {
+        let now = Instant::now();
+        let cache = UiaSecurityCache {
+            checked: true,
+            is_password: None,
+            retry_after: Some(now + Duration::from_secs(1)),
+            ..Default::default()
+        };
+        assert!(cache.reusable_at(now));
+        assert!(!cache.reusable_at(now + Duration::from_secs(1)));
+        assert!(!cache.reusable_at(now + Duration::from_secs(2)));
+        assert_eq!(cache.is_password, None);
+    }
+
+    #[test]
+    fn known_security_cache_and_unchecked_state_keep_their_policy() {
+        let now = Instant::now();
+        for is_password in [Some(true), Some(false)] {
+            let cache = UiaSecurityCache {
+                checked: true,
+                is_password,
+                ..Default::default()
+            };
+            assert!(cache.reusable_at(now + Duration::from_secs(60)));
+            assert_eq!(cache.is_password, is_password);
+        }
+        assert!(!UiaSecurityCache::default().reusable_at(now));
     }
 }

@@ -1,85 +1,133 @@
 //! One bounded, read-only provider worker. No mutation is allowed here.
-//! A timeout quarantines this worker for the process lifetime; never create
-//! replacement workers or accept a late result as fresh security authority.
-use std::sync::atomic::{AtomicU8, Ordering};
+//! After a timeout, refuse new work until the exact old call completed.
+//! Discard its late reply; resume only with a new request on the same thread.
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, SyncSender, TryRecvError};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 struct Read<Q, R> {
     input: Q,
     result: SyncSender<R>,
+    completed: Arc<AtomicBool>,
+}
+
+#[derive(Default)]
+struct ReaderState {
+    in_flight: Option<Arc<AtomicBool>>,
+    caller_active: bool,
+    timed_out: bool,
+    disconnected: bool,
 }
 
 pub struct BoundedReader<Q, R> {
     requests: SyncSender<Read<Q, R>>,
-    state: AtomicU8,
+    state: Mutex<ReaderState>,
 }
-const READY: u8 = 0;
-const BUSY: u8 = 1;
-const QUARANTINED: u8 = 2;
 
 impl<Q: Send + 'static, R: Send + 'static> BoundedReader<Q, R> {
     pub fn start(mut process: impl FnMut(Q) -> R + Send + 'static) -> std::io::Result<Self> {
         let (requests, queue) = mpsc::sync_channel::<Read<Q, R>>(1);
-        // This worker must not own windows or expose COM interfaces to callers.
-        // The provider creates its MTA interfaces on this thread only.
         std::thread::Builder::new()
             .name("g-switcher-uia-reader".into())
             .spawn(move || {
                 while let Ok(request) = queue.recv() {
                     let result = process(request.input);
+                    // Completion acknowledges provider quiescence only. It
+                    // never grants writable/security authority to the caller.
+                    request.completed.store(true, Ordering::Release);
                     let _ = request.result.try_send(result);
                 }
             })?;
         Ok(Self {
             requests,
-            state: AtomicU8::new(READY),
+            state: Mutex::new(ReaderState::default()),
         })
     }
 
     pub fn request(&self, input: Q, timeout: Duration) -> Option<R> {
         let deadline = Instant::now().checked_add(timeout)?;
-        // Admission and quarantine are one atomic state transition. A caller
-        // cannot observe Ready early and acquire admission after quarantine.
-        if self
-            .state
-            .compare_exchange(READY, BUSY, Ordering::AcqRel, Ordering::Acquire)
-            .is_err()
-        {
-            return None;
-        }
-        struct Busy<'a>(&'a AtomicU8);
-        impl Drop for Busy<'_> {
+        let completed = Arc::new(AtomicBool::new(false));
+        let recovered = {
+            let mut state = self.state.try_lock().ok()?;
+            if state.disconnected || state.caller_active {
+                return None;
+            }
+            if state
+                .in_flight
+                .as_ref()
+                .is_some_and(|old| !old.load(Ordering::Acquire))
+            {
+                return None;
+            }
+            let recovered = state.timed_out;
+            state.timed_out = false;
+            state.in_flight = Some(completed.clone());
+            state.caller_active = true;
+            recovered
+        };
+        struct Caller<'a>(&'a Mutex<ReaderState>);
+        impl Drop for Caller<'_> {
             fn drop(&mut self) {
-                // Late completion/drop must never clear a timeout quarantine.
-                let _ = self
-                    .0
-                    .compare_exchange(BUSY, READY, Ordering::AcqRel, Ordering::Acquire);
+                if let Ok(mut state) = self.0.lock() {
+                    state.caller_active = false;
+                }
             }
         }
-        let _busy = Busy(&self.state);
+        let _caller = Caller(&self.state);
+        if recovered {
+            trace_reader("reader-recovered-fresh-request");
+        }
         let (result, response) = mpsc::sync_channel(1);
-        if self.requests.try_send(Read { input, result }).is_err() {
-            self.state.store(QUARANTINED, Ordering::Release);
+        if self
+            .requests
+            .try_send(Read {
+                input,
+                result,
+                completed,
+            })
+            .is_err()
+        {
+            self.state.lock().ok()?.disconnected = true;
+            trace_reader("reader-disconnected");
             return None;
         }
         loop {
-            // Process only incoming SendMessage calls. Never dispatch posted
-            // runtime work while Engine or native mutation serialization is held.
             pump_sent_messages();
             if Instant::now() >= deadline {
-                self.state.store(QUARANTINED, Ordering::Release);
+                self.state.lock().ok()?.timed_out = true;
+                trace_reader("reader-timeout-awaiting-old-completion");
                 return None;
             }
             match response.try_recv() {
                 Ok(value) => return Some(value),
                 Err(TryRecvError::Disconnected) => {
-                    self.state.store(QUARANTINED, Ordering::Release);
+                    self.state.lock().ok()?.disconnected = true;
+                    trace_reader("reader-disconnected");
                     return None;
                 }
                 Err(TryRecvError::Empty) => std::thread::sleep(Duration::from_millis(1)),
             }
         }
+    }
+}
+
+fn trace_reader(stage: &str) {
+    use std::io::Write;
+    let path = std::env::temp_dir().join("GSwitcher-Word-Runtime.log");
+    let oversized = std::fs::metadata(&path).is_ok_and(|meta| meta.len() > 1_048_576);
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(!oversized)
+        .truncate(oversized)
+        .open(path)
+    {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let _ = writeln!(file, "{now} pid={} stage={stage}", std::process::id());
     }
 }
 
@@ -147,7 +195,16 @@ mod tests {
         );
         assert_eq!(second, None, "a timed-out reader remains quarantined");
         assert_eq!(calls.load(Ordering::SeqCst), 1);
-        assert_eq!(reader.request(44, Duration::from_secs(1)), None);
+        let deadline = Instant::now() + Duration::from_secs(1);
+        loop {
+            if let Some(value) = reader.request(44, Duration::from_millis(100)) {
+                assert_eq!(value, 44);
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 
     #[test]
@@ -310,7 +367,79 @@ mod concurrency_tests {
         *gate.0.lock().unwrap() = true;
         gate.1.notify_all();
         ended_rx.recv_timeout(Duration::from_secs(1)).unwrap();
-        assert_eq!(reader.request(4, Duration::from_secs(1)), None);
-        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        let deadline = Instant::now() + Duration::from_secs(1);
+        loop {
+            if let Some(value) = reader.request(4, Duration::from_millis(100)) {
+                assert_eq!(value, 4);
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+}
+
+#[cfg(test)]
+mod recovery_regression {
+    use super::*;
+    use std::sync::{Arc, Condvar, Mutex};
+    #[test]
+    fn transient_stall_recovers_same_worker_with_fresh_result_only() {
+        let gate = Arc::new((Mutex::new(false), Condvar::new()));
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let worker_gate = gate.clone();
+        let worker_calls = calls.clone();
+        let (started_tx, started_rx) = mpsc::sync_channel(1);
+        let reader = Arc::new(
+            BoundedReader::start(move |value| {
+                if worker_calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                    started_tx.send(std::thread::current().id()).unwrap();
+                    let _guard = worker_gate
+                        .1
+                        .wait_while(worker_gate.0.lock().unwrap(), |ready| !*ready)
+                        .unwrap();
+                }
+                (value, std::thread::current().id())
+            })
+            .unwrap(),
+        );
+        let first_reader = reader.clone();
+        let first = std::thread::spawn(move || first_reader.request(42, Duration::from_millis(30)));
+        let worker_id = started_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(first.join().unwrap(), None);
+        let contenders: Vec<_> = (0..32)
+            .map(|_| {
+                let reader = reader.clone();
+                std::thread::spawn(move || reader.request(77, Duration::from_millis(20)))
+            })
+            .collect();
+        for contender in contenders {
+            assert_eq!(contender.join().unwrap(), None);
+        }
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "no request or replacement while provider is stalled"
+        );
+        *gate.0.lock().unwrap() = true;
+        gate.1.notify_all();
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let fresh = loop {
+            if let Some(value) = reader.request(99, Duration::from_millis(100)) {
+                break value;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "transient delay permanently disabled reader"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        };
+        assert_eq!(
+            fresh,
+            (99, worker_id),
+            "never accept old42, and never create a replacement thread"
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 }

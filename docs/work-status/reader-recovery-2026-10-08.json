@@ -1,0 +1,114 @@
+{
+  "schema": "reader-recovery-report/v1",
+  "source_base": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+  "reported_symptom": "Initially corrected words then stopped in Word; installed runtime cause not independently measured",
+  "confirmed_source_failure_paths": [
+    "One provider deadline permanently disables reader even after provider completes",
+    "Unknown UIA security cache never expires for unchanged focus and generation"
+  ],
+  "behavior": [
+    "Refuse while exact provider call unfinished; never create replacement thread",
+    "Discard late result; after completion permit fresh request on same worker",
+    "Retry unknown security result after one-second cooldown; unknown never grants permission",
+    "Preserve existing focus, protected-field, evolving-text, one-Undo and uncertain-mutation checks"
+  ],
+  "tests": [
+    "Exact delivered reader plus recovery regression must fail with permanent-disable assertion before applying fix",
+    "Same-thread recovery and stalled-concurrency regression",
+    "Actual runtime negative-cache cooldown and known-security policy tests in WindowsCI"
+  ],
+  "installed_word_acceptance": "pending",
+  "hard_native_com_timeout": false,
+  "public_promotion_authorized": false,
+  "scheduler_paused": true,
+  "managed_validation": [
+    {
+      "label": "format",
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "src/windows_runtime/read_worker.rs",
+        "src/windows_runtime_v201.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.064
+    },
+    {
+      "label": "reader-compile",
+      "argv": [
+        "rustc",
+        "--edition",
+        "2021",
+        "--test",
+        "src/windows_runtime/read_worker.rs",
+        "-o",
+        "/home/runner/work/_temp/g-switcher-word-build-a7l_yqmk/read-worker-tests"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.365
+    },
+    {
+      "label": "reader-tests",
+      "argv": [
+        "/home/runner/work/_temp/g-switcher-word-build-a7l_yqmk/read-worker-tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.265
+    },
+    {
+      "label": "portable-cargo-library-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 57.374
+    },
+    {
+      "label": "windows-typed-compile",
+      "argv": [
+        "cargo",
+        "check",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 15.486
+    },
+    {
+      "label": "windows-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.281
+    },
+    {
+      "label": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.008
+    }
+  ],
+  "installed_word_latency_measured": false
+}
