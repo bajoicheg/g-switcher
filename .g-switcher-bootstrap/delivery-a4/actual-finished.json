@@ -1,0 +1,31 @@
+{
+  "attempt_id": "word-bootstrap-37802770888-1-a1",
+  "changed_paths": null,
+  "current_lease_revision": "5b50bd4b92062b6d2df4a08415f3dc2c39ca5a99",
+  "final_response_allowed": true,
+  "generation": 34,
+  "handle_id": "ab867a33-16b8-5357-87cc-0d90f5bc75d3",
+  "invocation_id": "managed-terminal:9f29b4ca087314ad4ee555d3bc9d4c1b9ba233b783f128c987e2647fa9f9462d",
+  "lease_revision": "5b50bd4b92062b6d2df4a08415f3dc2c39ca5a99",
+  "owner_id": "bd4c2893-e53d-4bc6-967e-e6c096a6e045",
+  "publication_ref": "refs/heads/cdc/managed-host-publish-ab867a3316b8535787cc0d90f5bc75d3",
+  "published_commit": null,
+  "release_receipt": {
+    "lease_revision": "5b50bd4b92062b6d2df4a08415f3dc2c39ca5a99",
+    "release": {
+      "at_utc": "2026-10-08T15:47:22.545199Z",
+      "checkpoint_ref": "git:a294b569e06531aa82f78383e57073945bfe4255:document.json",
+      "completion_reason": "scope_complete",
+      "external_reconciliation": "none",
+      "generation": 34,
+      "invocation_id": "managed-terminal:9f29b4ca087314ad4ee555d3bc9d4c1b9ba233b783f128c987e2647fa9f9462d",
+      "owner_id": "bd4c2893-e53d-4bc6-967e-e6c096a6e045"
+    },
+    "schema": "execution-release-receipt/v1"
+  },
+  "schema": "managed-host-handle/v1",
+  "scope_complete": true,
+  "state": "released",
+  "task_id": "recover-word-diagnostic",
+  "worker_status": "succeeded"
+}

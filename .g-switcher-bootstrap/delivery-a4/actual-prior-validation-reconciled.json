@@ -1,0 +1,7 @@
+{
+  "claim_resolved": true,
+  "evidence_reference": "git:743a57919ee030879962aa695af27590ac24dc33:document.json",
+  "lease_revision": "f47da860f5fa761eb78593ef036d9edd7436813f",
+  "prior_candidate_loaded": false,
+  "terminal_setup_failure": true
+}

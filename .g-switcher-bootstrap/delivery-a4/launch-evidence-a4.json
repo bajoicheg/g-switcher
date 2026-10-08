@@ -1,0 +1,11 @@
+{
+  "schema": "word-bootstrap-actual-launch/v1",
+  "trigger_head": "0ac256edf5ec00b098f7e2cca8992c512405c8fb",
+  "prepared_head": "4d2cb0ff6ac82256d564acfec57a7d12632267d4",
+  "admission_commit": "735fe494cfba5445be9605090fbcd11f5c83d01b",
+  "windows_head": "ff2aeaf76a98df223905b865f39c274c7a12da2e",
+  "prior_release_revision": "dba89c32f9ac2114dfc5bb20cf0a96f0a23fd2f8",
+  "ordered_reviews": "SPEC then QUALITY PASS",
+  "conditional_trigger": true,
+  "fresh_exact_readbacks": true
+}
