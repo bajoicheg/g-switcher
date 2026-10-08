@@ -73,3 +73,15 @@ Before spawning, reserve an `agent_start` in the durable budget ledger and check
 - Allowing several writers to race on one branch/worktree.
 - Treating a subagent's statement of success as final evidence.
 - Treating a compute-only Codex run as permission for Codex to fix the code.
+
+## Bounded parallel operating recipe
+
+In Work/Codex, prefer two independent writing tasks when delegation and integration overhead are justified. An optional third read-only analyst may overlap only when the existing project parallel-slot and start caps permit it. If the cap is two, queue the analyst or let the integrator perform that analysis. Do not raise limits automatically or split trivial edits merely to fill slots.
+
+Before each launch, reserve and durably read back the budget entry, then win the exact queued→running durable pool CAS. Pin each writer to the same observed base commit and its own branch/worktree. Give each worker only the task goal, relevant instructions, exact write paths, dependencies, acceptance criteria and evidence obligations. Stabilize shared interfaces first; serialize overlapping or dependent writes. Root is the single integrator.
+
+Workers run focused behavioral RED/GREEN and related regressions and return their scoped commit, changed paths, logs and unresolved findings. The integrator verifies the entire introduced history against the write claim, accepts results and freezes one aggregate package. Before an expensive FULL run, check bootstrap/candidate bindings, the package validator and the focused package-metadata regressions so version/heading mismatches fail cheaply. Run one aggregate FULL suite per required environment on that frozen package; the clean consumer-layout check and mandatory final CI remain distinct required gates. Read-only analysis/review can overlap existing checks without changing their inputs. A changed candidate or environment invalidates only evidence whose recorded dependency/command/parameter/environment/check-definition coverage changed. Fresh ownership/source observations are always action-bound.
+
+Use the existing validation-cycle contract before a repeat: record changed inputs, concrete risk and why previous evidence is insufficient. Do not rerun the unchanged full suite separately for each worker. Preserve required bootstrap, fault/compatibility, archived-consumer, ordered review and platform/release gates. CDC core and executor authority still require FULL.
+
+In the existing checkpoint, record actual task start/finish and acceptance times, dependency/provider waits, validation cycle IDs/repeat reasons and integration rework. Keep unavailable token/cost measurements null. Sum of worker durations is consumption, not elapsed wall time. A single parallel run establishes that tasks overlapped; claim speedup only from a comparable observed sequential baseline.

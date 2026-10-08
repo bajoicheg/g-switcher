@@ -21,7 +21,8 @@ def _inputs(data):
     if not isinstance(deps,dict) or not deps:raise ValueError('dependency coverage must not be empty')
     for key,value in deps.items():text(key,'dependency id');_hash(value,DIGEST,'dependency fingerprint')
     if not isinstance(data['argv'],list) or not data['argv']:raise ValueError('argv required')
-    for arg in data['argv']:text(arg,'argv item')
+    for arg in data['argv']:
+        if not isinstance(arg,str):raise ValueError('argv item must be string')
     if not isinstance(data['parameters'],dict):raise ValueError('parameters must be object')
     _hash(data['environment_fingerprint'],DIGEST,'environment_fingerprint')
     _hash(data['check_definition_fingerprint'],DIGEST,'check_definition_fingerprint')

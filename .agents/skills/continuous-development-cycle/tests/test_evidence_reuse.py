@@ -20,6 +20,40 @@ class ReuseTests(unittest.TestCase):
         r=reuse.evaluate(evidence());self.assertTrue(r['reusable'])
         self.assertEqual(r['source_candidate_sha'],'1'*40);self.assertEqual(r['target_candidate_sha'],'2'*40)
         self.assertFalse(r['authorizes_release'])
+    def test_empty_and_whitespace_arguments_allow_reuse_without_normalization(self):
+        for argv in [[''],[' \t\n'],['python','test.py','',' \t\n',' value ']]:
+            with self.subTest(argv=argv):
+                d=evidence()
+                d['original_inputs']['argv']=list(argv);d['current_inputs']['argv']=list(argv)
+                before=copy.deepcopy(d)
+                try:r=reuse.evaluate(d)
+                except ValueError as exc:self.fail('valid string argv rejected: '+str(exc))
+                self.assertTrue(r['reusable']);self.assertEqual(r['blockers'],[])
+                self.assertEqual(d,before)
+                self.assertEqual(r['source_evidence_ref'],'git:original-run')
+                for key in ['authorizes_product_write','authorizes_release','authorizes_external_start']:
+                    self.assertFalse(r[key])
+    def test_empty_and_whitespace_argument_changes_invalidate_reuse(self):
+        for original,current in [('', ' '),(' ', ''),(' \t', '\t '),(' value ','value')]:
+            with self.subTest(original=original,current=current):
+                d=evidence()
+                d['original_inputs']['argv']=['python','test.py',original]
+                d['current_inputs']['argv']=['python','test.py',current]
+                try:r=reuse.evaluate(d)
+                except ValueError as exc:self.fail('valid string argv rejected: '+str(exc))
+                self.assertFalse(r['reusable']);self.assertEqual(r['blockers'],['inputs_changed:argv'])
+    def test_nonstring_arguments_rejected_in_original_or_current_inputs(self):
+        for key in ['original_inputs','current_inputs']:
+            for arg in [None,False,0,1.5,[],{}]:
+                with self.subTest(inputs=key,arg=arg):
+                    d=evidence();d[key]['argv']=['python',arg]
+                    with self.assertRaises(ValueError):reuse.evaluate(d)
+    def test_argv_must_be_nonempty_list_in_original_or_current_inputs(self):
+        for key in ['original_inputs','current_inputs']:
+            for argv in [[],None,'python',('python',),{}]:
+                with self.subTest(inputs=key,argv=argv):
+                    d=evidence();d[key]['argv']=argv
+                    with self.assertRaises(ValueError):reuse.evaluate(d)
     def test_changed_dependency_parameters_environment_or_command_invalidates(self):
         for key,value in [('dependency_fingerprints',{'src/a.py':'d'*64}),('parameters',{'x':1}),
                           ('environment_fingerprint','e'*64),('argv',['test.py','python']),

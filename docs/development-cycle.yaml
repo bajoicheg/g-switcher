@@ -1,7 +1,7 @@
 schema: continuous-development-cycle/v3
 policy:
-  revision: 2026-10-07-cdc-2.12.0-atomic-adoption
-  skill_min_version: 2.12.0
+  revision: 2026-10-08-cdc-2.12.1-atomic-adoption
+  skill_min_version: 2.12.1
   skill_max_version_exclusive: 3.0.0
   approved_exceptions: []
 repository:
@@ -216,8 +216,8 @@ fleet:
   merge_authority: false
   assessment_max_age_seconds: 900
 convergence:
-  target_version: 2.12.0
-  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/540d42b5a8b06b11d7aeae78585cffbff99da231/src/continuous-development-cycle
+  target_version: 2.12.1
+  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/9b38bd4d9f5fb113ec10bdbca9fbe33908619a54/src/continuous-development-cycle
   exact_package_fingerprint_required: true
   safe_boundary_required: true
 progress_slo:

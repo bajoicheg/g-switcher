@@ -1,5 +1,6 @@
 from pathlib import Path
 import copy
+import json
 import tempfile
 import sys
 import unittest
@@ -7,6 +8,13 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from package_transport import validate_manifest,verify_binding,verify_directory
 MANIFEST={"schema":"cdc-package-transport/v1","version":"2.9.0","canonical_repository":"owner/canonical-cdc","release_ref":"refs/heads/release/v2.9.0","release_commit":"0"*40,"package_tree":"6da82272e42dff9c7690322363d8a254f6300398","hash_algorithm":"git-sha1","entries":[{"path":"VERSION","mode":"100644","blob_sha1":"c8e38b614057b7e417c63fde44726a4143de9da0","size":6}]}
 class T(unittest.TestCase):
+ def test_template_verifies_its_declared_version_bytes(self):
+  template=Path(__file__).resolve().parents[1]/"templates"/"package-transport.json"
+  manifest=json.loads(template.read_text(encoding="utf-8"))
+  with tempfile.TemporaryDirectory() as d:
+   Path(d,"VERSION").write_bytes((manifest["version"]+"\n").encode("utf-8"))
+   result=verify_directory(manifest,d)
+   self.assertTrue(result["content_verified"],result)
  def test_manifest_reconstructs_exact_git_tree(self):validate_manifest(copy.deepcopy(MANIFEST))
  def test_binding_is_independent_of_carrier(self):self.assertTrue(verify_binding(copy.deepcopy(MANIFEST),version="2.9.0",release_commit="0"*40,package_tree=MANIFEST["package_tree"]))
  def test_wrong_trusted_tree_is_rejected(self):

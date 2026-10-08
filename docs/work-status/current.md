@@ -2,8 +2,8 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-07-cdc-2.12.0-atomic-adoption
-policy_digest: c9a9443f599285a5d66f8b68d1b5478bc5d350e86d8834363ec3b4af6b6313f4
+policy_revision: 2026-10-08-cdc-2.12.1-atomic-adoption
+policy_digest: 4d5cfce31717243266089b4c5d1ea052d965c3db96712902a8b5c9c97b061692
 observed_at_utc: '2026-10-07T16:08:08.676006Z'
 orchestration_origin: chat
 active_executor: none
@@ -48,6 +48,11 @@ execution_continuity:
   completion_gate: continue
   last_progress_ref: docs/cdc-adoption-2.12.0.md
 ---
+
+## CDC 2.12.1 atomic process adoption
+
+Canonical release 9b38bd4d9f5fb113ec10bdbca9fbe33908619a54, exact352-file package 9c45d98c3254e9658d452c505d8c97698e3fc9a7; separately pinned evidence9dece125d09956d4546721bceb9142856bf786d3:release/evidence-2.12.1.json. FULL migration retains original product exact-SHA/platform proofs and all blockers. Canonical required CI37737459242/job113180161046 validates this identical package, not this consumer root; no new product or full1121 run is claimed. Frontmatter preserves the last observed product state with only reconciled policy revision/digest changed. Actual adoption publication/release receipts are external coordination facts, not future assertions. Schedulers remain paused.
+
 ## CDC 2.12.0 process-only adoption — managed atomic publication
 
 This branch now binds canonical CDC **2.12.0** at `refs/heads/release/v2.12.0`, release commit `540d42b5a8b06b11d7aeae78585cffbff99da231`, package tree `247facf39eadf073883c5f1fe3b4a291278da7f8`. The migration was assembled detached and is published only after exact package/policy/checkpoint/provenance validation. Product gates and scheduler state are unchanged.

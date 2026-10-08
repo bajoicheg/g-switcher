@@ -3,7 +3,7 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v2.12.0
+# Continuous Development Cycle v2.12.1
 
 ## Active execution contract — apply before recovery detail
 
@@ -33,7 +33,7 @@ For watchdog/status/resume work, build the **six-signal health vector** from fre
 - **Codex used as the orchestration environment:** same delegation permission as Work.
 - **Unknown origin:** no subagents. Watchdogs inherit their actual runtime.
 
-Use adaptive **minimum sufficient effort**, one integrator and isolated/non-overlapping writers; honor configured agent budgets. Read `references/runtime-routing-and-subagents.md` when delegating. A delegated Codex `COMPUTE_ONLY` worker only verifies supplied exact-SHA commands; it cannot edit, commit, push, merge or close tasks. Unavailable delegation means sequential work.
+Use adaptive **minimum sufficient effort**, one integrator and isolated/non-overlapping writers; honor configured agent budgets. Read `references/runtime-routing-and-subagents.md` when delegating; use its bounded parallel operating recipe with two independent writers by preference, an optional analyst within existing caps, one integrator and aggregate validation. A delegated Codex `COMPUTE_ONLY` worker only verifies supplied exact-SHA commands; it cannot edit, commit, push, merge or close tasks. Unavailable delegation means sequential work.
 
 ## Recover with a compact probe
 
@@ -388,3 +388,4 @@ Use the explicit project quality policy and risk assessment before selecting che
 Reuse verified test results while dependencies, command, parameters, check definition and relevant environment are unchanged and independently justified coverage is recorded. Preserve the original candidate SHA and evidence reference. Use evidence-reuse/v1, verification-gate/v2 and branch-finish/v2 explicitly; v1 exact-SHA semantics remain unchanged. Fresh source/ownership observations are not reusable test results. Report-only edits do not invalidate unrelated product evidence. A released package adoption needs exact installation/compatibility evidence, not an automatic rerun of its unchanged full package suite.
 
 Before repeated validation use validation-cycle/v1 through quality_levels.py. A repeat needs changed inputs, concrete risk and why the prior proof is insufficient. Default budget permits two cycles; exceeding it requires a revised strategy. Budget exhaustion never grants a waiver or resets historical usage. Carry time/token/start observations and unknown metrics honestly. See references/quality-levels.md.
+
