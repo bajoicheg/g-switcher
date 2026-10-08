@@ -1,0 +1,556 @@
+{
+  "schema": "word-refusal-blocked-handoff/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "prepared_worker_sha256": "04a9e38ec5ed9f4e3ccec1425a41303b06639b0280340c2bdef7eae987e70ee5",
+  "prepared_branch": "cdc/word-refusal-diagnostic-20261008-04a9e38e",
+  "exact_run": {
+    "id": 37783419838,
+    "head_sha": "8f548515ec2cd57a2ed99160978ba975c9e52fd7",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-08T13:19:15Z",
+    "updated_at": "2026-10-08T13:21:58Z"
+  },
+  "candidate_result": {
+    "source_base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+    "result_commit": "3407a2d0570b88864fd265de61a8761999995380",
+    "changed_paths": [
+      "src/windows_runtime/word_native.rs",
+      "docs/work-status/word-refusal-diagnostics-2026-10-08.json"
+    ],
+    "checks": [
+      {
+        "label": "format",
+        "argv": [
+          "rustfmt",
+          "--edition",
+          "2021",
+          "--config",
+          "skip_children=true",
+          "src/windows_runtime/word_native.rs"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.064
+      },
+      {
+        "label": "portable-cargo-library-tests",
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--lib"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 54.873
+      },
+      {
+        "label": "windows-typed-compile",
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 16.13
+      },
+      {
+        "label": "windows-clippy",
+        "argv": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 3.482
+      },
+      {
+        "label": "whitespace",
+        "argv": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.008
+      }
+    ],
+    "rca_report_sha256": "36921c9535be3f4a9b31c97da68f125ac25469c0543dc678dc831ae7ddb4c758",
+    "task_scope_complete": true,
+    "full_product_word_verdict": false,
+    "output_ref": "out:word-native-product-candidate",
+    "evidence_ref": "evidence:pinned-payload-and-worker-checks"
+  },
+  "managed_checks_passed": 5,
+  "windows_ci": "skipped because publication rejected",
+  "new_exe_built": false,
+  "new_exe_delivered": false,
+  "functional_repair_claim": false,
+  "observation": {
+    "run": {
+      "id": 37783419838,
+      "head_sha": "8f548515ec2cd57a2ed99160978ba975c9e52fd7",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-08T13:19:15Z",
+      "updated_at": "2026-10-08T13:21:58Z"
+    },
+    "source": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+    "lease": {
+      "acquired_at_utc": "2026-10-08T13:19:49.937561Z",
+      "activity_refs": [
+        "managed-host:finish-admission:/home/runner/work/_temp/cdc-word-native-37783419838-1/handles/gates/eef54c38-4ecb-5248-873f-80618b1d658c/finish-admission-25350dc0-f121-46ea-b34c-823b7127a906.json:sha256:cf1baa300ebd36bc919dea4978bbe7b49ceb575c36d366bf500d60803bc833fc"
+      ],
+      "expires_at_utc": "2026-10-08T13:41:32.189851Z",
+      "external_guard": null,
+      "finalization": {
+        "checkpoint_ref": null,
+        "completion_reason": null,
+        "external_reconciliation": "pending",
+        "failure": null,
+        "pending_shared_writes": false,
+        "state": "active",
+        "updated_at_utc": "2026-10-08T13:19:49.937561Z"
+      },
+      "generation": 31,
+      "heartbeat_at_utc": "2026-10-08T13:21:32.189851Z",
+      "invocation": {
+        "automation_id": null,
+        "conversation_id": null,
+        "execution_surface": "managed",
+        "invocation_id": "managed-terminal:1357602ce612f10f0b63b51ae19c7445687c092a4c5e5306e5f5a46c2a2a95db",
+        "started_at_utc": "2026-10-08T13:19:48.989541Z"
+      },
+      "last_release": {
+        "at_utc": "2026-10-08T12:26:12.380252Z",
+        "checkpoint_ref": "git:refs/heads/release/2.0.1@10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+        "completion_reason": "scope_complete",
+        "external_reconciliation": "none",
+        "generation": 30,
+        "invocation_id": "managed-terminal:fe97675607d573a7fefebf64b68188646fc5c8aab318ffcd23f03e1f91e332d8",
+        "owner_id": "3e830fd3-e862-48d4-8b84-60e726d05717"
+      },
+      "last_terminal": {
+        "at_utc": "2026-10-08T10:22:55.698783Z",
+        "evidence_reference": "git:7ce47b9855d829c0216b35b6b69433718af03aa9:document.json",
+        "intent_digest": "sha256:95d16de96dc2217e5cbe31f2e90ee077c75cadc502fa1af6bcadf5b22611a0c2",
+        "intent_reference": "git:abe1aa21648211ab6156f1e2e89c1fe32beab90f:document.json",
+        "observation": {
+          "lookup_complete": true,
+          "observed_at_utc": "2026-10-08T10:22:52.732434Z",
+          "operation_key": "sha256:1294880613c2467886f9df07a0c82678b65e8ff4324f68e5fc0e00a585f9a8f8",
+          "schema": "operation-observation/v1",
+          "tasks": [
+            {
+              "attempt_id": "adopt2121-switcher-a1-live-a1",
+              "binding": {
+                "backend": "native_git",
+                "candidate_sha": "53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+                "check_plan_digest": "sha256:1d312571b246be1a3c242eed51c1a2619971e76c06899d4bf24d5309c77e2495",
+                "check_suite_fingerprint": "sha256:77202b6786270831c9dc84db5b530966c062c3a180a3cc0c3e6bdcc525f9df1b",
+                "environment_fingerprint": "sha256:819a2ab292389b45fd2389ac35d8d49cb7aaf2eb82aff458263c09b499e05a8f",
+                "environment_id": "cloud-continuation-a1",
+                "mode": "ATOMIC_CONSUMER_ADOPTION",
+                "repository": "bajoicheg/g-switcher"
+              },
+              "conclusion": "succeeded",
+              "evidence_refs": [
+                "git:7ce47b9855d829c0216b35b6b69433718af03aa9:document.json"
+              ],
+              "operation_key": "sha256:1294880613c2467886f9df07a0c82678b65e8ff4324f68e5fc0e00a585f9a8f8",
+              "state": "terminal",
+              "task_id": "53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+              "task_url": "https://github.com/bajoicheg/g-switcher/tree/53d3d5cc9597f480d5f7760a2b8af66ccc640ec4"
+            }
+          ]
+        },
+        "operation_key": "sha256:1294880613c2467886f9df07a0c82678b65e8ff4324f68e5fc0e00a585f9a8f8"
+      },
+      "legacy_migration": null,
+      "owner_id": "3c7f5381-2337-43bc-8f63-b641919be891",
+      "repository": "bajoicheg/g-switcher",
+      "schema": "execution-lease/v2",
+      "source_ref": "refs/heads/release/2.0.1",
+      "submission_claims": [
+        {
+          "attempt_id": "adopt2121-switcher-a1-review-publication",
+          "claimed_at_utc": "2026-10-08T09:34:03.219364Z",
+          "generation": 27,
+          "grant_id": "f0737935-bf67-4f40-8b59-dba48589fbe3",
+          "intent_digest": "sha256:2b35d074c6e108d099718d1547339448de1ec88dca42ba5df8100fd8c3ef53a7",
+          "operation_key": "sha256:3410a9543d7d2e49d07f8502e320e03cd6b174edb269009028a3b896cdfd3cdd",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44"
+        },
+        {
+          "attempt_id": "adopt2121-switcher-a1-review-proof-publication",
+          "claimed_at_utc": "2026-10-08T09:42:44.637120Z",
+          "generation": 27,
+          "grant_id": "41af38a3-6568-4a87-a8bf-ed06efd5e305",
+          "intent_digest": "sha256:283798a55fa1e22948884718a0204f2a646400f0f9bc669650b0acad014473e8",
+          "operation_key": "sha256:417b25b5e6bebda15f50ec9cfa3f1b6c7e52b073b53e3350c8e2bc006b4c9de8",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44"
+        },
+        {
+          "attempt_id": "adopt2121-switcher-a1-live-a1",
+          "claimed_at_utc": "2026-10-08T10:22:08.544596Z",
+          "generation": 27,
+          "grant_id": "d88274f1-7338-4e0d-b7da-e3f79f618c2d",
+          "intent_digest": "sha256:95d16de96dc2217e5cbe31f2e90ee077c75cadc502fa1af6bcadf5b22611a0c2",
+          "operation_key": "sha256:1294880613c2467886f9df07a0c82678b65e8ff4324f68e5fc0e00a585f9a8f8",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44"
+        }
+      ],
+      "submission_resolutions": [
+        {
+          "attempt_id": "adopt2121-switcher-a1-review-publication",
+          "evidence_reference": "git:53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+          "generation": 27,
+          "grant_id": "f0737935-bf67-4f40-8b59-dba48589fbe3",
+          "intent_digest": "sha256:2b35d074c6e108d099718d1547339448de1ec88dca42ba5df8100fd8c3ef53a7",
+          "observation_digest": "sha256:f00c0ce93c4be6014cdaeb0f3acd574f41d2171fb2895a9b25ec361037e570e5",
+          "operation_key": "sha256:3410a9543d7d2e49d07f8502e320e03cd6b174edb269009028a3b896cdfd3cdd",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44",
+          "resolved_at_utc": "2026-10-08T09:34:18.651917Z"
+        },
+        {
+          "attempt_id": "adopt2121-switcher-a1-review-proof-publication",
+          "evidence_reference": "git:c32d68dfa230336c5f22a33d8a2eb3e5547e06e6",
+          "generation": 27,
+          "grant_id": "41af38a3-6568-4a87-a8bf-ed06efd5e305",
+          "intent_digest": "sha256:283798a55fa1e22948884718a0204f2a646400f0f9bc669650b0acad014473e8",
+          "observation_digest": "sha256:729f49838a748ec33996cefd58ec7d3656c676fdffdf9aacbc50030be620dd97",
+          "operation_key": "sha256:417b25b5e6bebda15f50ec9cfa3f1b6c7e52b073b53e3350c8e2bc006b4c9de8",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44",
+          "resolved_at_utc": "2026-10-08T09:42:59.636516Z"
+        },
+        {
+          "attempt_id": "adopt2121-switcher-a1-live-a1",
+          "evidence_reference": "git:7ce47b9855d829c0216b35b6b69433718af03aa9:document.json",
+          "generation": 27,
+          "grant_id": "d88274f1-7338-4e0d-b7da-e3f79f618c2d",
+          "intent_digest": "sha256:95d16de96dc2217e5cbe31f2e90ee077c75cadc502fa1af6bcadf5b22611a0c2",
+          "observation_digest": "sha256:97d2ca9670ec8d33e7363328c2e08b2a192b7be59f4097239cd419ba02f7b696",
+          "operation_key": "sha256:1294880613c2467886f9df07a0c82678b65e8ff4324f68e5fc0e00a585f9a8f8",
+          "owner_id": "d77e5bfa-2750-4e44-8e9a-2a4c884c0e44",
+          "resolved_at_utc": "2026-10-08T10:22:55.698783Z"
+        }
+      ],
+      "takeover_evidence": null
+    },
+    "publication": {
+      "attempt_store_ref": "refs/heads/cdc/managed-host-publish-eef54c384ecb5248873f80618b1d658c",
+      "attempts": {
+        "sha256:7709e357e72fc251281692f140ab79b8bff206d1898928f3c7a8f7115613ed80": {
+          "attempt_id": "publication-attempt-4380dda069d55171bd49ded8ebf3f7c5e8eeedfdbe9f02d2",
+          "intended_integrated_head": "3407a2d0570b88864fd265de61a8761999995380",
+          "lane_id": "word-refusal-diagnostics",
+          "observed_shared_head": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+          "operation_id": "sha256:7709e357e72fc251281692f140ab79b8bff206d1898928f3c7a8f7115613ed80",
+          "prepared_at_utc": "2026-10-08T13:21:36.047108Z",
+          "remote_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
+          "resolved_at_utc": "2026-10-08T13:21:44.754145Z",
+          "result_commit": "3407a2d0570b88864fd265de61a8761999995380",
+          "shared_ref": "refs/heads/release/2.0.1",
+          "status": "rejected",
+          "submitted_at_utc": "2026-10-08T13:21:39.651273Z"
+        }
+      },
+      "remote_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
+      "schema": "project-lane-publication-attempts/v1",
+      "shared_ref": "refs/heads/release/2.0.1"
+    },
+    "branch_rules_access": "403 Resource not accessible by integration",
+    "candidate_object_lookup": "404 Git commit3407a2d0570b88864fd265de61a8761999995380 unavailable via GitHub API",
+    "artifact_sha256": "627b2e11482720a22bd8b5812d969d55687b7e14df7e450509a176e0456ff109"
+  },
+  "immutable_managed_artifact": {
+    "id": 11552529665,
+    "sha256": "627b2e11482720a22bd8b5812d969d55687b7e14df7e450509a176e0456ff109",
+    "url": "https://github.com/bajoicheg/g-switcher/actions/runs/37783419838/artifacts/11552529665"
+  },
+  "review_pipeline": {
+    "schema": "review-pipeline/v2",
+    "change_id": "word-refusal-diagnostics-04a9e38e",
+    "implementer_ref": "executor:/root",
+    "assessment": {
+      "schema": "quality-assessment/v1",
+      "project_level": "FULL",
+      "risk_level": "MEDIUM",
+      "risk_categories": [
+        "ordinary_feature"
+      ],
+      "risk_reason": "Stage-only NativeOM failure/pending-call diagnostics; single observer holds plain state and no COM or mutation authority",
+      "mandatory_check_ids": [
+        "windows-ci"
+      ]
+    },
+    "self_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": []
+    },
+    "combined_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": [],
+      "covers": []
+    },
+    "spec_compliance": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "evidence_refs": [
+        "report:requirements-review.md@sha256:330ec5ea96e8c3b608908e5cc952803511d7fdb30f6ce7b6e043375547bc10ef"
+      ],
+      "findings": []
+    },
+    "code_quality": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_quality",
+      "sequence": 2,
+      "evidence_refs": [
+        "report:quality-review.md@sha256:31c46ffb47055cc15631e8e2770ede980089bf1a0670d413427b84d1dd8b957a"
+      ],
+      "findings": []
+    }
+  },
+  "review_result": {
+    "schema": "review-pipeline-result/v2",
+    "change_id": "word-refusal-diagnostics-04a9e38e",
+    "effective_level": "FULL",
+    "review_green": true,
+    "blockers": [],
+    "action": "REVIEW_GREEN",
+    "authorizes_product_write": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_scope_expansion": false
+  },
+  "review_reports": {
+    "requirements-review.md": "# Native Word refusal/pending-call diagnostics: requirements review\n\n## Verdict\n\n**PASS for this diagnostic-only source change; no blocking requirements finding.** It provides evidence for the next guarded refusal or stuck native boundary; it is not a correction or proof of Word/Chrome responsiveness.\n\n| Artifact | SHA-256 |\n| --- | --- |\n| `original/word_native.rs` (parent reports exact base 10b7e90) | `a418bc306f52344bfb320185b0415b8a367fcaa277cf1e338c1aab294897db67` |\n| `work/word_native.rs` | `c9cd93e8eebc315be751e25c64dfc0ef2cbe0f91341ffee6bd2e12253c832f9a` |\n| Installed log `upload/GSwitcher-Word-Runtime.log` | `940fdbed35d3c39abc283136dee62f0e68c41c4a8576fe458a670d1e49524ab8` |\n\nRead-only comparison and log inspection. No product edit, execution, test, commit, launch or remote mutation performed. Only this report written.\n\n## Diagnostic requirements assessment\n\nGuard predicates and OR short-circuit order remain unchanged. The `checked` helper receives the original Option result, logs only None and returns the same result. Existing before/after/evolving range, selection, focus, generation, document/protection, custom Undo and per-character mutation operations remain in the same order. The uncertain latch is still set before StartCustomRecord and cleared only after successful final complete-state checks. Failures retain it; added refuse-uncertain-mutation labels expose that continued refusal without changing ownership or retry policy.\n\nNativeCallTrace surrounds NativeOM acquisition and dispatch invocation, with plain name/kind/phase/Instant state. The once-started independent watcher owns no COM interfaces, text or result values; it neither invokes native APIs nor clears latch/cancels/retries/writes. It checks at one-second intervals, reports only calls aged at least one second and rate-limits reports to five seconds. It formats the pending stage while inspecting state, then writes the log after releasing the mutex. The native phase transitions identify pump, lookup, invoke and acquisition. No new provider/UI/file-I/O work occurs while ACTIVE_CALL is locked, and the watcher uses try_lock so it cannot retain a native-call lock while waiting for the provider.\n\nInvoke/GetIDsOfNames failures log only fixed dispatch-member names, operation kind and numeric HRESULT. No EXCEPINFO, exception text, COM argument values, document names or user text are requested or logged. Added native-return-type labels log expected type names rather than values. Existing capped TEMP log behavior remains. New diagnostic allocation/lock/file writes add observability overhead; they do not establish a hard timeout or preserve absolute timing.\n\n## What the installed log proves\n\nThe supplied log contains 225 lines. Final PID13868 operation reaches custom-undo-started, five character-write attempt markers, an attempted custom-undo-end marker and operation-refused. Write/end markers occur before their calls and do not prove completion. In the exact original code, success can only return Some after final complete-state checks and clearing UNCERTAIN_MUTATION. Thus the refusal after a started record retains the latch. The old trace does not identify which inner proof failed or whether EndCustomRecord itself succeeded. The candidate adds evolving/full-text mismatch, selection/caret, focus/generation/binding, Undo-end/HRESULT and retained-latch labels to narrow that event.\n\nThe log ends at the parent-provided 15:59 MSK boundary and does not establish the later post-restart hang or Chrome minute-delay cause. No inference that the old record explains those new episodes is justified.\n\n## Coverage and acceptance limits\n\nPending watcher reports cover native acquisition, lookup, Invoke and scoped context/cache release, CoUninitialize and final STA pump, including a blocked call while its owner thread cannot emit another log. Fresh UIA/security-reader waiting is outside ACTIVE_CALL and is covered only by existing reader timeout/recovery logs plus surrounding native context stage. Some planner/range pure-value refusal branches remain unlabeled internally; enclosing checked/refusal labels locate the guarded region but may not uniquely identify the exact condition. Therefore the change is sufficient to obtain materially more precise evidence, not guaranteed to diagnose every possible future refusal automatically. NativeCallTrace singleton assumes existing serialized native execution; it creates no new mutation authority.\n\nNo new test was executed/planned for this reversible observability change. Existing full Windows compilation/CI remains mandatory before delivery. Actual installed diagnostics must capture the next refusal or delayed boundary, and actual Word acceptance is still pending. No fix, speed or hang-resolution claim is made.\n\n## Final targeted diagnostic coverage re-review\n\n**PASS for final source SHA-256 `c9cd93e8eebc315be751e25c64dfc0ef2cbe0f91341ffee6bd2e12253c832f9a`.** Added labels for existing selection story/document-identity refusal and native range bounds/story refusal leave their predicates and return behavior unchanged. Scoped NativeCallTrace guards now cover explicit context release, dispatch cache release, CoUninitialize and final STA pump, so a teardown stall after operation-complete/refused can be observed independently. Cleanup ordering and native ownership remain unchanged; no cancellation, gate relaxation or uncertain-latch change is introduced. Static review only. Installed log interpretation is limited to five write attempts and attempted Undo end, not proven operation completion. Full Windows CI remains required; no product fix claim.\n",
+    "quality-review.md": "# Native Word diagnostics independent quality review\n\n**PASS for exact diagnostic-only source and pipeline review; no concrete blocker found.**\n\n| Artifact relative to word-refusal-task | SHA-256 |\n| --- | --- |\n| `original/word_native.rs` | `a418bc306f52344bfb320185b0415b8a367fcaa277cf1e338c1aab294897db67` |\n| `work/word_native.rs` | `c9cd93e8eebc315be751e25c64dfc0ef2cbe0f91341ffee6bd2e12253c832f9a` |\n| `worker.py` | `04a9e38ec5ed9f4e3ccec1425a41303b06639b0280340c2bdef7eae987e70ee5` |\n| `transfer.json` | `103a37c4a3c12c655d303a23bbd145951a8a0387494e9435ae89302a6355fe78` |\n\nCompared original native adapter at pinned base `10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3` against final proposed bytes following requirements PASS. Guard predicates, short-circuit order, native calls, range/selection/document/protection checks and custom Undo ownership are unchanged. checked returns the same Option it receives; logs are added on refusal rather than permission. The uncertainty latch remains set before custom-record submission and is cleared only after final successful proofs; no retry, cancellation, detached writer or latch-clear shortcut appears.\n\nThe independent watcher owns only fixed member/stage labels, operation kind and Instant state. It neither holds interfaces nor enters provider/mutation code. ACTIVE_CALL locks contain short state updates or formatting; watcher log I/O occurs after its try-lock guard is dropped. Native acquisition, lookup/Invoke, context/cache release, CoUninitialize and final pump use scoped trace guards; healthy boundary calls add state bookkeeping and the one-time version marker, with no new per-success-boundary log writes. Existing baseline stage logging remains. Reports begin after one second and are globally limited to one per five seconds. No added internal lock cycle or guard lifetime extending over native calls was found.\n\nFailure records contain fixed native member names/type labels and numeric HRESULTs, not argument/result values, EXCEPINFO or document text. Existing capped TEMP logging retains its limitations: allocation/lock/I/O overhead exists, watcher startup/log writes can fail silently, and a pending label identifies an aged scope rather than proving its current provider cause. Diagnostics cannot establish a hard timeout or repair Word/Chrome responsiveness. No empirical interpretation of the uncaptured later hang/delay is made.\n\nWorker Python AST and transfer workflow YAML parse. Exact embedded implementation bytes, payload/original hashes and transferred worker equality match the reviewed files. The write set is exactly native source plus the diagnostic status record. The worker plans formatting, portable tests, all-target Windows typed compilation, Clippy and whitespace checks before managed candidate commit; full Windows CI depends on that candidate. No new behavior test is necessary to establish this reversible diagnostic delta, and existing compile/CI gates remain required.\n\nRead-only diff/source/AST/hash review only. No tests, compiler, worker, Word/browser operation, remote write or product edit was performed. Fresh CI has not been claimed; final Rustfmt bytes require their own candidate binding. The earlier supplied log supports attempted character writes and operation refusal/retained uncertainty, not successful write or Undo completion. Actual installed next-incident logs and Word acceptance remain pending.\n"
+  },
+  "budget_ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328",
+      "reader-recovery-20261008-1509",
+      "word-refusal-diagnostics-20261008-1604"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 121
+        },
+        "failure": {
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+          "category": "code"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "kind": "code_correction",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-3607936d",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci2-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:48:06Z",
+        "reservation_id": "word-provider-hang-ci-3607936d",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 475.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "reader-recovery-ci-35c9f5f9",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:22:47.588804Z",
+        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+        "attempt_id": "reader-recovery-35c9f5f9-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/reader-recovery",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "reader-recovery-ci-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:31:34Z",
+        "reservation_id": "reader-recovery-ci-35c9f5f9",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 458.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-refusal-ci-04a9e38e",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-refusal-diagnostics-20261008-1604",
+        "at_utc": "2026-10-08T13:18:33.625196Z",
+        "operation_key": "sha256:bf7ff5d8d25ad99ebdc3cfe55e7f278daf612e43ce6699c4c198fd9b9ac11382",
+        "attempt_id": "word-refusal-04a9e38e-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-refusal-diagnostics",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-refusal-ci-publication-rejected",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-refusal-diagnostics-20261008-1604",
+        "at_utc": "2026-10-08T13:21:58Z",
+        "reservation_id": "word-refusal-ci-04a9e38e",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 163.0
+        },
+        "failure": {
+          "signature": "managed-publication-explicit-rejection-no-replay",
+          "category": "infrastructure"
+        }
+      }
+    ]
+  },
+  "backlog": [
+    {
+      "id": "G-SW-WORD-STOP-001",
+      "state": "open",
+      "evidence": "Uploaded log final five character-write attempts followed by attempted Undo end and operation-refused; UNCERTAIN_MUTATION retained",
+      "next_action": "Pin exact guard via prepared diagnostic candidate before choosing safe correction/reconciliation change"
+    },
+    {
+      "id": "G-SW-WORD-HANG-002",
+      "state": "open",
+      "evidence": "User reports new Word hang and ~minute Chrome delay after restart; NativeOM synchronous join is unbounded; episode absent in attached15:59log",
+      "next_action": "Inspect updated runtime log and detailed outstanding NativeOM boundary from prepared diagnostic candidate"
+    },
+    {
+      "id": "CDC-HOST-PUBLISH-REJECTED-RECOVERY",
+      "state": "open",
+      "evidence": "Managed worker succeeded, immutable publication attempt rejected, GitHub runner terminated supervisor, source unchanged and generation31stillowned; result commit not available remotely",
+      "next_action": "Canonical managed recovery must preserve completed result, authentic stopped executor and rejected effect. Diagnose sanitized publication rejection; restore content-addressed result bundle and terminal lifecycle, then use an authorized fresh publication intent with concrete remedy. Never replay rejected attempt or clear lease manually.",
+      "acceptance": [
+        "Rejected publication retains sanitized reason and immutable result bundle before host termination",
+        "Successful unintegrated result remains recoverable without rerunning tests or falsifying worker failure",
+        "Exact owner/generation/invocation lifecycle has a supported recovery and immutable release receipt"
+      ]
+    }
+  ],
+  "next_action": "Recover exact handle eef54c38-4ecb-5248-873f-80618b1d658c through canonical managed lifecycle with preserved artifact; obtain updated user log for16:06Word/Chrome episode; no competing worker while generation31remainsowned",
+  "scheduler_mutations": 0,
+  "merge_or_public_release": false,
+  "automatic_approval_rejection": false
+}
