@@ -1,0 +1,303 @@
+{
+  "schema": "reader-recovery-delivery/v1",
+  "observed_at_utc": "2026-10-08T12:33:49.197681+00:00",
+  "repository": "bajoicheg/g-switcher",
+  "candidate_sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "source_base": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+  "cdc_version": "2.12.1",
+  "ci_run_id": 37776565764,
+  "ci_conclusion": "success",
+  "managed_release_receipt": {
+    "lease_revision": "e12fcfc91e29b8cbbe65d6fc43dd9947ebe4ce98",
+    "release": {
+      "at_utc": "2026-10-08T12:26:12.380252Z",
+      "checkpoint_ref": "git:refs/heads/release/2.0.1@10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+      "completion_reason": "scope_complete",
+      "external_reconciliation": "none",
+      "generation": 30,
+      "invocation_id": "managed-terminal:fe97675607d573a7fefebf64b68188646fc5c8aab318ffcd23f03e1f91e332d8",
+      "owner_id": "3e830fd3-e862-48d4-8b84-60e726d05717"
+    },
+    "schema": "execution-release-receipt/v1"
+  },
+  "review_pipeline": {
+    "schema": "review-pipeline/v2",
+    "change_id": "reader-recovery-35c9f5f9",
+    "implementer_ref": "executor:/root",
+    "assessment": {
+      "schema": "quality-assessment/v1",
+      "project_level": "FULL",
+      "risk_level": "MEDIUM",
+      "risk_categories": [
+        "ordinary_feature"
+      ],
+      "risk_reason": "Isolate Word UIA metadata and prevent stalled-reader replacement without changing native mutation safeguards",
+      "mandatory_check_ids": [
+        "windows-ci",
+        "reader-regression"
+      ]
+    },
+    "self_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": []
+    },
+    "combined_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": [],
+      "covers": []
+    },
+    "spec_compliance": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "evidence_refs": [
+        "report:requirements-review.md@sha256:878b1203e47bb94c03ff388b8f3811a5f3f4baad931f6c0d510fdbe6ed820cf1"
+      ],
+      "findings": []
+    },
+    "code_quality": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_quality",
+      "sequence": 2,
+      "evidence_refs": [
+        "report:quality-review.md@sha256:251dd7a17d5e451b1bc07b4407db5e078bddcce643708b76022fadbb00c1b0ae"
+      ],
+      "findings": []
+    }
+  },
+  "review_result": {
+    "schema": "review-pipeline-result/v2",
+    "change_id": "reader-recovery-35c9f5f9",
+    "effective_level": "FULL",
+    "review_green": true,
+    "blockers": [],
+    "action": "REVIEW_GREEN",
+    "authorizes_product_write": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_scope_expansion": false
+  },
+  "review_binding": {
+    "preformat_source_hashes": {
+      "src/windows_runtime/read_worker.rs": "35356b2b2592552a6e45340d3f9bed2d57d80560da43aef02c25371e9d080a60",
+      "src/windows_runtime_v201.rs": "714d636fa10a528baf27077023cb55c076fc5fd2e8260ebfd51912667d8f2e7f",
+      "docs/work-status/reader-recovery-2026-10-08.json": "0ec1648f8b4ce00a6e23e4e4c65f442694b804f894cd6b8796bfb42b109a10d9"
+    },
+    "worker_sha256": "35c9f5f9ca06c12c5370efe1b636529210f1457fea791cbe201750039ad6b86d",
+    "applied_by_exact_worker": true,
+    "subsequent_source_transformation": "rustfmt only, then exact candidate tests/build"
+  },
+  "checks": {
+    "exact_delivered_source_regression": "expected behavioral RED observed",
+    "reader_regressions": "6passed",
+    "managed_checks": "7passed",
+    "windows_main_unit_tests": "90passed,2ignored; separate required E2E gates passed",
+    "actual_negative_cache_tests": "2passed",
+    "windows_job_steps_passed": 30,
+    "packaging": "passed",
+    "installed_word_acceptance": "pending"
+  },
+  "verification": {
+    "source_sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+    "workflow_run_id": 37776565764,
+    "windows_job_id": 113309794405,
+    "archive_sha256": {
+      "g-switcher-2.0.1-windows-x64": "f6cfca420c643482bf97d770896663d88e3eb196db4ac6de5935f7567538e1bc",
+      "g-switcher-2.0.1-manual-compatibility-kit": "0e6470491fd91f5ce4aa071335def7e220ef758729c80e0e73107b4e1f7b8951",
+      "g-switcher-2.0.1-lockfile": "985c418a2dc27ab6fc56d6cffd9f432ddeee93ba6ad011d644b52e40e060e5d9"
+    },
+    "exe_sha256": "addda8f8536e6050231f282224689a69b020dd1b7771592ef0ed32bd0191172d",
+    "exe_size": 2713600,
+    "exe_path": "/workspace/scratch/a6405d04ffef/GSwitcher-2.0.1-Word-Recovery-10b7e90.exe",
+    "manifest_files_verified": 11,
+    "provenance_exact_candidate": true,
+    "cargo_lock_matches_committed": true,
+    "identical_exe_in_three_artifacts": true,
+    "new_exe_differs_from_stopping_cb1dd4c": true,
+    "pe_architecture": "AMD64",
+    "pe_format": "PE32+",
+    "installed_word_verdict": false
+  },
+  "saved_exe": {
+    "operation": "create_library_file",
+    "status": "succeeded",
+    "path": "/G Switcher/GSwitcher-2.0.1-Word-Recovery-10b7e90.exe",
+    "file_id": "file_00000000948c8230aa4849bfe5d53f03",
+    "library_file_id": "libfile_dae162d237b881918d5113749add89da",
+    "file_name": "GSwitcher-2.0.1-Word-Recovery-10b7e90.exe",
+    "current_version_number": 0,
+    "restored_from_version_number": null,
+    "xattrs": [
+      {
+        "name": "user.library-file-version",
+        "value": "0"
+      }
+    ],
+    "directory_id": "6ac324edf2e0819183d309dfcc26ab76",
+    "mime_type": "application/octet-stream",
+    "library_artifact_type": "other",
+    "file_size_bytes": 2713600,
+    "external_connectors_accessed": false
+  },
+  "budget_ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328",
+      "reader-recovery-20261008-1509"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 121
+        },
+        "failure": {
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+          "category": "code"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "kind": "code_correction",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-3607936d",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci2-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:48:06Z",
+        "reservation_id": "word-provider-hang-ci-3607936d",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 475.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "reader-recovery-ci-35c9f5f9",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:22:47.588804Z",
+        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+        "attempt_id": "reader-recovery-35c9f5f9-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/reader-recovery",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "reader-recovery-ci-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:31:34Z",
+        "reservation_id": "reader-recovery-ci-35c9f5f9",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 458.0
+        },
+        "failure": null
+      }
+    ]
+  },
+  "installed_word_verdict": false,
+  "next_action": "Close previous G-switcher, run exact new EXE, repeatedly type ghbdtn in one Word paragraph and at new paragraph start; if correction stops again provide %TEMP%/GSwitcher-Word-Runtime.log. Real Word runtime not available in current host/CI.",
+  "scheduler_mutations": 0,
+  "merge_or_public_release": false,
+  "limitations": [
+    "Installed Word runtime cause is not independently measured",
+    "No hard NativeOM/sent-callback deadline",
+    "Uncertain native mutation still refuses further writes until process restart"
+  ]
+}
