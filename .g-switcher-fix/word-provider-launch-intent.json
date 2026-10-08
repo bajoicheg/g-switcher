@@ -1,0 +1,180 @@
+{
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source": "53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+  "branch": "cdc/word-provider-hang-20261008-3607936d",
+  "worker_sha256": "3607936d4afa05031e5af1b366d4f64ebc2896109157acd1ca084eae55262d36",
+  "scope": "correct Clippy module wiring then managed RED/GREEN and required exact-candidate Windows artifact",
+  "no_public_release": true,
+  "scheduler_paused": true,
+  "validation_cycle": 2,
+  "max_validation_cycles": 2,
+  "first_failed_run": 37764117791,
+  "first_release_revision": "7e40a62d7e22d521195998f7be76f2841cb315e0",
+  "validation_cycle_evidence": {
+    "input": {
+      "schema": "validation-cycle/v1",
+      "cycle_number": 2,
+      "max_validation_cycles": 2,
+      "changed_inputs": [
+        "single shared read_worker module declaration under selection preserving standalone consumers",
+        "explicit channel generic avoids Clippy type complexity"
+      ],
+      "risk_reason": "Module integration must compile in runtime, standalone failure binary and browser adapter tests.",
+      "prior_evidence_insufficient_reason": "CI37764117791 product checks succeeded except Clippy before candidate publication; changed module wiring needs fresh Windows all-target compile and Clippy.",
+      "strategy_revision_ref": null,
+      "budget_observation": {
+        "time_seconds": 121,
+        "tokens": null,
+        "external_starts": 1,
+        "time_limit_seconds": null,
+        "token_limit": null,
+        "external_start_limit": 4,
+        "unknown_reason": "Model token consumption unavailable; prior exact failed run is charged and retained."
+      }
+    },
+    "decision": {
+      "schema": "validation-cycle-result/v1",
+      "validation_recommended": true,
+      "action": "VALIDATE",
+      "blockers": [],
+      "budget_observation": {
+        "time_seconds": 121,
+        "tokens": null,
+        "external_starts": 1,
+        "time_limit_seconds": null,
+        "token_limit": null,
+        "external_start_limit": 4,
+        "unknown_reason": "Model token consumption unavailable; prior exact failed run is charged and retained."
+      },
+      "authorizes_external_start": false,
+      "authorizes_product_write": false,
+      "authorizes_release": false
+    }
+  },
+  "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+  "budget_reservation": {
+    "type": "reserve",
+    "event_id": "word-provider-hang-ci-3607936d",
+    "task_id": "g-switcher/2.0.1",
+    "wake_id": "word-provider-hang-20261008-1328",
+    "at_utc": "2026-10-08T10:39:17.090579Z",
+    "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+    "attempt_id": "word-provider-hang-3607936d-a2",
+    "kind": "ci_start",
+    "scope": "github-actions/g-switcher/word-provider-hang",
+    "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+    "cost": {
+      "tool_calls": 1,
+      "tokens": null,
+      "elapsed_seconds": null
+    }
+  },
+  "budget_decision": {
+    "allow_reservation": true,
+    "allow_launch": false,
+    "already_recorded": false,
+    "reasons": [],
+    "provider": {}
+  },
+  "ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 121
+        },
+        "failure": {
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+          "category": "code"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "kind": "code_correction",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-3607936d",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      }
+    ]
+  }
+}
