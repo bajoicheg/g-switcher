@@ -2,24 +2,23 @@
   "schema": "word-diagnostic-host-bootstrap-intent/v1",
   "mode": "HOST_BOOTSTRAP",
   "base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
-  "previous_generation": 31,
-  "previous_owner": "3c7f5381-2337-43bc-8f63-b641919be891",
   "windows_ref": "refs/heads/cdc/word-bootstrap-windows-20261008-1716",
-  "windows_head": "ed20bc246b56b8d0522c4af6915805ed8d1fb9ba",
+  "windows_head": "5e74b6428967d77d15c8bbb07f628545327083b3",
   "payload_sha256": {
     "admission.py": "6babb162a627edd05e064476cea5ee1a67fa4113b08d55a6553ef5110be20eb8",
     "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
     "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
-    "controller.py": "cec2df1fa9341b75c072eba7c2136e112c1f17287328314f9097ac6f8d96660e",
-    "worker.py": "31bbbaceeef5c4a0dfe21eee13e25145682386905a08301253482c00b61357c7",
-    "windows_bundle_gate.py": "306125d0fbf00d700687fa2cabb72450a22720a482294e78542b76bec5a2393e",
+    "controller.py": "0b5b2ea384f0fcf652212b7b3ee92b58e2f62c43fa96964ff16bdb13a2a3bd03",
+    "worker.py": "12c501f4c33258b25beefcfbb575e3cfa832f086ddd922de05ec337987232f8e",
+    "windows_bundle_gate.py": "eba6fb9d00cb063be1947f5c41d5d77303734aab77dfdcd1b20669e146f9b776",
     "host_step.py": "a0f52fc41dd4ed07ea01adf70ed3604e317aa25502aa9a6a5da359b6f64e7912",
     "preflight.py": "bee6d63bc4141d73f818a5110b2ddc2ee52e19f3bb8bbb37c1fba4914a2c31a6",
     "original-worker.py": "04a9e38ec5ed9f4e3ccec1425a41303b06639b0280340c2bdef7eae987e70ee5",
     "checks.json": "ac2e93b0bd2d87265713dc92d071673f04f04fdc68de0aace2700ccbfb7549b9",
     "result.json": "17511970d1c9e3ad68e656e88c08884112b95dbdf0f36467d031735f38205950",
     "windows-ci.yml": "52f433e73683b47a53b27d2fba4de4664bb4ce5f8c2800dc74966b6402d37d5f",
-    "word-bootstrap.yml": "c83fe6ddc19c5cf26e8f4946119262c8cd790594b0b266838d6376ff86acfa7b"
+    "word-bootstrap.yml": "c83fe6ddc19c5cf26e8f4946119262c8cd790594b0b266838d6376ff86acfa7b",
+    "bundle_worker.py": "2530bc7979d8341dd28adc9809184534892c676088be2468da8939b9bcf89e75"
   },
   "windows_contract": {
     "steps": [
@@ -184,13 +183,304 @@
     }
   },
   "budget_ledger": {
-    "schema": "budget-ledger/v1",
-    "task_id": "g-switcher/2.0.1",
-    "wake_ids": [
-      "word-provider-hang-20261008-1328",
-      "reader-recovery-20261008-1509",
-      "word-refusal-diagnostics-20261008-1604",
-      "word-bootstrap-recovery-20261008-1716"
+    "events": [
+      {
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-provider-hang-ci-304073d6",
+        "kind": "ci_start",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-provider-hang-20261008-1328"
+      },
+      {
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "failure": {
+          "category": "code",
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity"
+        },
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 121,
+          "tokens": null
+        },
+        "wake_id": "word-provider-hang-20261008-1328"
+      },
+      {
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors.",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "kind": "code_correction",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "word-provider-hang-20261008-1328"
+      },
+      {
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-provider-hang-ci-3607936d",
+        "kind": "ci_start",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-provider-hang-20261008-1328"
+      },
+      {
+        "at_utc": "2026-10-08T10:48:06Z",
+        "event_id": "word-provider-hang-ci2-success",
+        "failure": null,
+        "reservation_id": "word-provider-hang-ci-3607936d",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 475.0,
+          "tokens": null
+        },
+        "wake_id": "word-provider-hang-20261008-1328"
+      },
+      {
+        "at_utc": "2026-10-08T12:22:47.588804Z",
+        "attempt_id": "reader-recovery-35c9f5f9-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "reader-recovery-ci-35c9f5f9",
+        "kind": "ci_start",
+        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/reader-recovery",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "reader-recovery-20261008-1509"
+      },
+      {
+        "at_utc": "2026-10-08T12:31:34Z",
+        "event_id": "reader-recovery-ci-success",
+        "failure": null,
+        "reservation_id": "reader-recovery-ci-35c9f5f9",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 458.0,
+          "tokens": null
+        },
+        "wake_id": "reader-recovery-20261008-1509"
+      },
+      {
+        "at_utc": "2026-10-08T13:18:33.625196Z",
+        "attempt_id": "word-refusal-04a9e38e-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-refusal-ci-04a9e38e",
+        "kind": "ci_start",
+        "operation_key": "sha256:bf7ff5d8d25ad99ebdc3cfe55e7f278daf612e43ce6699c4c198fd9b9ac11382",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/word-refusal-diagnostics",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-refusal-diagnostics-20261008-1604"
+      },
+      {
+        "at_utc": "2026-10-08T13:21:58Z",
+        "event_id": "word-refusal-ci-publication-rejected",
+        "failure": {
+          "category": "infrastructure",
+          "signature": "managed-publication-explicit-rejection-no-replay"
+        },
+        "reservation_id": "word-refusal-ci-04a9e38e",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 163.0,
+          "tokens": null
+        },
+        "wake_id": "word-refusal-diagnostics-20261008-1604"
+      },
+      {
+        "at_utc": "2026-10-08T14:48:34.880496Z",
+        "attempt_id": "word-bootstrap-host-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-bootstrap-host-20261008-1716",
+        "kind": "ci_start",
+        "operation_key": "sha256:041c21587a0945bb63350b5b8daac102440f36bf5999a18a8d7a77708b38f249",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-bootstrap-recovery-20261008-1716"
+      },
+      {
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "event_id": "word-bootstrap-host-a1-invalid-context",
+        "failure": {
+          "category": "configuration",
+          "signature": "github-job-env-unrecognized-runner-context"
+        },
+        "reservation_id": "word-bootstrap-host-20261008-1716",
+        "status": "setup_failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 0,
+          "tokens": null
+        },
+        "wake_id": "word-bootstrap-recovery-20261008-1716"
+      },
+      {
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "detail": "Provider annotation identifies runner context at job env. Moved PYTHONPYCACHEPREFIX to start/wait step env, where runner context is supported; no job or product computation occurred.",
+        "event_id": "word-bootstrap-runner-env-corrected",
+        "kind": "configuration_correction",
+        "reference": "report:word-bootstrap-host-context-correction-a2",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "signature": "github-job-env-unrecognized-runner-context",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "word-bootstrap-recovery-20261008-1716"
+      },
+      {
+        "at_utc": "2026-10-08T15:00:48.389800Z",
+        "attempt_id": "word-bootstrap-host-a2",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-bootstrap-host-20261008-1716-a2",
+        "kind": "ci_start",
+        "operation_key": "sha256:c6f01f84540910b2fcc9875b01c73b86f40cc888b782c78f58ab5f0acbeb0070",
+        "recovery_ref": "report:word-bootstrap-host-context-correction-a2",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-bootstrap-recovery-20261008-1716"
+      },
+      {
+        "at_utc": "2026-10-08T15:05:02.030180Z",
+        "attempt_id": "word-bootstrap-37797680401-1-windows-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-bootstrap-37797680401-1-windows-ci",
+        "kind": "ci_start",
+        "operation_key": "sha256:a80c0f07c4d5d7a61590d9d5c6a32de825b2b3abbabef6568714b14147ed42b2",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-bootstrap-recovery-20261008-1716"
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-bootstrap-a2-terminal-failed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:12:44.814142Z",
+        "reservation_id": "word-bootstrap-host-20261008-1716-a2",
+        "status": "setup_failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 73
+        },
+        "failure": {
+          "signature": "intent-source-ref-mismatches-project-lease",
+          "category": "configuration"
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-bootstrap-a2-windows-not-submitted",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:12:44.814142Z",
+        "reservation_id": "word-bootstrap-37797680401-1-windows-ci",
+        "status": "setup_failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 0
+        },
+        "failure": {
+          "signature": "intent-source-ref-mismatches-project-lease",
+          "category": "configuration"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-bootstrap-intent-ref-corrected-host",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:12:44.814142Z",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "signature": "intent-source-ref-mismatches-project-lease",
+        "reference": "report:word-intent-source-ref-corrected-host-a3",
+        "kind": "configuration_correction",
+        "detail": "Canonical guard binds intent.source_ref to the project lease SOURCE. Windows dispatch ref remains a separate transport route. Previously no submission claim or dispatch occurred; generation32 canonically released."
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-bootstrap-intent-ref-corrected-windows",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:12:44.814142Z",
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "signature": "intent-source-ref-mismatches-project-lease",
+        "reference": "report:word-intent-source-ref-corrected-windows-a3",
+        "kind": "configuration_correction",
+        "detail": "Canonical guard binds intent.source_ref to the project lease SOURCE. Windows dispatch ref remains a separate transport route. Previously no submission claim or dispatch occurred; generation32 canonically released."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-bootstrap-host-20261008-1716-a3",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-bootstrap-recovery-20261008-1716",
+        "at_utc": "2026-10-08T15:12:44.814142Z",
+        "operation_key": "sha256:dd0a1f2104e2b5c970ebac59574e8a8b2461f52decf48fd67d6e0d12cc489503",
+        "attempt_id": "word-bootstrap-host-a3",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
+        "recovery_ref": "report:word-intent-source-ref-corrected-host-a3",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      }
     ],
     "policy": {
       "actions_budget": "normal",
@@ -211,7 +501,7 @@
       },
       "wake_limits": {
         "agent_starts": 3,
-        "ci_starts": 4,
+        "ci_starts": 6,
         "compute_starts": 4,
         "elapsed_seconds": null,
         "status_polls": null,
@@ -219,217 +509,48 @@
         "tool_calls": 60
       }
     },
-    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
-    "events": [
-      {
-        "type": "reserve",
-        "event_id": "word-provider-hang-ci-304073d6",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-provider-hang-20261008-1328",
-        "at_utc": "2026-10-08T10:31:24.752813Z",
-        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
-        "attempt_id": "word-provider-hang-304073d6-a1",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/word-provider-hang",
-        "recovery_ref": null,
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      },
-      {
-        "type": "outcome",
-        "event_id": "word-provider-hang-ci1-clippy",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-provider-hang-20261008-1328",
-        "at_utc": "2026-10-08T10:34:23.017074Z",
-        "reservation_id": "word-provider-hang-ci-304073d6",
-        "status": "failed",
-        "usage": {
-          "tokens": null,
-          "elapsed_seconds": 121
-        },
-        "failure": {
-          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
-          "category": "code"
-        }
-      },
-      {
-        "type": "remedy",
-        "event_id": "word-provider-hang-clippy-fixed",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-provider-hang-20261008-1328",
-        "at_utc": "2026-10-08T10:37:28.542655Z",
-        "scope": "github-actions/g-switcher/word-provider-hang",
-        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
-        "reference": "report:word-provider-clippy-module-wiring-cycle2",
-        "kind": "code_correction",
-        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
-      },
-      {
-        "type": "reserve",
-        "event_id": "word-provider-hang-ci-3607936d",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-provider-hang-20261008-1328",
-        "at_utc": "2026-10-08T10:39:17.090579Z",
-        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
-        "attempt_id": "word-provider-hang-3607936d-a2",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/word-provider-hang",
-        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      },
-      {
-        "type": "outcome",
-        "event_id": "word-provider-hang-ci2-success",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-provider-hang-20261008-1328",
-        "at_utc": "2026-10-08T10:48:06Z",
-        "reservation_id": "word-provider-hang-ci-3607936d",
-        "status": "succeeded",
-        "usage": {
-          "tokens": null,
-          "elapsed_seconds": 475.0
-        },
-        "failure": null
-      },
-      {
-        "type": "reserve",
-        "event_id": "reader-recovery-ci-35c9f5f9",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "reader-recovery-20261008-1509",
-        "at_utc": "2026-10-08T12:22:47.588804Z",
-        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
-        "attempt_id": "reader-recovery-35c9f5f9-a1",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/reader-recovery",
-        "recovery_ref": null,
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      },
-      {
-        "type": "outcome",
-        "event_id": "reader-recovery-ci-success",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "reader-recovery-20261008-1509",
-        "at_utc": "2026-10-08T12:31:34Z",
-        "reservation_id": "reader-recovery-ci-35c9f5f9",
-        "status": "succeeded",
-        "usage": {
-          "tokens": null,
-          "elapsed_seconds": 458.0
-        },
-        "failure": null
-      },
-      {
-        "type": "reserve",
-        "event_id": "word-refusal-ci-04a9e38e",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-refusal-diagnostics-20261008-1604",
-        "at_utc": "2026-10-08T13:18:33.625196Z",
-        "operation_key": "sha256:bf7ff5d8d25ad99ebdc3cfe55e7f278daf612e43ce6699c4c198fd9b9ac11382",
-        "attempt_id": "word-refusal-04a9e38e-a1",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/word-refusal-diagnostics",
-        "recovery_ref": null,
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      },
-      {
-        "type": "outcome",
-        "event_id": "word-refusal-ci-publication-rejected",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-refusal-diagnostics-20261008-1604",
-        "at_utc": "2026-10-08T13:21:58Z",
-        "reservation_id": "word-refusal-ci-04a9e38e",
-        "status": "failed",
-        "usage": {
-          "tokens": null,
-          "elapsed_seconds": 163.0
-        },
-        "failure": {
-          "signature": "managed-publication-explicit-rejection-no-replay",
-          "category": "infrastructure"
-        }
-      },
-      {
-        "type": "reserve",
-        "event_id": "word-bootstrap-host-20261008-1716",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-bootstrap-recovery-20261008-1716",
-        "at_utc": "2026-10-08T14:48:34.880496Z",
-        "operation_key": "sha256:041c21587a0945bb63350b5b8daac102440f36bf5999a18a8d7a77708b38f249",
-        "attempt_id": "word-bootstrap-host-a1",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
-        "recovery_ref": null,
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      },
-      {
-        "type": "outcome",
-        "event_id": "word-bootstrap-host-a1-invalid-context",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-bootstrap-recovery-20261008-1716",
-        "at_utc": "2026-10-08T15:00:48.389800Z",
-        "reservation_id": "word-bootstrap-host-20261008-1716",
-        "status": "setup_failed",
-        "usage": {
-          "tokens": null,
-          "elapsed_seconds": 0
-        },
-        "failure": {
-          "signature": "github-job-env-unrecognized-runner-context",
-          "category": "configuration"
-        }
-      },
-      {
-        "type": "remedy",
-        "event_id": "word-bootstrap-runner-env-corrected",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-bootstrap-recovery-20261008-1716",
-        "at_utc": "2026-10-08T15:00:48.389800Z",
-        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
-        "signature": "github-job-env-unrecognized-runner-context",
-        "reference": "report:word-bootstrap-host-context-correction-a2",
-        "kind": "configuration_correction",
-        "detail": "Provider annotation identifies runner context at job env. Moved PYTHONPYCACHEPREFIX to start/wait step env, where runner context is supported; no job or product computation occurred."
-      },
-      {
-        "type": "reserve",
-        "event_id": "word-bootstrap-host-20261008-1716-a2",
-        "task_id": "g-switcher/2.0.1",
-        "wake_id": "word-bootstrap-recovery-20261008-1716",
-        "at_utc": "2026-10-08T15:00:48.389800Z",
-        "operation_key": "sha256:c6f01f84540910b2fcc9875b01c73b86f40cc888b782c78f58ab5f0acbeb0070",
-        "attempt_id": "word-bootstrap-host-a2",
-        "kind": "ci_start",
-        "scope": "github-actions/g-switcher/word-managed-host-bootstrap",
-        "recovery_ref": "report:word-bootstrap-host-context-correction-a2",
-        "cost": {
-          "tool_calls": 1,
-          "tokens": null,
-          "elapsed_seconds": null
-        }
-      }
+    "policy_digest": "sha256:f6faebc95d8529ae73d3362f6359815011c226026a3fddcc608ac0ee7581c66b",
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328",
+      "reader-recovery-20261008-1509",
+      "word-refusal-diagnostics-20261008-1604",
+      "word-bootstrap-recovery-20261008-1716"
     ]
   },
   "user_authorization": "Continue autonomously, user command 2026-10-08 17:16:48 MSK; existing GitHub Actions managed host authorized",
   "no_scheduler_mutations": true,
   "no_product_publication": true,
-  "bootstrap_admission_ref": "refs/heads/cdc/word-bootstrap-admission/20261008-1716-a2"
+  "bootstrap_admission_ref": "refs/heads/cdc/word-bootstrap-admission/20261008-1716-a3",
+  "prior_generation": 32,
+  "expected_generation": 33,
+  "prior_release_revision": "145972e11bc78638902006a970541eff690560e0",
+  "prior_release": {
+    "at_utc": "2026-10-08T15:05:21.797873Z",
+    "checkpoint_ref": "managed-host:terminal:082f292e-c720-5255-950a-03dd9939cceb:failed",
+    "completion_reason": "resumable_blocker",
+    "external_reconciliation": "none",
+    "generation": 32,
+    "invocation_id": "managed-terminal:34f71d876425d849510c40876bfd1aab1888032bdccdcdb253355c148cae8778",
+    "owner_id": "8cc1091f-4be6-46bf-9ffd-d88cb0a8daec"
+  },
+  "reused_bundle": {
+    "artifact_id": 11558798404,
+    "run_id": 37797680401,
+    "host_head": "f406cb99356ca30cdfb91056bdf3fc211233a903",
+    "archive_digest": "sha256:c1663c3d101a1f7552b40fe59b71ccd09cfbc705ea3f6005d7218dd3ae639700",
+    "bundle_sha256": "95cc88ec97763d436c212a8fbc56d22ab3570ebe6c3684011e98edebde14d3f8"
+  },
+  "budget_policy_adjustment": {
+    "old_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "new_digest": "sha256:f6faebc95d8529ae73d3362f6359815011c226026a3fddcc608ac0ee7581c66b",
+    "old_local_wake_ci_cap": 4,
+    "new_local_wake_ci_cap": 6,
+    "authorization": "Continue autonomously, user command 2026-10-08 17:16:48 MSK; existing GitHub Actions managed host authorized",
+    "reason": "Explicit autonomous continuous-work instruction permits bounded project policy adjustment of template caps before any denial, for concrete configuration recovery and mandatory exact Windows validation. Preserve every reservation/outcome/history; do not reset wake/task or infer provider quota.",
+    "provider_quota": "unknown",
+    "review": "independent SPEC design acceptance; final implementation reviews required"
+  },
+  "windows_recovery_ref": "report:word-intent-source-ref-corrected-windows-a3"
 }

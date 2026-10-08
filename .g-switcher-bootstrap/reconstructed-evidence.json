@@ -1,0 +1,15 @@
+{
+  "schema": "word-publication-recovery-preflight/v1",
+  "source": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "result": "3407a2d0570b88864fd265de61a8761999995380",
+  "result_tree": "67701ab204d0d2855dd8014285ac9cd64fddd9d6",
+  "original_job_completed_at": "2026-10-08T13:21:57Z",
+  "exact_result_reconstructed": true,
+  "source_writes": 0,
+  "lease_mutations": 0,
+  "bundle_sha256": "95cc88ec97763d436c212a8fbc56d22ab3570ebe6c3684011e98edebde14d3f8",
+  "dry_run_exit": 0,
+  "dry_run_reason": "accepted",
+  "full_windows_ci": "not run",
+  "new_exe": false
+}

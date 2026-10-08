@@ -26,6 +26,10 @@ def utc():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
+def prepare_validation_intent(operation, binding, attempt):
+    return operation.prepare(binding, attempt, SOURCE, utc())
+
+
 def write(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,40 +74,25 @@ def main():
     git(repo, 'config', 'core.logAllRefUpdates', 'true')
     source_id = remote_identity(repo, 'origin')
     lease_store = GitLeaseStore(repo, 'origin', LEASE)
-    old_artifact = api('actions/artifacts/11552529665')
-    assert old_artifact['digest'] == 'sha256:' + OLD_ARTIFACT_DIGEST
-    assert old_artifact['workflow_run']['id'] == 37783419838
-    assert old_artifact['workflow_run']['head_sha'] == '8f548515ec2cd57a2ed99160978ba975c9e52fd7'
-    original_zip = archive(11552529665)
-    assert hashlib.sha256(original_zip).hexdigest() == OLD_ARTIFACT_DIGEST
-    old_receipt = json.loads(member(original_zip, '/receipt.json'))
-    publication_store = GitDocumentStore(repo, 'origin', OLD_PUBLICATION, source_id, protected_refs=[SOURCE, LEASE])
-
+    pinned = json.loads((root / 'host-launch-intent.json').read_text())
     # Exact canonical types are preserved. Only the supported acquisition argument is supplied by this host adapter.
     from runtime_factory import make_runtime_factory
     def authenticate(store, revision, repository, source_ref, owner_id, task_id, attempt_id, at):
         current_revision, current = store.read()
-        assert current_revision == revision
-        _, publication = publication_store.read()
-        job = api('actions/jobs/113331980853')
-        logs = api('actions/jobs/113331980853/logs', binary=True)
-        if zipfile.is_zipfile(io.BytesIO(logs)):
-            with zipfile.ZipFile(io.BytesIO(logs)) as z:
-                logs = b'\n'.join(z.read(n) for n in z.namelist() if not n.endswith('/'))
-        source = bridge._remote_head(repo, 'origin', SOURCE)
-        quiescence = authorize_previous(current, publication, old_receipt, job,
-                                         logs.decode('utf-8-sig', errors='replace'), source)
-        write(protocol / 'authenticated-prior-quiescence.json',
-              {'quiescence': quiescence, 'artifact_digest': OLD_ARTIFACT_DIGEST,
-               'prior_receipt': old_receipt, 'job': job, 'publication': publication,
-               'checked_at_utc': utc()})
-        final_revision, final_record = store.read()
-        assert final_revision == revision and final_record == current
+        assert current_revision == revision == pinned['prior_release_revision']
+        leasev2.validate(current)
+        assert current['generation'] == pinned['prior_generation'] == 32
+        assert current['owner_id'] is None and current['invocation'] is None
+        assert current['external_guard'] is None and current['finalization'] is None
+        assert current['last_release'] == pinned['prior_release']
+        assert current['repository'] == REPO and current['source_ref'] == SOURCE
         assert bridge._remote_head(repo, 'origin', SOURCE) == BASE
-        return quiescence
+        write(protocol / 'authenticated-prior-release.json',
+              {'lease_revision': revision, 'last_release': current['last_release'], 'checked_at_utc': utc()})
+        assert store.read() == (revision, current)
+        return None  # Ordinary canonical acquisition from an already released lease.
     bridge.ManagedExecutorRuntime = make_runtime_factory(bridge.ManagedExecutorRuntime, authenticate, lease_ttl=45 * 60)
 
-    pinned = json.loads((root / 'host-launch-intent.json').read_text())
     for name in pinned['payload_sha256']:
         assert hashlib.sha256((root / name).read_bytes()).hexdigest() == pinned['payload_sha256'][name]
     # A durable host-only one-use CAS binds the bootstrap to its actual Actions run.
@@ -150,7 +139,7 @@ def main():
     try:
         handle = bridge.start(request)
         write(protocol / 'handle.json', handle)
-        assert handle['generation'] == 32
+        assert handle['generation'] == pinned['expected_generation'] == 33
         observe = {'schema': 'managed-host-observe/v1', 'handle_root': str(handles), 'handle_id': handle['handle_id']}
         deadline = time.monotonic() + 35 * 60
         while not (output / 'bundle-ready.json').exists():
@@ -191,13 +180,13 @@ def main():
                    'mode': 'CI_ONLY', 'check_suite_fingerprint': operation._hash(contract['steps']),
                    'environment_fingerprint': operation._hash(contract['environment']),
                    'check_plan_digest': operation._hash(contract), 'environment_id': 'windows-latest/rust1.98.1'}
-        intent = operation.prepare(binding, key + '-windows-a1', pinned['windows_ref'], utc())
+        intent = prepare_validation_intent(operation, binding, key + '-windows-a1')
         ledger = pinned['budget_ledger']
         reservation = {'type': 'reserve', 'event_id': key + '-windows-ci', 'task_id': ledger['task_id'],
                        'wake_id': ledger['wake_ids'][-1], 'at_utc': utc(), 'operation_key': intent['operation_key'],
                        'attempt_id': intent['attempt_id'], 'kind': 'ci_start',
                        'scope': 'github-actions/g-switcher/exact-word-diagnostic-windows',
-                       'recovery_ref': None, 'cost': {'tool_calls': 1, 'tokens': None, 'elapsed_seconds': None}}
+                       'recovery_ref': pinned['windows_recovery_ref'], 'cost': {'tool_calls': 1, 'tokens': None, 'elapsed_seconds': None}}
         decision = budget.decide(ledger, reservation)
         assert decision['allow_reservation'], decision
         ledger = budget.apply_event(ledger, reservation)
@@ -321,7 +310,7 @@ def main():
         write(protocol / 'finished.json', finished)
         assert finished['final_response_allowed'] and finished['published_commit'] is None
         success = True
-        print('MANAGED_RECOVERY_RELEASED generation=32 windows_run=' + str(known_run), flush=True)
+        print('MANAGED_RECOVERY_RELEASED generation=' + str(handle['generation']) + ' windows_run=' + str(known_run), flush=True)
         return 0 if conclusion == 'succeeded' else 1
     finally:
         if not success and handle is not None:
