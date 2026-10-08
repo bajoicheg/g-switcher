@@ -1,4 +1,5 @@
-//! Word NativeOM adapter. COM interfaces never leave the one-operation STA.
+//! Word NativeOM adapter. Native interfaces never leave the one-operation STA.
+//! UIA metadata is isolated on a bounded, windowless MTA reader.
 //! A synchronous join deliberately has no mutation timeout: returning while a
 //! Word call can still write would permit a second correction against unknown
 //! state. Any uncertain mutation disables this adapter until process restart.
@@ -11,35 +12,27 @@ mod auto_correct;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ffi::c_void;
-use std::mem::{size_of, zeroed};
+use std::mem::zeroed;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use windows::core::{IUnknown, Interface, BSTR, GUID, PCWSTR};
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, CLSCTX_INPROC_SERVER,
-    COINIT_APARTMENTTHREADED, DISPATCH_FLAGS, DISPATCH_METHOD, DISPATCH_PROPERTYGET,
-    DISPATCH_PROPERTYPUT, DISPPARAMS,
-};
-use windows::Win32::System::Ole::{
-    SafeArrayDestroy, SafeArrayGetDim, SafeArrayGetElement, SafeArrayGetLBound, SafeArrayGetUBound,
+    CoInitializeEx, CoUninitialize, IDispatch, COINIT_APARTMENTTHREADED, DISPATCH_FLAGS,
+    DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPPARAMS,
 };
 use windows::Win32::System::Variant::VARIANT;
-use windows::Win32::UI::Accessibility::{
-    AccessibleObjectFromWindow, CUIAutomation, IUIAutomation, IUIAutomationCacheRequest,
-    IUIAutomationValuePattern, TreeScope_Element, UIA_IsEnabledPropertyId,
-    UIA_IsKeyboardFocusablePropertyId, UIA_IsPasswordPropertyId, UIA_NativeWindowHandlePropertyId,
-    UIA_ProcessIdPropertyId, UIA_ValueIsReadOnlyPropertyId, UIA_ValuePatternId,
-};
+use windows::Win32::UI::Accessibility::AccessibleObjectFromWindow;
 use windows_sys::Win32::Foundation::{CloseHandle, HWND};
 use windows_sys::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, GetAncestor, GetClassNameW, GetForegroundWindow, GetGUIThreadInfo,
-    GetWindowThreadProcessId, PeekMessageW, SendMessageTimeoutW, TranslateMessage, GA_ROOT,
-    GUITHREADINFO, MSG, PM_REMOVE, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_NULL,
+    DispatchMessageW, GetClassNameW, GetWindowThreadProcessId, PeekMessageW, TranslateMessage, MSG,
+    PM_REMOVE,
 };
+#[path = "word_focus.rs"]
+mod word_focus;
+use word_focus::{focused, Focus};
 
 const OBJID_NATIVEOM: u32 = 0xffff_fff0;
 const LOCALE_USER_DEFAULT: u32 = 0x0400;
@@ -47,6 +40,31 @@ const DISPID_PROPERTYPUT: i32 = -3;
 const VT_DISPATCH: u16 = 9;
 static SERIAL: Mutex<()> = Mutex::new(());
 static UNCERTAIN_MUTATION: AtomicBool = AtomicBool::new(false);
+// Stage-only diagnostics contain no text, document names, paths or values.
+// They identify the last external boundary if real Word remains unresponsive.
+fn trace(stage: &str) {
+    use std::io::Write;
+    let path = std::env::temp_dir().join("GSwitcher-Word-Runtime.log");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        if file
+            .metadata()
+            .map(|metadata| metadata.len() > 1_048_576)
+            .unwrap_or(false)
+        {
+            let _ = file.set_len(0);
+        }
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let _ = writeln!(file, "{now} pid={} stage={stage}", std::process::id());
+    }
+}
+
 struct CachedDispatch {
     object: IDispatch,
     ids: HashMap<String, i32>,
@@ -133,7 +151,7 @@ fn run_at_generation<R: Send + 'static>(
     // The thread owns every interface, VARIANT and BSTR. COM pumps incoming
     // apartment messages during outgoing calls; drain queued messages between
     // calls. There is no persistent STA blocked on a non-pumping receiver.
-    std::thread::Builder::new()
+    let worker = std::thread::Builder::new()
         .name("g-switcher-word-sta".into())
         .spawn(move || {
             unsafe {
@@ -156,15 +174,28 @@ fn run_at_generation<R: Send + 'static>(
             }
             let _cache = DispatchCache;
             pump();
+            trace("context-open");
             let context = Context::open(handle as HWND, generation)?;
+            trace("context-ready");
             let result = operation(&context);
+            trace(if result.is_some() {
+                "operation-complete"
+            } else {
+                "operation-refused"
+            });
             drop(context);
             pump();
             result
         })
-        .ok()?
-        .join()
-        .ok()?
+        .ok()?;
+    // Keep synchronous ownership of the one native writer. Pump only sent
+    // messages so cross-process accessibility callbacks cannot block on our UI.
+    // Posted runtime events remain queued, preventing Engine-lock reentrancy.
+    while !worker.is_finished() {
+        super::read_worker::pump_sent_messages();
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    worker.join().ok()?
 }
 
 pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
@@ -234,6 +265,26 @@ pub fn read_document_text(hwnd: HWND) -> Option<String> {
     })
 }
 
+pub fn replace_suffix_if_matches(
+    hwnd: HWND,
+    expected: &str,
+    replacement: &str,
+    generation: u32,
+) -> bool {
+    let expected = plan::normalize_newlines(expected);
+    let replacement = plan::normalize_newlines(replacement);
+    run_at_generation(hwnd, generation, move |context| {
+        let (_, caret, selected_end) = context.selection()?;
+        if caret != selected_end {
+            return None;
+        }
+        let units = u32::try_from(expected.encode_utf16().count()).ok()?;
+        let start = caret.checked_sub(units)?;
+        context.replace(start, caret, &expected, &replacement)
+    })
+    .unwrap_or(false)
+}
+
 pub fn replace_range_if_matches(
     hwnd: HWND,
     start: u32,
@@ -250,18 +301,8 @@ pub fn replace_range_if_matches(
     .unwrap_or(false)
 }
 
-#[derive(Clone, PartialEq, Eq)]
-struct Focus {
-    pid: u32,
-    root: isize,
-    runtime_id: Vec<i32>,
-    native_hwnd: isize,
-}
-
 struct Context {
     hwnd: HWND,
-    automation: IUIAutomation,
-    focus_cache: IUIAutomationCacheRequest,
     focus: Focus,
     window: IDispatch,
     document: IDispatch,
@@ -271,10 +312,9 @@ struct Context {
 
 impl Context {
     fn open(hwnd: HWND, generation: u32) -> Option<Self> {
-        let automation: IUIAutomation =
-            unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
-        let focus_cache = focus_cache_request(&automation)?;
-        let focus = focused(&automation, &focus_cache, hwnd)?;
+        trace("fresh-uia-focus");
+        let focus = focused(hwnd)?;
+        trace("native-window-acquire");
         let window = native_window(hwnd)?;
         if get_i32(&window, "Hwnd")? as isize != focus.root {
             return None;
@@ -284,8 +324,6 @@ impl Context {
         let document_identity = document.cast::<IUnknown>().ok()?;
         let context = Self {
             hwnd,
-            automation,
-            focus_cache,
             focus,
             window,
             document,
@@ -310,7 +348,7 @@ impl Context {
                 return None;
             }
         }
-        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
+        if focused(self.hwnd)? != self.focus {
             return None;
         }
         Some(())
@@ -320,7 +358,7 @@ impl Context {
         if super::runtime_generation() != Some(self.generation) {
             return None;
         }
-        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
+        if focused(self.hwnd)? != self.focus {
             return None;
         }
         let selection = self.selection()?;
@@ -331,7 +369,7 @@ impl Context {
         {
             return None;
         }
-        if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
+        if focused(self.hwnd)? != self.focus {
             return None;
         }
         if super::runtime_generation() != Some(self.generation) {
@@ -418,6 +456,7 @@ impl Context {
             "StartCustomRecord",
             vec![VARIANT::from("G-switcher correction")],
         )?;
+        trace("custom-undo-started");
         let mut record = UndoRecord {
             dispatch: undo,
             active: true,
@@ -439,12 +478,13 @@ impl Context {
                 if previous == character.to_string() {
                     continue;
                 }
-                if focused(&self.automation, &self.focus_cache, self.hwnd)? != self.focus {
+                if focused(self.hwnd)? != self.focus {
                     return None;
                 }
                 self.mutation_allowed()?;
                 // Independent one-character range; never writes Font, global
                 // flags, Selection.Text, a full document, or the clipboard.
+                trace("character-write");
                 put(&one, "Text", VARIANT::from(character.to_string().as_str()))?;
                 // The next iteration verifies the entire evolving range;
                 // the last character is verified by the final full-state check.
@@ -472,6 +512,7 @@ impl Context {
         })();
         // End only our successfully started record, including partial failure.
         // Never blindly Undo an unknown outcome or retry another writer.
+        trace("custom-undo-end");
         let ended = record.end().is_some();
         if result.is_none() || !ended {
             return None;
@@ -673,110 +714,6 @@ fn get_dispatch(object: &IDispatch, name: &str) -> Option<IDispatch> {
             .pdispVal
             .as_ref()
             .cloned()
-    }
-}
-
-fn focus_cache_request(automation: &IUIAutomation) -> Option<IUIAutomationCacheRequest> {
-    unsafe {
-        let request = automation.CreateCacheRequest().ok()?;
-        request.SetTreeScope(TreeScope_Element).ok()?;
-        for property in [
-            UIA_ProcessIdPropertyId,
-            UIA_IsPasswordPropertyId,
-            UIA_IsEnabledPropertyId,
-            UIA_IsKeyboardFocusablePropertyId,
-            UIA_NativeWindowHandlePropertyId,
-            UIA_ValueIsReadOnlyPropertyId,
-        ] {
-            request.AddProperty(property).ok()?;
-        }
-        request.AddPattern(UIA_ValuePatternId).ok()?;
-        Some(request)
-    }
-}
-
-fn focused(
-    automation: &IUIAutomation,
-    cache: &IUIAutomationCacheRequest,
-    hwnd: HWND,
-) -> Option<Focus> {
-    if !is_word_window(hwnd) {
-        return None;
-    }
-    unsafe {
-        let mut pid = 0;
-        let thread = GetWindowThreadProcessId(hwnd, &mut pid);
-        let foreground = GetForegroundWindow();
-        let root = GetAncestor(hwnd, GA_ROOT);
-        if thread == 0 || root.is_null() || GetAncestor(foreground, GA_ROOT) != root {
-            return None;
-        }
-        let mut info: GUITHREADINFO = zeroed();
-        info.cbSize = size_of::<GUITHREADINFO>() as u32;
-        if GetGUIThreadInfo(thread, &mut info) == 0 || info.hwndFocus != hwnd {
-            return None;
-        }
-        let mut result = 0usize;
-        if SendMessageTimeoutW(
-            hwnd,
-            WM_NULL,
-            0,
-            0,
-            SMTO_ABORTIFHUNG | SMTO_BLOCK,
-            75,
-            &mut result,
-        ) == 0
-        {
-            return None;
-        }
-        // Build a NEW metadata snapshot on every check. Reuse only the request,
-        // never a cached positive result across checks, characters or events.
-        let element = automation.GetFocusedElementBuildCache(cache).ok()?;
-        if element.CachedProcessId().ok()? as u32 != pid
-            || element.CachedIsPassword().ok()?.as_bool()
-            || !element.CachedIsEnabled().ok()?.as_bool()
-            || !element.CachedIsKeyboardFocusable().ok()?.as_bool()
-        {
-            return None;
-        }
-        if let Ok(pattern) = element.GetCachedPattern(UIA_ValuePatternId) {
-            let value = pattern.cast::<IUIAutomationValuePattern>().ok()?;
-            if value.CachedIsReadOnly().ok()?.as_bool() {
-                return None;
-            }
-        }
-        let native_hwnd = element.CachedNativeWindowHandle().ok()?.0 as isize;
-        if native_hwnd != 0 && native_hwnd != hwnd as isize && native_hwnd != root as isize {
-            return None;
-        }
-        let array = element.GetRuntimeId().ok()?;
-        if array.is_null() {
-            return None;
-        }
-        let runtime_id = (|| {
-            if SafeArrayGetDim(array) != 1 {
-                return None;
-            }
-            let lower = SafeArrayGetLBound(array, 1).ok()?;
-            let upper = SafeArrayGetUBound(array, 1).ok()?;
-            if upper < lower || i64::from(upper) - i64::from(lower) >= 16 {
-                return None;
-            }
-            let mut values = Vec::new();
-            for index in lower..=upper {
-                let mut value = 0i32;
-                SafeArrayGetElement(array, &index, &mut value as *mut i32 as *mut c_void).ok()?;
-                values.push(value);
-            }
-            Some(values)
-        })();
-        let _ = SafeArrayDestroy(array);
-        Some(Focus {
-            pid,
-            root: root as isize,
-            runtime_id: runtime_id?,
-            native_hwnd,
-        })
     }
 }
 

@@ -1,4 +1,10 @@
 use std::cell::RefCell;
+use std::sync::OnceLock;
+use std::time::Duration;
+
+use super::selection::read_worker;
+static READER: OnceLock<Option<read_worker::BoundedReader<u32, Option<UiaSecurityProbe>>>> =
+    OnceLock::new();
 use std::ffi::c_void;
 use std::mem::{size_of, zeroed};
 
@@ -36,7 +42,7 @@ pub struct UiaSecurityProbe {
 }
 
 thread_local! {
-    // COM/UI Automation objects remain on the runtime worker thread. We never
+    // COM/UI Automation objects remain on the windowless MTA reader thread. We never
     // retain an element object, its Name/Value/TextPattern, or user input.
     static AUTOMATION: RefCell<Option<IUIAutomation>> = const { RefCell::new(None) };
 }
@@ -47,6 +53,13 @@ thread_local! {
 /// Failure is returned as None so the caller can fail open (leave user input
 /// unchanged) for unsupported, hung, disappearing, or unidentifiable controls.
 pub fn probe_focused(expected_process_id: u32) -> Option<UiaSecurityProbe> {
+    READER
+        .get_or_init(|| read_worker::BoundedReader::start(probe_focused_on_mta).ok())
+        .as_ref()?
+        .request(expected_process_id, Duration::from_millis(750))?
+}
+
+fn probe_focused_on_mta(expected_process_id: u32) -> Option<UiaSecurityProbe> {
     // Avoid entering a potentially blocking UIA provider when the Win32 focus
     // thread is already unresponsive. This does not read any user text.
     let _responsive_hwnd = responsive_focused_hwnd(expected_process_id)?;

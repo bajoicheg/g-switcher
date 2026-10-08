@@ -1309,7 +1309,9 @@ impl Engine {
         // 2.0.1 fails open for controls without a synchronously verifiable
         // Edit/RichEdit message adapter. UI Automation support is added as a
         // separate adapter; raw SendInput mutation is not allowed to guess.
-        if !selection::is_standard_edit(source.hwnd) {
+        // Word routing is cheap; the fresh native operation establishes actual
+        // writability. Queueing must not open an availability-only Word STA.
+        if !selection::is_word_target(source.hwnd) && !selection::is_standard_edit(source.hwnd) {
             return false;
         }
 
@@ -1389,7 +1391,7 @@ impl Engine {
         // Cache the adapter decision once. If it is unavailable now, leave the
         // user's text untouched. Do not fall through to the legacy SendInput
         // mutation path if adapter availability changes during the operation.
-        let verified_adapter = selection::is_standard_edit(hwnd);
+        let verified_adapter = selection::is_word_target(hwnd) || selection::is_standard_edit(hwnd);
         if !verified_adapter {
             return;
         }

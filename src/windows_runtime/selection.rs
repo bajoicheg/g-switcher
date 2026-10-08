@@ -5,6 +5,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_NULL,
 };
 
+#[path = "read_worker.rs"]
+pub(super) mod read_worker;
 #[path = "uia_legacy_v2.rs"]
 mod uia_legacy;
 #[path = "uia_modern.rs"]
@@ -204,6 +206,12 @@ pub fn suffix_matches_at_caret(hwnd: HWND, expected: &str) -> bool {
 
 pub fn replace_suffix_at_caret(hwnd: HWND, expected: &str, replacement: &str) -> bool {
     let generation = runtime_generation();
+    if class_name(hwnd).as_deref() == Some("_WwG") {
+        let Some(generation) = generation else {
+            return false;
+        };
+        return word_native::replace_suffix_if_matches(hwnd, expected, replacement, generation);
+    }
     let control_adapter = if class_name(hwnd).as_deref() == Some("_WwG") {
         TextAdapter::WordNative
     } else {
