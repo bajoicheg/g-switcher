@@ -78,6 +78,19 @@ enum TextAdapter {
 /// Both paths bind mutations to one RuntimeId and never use clipboard or blind
 /// SendInput. A hung, closing, password, disabled, read-only or unverifiable
 /// target fails open.
+/// Lightweight Word routing for key admission, never mutation authority.
+pub fn is_word_target(hwnd: HWND) -> bool {
+    word_native::is_word_window(hwnd)
+}
+
+pub fn prepare_word_correction_suffix(
+    hwnd: HWND,
+    expected: &str,
+    replacement: &str,
+) -> Option<(String, String)> {
+    word_native::prepare_correction_suffix(hwnd, expected, replacement)
+}
+
 pub fn is_standard_edit(hwnd: HWND) -> bool {
     adapter(hwnd).is_some()
 }

@@ -6,6 +6,9 @@
 #[path = "word_native_plan.rs"]
 mod plan;
 
+#[path = "word_auto_correct.rs"]
+mod auto_correct;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -180,6 +183,20 @@ pub fn read_selected_text(hwnd: HWND) -> Option<SelectedText> {
         }
         Some(SelectedText { start, end, text })
     })
+}
+
+pub fn prepare_correction_suffix(
+    hwnd: HWND,
+    expected: &str,
+    replacement: &str,
+) -> Option<(String, String)> {
+    let expected = plan::normalize_newlines(expected);
+    let replacement = plan::normalize_newlines(replacement);
+    auto_correct::prepare_once(
+        || snapshot_caret(hwnd).map(|snapshot| snapshot.text_before_caret),
+        &expected,
+        &replacement,
+    )
 }
 
 pub fn snapshot_caret(hwnd: HWND) -> Option<EditSnapshot> {

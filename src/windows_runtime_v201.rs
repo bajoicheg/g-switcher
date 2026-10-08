@@ -734,7 +734,10 @@ impl Engine {
         // candidate for a control that has no synchronously verifiable text
         // adapter. Unsupported modern controls fail open: original input is
         // left untouched and the application can be placed in Disabled mode.
-        if !selection::is_standard_edit(target.hwnd) {
+        // Key admission only: do not open Word NativeOM/STA on every letter.
+        // UIA/password metadata below and fresh native mutation guards remain
+        // mandatory. Class/process routing never proves a range writable.
+        if !selection::is_word_target(target.hwnd) && !selection::is_standard_edit(target.hwnd) {
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
             return;
@@ -1352,7 +1355,7 @@ impl Engine {
     }
 
     fn execute_pending_correction(&mut self) {
-        let Some(pending) = self.pending_correction.take() else {
+        let Some(mut pending) = self.pending_correction.take() else {
             return;
         };
         if settings::paused() || current_generation() != pending.generation {
@@ -1391,9 +1394,20 @@ impl Engine {
             return;
         }
         if verified_adapter {
-            if !wait_for_edit_suffix(hwnd, &pending.original_text, pending.generation) {
+            let Some((actual, replacement)) = prepare_edit_suffix(
+                hwnd,
+                &pending.original_text,
+                &pending.replacement_text,
+                pending.generation,
+            ) else {
                 return;
-            }
+            };
+            // Record Word's actual case for our undo and correction context.
+            // The native adapter still rechecks this exact text before writing.
+            let token_size = pending.corrected.chars().count();
+            pending.corrected = replacement.chars().take(token_size).collect();
+            pending.original_text = actual;
+            pending.replacement_text = replacement;
             if !switch_layout(hwnd, pending.thread_id, pending.target_hkl) {
                 return;
             }
@@ -1566,17 +1580,30 @@ fn current_generation() -> u32 {
     CONTEXT_GENERATION.load(Ordering::SeqCst)
 }
 
-fn wait_for_edit_suffix(hwnd: HWND, expected: &str, generation: u32) -> bool {
+fn prepare_edit_suffix(
+    hwnd: HWND,
+    expected: &str,
+    replacement: &str,
+    generation: u32,
+) -> Option<(String, String)> {
+    if current_generation() != generation || focused_hwnd_fast() != hwnd {
+        return None;
+    }
+    if selection::is_word_target(hwnd) {
+        // A permanent mismatch (notably Word AutoCorrect's first capital) is
+        // not input-delivery lag. One fresh snapshot; never poll Word 50 times.
+        return selection::prepare_word_correction_suffix(hwnd, expected, replacement);
+    }
     for _ in 0..50 {
         if current_generation() != generation || focused_hwnd_fast() != hwnd {
-            return false;
+            return None;
         }
         if selection::suffix_matches_at_caret(hwnd, expected) {
-            return true;
+            return Some((expected.into(), replacement.into()));
         }
         unsafe { Sleep(1) };
     }
-    false
+    None
 }
 
 fn focused_target() -> Option<FocusTarget> {
