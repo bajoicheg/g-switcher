@@ -16,8 +16,8 @@
 | `checks.json` | `ac2e93b0bd2d87265713dc92d071673f04f04fdc68de0aace2700ccbfb7549b9` |
 | `result.json` | `17511970d1c9e3ad68e656e88c08884112b95dbdf0f36467d031735f38205950` |
 | `windows-ci.yml` | `52f433e73683b47a53b27d2fba4de4664bb4ce5f8c2800dc74966b6402d37d5f` |
-| `word-bootstrap.yml` | `124b1e0d0297f8be9e20783bd1013bf291d093ae00c9c003601bede2536ba931` |
-| `host-launch-intent.json` | `400d92941f5593671463c6714ac7c154b62e06cbf03970d301585c70e9e2bfd2` |
+| `word-bootstrap.yml` | `c83fe6ddc19c5cf26e8f4946119262c8cd790594b0b266838d6376ff86acfa7b` |
+| `host-launch-intent.json` | `73650397e92ad1b75a5aa1ed6e59ade807fbe91019f21f2cd8cf21c65182aba8` |
 
 The original TTL reliability gap is resolved: the exact canonical runtime factory delegates supported ttl2700 through the original acquisition method; observed provider activity renewal also uses2700. The native 45-minute lease covers the bounded 35-minute controller observation and 40-minute runtime/worker window. No ownership/capability/quiescence checks are replaced. Parent reports actual 2700-second acquisition and canonical finish/release fixture success; not rerun here.
 
@@ -32,3 +32,11 @@ Parent terminal reconciliation binds authenticated exact run/job and actual cand
 Git stderr and transport tokens are not printed; storage redirects remove Authorization. Controller writes fixed/numeric lifecycle conclusions and authenticated protocol evidence; bundle output does not include checkout credential config. Host always-run artifact capture preserves reconstruction/lifecycle output on failure. New runtime outcomes remain evidence requirements, not source assumptions.
 
 Verification here: complete source/pipeline inspection, canonical API comparison, Python AST/YAML parsing, all13 payload hashes and final intent hash. Parent reports16 local tests plus scoped actual2700 acquisition/finish/release fixture; these were not independently rerun. Exact reconstruction has not yet run; no new Windows run, EXE, installed Word/Chrome success or resolved hang is claimed. Final durable bootstrap document and trigger must preserve this intent and actual-head binding.
+
+## Ordered a2 host-workflow configuration delta
+
+**PASS for the narrow correction after scoped SPEC PASS.** Current host workflow SHA-256 `c83fe6ddc19c5cf26e8f4946119262c8cd790594b0b266838d6376ff86acfa7b`; final intent SHA-256 `73650397e92ad1b75a5aa1ed6e59ade807fbe91019f21f2cd8cf21c65182aba8`. All other previously reviewed payload hashes remain unchanged and all13 current intent pins match. Job-level env uses github values only; runner.temp is now evaluated in start/wait step environments, and background controller/native worker inherit the same out-of-checkout bytecode path. No executable or prepared Windows-workflow/candidate change.
+
+The 13-event ledger preserves prior reservation/history and records setup_failed, concrete context remedy and the fresh a2 reservation. The dedicated a2 admission ref consumes a new reviewed request; it does not reactivate the old one-use document. Parent reports authenticated first run37796864802 had zero jobs and the exact runner-at-job-env validation annotation, old admission was conditionally marked rejected, and generation31 lease bytes remained unchanged. These are parent-provided observations, not remote checks by this reviewer. The corrected context placement addresses the stated validation cause; actual Actions acceptance still must be observed.
+
+No launch, remote mutation, ownership acquisition, test rerun or CI outcome was performed/claimed here. The prior quality verdict carries to these exact bytes for the supported bootstrap route. Final trigger must preserve actual-head/intent/new-admission binding; real reconstruction/Windows terminal evidence and canonical release remain outstanding.
