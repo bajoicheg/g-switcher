@@ -45,7 +45,7 @@ def main():
         assert api('git/ref/heads/cdc/coordination')['object']['sha'] == ref
         leasev2.validate(record)
         assert record['owner_id'] == inputs['owner_id']
-        assert record['generation'] == int(inputs['generation']) == 32
+        assert record['generation'] == int(inputs['generation']) == 33
         assert record['invocation']['invocation_id'] == inputs['invocation_id']
         assert record['repository'] == 'bajoicheg/g-switcher'
         assert record['source_ref'] == 'refs/heads/release/2.0.1'
