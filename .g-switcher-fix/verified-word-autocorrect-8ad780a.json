@@ -1,0 +1,253 @@
+{
+  "candidate": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+  "run_id": 37749167622,
+  "exe_sha256": "e80dcf9452490d2fdf28c69c3d42269bba26f5deff49f06d56cd8f346500698f",
+  "artifact_digests_verified": true,
+  "native_capitalization_red": "confirmed failing test against previous exact-match suffix contract",
+  "native_capitalization_green": "5 passed; 0 failed",
+  "windows_pipeline": "GREEN",
+  "amd64": true,
+  "lock_binding": true,
+  "distinct_previous_exe": true,
+  "release_receipt": {
+    "lease_revision": "db49ecc869e10a34c2854f76570e5fac80009cfb",
+    "release": {
+      "at_utc": "2026-10-08T08:22:27.906677Z",
+      "checkpoint_ref": "git:refs/heads/release/2.0.1@8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "completion_reason": "scope_complete",
+      "external_reconciliation": "none",
+      "generation": 26,
+      "invocation_id": "managed-terminal:08a285c4eb0dff71de6acee6fac1f6d3462f981f044dd78d35606bd5a2766ad9",
+      "owner_id": "1767a82e-e556-4d06-9c7b-e71e9f78a4f4"
+    },
+    "schema": "execution-release-receipt/v1"
+  },
+  "installed_word_acceptance": "pending",
+  "exe_path": "/workspace/scratch/a6405d04ffef/GSwitcher-2.0.1-Word-AutoCorrect-8ad780a.exe",
+  "library_file_id": "libfile_1c24fb6e15ec8191bcd3249b8f3437de",
+  "review_pipeline": {
+    "schema": "review-pipeline/v2",
+    "change_id": "word-autocorrect:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+    "implementer_ref": "executor:/root",
+    "assessment": {
+      "schema": "quality-assessment/v1",
+      "project_level": "FULL",
+      "risk_level": "MEDIUM",
+      "risk_categories": [
+        "ordinary_feature"
+      ],
+      "risk_reason": "Word native interaction and AutoCorrect suffix handling",
+      "mandatory_check_ids": [
+        "windows-ci",
+        "autocorrect-regression"
+      ]
+    },
+    "self_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": []
+    },
+    "combined_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": [],
+      "covers": []
+    },
+    "spec_compliance": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "evidence_refs": [
+        "report:requirements-review.md@sha256:b4e7d7857585b59709f2ad35c3344cd651ce2f4348e8806282df7cca01f34c07"
+      ],
+      "findings": []
+    },
+    "code_quality": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_quality",
+      "sequence": 2,
+      "evidence_refs": [
+        "report:quality-review.md@sha256:ab765e6634b76488fea4ad016b839cb0efdcbcd120f56ce3d87129b8167df7f4"
+      ],
+      "findings": []
+    }
+  },
+  "review_result": {
+    "schema": "review-pipeline-result/v2",
+    "change_id": "word-autocorrect:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+    "effective_level": "FULL",
+    "review_green": true,
+    "blockers": [],
+    "action": "REVIEW_GREEN",
+    "authorizes_product_write": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_scope_expansion": false
+  },
+  "branch_finish": {
+    "schema": "branch-finish/v2",
+    "branch": "release/2.0.1",
+    "candidate_sha": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+    "observed_head": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+    "validation_fresh": true,
+    "diff_spec_reconciled": true,
+    "candidate_bound": true,
+    "clean_worktree": true,
+    "unresolved_findings": [],
+    "required_checks": [
+      {
+        "id": "windows-ci",
+        "state": "success",
+        "candidate_sha": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+        "evidence_ref": "actions:37749167622:job:113218727857"
+      },
+      {
+        "id": "autocorrect-regression",
+        "state": "success",
+        "candidate_sha": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+        "evidence_ref": "actions:37749167622:managed-artifact:11536823780:worker-evidence"
+      }
+    ],
+    "review_pipeline": {
+      "schema": "review-pipeline/v2",
+      "change_id": "word-autocorrect:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "implementer_ref": "executor:/root",
+      "assessment": {
+        "schema": "quality-assessment/v1",
+        "project_level": "FULL",
+        "risk_level": "MEDIUM",
+        "risk_categories": [
+          "ordinary_feature"
+        ],
+        "risk_reason": "Word native interaction and AutoCorrect suffix handling",
+        "mandatory_check_ids": [
+          "windows-ci",
+          "autocorrect-regression"
+        ]
+      },
+      "self_review": {
+        "state": "not_run",
+        "reviewer_ref": null,
+        "sequence": null,
+        "evidence_refs": [],
+        "findings": []
+      },
+      "combined_review": {
+        "state": "not_run",
+        "reviewer_ref": null,
+        "sequence": null,
+        "evidence_refs": [],
+        "findings": [],
+        "covers": []
+      },
+      "spec_compliance": {
+        "state": "green",
+        "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+        "sequence": 1,
+        "evidence_refs": [
+          "report:requirements-review.md@sha256:b4e7d7857585b59709f2ad35c3344cd651ce2f4348e8806282df7cca01f34c07"
+        ],
+        "findings": []
+      },
+      "code_quality": {
+        "state": "green",
+        "reviewer_ref": "agent:/root/cdc_adoption_quality",
+        "sequence": 2,
+        "evidence_refs": [
+          "report:quality-review.md@sha256:ab765e6634b76488fea4ad016b839cb0efdcbcd120f56ce3d87129b8167df7f4"
+        ],
+        "findings": []
+      }
+    },
+    "review_candidate_sha": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+    "reused_checks": []
+  },
+  "branch_finish_result": {
+    "schema": "branch-finish-result/v2",
+    "action": "READY_FOR_CDC_TERMINAL",
+    "ready": true,
+    "blockers": [],
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_product_write": false,
+    "authorizes_scope_expansion": false,
+    "review": {
+      "schema": "review-pipeline-result/v2",
+      "change_id": "word-autocorrect:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "effective_level": "FULL",
+      "review_green": true,
+      "blockers": [],
+      "action": "REVIEW_GREEN",
+      "authorizes_product_write": false,
+      "authorizes_merge": false,
+      "authorizes_release": false,
+      "authorizes_scope_expansion": false
+    }
+  },
+  "continuity": {
+    "schema": "execution-continuity/v1",
+    "invocation_id": "work:g-switcher-word-autocorrect:20261008",
+    "current_state": "WAIT_EXTERNAL",
+    "requested_terminal_outcome": "waiting_external",
+    "runnable_next_action": false,
+    "meaningful_progress_refs": [
+      "git:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "actions:37749167622:GREEN",
+      "library:libfile_1c24fb6e15ec8191bcd3249b8f3437de"
+    ],
+    "primitive_steps": [],
+    "external_binding": {
+      "kind": "installed-word-acceptance",
+      "id": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "operation_key": "word-paragraph-capitalization:8ad780a9f733dc13f474c1227dcb1d2c5f486187"
+    },
+    "blocker": null,
+    "checkpoint_ref": "library:libfile_1c24fb6e15ec8191bcd3249b8f3437de",
+    "next_action": "Observe owner test in installed Word: new paragraph ghbdtn plus Space becomes Привет; check caret, responsiveness, formatting and one Undo. No installed Word automation surface is available in this runtime.",
+    "lease_release_required": false,
+    "lease_released": true,
+    "terminal_state": {
+      "schema": "terminal-state/v2",
+      "invocation_id": "work:g-switcher-word-autocorrect:20261008",
+      "scope_id": "Word AutoCorrect repair and verified EXE delivery with installed Word acceptance",
+      "observed_head": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+      "decision": "WAIT_EXTERNAL",
+      "runnable_actions": [],
+      "pending_external": {
+        "kind": "installed-word-acceptance",
+        "id": "8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+        "operation_key": "word-paragraph-capitalization:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+        "state": "unknown",
+        "recheck_action": "Observe owner test in installed Word: new paragraph ghbdtn plus Space becomes Привет; check caret, responsiveness, formatting and one Undo. No installed Word automation surface is available in this runtime."
+      },
+      "blocker": null,
+      "meaningful_progress_refs": [
+        "git:8ad780a9f733dc13f474c1227dcb1d2c5f486187",
+        "actions:37749167622:GREEN",
+        "library:libfile_1c24fb6e15ec8191bcd3249b8f3437de"
+      ],
+      "completion_evidence_refs": [],
+      "checkpoint_ref": "library:libfile_1c24fb6e15ec8191bcd3249b8f3437de",
+      "lease_released": true
+    }
+  },
+  "final_response_gate_result": {
+    "schema": "final-response-gate-result/v1",
+    "authorizes_product_write": false,
+    "authorizes_takeover": false,
+    "authorizes_external_start": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "allowed": true,
+    "final_response_allowed": true,
+    "reason": "verified_terminal_and_release_boundary"
+  },
+  "review_reports": {
+    "requirements-review.md": "# Word paragraph capitalization and excessive probing: exact requirements review\n\n## Verdict\n\n**PASS for the exact source requirements review and final candidate formatting binding; no blocking finding.** Candidate `8ad780a9f733dc13f474c1227dcb1d2c5f486187` retains the approved behavior. Actual Word acceptance remains pending. No measured speed or hang-resolution claim is made.\n\nReviewed the active `windows_runtime_v201.rs` and exact changed native/selection/helper files against the original implementation. No implementation edits or remote actions were performed.\n\n## Exact work files\n\n| File relative to word-auto-task/work | SHA-256 |\n| --- | --- |\n| `src/windows_runtime_v201.rs` | `a41e354bf9a37ed579d4b1fe663cfd3697db6bb6a7ea8628c8a39edee5cbaaef` |\n| `src/windows_runtime/selection.rs` | `1d7f3d7dbfccde5b875914a82e06f09e2f4034778532d08997ac3f52946ee0c9` |\n| `src/windows_runtime/word_native.rs` | `a4f37126ce606cf0364d518210ee32d09f9f5621817179a9deed7ebb84797e63` |\n| `src/windows_runtime/word_auto_correct.rs` | `4b0282280a357f0f3f5ee046e7d4c5b4b7b81fbb49cc47b5368eb55fdaf2e55c` |\n\n## Requirement findings\n\n- Per-key Word routing now uses only class/process identity through `selection::is_word_target`. It bypasses `has_adapter` solely at the key-event admission condition. Existing secure-input handling, UIA/password refusal and later operation availability checks remain. Mutation still enters the original native context and guards.\n- `prepare_edit_suffix` branches recognized Word away from the 50-poll loop. Word preparation calls `prepare_once` with one fresh `snapshot_caret` read and returns `None` immediately on permanent mismatch. Other controls retain their prior delivery polling.\n- Exact suffixes pass unchanged. Capitalization adaptation requires one lowercase first character with a single BMP uppercase counterpart, exact remaining suffix and delimiter, and an empty prefix before the word or a prefix ending in native paragraph mark `\\r`. Midparagraph uppercase drift, whitespace before a paragraph word, other edits and Unicode uppercase expansion are refused. Replacement capitalization is likewise length-preserving and limited to its first character.\n- Runtime updates `pending.original_text` to actual observed case and `pending.replacement_text` to actual corrected case before mutation. The corrected token is taken at its original character length, excluding the delimiter. Existing RuntimeUndo stores these resulting exact strings; context tokens and corrected-length tracking use the corrected actual token.\n- Native replacement implementation is untouched. Full evolving range/document checks, fresh UIA focus/security snapshots, native document protection/structural refusal, generation/pause/document/selection identity, one-character formatting-preserving writes, custom one-Undo record, serialization and uncertain-mutation latch remain. Preparation does not bypass fresh guarded mutation, and mismatch does not trigger blind retry, clipboard or global Word flags.\n\n## Verification and remaining evidence\n\nStatic comparison confirms the native mutation body is byte-unchanged relative to the original. The helper contains five portable tests covering document start, later paragraph/Enter/tab, exact case, arbitrary edit/delimiter/midparagraph/expansion refusal and a one-read permanent mismatch. Tests were read, not executed in this review; the parent plans hosted-worker old exact-match RED then helper GREEN before commit.\n\nActual Word remains necessary to verify paragraph-start correction, original-case restoration by runtime Undo, one custom Word Undo, mixed formatting, focus/protection/generation refusal and observed responsiveness. Removing repeated native probes provides a concrete reduction in interop work but does not prove latency or hang resolution. Key classification is routing, not proof that a protected or unsupported Word document is writable; operation refusal remains authoritative.\n\n## Prior diagnosis\n\n\nRuntime key-event handling calls `selection::is_standard_edit`, whose Word adapter branch invokes `word_native::has_adapter`. That opens a new joined STA, reads native document/selection and repeatedly validates UIA/focus/protection/structural state on every key event. At pending correction, the same adapter availability probe occurs again, then `wait_for_edit_suffix` performs up to 50 synchronous suffix snapshots. Each Word snapshot opens another STA and performs native and UIA checks. The nominal one-millisecond sleeps do not bound the COM work in each iteration.\n\nThe suffix comparison is exact. Typed candidate `ghbdtn ` and actual paragraph-start Word text `Ghbdtn ` therefore mismatch on all iterations. This explains a repeated-probe path directly triggered by Word capitalization; it supports a plausible cause of caret activity and blocking, but actual hangs and latency still require Word runtime observation.\n\n\n## Final immutable candidate binding\n\nCandidate commit: `8ad780a9f733dc13f474c1227dcb1d2c5f486187` (publication identity provided by parent; this review performs local file binding only).\n\n| File relative to word-auto-task/candidate | Final SHA-256 |\n| --- | --- |\n| `src/windows_runtime_v201.rs` | `fc3ce5ed30267150d1eea604ddadfd62862ee0b1236f3458c57206b66ebaf2fc` |\n| `src/windows_runtime/selection.rs` | `1d7f3d7dbfccde5b875914a82e06f09e2f4034778532d08997ac3f52946ee0c9` |\n| `src/windows_runtime/word_native.rs` | `a4f37126ce606cf0364d518210ee32d09f9f5621817179a9deed7ebb84797e63` |\n| `src/windows_runtime/word_auto_correct.rs` | `c6917953e1484a7134c95f195025bcffc3100fdb50fe30fe5763b98eb4ba7c67` |\n\n**Targeted binding PASS.** Compared the candidate files directly against the previously approved work files. Selection and native adapter files are byte-identical. The active runtime differs only in line wrapping of the key-admission condition. The helper differs only in test formatting and trailing commas; its production implementation is byte-identical. No semantics changed, so the prior requirements verdict carries to these exact candidate hashes.\n\nParent reports actual recorded evidence of behavioral baseline RED, five helper tests GREEN, typed Windows compile and clippy PASS, managed-worker success at generation 26, and exact lease release `db49ecc869e10a34c2854f76570e5fac80009cfb`. Those results were not independently re-executed or fetched by this targeted read-only review. Full Windows job `113218727857` is running/pending at this review boundary; this report makes no claim of its success or actual Word runtime acceptance.\n",
+    "quality-review.md": "# Word AutoCorrect independent quality review\n\n**PASS for exact source quality review — no concrete blocking issue found.**\n\n| File relative to word-auto-task | SHA-256 |\n| --- | --- |\n| `work/src/windows_runtime_v201.rs` | `a41e354bf9a37ed579d4b1fe663cfd3697db6bb6a7ea8628c8a39edee5cbaaef` |\n| `work/src/windows_runtime/selection.rs` | `1d7f3d7dbfccde5b875914a82e06f09e2f4034778532d08997ac3f52946ee0c9` |\n| `work/src/windows_runtime/word_native.rs` | `a4f37126ce606cf0364d518210ee32d09f9f5621817179a9deed7ebb84797e63` |\n| `work/src/windows_runtime/word_auto_correct.rs` | `4b0282280a357f0f3f5ee046e7d4c5b4b7b81fbb49cc47b5368eb55fdaf2e55c` |\n| `worker.py` | `2adee607877891404e908ce2abc715bd562ffbbcf4a9dc4f0390132d52476074` |\n| `runner.py` | `30ba7cad6493f5dc51e4b83e86f30af954f28f9811fc66d5828a39b63336703f` |\n\nReviewed the four source diffs against originals pinned to base `211a919a9db5dedaab84b22684c7c942d93133e5`, surrounding key admission, correction execution, native snapshot and mutation paths, and worker/controller orchestration.\n\nThe per-key Word bypass removes adapter admission COM work while retaining secure-input and UIA/password refusal before policy readiness. Word class/process routing does not grant mutation authority: pending correction still checks operation availability and enters the original fresh guarded native mutation path. The native replacement body is byte-unchanged, preserving generation, focus/document/selection identity, protection, full evolving-range validation, one-character writes, custom Undo and uncertainty behavior.\n\nThe new preparation reads one guarded Word suffix snapshot. Capitalization reconciliation requires exact remaining suffix/delimiter and paragraph-start position, accepts only a single BMP lowercase-to-uppercase mapping, and rejects expansion and midparagraph case drift. It updates the pending actual source/replacement strings before mutation and stores those exact strings for RuntimeUndo; corrected context excludes the delimiter. Other control polling behavior remains unchanged.\n\nWorker and controller Python AST parsing passed. Embedded source bytes and manifest hashes match the reviewed work files; available original files match pinned original hashes. The RED model reproduces the old selection suffix `.ends_with(expected)` contract and embeds exactly the same new test module as the helper. The worker requires compilation success followed by an actual failing capitalization test before writing implementation files; its zero-test fallback cannot satisfy the required nonzero FAILED result. GREEN helper tests, portable tests, Windows typed check and Clippy run before candidate commit; the parsed workflow sequences Windows CI after the managed job. The controller retains canonical bridge ownership/publication/finalization and exact candidate readback.\n\nThis was a read-only source review: no worker, tests, compilation, Word operation or remote mutation was executed. Worker rustfmt may change final source hashes; bind final candidate review to its actual bytes. Hosted RED/GREEN, compilation/full CI and installed Word acceptance are still pending. No empirical hang-resolution, latency, formatting or Undo claim is made.\n\n## Final immutable candidate binding\n\nCandidate commit: `8ad780a9f733dc13f474c1227dcb1d2c5f486187` (parent-provided publication identity; local exact-file binding reviewed here).\n\n| File relative to word-auto-task/candidate | Final SHA-256 |\n| --- | --- |\n| `src/windows_runtime_v201.rs` | `fc3ce5ed30267150d1eea604ddadfd62862ee0b1236f3458c57206b66ebaf2fc` |\n| `src/windows_runtime/selection.rs` | `1d7f3d7dbfccde5b875914a82e06f09e2f4034778532d08997ac3f52946ee0c9` |\n| `src/windows_runtime/word_native.rs` | `a4f37126ce606cf0364d518210ee32d09f9f5621817179a9deed7ebb84797e63` |\n| `src/windows_runtime/word_auto_correct.rs` | `c6917953e1484a7134c95f195025bcffc3100fdb50fe30fe5763b98eb4ba7c67` |\n\n**Targeted binding PASS — no concrete blocker.** Direct approved-work/candidate diffs contain only Rustfmt changes: line wrapping in the runtime admission condition and formatting/trailing commas in helper tests. Selection and native files are byte-identical, and helper production code is byte-identical. Prior quality findings carry forward to the exact final hashes above without a broad rereview.\n\nParent reports managed success at generation 26, lease release `db49ecc869e10a34c2854f76570e5fac80009cfb`, and behavioral RED, helper GREEN, typed Windows compilation and Clippy PASS. These were not independently executed or fetched during this binding review. Full Windows job `113218727857` remains a separate pending/running gate at this boundary. No full-CI success or installed Word hang/latency/formatting/Undo acceptance is claimed. No execution or remote mutation was performed.\n"
+  }
+}
