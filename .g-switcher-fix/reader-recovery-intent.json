@@ -1,0 +1,255 @@
+{
+  "schema": "reader-recovery-launch-intent/v1",
+  "repository": "bajoicheg/g-switcher",
+  "source_ref": "refs/heads/release/2.0.1",
+  "expected_source": "cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0",
+  "branch": "cdc/reader-recovery-20261008-35c9f5f9",
+  "worker_sha256": "35c9f5f9ca06c12c5370efe1b636529210f1457fea791cbe201750039ad6b86d",
+  "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+  "paths": [
+    "src/windows_runtime/read_worker.rs",
+    "src/windows_runtime_v201.rs",
+    "docs/work-status/reader-recovery-2026-10-08.json"
+  ],
+  "budget_reservation": {
+    "type": "reserve",
+    "event_id": "reader-recovery-ci-35c9f5f9",
+    "task_id": "g-switcher/2.0.1",
+    "wake_id": "reader-recovery-20261008-1509",
+    "at_utc": "2026-10-08T12:22:47.588804Z",
+    "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+    "attempt_id": "reader-recovery-35c9f5f9-a1",
+    "kind": "ci_start",
+    "scope": "github-actions/g-switcher/reader-recovery",
+    "recovery_ref": null,
+    "cost": {
+      "tool_calls": 1,
+      "tokens": null,
+      "elapsed_seconds": null
+    }
+  },
+  "budget_decision": {
+    "allow_reservation": true,
+    "allow_launch": false,
+    "already_recorded": false,
+    "reasons": [],
+    "provider": {}
+  },
+  "ledger": {
+    "schema": "budget-ledger/v1",
+    "task_id": "g-switcher/2.0.1",
+    "wake_ids": [
+      "word-provider-hang-20261008-1328",
+      "reader-recovery-20261008-1509"
+    ],
+    "policy": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 200
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 4,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 60
+      }
+    },
+    "policy_digest": "sha256:aae807acf068ccc3b14089209ec2374e30ba033a1e104bd65c1371edf55668a2",
+    "events": [
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-304073d6",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:31:24.752813Z",
+        "operation_key": "sha256:be7e57814df52e27ab558e8bcb47376e5b73da76bb81db60ab089211adb35dfe",
+        "attempt_id": "word-provider-hang-304073d6-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci1-clippy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:34:23.017074Z",
+        "reservation_id": "word-provider-hang-ci-304073d6",
+        "status": "failed",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 121
+        },
+        "failure": {
+          "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+          "category": "code"
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-provider-hang-clippy-fixed",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:37:28.542655Z",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "signature": "clippy-duplicate-mod-and-channel-type-complexity",
+        "reference": "report:word-provider-clippy-module-wiring-cycle2",
+        "kind": "code_correction",
+        "detail": "Single read_worker declaration in selection shared by active runtime, failure binary and browser tests; explicit generic sync_channel removes duplicated-module/type-complexity errors."
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-provider-hang-ci-3607936d",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:39:17.090579Z",
+        "operation_key": "sha256:a0e46ca53357c137a34e7216e23cf38654c3c1255fe5ea499c4427366c0f2a6e",
+        "attempt_id": "word-provider-hang-3607936d-a2",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-provider-hang",
+        "recovery_ref": "report:word-provider-clippy-module-wiring-cycle2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-provider-hang-ci2-success",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-provider-hang-20261008-1328",
+        "at_utc": "2026-10-08T10:48:06Z",
+        "reservation_id": "word-provider-hang-ci-3607936d",
+        "status": "succeeded",
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 475.0
+        },
+        "failure": null
+      },
+      {
+        "type": "reserve",
+        "event_id": "reader-recovery-ci-35c9f5f9",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "reader-recovery-20261008-1509",
+        "at_utc": "2026-10-08T12:22:47.588804Z",
+        "operation_key": "sha256:a1a3f740ede0ad5e6cf6adb0ea7bddb4888caafbf4ca62f49aa8af8cd69002f6",
+        "attempt_id": "reader-recovery-35c9f5f9-a1",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/reader-recovery",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      }
+    ]
+  },
+  "review_pipeline": {
+    "schema": "review-pipeline/v2",
+    "change_id": "reader-recovery-35c9f5f9",
+    "implementer_ref": "executor:/root",
+    "assessment": {
+      "schema": "quality-assessment/v1",
+      "project_level": "FULL",
+      "risk_level": "MEDIUM",
+      "risk_categories": [
+        "ordinary_feature"
+      ],
+      "risk_reason": "Isolate Word UIA metadata and prevent stalled-reader replacement without changing native mutation safeguards",
+      "mandatory_check_ids": [
+        "windows-ci",
+        "reader-regression"
+      ]
+    },
+    "self_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": []
+    },
+    "combined_review": {
+      "state": "not_run",
+      "reviewer_ref": null,
+      "sequence": null,
+      "evidence_refs": [],
+      "findings": [],
+      "covers": []
+    },
+    "spec_compliance": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "evidence_refs": [
+        "report:requirements-review.md@sha256:878b1203e47bb94c03ff388b8f3811a5f3f4baad931f6c0d510fdbe6ed820cf1"
+      ],
+      "findings": []
+    },
+    "code_quality": {
+      "state": "green",
+      "reviewer_ref": "agent:/root/cdc_adoption_quality",
+      "sequence": 2,
+      "evidence_refs": [
+        "report:quality-review.md@sha256:251dd7a17d5e451b1bc07b4407db5e078bddcce643708b76022fadbb00c1b0ae"
+      ],
+      "findings": []
+    }
+  },
+  "review_result": {
+    "schema": "review-pipeline-result/v2",
+    "change_id": "reader-recovery-35c9f5f9",
+    "effective_level": "FULL",
+    "review_green": true,
+    "blockers": [],
+    "action": "REVIEW_GREEN",
+    "authorizes_product_write": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_scope_expansion": false
+  },
+  "reviewed_source_sha256": {
+    "src/windows_runtime/read_worker.rs": "35356b2b2592552a6e45340d3f9bed2d57d80560da43aef02c25371e9d080a60",
+    "src/windows_runtime_v201.rs": "714d636fa10a528baf27077023cb55c076fc5fd2e8260ebfd51912667d8f2e7f",
+    "docs/work-status/reader-recovery-2026-10-08.json": "0ec1648f8b4ce00a6e23e4e4c65f442694b804f894cd6b8796bfb42b109a10d9"
+  },
+  "review_reports": {
+    "requirements-review.md": "# Transient metadata reader recovery: requirements review\n\n## Verdict\n\n**PASS for the reader state machine and negative-cache recovery correction; prior integration gap resolved in source.** No reader concurrency, overlap or old-response acceptance defect found in the proposed source. No execution or remote action performed; only this report written.\n\n| Inspected artifact | SHA-256 |\n| --- | --- |\n| `original/read_worker.rs` | `b696acf4fc13a15e01cec7ce4bc818a4195a26638f69598d76c6f8c2c82b267b` |\n| `work/read_worker.rs` | `35356b2b2592552a6e45340d3f9bed2d57d80560da43aef02c25371e9d080a60` |\n| `recovery-test.rs` | `37b85f3b1246c6bc2381c92acbc24db4f0026164e5065492abef4c1a490215ae` |\n\n## Reader safety assessment\n\nAdmission takes the small state mutex, refuses disconnected/active callers and refuses a not-yet-completed exact prior request. A per-request Release completion is observed with Acquire before another request can enter. Completion is set only after provider invocation returns; it signals quiescence rather than security proof. New admitted requests install a distinct completion flag and response channel before releasing the mutex. The persistent same worker processes requests serially; no replacement thread is created.\n\n`caller_active` remains true throughout message pumping, waiting, logging and guard cleanup, so reentrant/concurrent calls cannot displace current ownership. Old late results target the old dropped response channel, never the new caller's channel. The caller checks its deadline before accepting a response. Timeout permits future fresh work only after exact old completion; panic/disconnect permanently refuses subsequent work. Queue failure likewise refuses rather than inventing completion. State mutex scopes contain no provider, message pump, file I/O or callback work. Updated stalled/concurrency tests and appended recovery regression cover held old request, many rejected contenders, same-thread recovery, exactly two provider invocations and fresh99 rather than old42.\n\nStage-only timeout/recovery/disconnect logging contains no user text. Fresh metadata consumers, native mutation and Undo are outside the changed file and remain intact. This review does not authorize clearing the native uncertain-mutation latch after a reader timeout.\n\n## Earlier product integration gap (now resolved)\n\nThe previously approved, unchanged runtime `word-hang-task/work/src/windows_runtime_v201.rs` caches `probe_focused(None)` with `checked=true`, native HWND zero and the same generation/process/focus. On the next event with that binding, `uia_password_state` returns cached None without calling the recovering reader. `reset_transient` does not clear this cache. Therefore a transient timeout in the UIA secure reader can continue disabling input/correction in the same Word focus even after the new reader state machine has recovered. The reader-only test does not exercise this path. Verify the exact cb1dd4c runtime base; if it retains this code, negative-cache retry/invalidation must be addressed before claiming the reported stop-correcting regression resolved. The follow-up correction below addresses this gap. Retrying a fresh probe for None creates no writability bypass.\n\nA Word focus timeout after native mutation submission also correctly leaves the existing uncertain latch set. Reader recovery must not clear it or permit another writer; absent exact effect reconciliation, restart may still be required. This is a safety boundary, not permission to retry mutation.\n\n## Remaining evidence\n\nPlanned hosted baseline RED then candidate GREEN was not executed by this review. The original-source recovery regression should fail because the old reader permanently quarantines after timeout; new tests should prove fresh same-worker recovery. Native Word acceptance still must demonstrate repeated correction after a transient *read-only* delay, failure-open while a provider remains stalled, same-focus secure-probe recovery, no stale-positive acceptance, mixed formatting/one Undo and no new write after uncertain outcome. Existing sent-message pumping means a read budget is not a hard total call bound; diagnostic I/O also has no hard deadline.\n\n## Follow-up integration correction: exact binding\n\n**PASS; no remaining blocking source requirement finding.**\n\n| Artifact relative to reader-recovery-task | SHA-256 |\n| --- | --- |\n| `original/read_worker.rs` | `b696acf4fc13a15e01cec7ce4bc818a4195a26638f69598d76c6f8c2c82b267b` |\n| `original/windows_runtime_v201.rs` | `20b68a5be2de83a9758cad2c650f6103454a95fa4f992c5301988510121b1da8` |\n| `work/read_worker.rs` | `35356b2b2592552a6e45340d3f9bed2d57d80560da43aef02c25371e9d080a60` |\n| `work/windows_runtime_v201.rs` | `714d636fa10a528baf27077023cb55c076fc5fd2e8260ebfd51912667d8f2e7f` |\n\nReader source is unchanged from the prior state-machine review. The active runtime adds `UiaSecurityCache::reusable_at` and a retry deadline only for unknown/None metadata. Same-binding None remains fail-closed during the one-second cooldown; at deadline equality and afterward reusable_at returns false, causing a fresh secure probe even while HWND/process/generation stay unchanged. If the exact old provider is still pending, the unchanged reader refuses rather than launching overlapping work. After it completes, that fresh request may succeed on the same worker and its separate channel. No prior late metadata becomes accepted security proof. Existing Some(true)/Some(false) policy and focus/process/native HWND/generation predicates remain intact. Native uncertain-mutation latch, mutation body, protection/range checks and Undo are unchanged.\n\nTwo tests exercise the actual reusable_at method's None deadline boundary, continued None refusal value, Some policy and unchecked-state policy. They were inspected statically, not executed here. Hosted exact-original reader RED then candidate GREEN remains planned; no cache RED claim is made. Actual runtime cache tests require Windows CI; actual Word recovery/formatting/Undo acceptance and prior no-hard-total-bound limitations remain pending.\n",
+    "quality-review.md": "# Transient reader recovery independent quality review\n\n**PASS for the exact source and orchestration review; no concrete blocker found.**\n\n| Artifact relative to reader-recovery-task | SHA-256 |\n| --- | --- |\n| `original/read_worker.rs` | `b696acf4fc13a15e01cec7ce4bc818a4195a26638f69598d76c6f8c2c82b267b` |\n| `original/windows_runtime_v201.rs` | `20b68a5be2de83a9758cad2c650f6103454a95fa4f992c5301988510121b1da8` |\n| `work/read_worker.rs` | `35356b2b2592552a6e45340d3f9bed2d57d80560da43aef02c25371e9d080a60` |\n| `work/windows_runtime_v201.rs` | `714d636fa10a528baf27077023cb55c076fc5fd2e8260ebfd51912667d8f2e7f` |\n| `worker.py` | `35c9f5f9ca06c12c5370efe1b636529210f1457fea791cbe201750039ad6b86d` |\n| `runner.py` | `bd82522cbd94ac2aba35a9aaee051036a30315d9019c34e361febef398110ed4` |\n| `transfer.json` | `a5218ebfc3aa2a3584b9b0a311138c6df193f6f7a5bc383fd9b051e3d083ae0b` |\n\nReader admission and recovery are serialized by a small mutex. `caller_active` prevents concurrent/reentrant displacement while the caller waits or logs; the old per-request completion flag prevents admission before that exact provider invocation returns. Provider completion is quiescence evidence only. Recovery installs a separate flag/channel and reuses the same persistent worker, which still processes one provider invocation at a time. The old channel cannot supply a new caller result. Queue failure/panic/disconnection remain refused; no replacement thread, overlapping provider call or stale response acceptance path was found. Mutex scopes contain no provider or message-pump work.\n\nThe runtime change fixes the relevant integration path: a same-binding cached None ceases to be reusable after the one-second cooldown and triggers a new security probe, while remaining refusal during the cooldown. Known Some security values retain the existing policy and all generation/process/focus/native-HWND binding predicates remain. No uncertain native mutation latch, mutation body, range/protection guard or Undo code changes. Reader recovery therefore grants fresh read access only; it does not authorize retrying an unresolved write.\n\nVerified worker/runner Python ASTs; exact original hashes bind base `cb1dd4cb1b099e56fb759a19b3a1e2a1b6bc58f0`. Embedded proposed source bytes and manifest hashes match the reviewed files. RED_SOURCE equals the exact delivered old reader plus the new recovery regression; the worker requires compiled execution of one failing test with the expected recovery failure before applying the overlay. The new reader regression proves old-request refusal, same worker identity, exactly two invocations and fresh99 instead of old42. Runtime cache tests cover the actual reusable_at method deadline boundary and prior Some policy. The workflow sequences full Windows CI after the managed candidate; its transferred worker is byte-identical.\n\nThese were read-only source/diff/AST/hash checks, not executed tests. Hosted RED/GREEN, Windows compilation/Clippy and full Windows CI remain pending. Rustfmt may change final candidate bytes and requires corresponding final hash binding. Actual installed Word acceptance must still demonstrate recovery after a completed read-only stall and continued refusal while stalled or after uncertain mutation, plus formatting and Undo. Sent-message pumping and diagnostic I/O retain the prior no-hard-total-timeout limitation. No empirical stop-correcting/hang-resolution or latency claim is made.\n"
+  },
+  "prior_exact_run_observation": {
+    "id": 37764984577,
+    "head_sha": "3dc67f2292978d7a0288d2bbc8e519c5f7576b9d",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-08T10:40:11Z",
+    "updated_at": "2026-10-08T10:48:06Z"
+  },
+  "validation_cycle": 1,
+  "max_validation_cycles": 2,
+  "scheduler_paused": true,
+  "no_merge_or_public_release": true,
+  "installed_word_acceptance": "pending"
+}
