@@ -1,1 +1,0 @@
-{"error_type":"RuntimeError","mode":"adopt","next_action":"Diagnose this exact failed job and correct the bounded maintenance attempt","observed_at_utc":"2026-10-05T04:58:13.278151Z","publication_outcome_unknown":false,"run_id":"37265684638","schema":"g-switcher-managed-maintenance-failure/v1","source_head":"7afeec5cb6778a66e6202d1fc1a26e3945d9ca3f"}
