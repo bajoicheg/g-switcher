@@ -1,33 +1,20 @@
 {
   "schema": "word-diagnostic-log-analysis/v1",
-  "diagnostic_candidate": "3407a2d0570b88864fd265de61a8761999995380",
-  "log_sha256": "b4b61834f33b4cddde2d23c5390d1aacf2ec01f022c702c65e41e75ea053ea57",
-  "log_library_id": "libfile_9fa6bbdefb70819191471c442340f87d",
-  "session_pid": 15628,
-  "diagnostic_marker": "word-diagnostics-v1",
-  "failure_msk": "2026-10-09T15:40:24.610+03:00",
-  "observed_sequence": [
-    "character-write",
-    "character-write",
-    "replace-selection-moved",
-    "custom-undo-end",
-    "replace-uncertain-latch-retained",
-    "operation-refused"
+  "log_library_id": "libfile_a9d2b2549b9881919092b1ab8b55908a",
+  "log_sha256": "ce6b5886c9d3640c7c7959415ceccdebe5517ee808e5d09c0c70c51f8ec30638",
+  "session_pid": 23548,
+  "confirmed": [
+    "First native read completed",
+    "Second Context::open stopped during fresh-uia-focus",
+    "750 ms bounded reader timeout logged",
+    "No custom-undo-started or character-write in new session"
   ],
-  "subsequent_refuse_uncertain_mutation_count": 9,
-  "pending_native_call_markers": 0,
-  "confirmed_cause_of_persistent_refusal": "Word-only process-local uncertain mutation latch retained after selection changed during character writes",
-  "unproven_cause_of_selection_change": [
-    "continued user input",
-    "Word automatic selection/text behavior"
+  "unproven": [
+    "Exact stalled provider call",
+    "Whether Word recovers when switcher exits",
+    "Whether an outstanding UIA provider call caused Word freeze"
   ],
-  "screenshots_confirm_mixed_script_partial_words": true,
-  "functional_fix_verified": false,
+  "next_test": "While Word is frozen, terminate only g-switcher.exe; wait 10 seconds; report whether Word recovers; do not restart switcher until observation",
   "project_complete": false,
-  "next_user_experiment": [
-    "Restart only switcher; keep Word open, create blank test document; repeat ghbdtn + space five times with hands off for two seconds after each space",
-    "Restart switcher for independent trial; same blank test with continued immediate typing after the space; report whether only this condition stops correction",
-    "Attach updated runtime log and identify trial of first failure"
-  ],
-  "implementation_constraint": "Do not blindly clear uncertain latch, retry partial writes or undo user input; investigate admission/selection race"
+  "functional_fix_verified": false
 }
