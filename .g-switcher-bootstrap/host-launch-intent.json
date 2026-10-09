@@ -1,6 +1,6 @@
 {
   "base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-restart-bootstrap-admission-20261009-1837",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-restart-bootstrap-admission-20261009-1837-a2",
   "budget_ledger": {
     "events": [
       {
@@ -453,6 +453,52 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T16:33:23.885575Z",
+        "event_id": "word-restart-host-a1-canonical-json-failed",
+        "failure": {
+          "category": "configuration",
+          "signature": "bootstrap-document-noncanonical-json-before-managed-start"
+        },
+        "reservation_id": "word-restart-host-20261009-1837-a1",
+        "status": "setup_failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 47,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T16:33:23.885575Z",
+        "detail": "Use unchanged canonical GitDocumentStore encoder and read the actual corrected remote document before launch. Authenticated a1 terminal job113918232653 fails at controller103 before bridge.start; lease34 revision658f unchanged, admission unclaimed, no product/Rust execution. New unique host/admission attempt, no replay or refunded history.",
+        "event_id": "word-restart-canonical-bootstrap-corrected",
+        "kind": "configuration_correction",
+        "reference": "report:word-canonical-bootstrap-correction-a2",
+        "scope": "github-actions/g-switcher/word-restart-managed-writer",
+        "signature": "bootstrap-document-noncanonical-json-before-managed-start",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T16:33:26.058728Z",
+        "attempt_id": "word-restart-host-a2",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-restart-host-20261009-1837-a2",
+        "kind": "ci_start",
+        "operation_key": "sha256:9627f121c401148a9c343c8d9026399578f9a6a4a35c7f6a8673f9b51e6c2575",
+        "recovery_ref": "report:word-canonical-bootstrap-correction-a2",
+        "scope": "github-actions/g-switcher/word-restart-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -498,17 +544,17 @@
   "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
   "expected_generation": 35,
   "host_reservation": {
-    "at_utc": "2026-10-09T16:22:19.729549Z",
-    "attempt_id": "word-restart-host-a1",
+    "at_utc": "2026-10-09T16:33:26.058728Z",
+    "attempt_id": "word-restart-host-a2",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-restart-host-20261009-1837-a1",
+    "event_id": "word-restart-host-20261009-1837-a2",
     "kind": "ci_start",
-    "operation_key": "sha256:ea372c4884fa81db47abc6385ad56c62ef3e530fea8e3af834c0b16b94a5842b",
-    "recovery_ref": null,
+    "operation_key": "sha256:9627f121c401148a9c343c8d9026399578f9a6a4a35c7f6a8673f9b51e6c2575",
+    "recovery_ref": "report:word-canonical-bootstrap-correction-a2",
     "scope": "github-actions/g-switcher/word-restart-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -531,10 +577,10 @@
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "a5312c06586dc420ca2c585ecc7c6d28152a8a6857ed34742295c597848710e9",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "9303251a6bbb687c07435385f3aa302ee5119c59f8e53abc480371e3231bbaee",
+    "word-bootstrap.yml": "501cb877ac89e68a5935c6ea0784a0cd338eac1adf9c84ed3d02248df00925d4",
     "worker.py": "c9c904661f71c2c2e407e62c431938d489f9dc5719a4b7f4fa0a1e25d0f01501"
   },
-  "prepared_at_utc": "2026-10-09T16:22:19.729549Z",
+  "prepared_at_utc": "2026-10-09T16:33:26.058728Z",
   "prior_external_guard": null,
   "prior_generation": 34,
   "prior_release": {

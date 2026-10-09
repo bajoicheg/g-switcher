@@ -1,0 +1,14 @@
+{
+  "schema": "word-bootstrap-canonical-encoding-proof/v1",
+  "actual_remote_read": "PASS",
+  "read_method": "unchanged CDC2.12.1 GitDocumentStore.read",
+  "revision": "1ac15238c246bb69298b621b2b525ba8483f8d3c",
+  "record_state": "setup_failed",
+  "host_admission": null,
+  "budget_events": 31,
+  "read_exit_code": 0,
+  "failure_run_id": 37959443494,
+  "failure_job_id": 113918232653,
+  "managed_start_performed": false,
+  "product_tests_run": false
+}
