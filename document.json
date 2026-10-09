@@ -90,7 +90,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 14,
+    "revision": 15,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -124,7 +124,7 @@
       },
       {
         "id": "spec-r2",
-        "status": "queued",
+        "status": "running",
         "attempt_ids": [
           "spec-a3"
         ],
