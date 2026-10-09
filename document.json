@@ -10,13 +10,13 @@
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
     "max_parallel": 1,
-    "total_runtime_budget_seconds": 7200,
-    "total_cost_budget_units": 6,
+    "total_runtime_budget_seconds": 14400,
+    "total_cost_budget_units": 9,
     "tasks": [
       {
         "id": "spec",
         "role": "review",
-        "required": true,
+        "required": false,
         "dependencies": [],
         "executor_id": "spec-reviewer",
         "branch": null,
@@ -39,7 +39,7 @@
         "role": "review",
         "required": true,
         "dependencies": [
-          "spec"
+          "spec-r2"
         ],
         "executor_id": "quality-reviewer",
         "branch": null,
@@ -56,12 +56,33 @@
         ],
         "max_runtime_seconds": 3600,
         "max_cost_units": 3
+      },
+      {
+        "id": "spec-r2",
+        "role": "review",
+        "required": true,
+        "dependencies": [],
+        "executor_id": "spec-reviewer",
+        "branch": null,
+        "worktree": null,
+        "write_paths": [],
+        "expected_outputs": [
+          "out:spec-review"
+        ],
+        "expected_evidence": [
+          "evidence:spec-review"
+        ],
+        "backend_preferences": [
+          "native_work_subagent"
+        ],
+        "max_runtime_seconds": 3600,
+        "max_cost_units": 3
       }
     ]
   },
   "state": {
     "schema": "managed-executor-pool-state/v1",
-    "plan_digest": "sha256:3e97b9617666f3f97bafba76ce2ad5d31d0314528d6ca09f7b6ff5770c035357",
+    "plan_digest": "sha256:62bf05c657f9d376a18eb5a7f8315369e2835a6d66091252ddc7f0bc2b554453",
     "pool_id": "word-broker-review-20261009-2306",
     "change_id": "Word-broker-isolation",
     "parent_invocation_id": "work:fabf059843ea:20261009-2306",
@@ -69,7 +90,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 12,
+    "revision": 14,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -100,6 +121,20 @@
         "discarded": false,
         "runtime_seconds": 235.311075,
         "cost_units": 1
+      },
+      {
+        "id": "spec-r2",
+        "status": "queued",
+        "attempt_ids": [
+          "spec-a3"
+        ],
+        "active_attempt_id": "spec-a3",
+        "reservation_token": "reserve:spec-a3",
+        "accepted_result_ref": null,
+        "integrated": false,
+        "discarded": false,
+        "runtime_seconds": 0,
+        "cost_units": 0
       }
     ],
     "runtime_consumed_seconds": 1084.453088,
@@ -996,6 +1031,23 @@
           "tokens": null,
           "elapsed_seconds": 235.311075
         }
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-broker-spec-review-a3",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:30:48.604006Z",
+        "operation_key": "sha256:e1e6100b8a0e243ed678abb6780aedca17543f4bb5b18436f67a88940ae81112",
+        "attempt_id": "spec-a3",
+        "kind": "agent_start",
+        "scope": "word-broker-source-spec",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
       }
     ],
     "policy": {
@@ -1065,7 +1117,8 @@
       "src/windows_runtime/word_focus.rs",
       "src/windows_runtime/word_native.rs",
       "src/windows_runtime_v201.rs",
-      "tests/browser_uia_adapter.rs"
+      "tests/browser_uia_adapter.rs",
+      "tests/chromium_post_state_retry.rs"
     ],
     "files": {
       "build.rs": "30e15560a15f66d186fb0ed169d93c085dac4ffacb8201112c16486218f7c873",
@@ -1076,7 +1129,7 @@
       "src/windows_runtime/registry_store.rs": "4cc0ea0bc26d196aeb16c0a34f92354efe4df6ad94d7e10371a3484de5b75f2c",
       "src/windows_runtime/requirements_tests.rs": "16e8b69e22936f6617eb93fa2f4d4c26defb629b0d910f2f48e82ca63ece8df8",
       "src/windows_runtime/secure_input.rs": "a5cec37ecb49a8461c13965a196b56e65f48c60fabe6e376d0e97162d41ed43c",
-      "src/windows_runtime/selection.rs": "6704b1541dad06888030042c72c65878fe9231e0afbe98fa88e7ddc25a8d2a7c",
+      "src/windows_runtime/selection.rs": "e613853c2282a53fb40dc5b5d079ee61ae1fe03636a3a84002c3084e0616f724",
       "src/windows_runtime/settings.rs": "ffdcb3c2d7bf9876332d4b73d7d5fa455e9f59958fbe2121fc5d64903d476426",
       "src/windows_runtime/uia_legacy_v2.rs": "e71bb9a47eeb089c2e2078be590c2646740e48bbed08e0dd6dfb06ece54b4bff",
       "src/windows_runtime/uia_modern.rs": "065880b9c1d162d63407998358a227e9bf2a5e9e87c8cf3a04d008c85e50cc80",
@@ -1086,7 +1139,7 @@
       "src/windows_runtime/win32_identity.rs": "018dbdb4b3d3c26837815c694490b2fb93fa08822e179e712c6d24ea2f2cc8c0",
       "src/windows_runtime/word_admission.rs": "ff204ca8cd6460f4d3b5ec692a2653c5a23b2d3b1d7836bcf16cbb0515bedd32",
       "src/windows_runtime/word_broker.rs": "1dda4b1aa0f036170ad69c3d615d37dc8d197edb83954a7e61cef4c8830fb47f",
-      "src/windows_runtime/word_broker_os.rs": "5c7b06e851f3bde95500a6870609dd280a2508047d36a5774c32c608e647837c",
+      "src/windows_runtime/word_broker_os.rs": "654187a6dd69459812a161666d9fe466c5e74b748d0d1e999ed3474fad9fec71",
       "src/windows_runtime/word_call_gate.rs": "6ad7511e34a3f21a91d3d77bb3729e2ab9489e021b187bbaa5438fbae6925540",
       "src/windows_runtime/word_call_gate_requirements.rs": "951d3ddffb8874c047aa48b7aad06b4f3f4271e38a0a5e01eba703295dac56a8",
       "src/windows_runtime/word_candidate.rs": "aae55b4692ff5cb21d3143c48bdc2042c5c2fea4b6fb7a56fd8061292b4c98c9",
@@ -1095,7 +1148,8 @@
       "src/windows_runtime/word_focus.rs": "e776ea4c1cc41c918f59cbedc50f101809b46df2c92c60f7a42e83e828d8a8cd",
       "src/windows_runtime/word_native.rs": "f183e3618b365a3021138d3bdc66d5a1ab6ece9aa39514baecb9f59dba5d4c49",
       "src/windows_runtime_v201.rs": "a7922f29ce66ab2c980e7bc1d81a306d9bd18c13365aa1d7863a98356ff2ffa3",
-      "tests/browser_uia_adapter.rs": "f884b46d43195e152eea064f54fb2670d89dd693d44b686fceb4022c0b9ca79c"
+      "tests/browser_uia_adapter.rs": "f884b46d43195e152eea064f54fb2670d89dd693d44b686fceb4022c0b9ca79c",
+      "tests/chromium_post_state_retry.rs": "10ddd1f345a9b3f677f1dcb9bb449bb47c8fdf84b654905bd70a227e2c48f880"
     },
     "frozen": true,
     "integration_complete": true,
@@ -1129,9 +1183,10 @@
       "src/windows_runtime/word_focus.rs": "c5ccd83ad38ffe72276e7719364d019cadf9143e567d88a16b6ceab4f298bd05",
       "src/windows_runtime/word_native.rs": "71b2256a47551c08b792294df8b786e457e4eed53614f59303fa829a6627a15a",
       "src/windows_runtime_v201.rs": "ff96a780d6d1514bafba8d5b5a7f316db2479514546c78b92a5d53b3c2c0c439",
-      "tests/browser_uia_adapter.rs": "cc0bcbec8374835528322881f78c7e46d3caf0ab918a3f7e3409b1e75d37aaf1"
+      "tests/browser_uia_adapter.rs": "cc0bcbec8374835528322881f78c7e46d3caf0ab918a3f7e3409b1e75d37aaf1",
+      "tests/chromium_post_state_retry.rs": "331af2904d2573d44bc18fa1b4303151b7b92fbb38fdc12217af867a088c2c64"
     },
-    "payload_sha256": "ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194",
+    "payload_sha256": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
     "protocol_sha256": {
       "protocol-tests/authority-baseline.rs": "b994cba352ee522a05e9e1eaa033140916314cfa1cda5c60a232f7996cff7315",
       "protocol-tests/authority-fixed-harness.rs": "b79dae982393375f5af55418213e6d4f18d8b5666133a45365aa6fb2ce066bfc",
@@ -1253,5 +1308,9 @@
       }
     },
     "reason": "Second review found two concrete compile blockers requiring source correction and fresh review; no prior events or charges reset"
+  },
+  "source_replan": {
+    "at_utc": "2026-10-09T20:30:48.604006Z",
+    "reason": "Quality-found compile fixes change source freeze; historical SPEC/failed QUALITY remain preserved, fresh required SPEC precedes QUALITY"
   }
 }
