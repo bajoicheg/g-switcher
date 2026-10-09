@@ -1,6 +1,6 @@
 {
   "base": "436003d9287937d10606c74ae942b5518495d62a",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261009-2306-a2",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261009-2348-a3",
   "budget_ledger": {
     "events": [
       {
@@ -1022,6 +1022,114 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:48:52.406001Z",
+        "event_id": "word-broker-host-a2-outcome",
+        "failure": {
+          "category": "configuration",
+          "signature": "Linux-verifier-requires-cfg-Windows-tests"
+        },
+        "reservation_id": "word-broker-host-20261009-2306-a2",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 106,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:48:52.406001Z",
+        "detail": "Separate four cfg(windows) checks from portable evidence; every original guard-reader test remains mandatory in Windows logs; no product payload or Windows26 step changed.",
+        "event_id": "word-broker-host-a3-platform-remedy",
+        "kind": "configuration_correction",
+        "reference": "report:guard-reader-platform-evidence-partition-a3",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "signature": "Linux-verifier-requires-cfg-Windows-tests",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:49:48.310599Z",
+        "attempt_id": "platform-spec-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-platform-spec-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:1b9b70f3c97e8c19609681ef8f7562864587383ba66feaca81df8e8c9e2fb528",
+        "recovery_ref": null,
+        "scope": "word-broker-platform-spec",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:52:39.620671Z",
+        "event_id": "word-broker-platform-spec-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-platform-spec-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 171.310072,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:52:39.620671Z",
+        "attempt_id": "platform-quality-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-platform-quality-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:1b9b70f3c97e8c19609681ef8f7562864587383ba66feaca81df8e8c9e2fb528",
+        "recovery_ref": null,
+        "scope": "word-broker-platform-quality",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:55:57.856846Z",
+        "event_id": "word-broker-platform-quality-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-platform-quality-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 198.236175,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:55:57.925784Z",
+        "attempt_id": "word-broker-host-a3",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-host-20261009-2348-a3",
+        "kind": "ci_start",
+        "operation_key": "sha256:fd3502301f68dc72a101a1ebc59c07718c45a9b00c3012d31eb282cec6e3ec7d",
+        "recovery_ref": "report:guard-reader-platform-evidence-partition-a3",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -1094,19 +1202,72 @@
     "tests/browser_uia_adapter.rs",
     "tests/chromium_post_state_retry.rs"
   ],
-  "expected_generation": 40,
+  "expected_generation": 41,
+  "guard_reader_platform_evidence": {
+    "all_required_on_windows": [
+      "restart_refuses_previous_pending_before_any_provider_call",
+      "caller_timeout_does_not_complete_worker_owned_read",
+      "late_child_does_not_clear_uncertain_native_mutation",
+      "foreign_completion_cannot_clear_current_operation",
+      "duplicate_child_completion_cannot_consume_another_child",
+      "missing_identity_never_admits",
+      "persistence_failure_refuses_before_provider_admission",
+      "corrupt_prior_marker_never_becomes_idle",
+      "actual_host_birth_change_does_not_reuse_old_host_authority",
+      "normal_exact_completion_allows_fresh_admission",
+      "timed_out_window_message_quarantine_is_sticky_after_parent_completion",
+      "actual_pending_worker_owns_ticket_beyond_caller_timeout",
+      "active_marker_denies_external_deletion_until_verified_completion",
+      "guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns",
+      "guarded_actual_reader_late_completion_never_clears_uncertainty",
+      "provider_runs_off_the_requesting_thread",
+      "stalled_metadata_returns_none_and_never_queues_a_replacement",
+      "each_successful_request_reads_fresh_state",
+      "provider_failure_returns_none_without_panicking_the_caller",
+      "sent_message_callbacks_remain_live_but_posted_work_is_not_reentered",
+      "concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader",
+      "transient_stall_recovers_same_worker_with_fresh_result_only"
+    ],
+    "baseline_failure": "github:37989000701:artifact11644446081:recovered/green-guard-reader.log",
+    "portable": [
+      "restart_refuses_previous_pending_before_any_provider_call",
+      "caller_timeout_does_not_complete_worker_owned_read",
+      "late_child_does_not_clear_uncertain_native_mutation",
+      "foreign_completion_cannot_clear_current_operation",
+      "duplicate_child_completion_cannot_consume_another_child",
+      "missing_identity_never_admits",
+      "persistence_failure_refuses_before_provider_admission",
+      "corrupt_prior_marker_never_becomes_idle",
+      "actual_host_birth_change_does_not_reuse_old_host_authority",
+      "normal_exact_completion_allows_fresh_admission",
+      "timed_out_window_message_quarantine_is_sticky_after_parent_completion",
+      "actual_pending_worker_owns_ticket_beyond_caller_timeout",
+      "provider_runs_off_the_requesting_thread",
+      "stalled_metadata_returns_none_and_never_queues_a_replacement",
+      "each_successful_request_reads_fresh_state",
+      "provider_failure_returns_none_without_panicking_the_caller",
+      "concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader",
+      "transient_stall_recovers_same_worker_with_fresh_result_only"
+    ],
+    "windows_only": [
+      "active_marker_denies_external_deletion_until_verified_completion",
+      "guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns",
+      "guarded_actual_reader_late_completion_never_clears_uncertainty",
+      "sent_message_callbacks_remain_live_but_posted_work_is_not_reentered"
+    ]
+  },
   "host_reservation": {
-    "at_utc": "2026-10-09T20:43:27.367593Z",
-    "attempt_id": "word-broker-host-a2",
+    "at_utc": "2026-10-09T20:55:57.925784Z",
+    "attempt_id": "word-broker-host-a3",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-broker-host-20261009-2306-a2",
+    "event_id": "word-broker-host-20261009-2348-a3",
     "kind": "ci_start",
-    "operation_key": "sha256:9d49b521286b2c60450b0ba77876daeed8afa069786fb35e7ad74726d08f8d2e",
-    "recovery_ref": "report:canonical-json-encoder-actual-CDC2121-host-a2",
+    "operation_key": "sha256:fd3502301f68dc72a101a1ebc59c07718c45a9b00c3012d31eb282cec6e3ec7d",
+    "recovery_ref": "report:guard-reader-platform-evidence-partition-a3",
     "scope": "github-actions/g-switcher/word-broker-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -1115,7 +1276,7 @@
   "mode": "HOST_BOOTSTRAP",
   "no_scheduler_mutations": true,
   "payload_sha256": {
-    "constants.py": "5ffc6c858d765ae0373bb72172b85ed15f6c75541f5e700939ea8e02c994e58c",
+    "constants.py": "a4300feb8a984b718f453554b34e5f1df59d1350cbbde99c20a2f792a4bd9e86",
     "controller.py": "f822f53d122763d550fca99d9a38aa7c570735c46128f39d29f64d3e5ee10c2e",
     "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
     "host-quality-review.md": "81c8b854febc8da805cd5ba7cb3b3b9d7d05f25e540cf52bb9de1e201b58024d",
@@ -1135,22 +1296,22 @@
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "c97c1293c43f323d201994e16471d98932a3d383273714d99c37f0a85252d4a4",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "56cc57b6a22a556ef35565a28b546a4c9f6323de5a7863a1826bcc6168b26efe",
+    "word-bootstrap.yml": "9a4e4d987c534cfab4024dc42c862b8cfb66d59b1b350c20741b7bc2edf99bbf",
     "worker.py": "babc725ae806ce1dd87d747be0505ce834cc98ff214bb831103796bc145f7fe3"
   },
-  "prepared_at_utc": "2026-10-09T20:43:27.367593Z",
+  "prepared_at_utc": "2026-10-09T20:55:57.925784Z",
   "prior_external_guard": null,
-  "prior_generation": 39,
+  "prior_generation": 40,
   "prior_release": {
-    "at_utc": "2026-10-09T18:03:15.676068Z",
-    "checkpoint_ref": "git:55fb20a05c59ce31c24ba1948299bcfbb3b50580:document.json",
-    "completion_reason": "scope_complete",
+    "at_utc": "2026-10-09T20:46:00.544089Z",
+    "checkpoint_ref": "managed-host:terminal:883755e2-fba3-5b83-8adf-68ec4fd799b3:failed",
+    "completion_reason": "resumable_blocker",
     "external_reconciliation": "none",
-    "generation": 39,
-    "invocation_id": "managed-terminal:f3b5a66ebf14801ffba8a63e3b1cf5885187d50db2c4dfd0f6d9657bc472603d",
-    "owner_id": "a878b43e-88ef-4276-87c9-3d4b1f14b1b9"
+    "generation": 40,
+    "invocation_id": "managed-terminal:e3ae6c60adca84ad2bfadf2bd300fccd1276407b51af1e90941e71d7a31c771e",
+    "owner_id": "580ade9a-18da-4720-8f24-638df82329df"
   },
-  "prior_release_revision": "b996f221eecc440fb8b8a5917fe8b7f9bcfa9a57",
+  "prior_release_revision": "d5bfeb4cc2e8fd7f57d8eaec67e12acf6f0a573e",
   "product_payload_sha256": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
   "publication": "Only owned canonical managed writer finish after exact Windows gates; development Draft branch only, no merge/public promotion/installed acceptance",
   "required_guard_reader_tests": [
@@ -1166,14 +1327,10 @@
     "normal_exact_completion_allows_fresh_admission",
     "timed_out_window_message_quarantine_is_sticky_after_parent_completion",
     "actual_pending_worker_owns_ticket_beyond_caller_timeout",
-    "active_marker_denies_external_deletion_until_verified_completion",
-    "guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns",
-    "guarded_actual_reader_late_completion_never_clears_uncertainty",
     "provider_runs_off_the_requesting_thread",
     "stalled_metadata_returns_none_and_never_queues_a_replacement",
     "each_successful_request_reads_fresh_state",
     "provider_failure_returns_none_without_panicking_the_caller",
-    "sent_message_callbacks_remain_live_but_posted_work_is_not_reentered",
     "concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader",
     "transient_stall_recovers_same_worker_with_fresh_result_only"
   ],
@@ -1196,7 +1353,29 @@
     "failed_undo_cleanup_is_not_repeated",
     "undo_completion_never_authorizes_a_new_provider_stage",
     "disconnected_stage_does_not_enter_provider",
-    "expired_stage_does_not_enter_provider"
+    "expired_stage_does_not_enter_provider",
+    "restart_refuses_previous_pending_before_any_provider_call",
+    "caller_timeout_does_not_complete_worker_owned_read",
+    "late_child_does_not_clear_uncertain_native_mutation",
+    "foreign_completion_cannot_clear_current_operation",
+    "duplicate_child_completion_cannot_consume_another_child",
+    "missing_identity_never_admits",
+    "persistence_failure_refuses_before_provider_admission",
+    "corrupt_prior_marker_never_becomes_idle",
+    "actual_host_birth_change_does_not_reuse_old_host_authority",
+    "normal_exact_completion_allows_fresh_admission",
+    "timed_out_window_message_quarantine_is_sticky_after_parent_completion",
+    "actual_pending_worker_owns_ticket_beyond_caller_timeout",
+    "active_marker_denies_external_deletion_until_verified_completion",
+    "guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns",
+    "guarded_actual_reader_late_completion_never_clears_uncertainty",
+    "provider_runs_off_the_requesting_thread",
+    "stalled_metadata_returns_none_and_never_queues_a_replacement",
+    "each_successful_request_reads_fresh_state",
+    "provider_failure_returns_none_without_panicking_the_caller",
+    "sent_message_callbacks_remain_live_but_posted_work_is_not_reentered",
+    "concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader",
+    "transient_stall_recovers_same_worker_with_fresh_result_only"
   ],
   "routing": {
     "Windows": {
@@ -1426,9 +1605,9 @@
       }
     ]
   },
-  "windows_head": "c6428a738427e5e4a388d9653e1e7621e737d61b",
+  "windows_head": "44fb0f90859e18c3cbd8a771717922ef3cf42491",
   "windows_recovery_ref": null,
-  "windows_ref": "refs/heads/cdc/word-broker-windows-20261009-2306-a2",
+  "windows_ref": "refs/heads/cdc/word-broker-windows-20261009-2348-a3",
   "write_paths": [
     "build.rs",
     "src/lib.rs",
