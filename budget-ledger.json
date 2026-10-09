@@ -771,6 +771,117 @@
         "elapsed_seconds": null
       },
       "failure": null
+    },
+    {
+      "type": "reserve",
+      "event_id": "word-broker-spec-review-20261009-2306",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:09:45.260501Z",
+      "operation_key": "sha256:d22a24b19bc111883dd2bd433d8389b15aa35642329fc082a135433bfcc0a00e",
+      "attempt_id": "spec-a1",
+      "kind": "agent_start",
+      "scope": "word-broker-source-spec",
+      "recovery_ref": null,
+      "cost": {
+        "tool_calls": 1,
+        "tokens": null,
+        "elapsed_seconds": null
+      }
+    },
+    {
+      "type": "outcome",
+      "event_id": "word-broker-spec-review-20261009-2306-outcome",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:21:06.419713Z",
+      "reservation_id": "word-broker-spec-review-20261009-2306",
+      "status": "failed",
+      "failure": {
+        "category": "code",
+        "signature": "undo-completion-refused-after-authority-revocation"
+      },
+      "usage": {
+        "tokens": null,
+        "elapsed_seconds": 681.159212
+      }
+    },
+    {
+      "type": "remedy",
+      "event_id": "word-broker-spec-a2-remedy",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:23:12.619131Z",
+      "scope": "word-broker-source-spec",
+      "signature": "undo-completion-refused-after-authority-revocation",
+      "reference": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
+      "kind": "code_correction",
+      "detail": "Narrow retained-record completion capability and configured production callback fixture; frozen source ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194"
+    },
+    {
+      "type": "reserve",
+      "event_id": "word-broker-spec-review-a2",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:23:12.619131Z",
+      "operation_key": "sha256:cee50d71836e1d6f173d20a8e6e7c2a9c24cd87e27bb641bbcc8847f9fcf06fe",
+      "attempt_id": "spec-a2",
+      "kind": "agent_start",
+      "scope": "word-broker-source-spec",
+      "recovery_ref": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
+      "cost": {
+        "tool_calls": 1,
+        "tokens": null,
+        "elapsed_seconds": null
+      }
+    },
+    {
+      "type": "outcome",
+      "event_id": "word-broker-spec-review-a2-outcome",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:26:00.601932Z",
+      "reservation_id": "word-broker-spec-review-a2",
+      "status": "succeeded",
+      "failure": null,
+      "usage": {
+        "tokens": null,
+        "elapsed_seconds": 167.982801
+      }
+    },
+    {
+      "type": "reserve",
+      "event_id": "word-broker-quality-review-a1",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:26:00.601932Z",
+      "operation_key": "sha256:69fdbbb602cfd6f39bfebebdc10dbf072f11583981bd207f94bcaf4842a3f849",
+      "attempt_id": "quality-a1",
+      "kind": "agent_start",
+      "scope": "word-broker-source-quality",
+      "recovery_ref": null,
+      "cost": {
+        "tool_calls": 1,
+        "tokens": null,
+        "elapsed_seconds": null
+      }
+    },
+    {
+      "type": "outcome",
+      "event_id": "word-broker-quality-review-a1-outcome",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T20:29:55.913007Z",
+      "reservation_id": "word-broker-quality-review-a1",
+      "status": "failed",
+      "failure": {
+        "category": "code",
+        "signature": "Windows-nested-module-and-integration-imports-unresolved"
+      },
+      "usage": {
+        "tokens": null,
+        "elapsed_seconds": 235.311075
+      }
     }
   ],
   "policy": {
@@ -782,25 +893,25 @@
     "max_parallel_agents": 2,
     "provider_max_age_seconds": 300,
     "task_limits": {
-      "agent_starts": 6,
+      "agent_starts": 16,
       "ci_starts": null,
       "compute_starts": 8,
       "elapsed_seconds": null,
       "status_polls": null,
       "tokens": null,
-      "tool_calls": 500
+      "tool_calls": 1000
     },
     "wake_limits": {
-      "agent_starts": 3,
+      "agent_starts": 8,
       "ci_starts": 16,
       "compute_starts": 4,
       "elapsed_seconds": null,
       "status_polls": null,
       "tokens": null,
-      "tool_calls": 120
+      "tool_calls": 240
     }
   },
-  "policy_digest": "sha256:7859980d2596dfe168bd10bab817de675858a874632090cd1aee9360d77360ea",
+  "policy_digest": "sha256:c684c3d9545007fed2ea12b18c94f79d4848598724cde09553516a912405acbb",
   "schema": "budget-ledger/v1",
   "task_id": "g-switcher/2.0.1",
   "wake_ids": [

@@ -1,0 +1,59 @@
+{
+  "at_utc": "2026-10-09T20:29:55.913007Z",
+  "user_command": "Добавь себе лимитов сколько нужно",
+  "before": {
+    "actions_budget": "normal",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 6,
+      "ci_starts": null,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 500
+    },
+    "wake_limits": {
+      "agent_starts": 3,
+      "ci_starts": 16,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 120
+    }
+  },
+  "after": {
+    "actions_budget": "normal",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 16,
+      "ci_starts": null,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 1000
+    },
+    "wake_limits": {
+      "agent_starts": 8,
+      "ci_starts": 16,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 240
+    }
+  },
+  "reason": "Second review found two concrete compile blockers requiring source correction and fresh review; no prior events or charges reset"
+}
