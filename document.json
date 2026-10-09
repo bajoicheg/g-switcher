@@ -69,7 +69,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 11,
+    "revision": 12,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -89,21 +89,21 @@
       },
       {
         "id": "quality",
-        "status": "running",
+        "status": "failed",
         "attempt_ids": [
           "quality-a1"
         ],
-        "active_attempt_id": "quality-a1",
-        "reservation_token": "reserve:quality-a1",
+        "active_attempt_id": null,
+        "reservation_token": null,
         "accepted_result_ref": null,
         "integrated": false,
         "discarded": false,
-        "runtime_seconds": 0,
-        "cost_units": 0
+        "runtime_seconds": 235.311075,
+        "cost_units": 1
       }
     ],
-    "runtime_consumed_seconds": 849.142013,
-    "cost_consumed_units": 2,
+    "runtime_consumed_seconds": 1084.453088,
+    "cost_consumed_units": 3,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -979,6 +979,23 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-broker-quality-review-a1-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:29:55.913007Z",
+        "reservation_id": "word-broker-quality-review-a1",
+        "status": "failed",
+        "failure": {
+          "category": "code",
+          "signature": "Windows-nested-module-and-integration-imports-unresolved"
+        },
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 235.311075
+        }
       }
     ],
     "policy": {
@@ -990,25 +1007,25 @@
       "max_parallel_agents": 2,
       "provider_max_age_seconds": 300,
       "task_limits": {
-        "agent_starts": 6,
+        "agent_starts": 16,
         "ci_starts": null,
         "compute_starts": 8,
         "elapsed_seconds": null,
         "status_polls": null,
         "tokens": null,
-        "tool_calls": 500
+        "tool_calls": 1000
       },
       "wake_limits": {
-        "agent_starts": 3,
+        "agent_starts": 8,
         "ci_starts": 16,
         "compute_starts": 4,
         "elapsed_seconds": null,
         "status_polls": null,
         "tokens": null,
-        "tool_calls": 120
+        "tool_calls": 240
       }
     },
-    "policy_digest": "sha256:7859980d2596dfe168bd10bab817de675858a874632090cd1aee9360d77360ea",
+    "policy_digest": "sha256:c684c3d9545007fed2ea12b18c94f79d4848598724cde09553516a912405acbb",
     "schema": "budget-ledger/v1",
     "task_id": "g-switcher/2.0.1",
     "wake_ids": [
@@ -1160,6 +1177,16 @@
         "native partial mutation/hangs",
         "effective formatting and installed Word"
       ]
+    },
+    "quality-a1": {
+      "verdict": "BLOCKED",
+      "payload_sha256": "ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194",
+      "source_blockers": [
+        "word_broker_os production/test selection parent path unresolved",
+        "chromium_post_state_retry standalone uia_legacy lacks uia_scope dependency"
+      ],
+      "host_transport_verdict": "No additional concrete source blocker",
+      "tests_executed": false
     }
   },
   "authorized_replan": {
@@ -1167,5 +1194,64 @@
     "at_utc": "2026-10-09T20:23:12.619131Z",
     "preserved_cost_units": 1,
     "reason": "Retry SPEC after independently observed defects; preserve attempts and charged usage"
+  },
+  "additional_budget_authorization": {
+    "at_utc": "2026-10-09T20:29:55.913007Z",
+    "user_command": "Добавь себе лимитов сколько нужно",
+    "before": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 6,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 500
+      },
+      "wake_limits": {
+        "agent_starts": 3,
+        "ci_starts": 16,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 120
+      }
+    },
+    "after": {
+      "actions_budget": "normal",
+      "checkpoint_reserve": {
+        "tokens": 2000,
+        "tool_calls": 4
+      },
+      "max_parallel_agents": 2,
+      "provider_max_age_seconds": 300,
+      "task_limits": {
+        "agent_starts": 16,
+        "ci_starts": null,
+        "compute_starts": 8,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 1000
+      },
+      "wake_limits": {
+        "agent_starts": 8,
+        "ci_starts": 16,
+        "compute_starts": 4,
+        "elapsed_seconds": null,
+        "status_polls": null,
+        "tokens": null,
+        "tool_calls": 240
+      }
+    },
+    "reason": "Second review found two concrete compile blockers requiring source correction and fresh review; no prior events or charges reset"
   }
 }
