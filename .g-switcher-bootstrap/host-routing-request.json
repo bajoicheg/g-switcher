@@ -1,0 +1,18 @@
+{
+  "candidate_sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "forbidden_backend_ids": [],
+  "max_registry_age_seconds": 900,
+  "preferred_kinds": [
+    "github_actions"
+  ],
+  "required_backend_id": "github-actions-managed-host",
+  "required_capabilities": [
+    "os:linux",
+    "python:3",
+    "git",
+    "feature:managed-host",
+    "network:common-dependencies"
+  ],
+  "schema": "capability-request/v1",
+  "task_id": "Word-restart-managed-writer"
+}

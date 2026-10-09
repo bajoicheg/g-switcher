@@ -1,0 +1,62 @@
+{
+  "backends": [
+    {
+      "backend_id": "github-actions-windows",
+      "capabilities": [
+        "os:windows",
+        "pwsh:7",
+        "rust:1.98.1",
+        "git",
+        "feature:windows-e2e",
+        "artifact:upload"
+      ],
+      "configuration_digest": "sha256:6a82c08da034fdd527210a236eb9063229626582648cb5918b3807088c4755e1",
+      "enabled": true,
+      "evidence_refs": [
+        "https://github.com/bajoicheg/g-switcher/actions/runs/37802930404/job/113399578689",
+        "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.github/workflows/windows-ci.yml"
+      ],
+      "kind": "github_actions",
+      "last_verified_at_utc": "2026-10-09T16:22:19.729549Z",
+      "rank": 10,
+      "state": "ready"
+    },
+    {
+      "backend_id": "github-actions-managed-host",
+      "capabilities": [
+        "os:linux",
+        "python:3",
+        "git",
+        "feature:managed-host",
+        "network:common-dependencies"
+      ],
+      "configuration_digest": "sha256:9303251a6bbb687c07435385f3aa302ee5119c59f8e53abc480371e3231bbaee",
+      "enabled": true,
+      "evidence_refs": [
+        "https://github.com/bajoicheg/g-switcher/actions/runs/37802770888/job/113399013062",
+        "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.agents/skills/continuous-development-cycle/scripts/managed_host_bridge.py"
+      ],
+      "kind": "github_actions",
+      "last_verified_at_utc": "2026-10-09T16:22:19.729549Z",
+      "rank": 20,
+      "state": "ready"
+    },
+    {
+      "backend_id": "codex-cloud",
+      "capabilities": [
+        "git"
+      ],
+      "configuration_digest": "sha256:dbdebd66de4772a6a67de6ea58732635161a264594d2864e1076269551ae01d2",
+      "enabled": false,
+      "evidence_refs": [
+        "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:docs/development-cycle.yaml#compute.codex_backend.configuration_status=unconfigured"
+      ],
+      "kind": "codex_compute",
+      "last_verified_at_utc": "2026-10-09T16:22:19.729549Z",
+      "rank": 30,
+      "state": "unavailable"
+    }
+  ],
+  "observed_at_utc": "2026-10-09T16:22:19.729549Z",
+  "schema": "backend-capability-registry/v1"
+}

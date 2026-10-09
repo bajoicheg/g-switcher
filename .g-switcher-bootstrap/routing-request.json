@@ -1,0 +1,17 @@
+{
+  "schema": "capability-request/v1",
+  "task_id": "Word-restart-guard-Windows",
+  "candidate_sha": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+  "required_capabilities": [
+    "os:windows",
+    "rust:1.98.1",
+    "feature:windows-e2e",
+    "artifact:upload"
+  ],
+  "preferred_kinds": [
+    "github_actions"
+  ],
+  "forbidden_backend_ids": [],
+  "required_backend_id": "github-actions-windows",
+  "max_registry_age_seconds": 900
+}

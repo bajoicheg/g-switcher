@@ -1,0 +1,60 @@
+{
+  "Windows": {
+    "capability": {
+      "action": "route",
+      "authorizes_external_start": false,
+      "backend_id": "github-actions-windows",
+      "backend_kind": "github_actions",
+      "configuration_digest": "sha256:6a82c08da034fdd527210a236eb9063229626582648cb5918b3807088c4755e1",
+      "evidence_refs": [
+        "https://github.com/bajoicheg/g-switcher/actions/runs/37802930404/job/113399578689",
+        "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.github/workflows/windows-ci.yml"
+      ],
+      "missing_by_backend": {},
+      "reason": "compatible_backend_selected"
+    },
+    "cost": {
+      "action": "route",
+      "authorizes_external_start": false,
+      "authorizes_product_write": false,
+      "authorizes_scheduler_mutation": false,
+      "authorizes_takeover": false,
+      "backend_id": "github-actions-windows",
+      "backend_kind": "github_actions",
+      "expensive_fallback": false,
+      "expensive_reason": null,
+      "missing_by_backend": {},
+      "reason": "lowest_cost_compatible_ready_backend",
+      "retry_after_seconds": null
+    }
+  },
+  "host": {
+    "capability": {
+      "action": "route",
+      "authorizes_external_start": false,
+      "backend_id": "github-actions-managed-host",
+      "backend_kind": "github_actions",
+      "configuration_digest": "sha256:9303251a6bbb687c07435385f3aa302ee5119c59f8e53abc480371e3231bbaee",
+      "evidence_refs": [
+        "https://github.com/bajoicheg/g-switcher/actions/runs/37802770888/job/113399013062",
+        "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.agents/skills/continuous-development-cycle/scripts/managed_host_bridge.py"
+      ],
+      "missing_by_backend": {},
+      "reason": "compatible_backend_selected"
+    },
+    "cost": {
+      "action": "route",
+      "authorizes_external_start": false,
+      "authorizes_product_write": false,
+      "authorizes_scheduler_mutation": false,
+      "authorizes_takeover": false,
+      "backend_id": "github-actions-managed-host",
+      "backend_kind": "github_actions",
+      "expensive_fallback": false,
+      "expensive_reason": null,
+      "missing_by_backend": {},
+      "reason": "lowest_cost_compatible_ready_backend",
+      "retry_after_seconds": null
+    }
+  }
+}
