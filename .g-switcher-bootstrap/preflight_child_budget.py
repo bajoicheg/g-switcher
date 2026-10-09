@@ -43,11 +43,11 @@ def decide(configuration):
     return budget.decide(pinned['budget_ledger'], reservation)
 
 baseline = copy.deepcopy(pinned)
-baseline['windows_recovery_ref'] = 'report:word-restart-guard-exact-Windows-a1'
+baseline['windows_recovery_ref'] = None
 red = decide(baseline)
 assert not red['allow_reservation']
-assert 'recovery_ref has no matching failure circuit' in red['reasons']
-assert pinned['windows_recovery_ref'] is None
+assert 'failure circuit open: fresh concrete correction/recovery evidence required' in red['reasons']
+assert pinned['windows_recovery_ref'] == 'report:word-stalled-reader-fixture-corrected-windows-a5'
 green = decide(pinned)
 assert green['allow_reservation'], green
-print('CHILD_BUDGET_PREFLIGHT_PASS actual-controller-AST; previous-metadata-denied; fresh-child-allowed; no reservation or launch performed')
+print('CHILD_BUDGET_PREFLIGHT_PASS actual-controller-AST; uncorrected-retry-denied; corrected-child-allowed; no reservation or launch performed')

@@ -1,0 +1,12 @@
+{
+  "blobs": {
+    ".g-switcher-bootstrap/constants.py": "3f62661b60e265295d00c3d661acf34728721b16",
+    ".g-switcher-bootstrap/github_api.py": "9ac88aa6b98eb8600a82839a5ff88d712a2d032b",
+    ".g-switcher-bootstrap/stable_reader.py": "8f8d854d62ffce5fac0e301bfdf8c7c275de0816",
+    ".g-switcher-bootstrap/windows_bundle_gate.py": "59a61b308abfeb58367df78efdbff1e5591a827c",
+    ".github/workflows/windows-ci.yml": "aec3ac6257534b1dc0f0d7f02bac5329e989d608"
+  },
+  "head": "eb6520c6fb33b1369aea632bf7bdd67474a300d4",
+  "observed_via": "authenticated GitHub recursive tree API; all5local Gitblob hashes match",
+  "tree": "1ca419e71ddfb564bedb2587c00b8ad4a48afd91"
+}

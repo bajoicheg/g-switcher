@@ -1,6 +1,6 @@
 {
   "base": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-restart-bootstrap-admission-20261009-1837-a4",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-restart-bootstrap-admission-20261009-1837-a5",
   "budget_ledger": {
     "events": [
       {
@@ -75,7 +75,7 @@
         "task_id": "g-switcher/2.0.1",
         "type": "outcome",
         "usage": {
-          "elapsed_seconds": 475.0,
+          "elapsed_seconds": 475,
           "tokens": null
         },
         "wake_id": "word-provider-hang-20261008-1328"
@@ -106,7 +106,7 @@
         "task_id": "g-switcher/2.0.1",
         "type": "outcome",
         "usage": {
-          "elapsed_seconds": 458.0,
+          "elapsed_seconds": 458,
           "tokens": null
         },
         "wake_id": "reader-recovery-20261008-1509"
@@ -140,7 +140,7 @@
         "task_id": "g-switcher/2.0.1",
         "type": "outcome",
         "usage": {
-          "elapsed_seconds": 163.0,
+          "elapsed_seconds": 163,
           "tokens": null
         },
         "wake_id": "word-refusal-diagnostics-20261008-1604"
@@ -591,6 +591,98 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:15:41.248687Z",
+        "attempt_id": "word-bootstrap-37964729963-1-windows-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-bootstrap-37964729963-1-windows-ci",
+        "kind": "ci_start",
+        "operation_key": "sha256:bb3d83f75ae29a16b329548494b86dc1a2c3ca31c427352a63a6e98703597b11",
+        "recovery_ref": null,
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:18:23.617639Z",
+        "event_id": "word-bootstrap-37964729963-1-windows-outcome",
+        "failure": {
+          "category": "code",
+          "signature": "Windows-candidate-check-failed"
+        },
+        "reservation_id": "word-bootstrap-37964729963-1-windows-ci",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": null,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:36:51.424350Z",
+        "event_id": "word-restart-host-a4-Windows-test-failed",
+        "failure": {
+          "category": "code",
+          "signature": "Windows-stalled-reader-timing-fixture-count"
+        },
+        "reservation_id": "word-restart-host-20261009-1837-a4",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": null,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:36:51.424350Z",
+        "detail": "Actual a4 Windows37965022335/job113937102137 failed only stalled_metadata_returns_none_and_never_queues_a_replacement (43 pass; calls3 vs2). Replace timed release/retry-loop fixture by held provider entry/caller return/exact-ticket-completion synchronization and exactly one fresh request. Production reader/other11source files unchanged. Authored7c1a9ddd1b584757891ccf78775fbe6cd42f34d78b5e3c8647250eb01f713f87, normalizedc8b09922736517792b993f038da12648661df468d5642f505df1a76218d870fc. Add all4 actual production-reader tests to host GREEN before same26Windows gates; no relaxed assertion, ignored test, lint suppression or budget refund. Canonical37 released62b715ffdf762f476b9536f6fb0ef2d2e03c1bd4; no publication/EXE. Repeat revised source in unique owned38/a5; CDC2.12.1 unchanged.",
+        "event_id": "word-stalled-reader-fixture-corrected-host-a5",
+        "kind": "code_correction",
+        "reference": "report:word-stalled-reader-fixture-corrected-host-a5",
+        "scope": "github-actions/g-switcher/word-restart-managed-writer",
+        "signature": "Windows-stalled-reader-timing-fixture-count",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:36:51.424350Z",
+        "detail": "Actual a4 Windows37965022335/job113937102137 failed only stalled_metadata_returns_none_and_never_queues_a_replacement (43 pass; calls3 vs2). Replace timed release/retry-loop fixture by held provider entry/caller return/exact-ticket-completion synchronization and exactly one fresh request. Production reader/other11source files unchanged. Authored7c1a9ddd1b584757891ccf78775fbe6cd42f34d78b5e3c8647250eb01f713f87, normalizedc8b09922736517792b993f038da12648661df468d5642f505df1a76218d870fc. Add all4 actual production-reader tests to host GREEN before same26Windows gates; no relaxed assertion, ignored test, lint suppression or budget refund. Canonical37 released62b715ffdf762f476b9536f6fb0ef2d2e03c1bd4; no publication/EXE. Repeat revised source in unique owned38/a5; CDC2.12.1 unchanged.",
+        "event_id": "word-stalled-reader-fixture-corrected-windows-a5",
+        "kind": "code_correction",
+        "reference": "report:word-stalled-reader-fixture-corrected-windows-a5",
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "signature": "Windows-candidate-check-failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T17:38:02.522771Z",
+        "attempt_id": "word-restart-host-a5",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-restart-host-20261009-1837-a5",
+        "kind": "ci_start",
+        "operation_key": "sha256:19d6eabc42715a0335cabb74d52de19a322b7ae0d5cff2bad75efd926368184f",
+        "recovery_ref": "report:word-stalled-reader-fixture-corrected-host-a5",
+        "scope": "github-actions/g-switcher/word-restart-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -634,19 +726,19 @@
   "cdc_package_tree": "9c45d98c3254e9658d452c505d8c97698e3fc9a7",
   "cdc_version": "2.12.1",
   "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-  "expected_generation": 37,
+  "expected_generation": 38,
   "host_reservation": {
-    "at_utc": "2026-10-09T17:09:29.164257Z",
-    "attempt_id": "word-restart-host-a4",
+    "at_utc": "2026-10-09T17:38:02.522771Z",
+    "attempt_id": "word-restart-host-a5",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-restart-host-20261009-1837-a4",
+    "event_id": "word-restart-host-20261009-1837-a5",
     "kind": "ci_start",
-    "operation_key": "sha256:d3ebfde242e5032fb08ed05aca65c7b7ee7848bc5e029c43104ee51cddf6aecd",
-    "recovery_ref": "report:word-fresh-Windows-budget-correction-a4",
+    "operation_key": "sha256:19d6eabc42715a0335cabb74d52de19a322b7ae0d5cff2bad75efd926368184f",
+    "recovery_ref": "report:word-stalled-reader-fixture-corrected-host-a5",
     "scope": "github-actions/g-switcher/word-restart-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -655,38 +747,38 @@
   "mode": "HOST_BOOTSTRAP",
   "no_scheduler_mutations": true,
   "payload_sha256": {
-    "constants.py": "002391df00a7b1dbd7b5f047450e6b9a89a7478373ff829d10bf42c5473d144e",
+    "constants.py": "890dc126bbdc24ba63a713fab822a0a42cf0ee405dce1af3c0ebdafbd1cfb2f3",
     "controller.py": "f2e308a1370278d6b8745466b22d53011d1b4b5268ac1f7b1354217a0f664c0e",
     "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
     "host-quality-review.md": "844443fb265d682ae13c160c63a8fd0c5abb4bbb38bd49ec9692d323bd0fa87e",
     "host_step.py": "a0f52fc41dd4ed07ea01adf70ed3604e317aa25502aa9a6a5da359b6f64e7912",
-    "preflight_child_budget.py": "a1455af27633e09b04a502b0568db45fc0d1ab0495327480a1f34831592791e0",
-    "product-payload.json": "60794cc8c161604be8df9c2dc4ea2b94b9d64fbf7db04695d8c6557ed3bb417e",
-    "product-quality-review.md": "01a307e096e2afd417cbd7ead6d98d556c3f9f7b8187bd1889ebfe7be783f077",
+    "preflight_child_budget.py": "9fe875024eb4ab8aae0eaee337a3f60930517efb6f1d0f3449775bca4fffe3e0",
+    "product-payload.json": "c8b09922736517792b993f038da12648661df468d5642f505df1a76218d870fc",
+    "product-quality-review.md": "8bd55655c6b257978a1acceac893581fd54d77f72aca0932e8872bc9fd091c50",
     "protocol-tests/baseline.rs": "ba30f71c4332baffb78c7f99c9a3cecad658984fa887144a95a72a7090fc8cf7",
     "protocol-tests/requirements_tests.rs": "b75587213f09b8766e5b87873f3967cafd90b42387357d97eb26b8bc0f2a90c8",
     "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
-    "spec-review.md": "ef2df7fa2bb02afa435e0985f7cdb3c7c4f51e7368546896ee66c2a37f5841bc",
+    "spec-review.md": "8fef915c9b0868a818463fa2668d18c8f6fd25c0052fe8b2809a7e1c79826031",
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "a5312c06586dc420ca2c585ecc7c6d28152a8a6857ed34742295c597848710e9",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "a4759989fa74e28d7834416c6ceb896a4578b0221c38d02753c75d014a40dbbb",
-    "worker.py": "c9c904661f71c2c2e407e62c431938d489f9dc5719a4b7f4fa0a1e25d0f01501"
+    "word-bootstrap.yml": "64cf9af5a08bf5c0478ff616aa6d3ff9895565b66f8068acfb1b7c6dbc4b10ac",
+    "worker.py": "77e37fe98b518800a7270d28c0b025d764d8d88404fd0b56c1b4ac9bc5ef8510"
   },
-  "prepared_at_utc": "2026-10-09T17:09:29.164257Z",
+  "prepared_at_utc": "2026-10-09T17:38:02.522771Z",
   "prior_external_guard": null,
-  "prior_generation": 36,
+  "prior_generation": 37,
   "prior_release": {
-    "at_utc": "2026-10-09T17:05:13.884186Z",
-    "checkpoint_ref": "managed-host:terminal:ab13570f-4845-59b1-ab8c-c7e7ea8cdc68:failed",
+    "at_utc": "2026-10-09T17:18:39.299922Z",
+    "checkpoint_ref": "managed-host:terminal:8aa455f2-6f6b-53a0-ab5b-191a41e221a6:failed",
     "completion_reason": "resumable_blocker",
     "external_reconciliation": "none",
-    "generation": 36,
-    "invocation_id": "managed-terminal:95446b8f08f7a285ecd5b15ba49604b65b251e34ded7c6d63d82d3e6a0749cc3",
-    "owner_id": "6bad3c1d-1d80-4407-972b-eb3f0a233d6c"
+    "generation": 37,
+    "invocation_id": "managed-terminal:4c81a9413d369f579074a29c775134b8ac8f1b228c4466ceeba8002e37939cae",
+    "owner_id": "cfd896f2-43ce-4705-9f17-3470dbef6bac"
   },
-  "prior_release_revision": "b6a9d28a3e5c31a6c340a0ec468265ab57b72f09",
-  "product_payload_sha256": "60794cc8c161604be8df9c2dc4ea2b94b9d64fbf7db04695d8c6557ed3bb417e",
+  "prior_release_revision": "62b715ffdf762f476b9536f6fb0ef2d2e03c1bd4",
+  "product_payload_sha256": "c8b09922736517792b993f038da12648661df468d5642f505df1a76218d870fc",
   "publication": "Only canonical owned managed writer finish after exact candidate Windows validation; no merge/public promotion",
   "routing": {
     "Windows": {
@@ -913,9 +1005,9 @@
       }
     ]
   },
-  "windows_head": "ed5d3d86188e906746df5fed4c060aa71a8f7ea0",
-  "windows_recovery_ref": null,
-  "windows_ref": "refs/heads/cdc/word-restart-windows-20261009-1837-a4",
+  "windows_head": "eb6520c6fb33b1369aea632bf7bdd67474a300d4",
+  "windows_recovery_ref": "report:word-stalled-reader-fixture-corrected-windows-a5",
+  "windows_ref": "refs/heads/cdc/word-restart-windows-20261009-1837-a5",
   "write_paths": [
     "src/windows_runtime/guard_core.rs",
     "src/windows_runtime/read_worker.rs",

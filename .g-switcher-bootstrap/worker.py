@@ -72,7 +72,7 @@ for relative, content in payload['files'].items():
 green = root / payload['green_source']
 green_bin = out / 'fixed-tests'
 green_harness = out / 'production-guard-tests.rs'
-green_harness.write_text('#[path = ' + json.dumps(str(green), ensure_ascii=False) + '] mod production_guard;\n')
+green_harness.write_text('#[path = ' + json.dumps(str(green), ensure_ascii=False) + '] mod production_guard;\n' + '#[path = ' + json.dumps(str(root / 'src/windows_runtime/read_worker.rs'), ensure_ascii=False) + '] mod production_reader;\n')
 check('green-compile', ['rustc','--edition','2021','--test',str(green_harness),'-o',str(green_bin)])
 check('green-protocol-tests', [str(green_bin),'--test-threads=1','--nocapture'])
 green_log = (out / 'green-protocol-tests.log').read_text(errors='replace')
