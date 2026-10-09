@@ -1,6 +1,6 @@
 {
   "base": "436003d9287937d10606c74ae942b5518495d62a",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261009-2306-a1",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261009-2306-a2",
   "budget_ledger": {
     "events": [
       {
@@ -976,6 +976,52 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:40:37.168102Z",
+        "event_id": "word-broker-host-a1-outcome",
+        "failure": {
+          "category": "configuration",
+          "signature": "canonical-coordination-JSON-encoding"
+        },
+        "reservation_id": "word-broker-host-20261009-2306-a1",
+        "status": "setup_failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": null,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:40:37.168102Z",
+        "detail": "Use package git_document_store.canonical; require sorted compact UTF8 exact newline and dedicated single document tree before launch; previous run37988367440 terminal before lease acquisition/source apply",
+        "event_id": "word-broker-host-a2-remedy",
+        "kind": "configuration_correction",
+        "reference": "report:canonical-json-encoder-actual-CDC2121-host-a2",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "signature": "canonical-coordination-JSON-encoding",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T20:43:27.367593Z",
+        "attempt_id": "word-broker-host-a2",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-host-20261009-2306-a2",
+        "kind": "ci_start",
+        "operation_key": "sha256:9d49b521286b2c60450b0ba77876daeed8afa069786fb35e7ad74726d08f8d2e",
+        "recovery_ref": "report:canonical-json-encoder-actual-CDC2121-host-a2",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -1050,17 +1096,17 @@
   ],
   "expected_generation": 40,
   "host_reservation": {
-    "at_utc": "2026-10-09T20:37:31.507448Z",
-    "attempt_id": "word-broker-host-a1",
+    "at_utc": "2026-10-09T20:43:27.367593Z",
+    "attempt_id": "word-broker-host-a2",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-broker-host-20261009-2306-a1",
+    "event_id": "word-broker-host-20261009-2306-a2",
     "kind": "ci_start",
-    "operation_key": "sha256:a5d07a431ed5e92b7a7ed3fe9ac200bdeabf4193d9deb870a3070aa832fcfce4",
-    "recovery_ref": null,
+    "operation_key": "sha256:9d49b521286b2c60450b0ba77876daeed8afa069786fb35e7ad74726d08f8d2e",
+    "recovery_ref": "report:canonical-json-encoder-actual-CDC2121-host-a2",
     "scope": "github-actions/g-switcher/word-broker-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -1089,10 +1135,10 @@
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "c97c1293c43f323d201994e16471d98932a3d383273714d99c37f0a85252d4a4",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "357ce7dd22f07fc3d230f5d9433fb761368f8cb12b18339831b80e564676b642",
+    "word-bootstrap.yml": "56cc57b6a22a556ef35565a28b546a4c9f6323de5a7863a1826bcc6168b26efe",
     "worker.py": "babc725ae806ce1dd87d747be0505ce834cc98ff214bb831103796bc145f7fe3"
   },
-  "prepared_at_utc": "2026-10-09T20:37:31.507448Z",
+  "prepared_at_utc": "2026-10-09T20:43:27.367593Z",
   "prior_external_guard": null,
   "prior_generation": 39,
   "prior_release": {
@@ -1104,7 +1150,7 @@
     "invocation_id": "managed-terminal:f3b5a66ebf14801ffba8a63e3b1cf5885187d50db2c4dfd0f6d9657bc472603d",
     "owner_id": "a878b43e-88ef-4276-87c9-3d4b1f14b1b9"
   },
-  "prior_release_revision": "c5e951fc8f2b6a5be7390ddc0cf10e0bf3031f00",
+  "prior_release_revision": "b996f221eecc440fb8b8a5917fe8b7f9bcfa9a57",
   "product_payload_sha256": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
   "publication": "Only owned canonical managed writer finish after exact Windows gates; development Draft branch only, no merge/public promotion/installed acceptance",
   "required_guard_reader_tests": [
@@ -1215,7 +1261,7 @@
   "schema": "word-broker-host-bootstrap-intent/v1",
   "scope_limit": "Experimental broker isolation and retained cleanup; native per-character mutation unchanged; default Word manual/Undo, nonWordTab, formatting and installed Word acceptance pending",
   "source_quality_verdict": "PASS",
-  "source_review_reference": "git:433fba0eb4fd17f678824743431d3d9003d97ba1:document.json",
+  "source_review_reference": "git:9a9fd7488ae6c3bf3cc0f9349df4902abfa9ab00:document.json",
   "source_spec_verdict": "PASS",
   "user_authorization": "Continue authorized g-switcher repair autonomously; owner increased needed limits 2026-10-09 23:06 MSK; do not upgrade CDC; preserve consumed budget and paused schedulers",
   "windows_contract": {
@@ -1382,7 +1428,7 @@
   },
   "windows_head": "c6428a738427e5e4a388d9653e1e7621e737d61b",
   "windows_recovery_ref": null,
-  "windows_ref": "refs/heads/cdc/word-broker-windows-20261009-2306-a1",
+  "windows_ref": "refs/heads/cdc/word-broker-windows-20261009-2306-a2",
   "write_paths": [
     "build.rs",
     "src/lib.rs",
