@@ -1,10 +1,10 @@
 # Independent revised source QUALITY
 
-PASS /root/platform_quality; payloade760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9. Exact4file wire delta, other27of31 unchanged. All16productionunsignedfields canonical16lowercasehex stringcodec preserve64bits; malformed/type mismatch failclosed. Same sourcebuilddigest bindscodec. Entropy, peer/build/nonce/map/authority/stagechecks and64KiBframing unchanged. Actualrole MAXnonce/epoch plus3portable and1allmessage regressions mandatory. Originalfixtures and26Windowsstepdicts retained. PrioractualWindowsTOMLu64failure observed; newcompile/tests/Windows andinstalledWord acceptance pending.
+PASS /root/platform_quality; payloadd743a6bac4fbf8b239c6b35a8ab70fab40d16f1ed28d504da8c62900b4fb10b6. Exact1runtimefile delta, other30of31 unchanged. Tab incrementsgeneration and immediatelysetsHOOK_POLICYUNKNOWN; onlycandidate/strokes retained foradjacentgeneration priorHWND thenfreshfocusPID/nativeplainEdit/password/metadata; cachecleared, pending/Undo/contextreset. Ctrl/Alt andvirtual/RichEditTab neverrestore. Exactsuffix/currentgeneration/focusPIDthreadlayout mutationguards intact. ExistingactualnativeEditE2EREDassertion andalltestbodies/arrays/26Windowssteps preserved. Staticonly; newcompile/E2E/Windows andinstalledWord acceptance pending.
 
-Prior a5 exacthost/child admission executed; helpercode unchanged, constantsadvance released43 to44. Frozen31file scope and45mandatoryWindowsnames bound by newintent; no priorWindowsPASS inferred. Exact helper hashes:
+Prior a6 exacthost/childadmission executed;45brokerfixtures passed butnativeEditE2Efailed. Helpercode unchanged, constant advances released44 to45. Scope/gate assertions bound by newintent. Exact helper hashes:
 {
-  "constants.py": "91da3aad08e9d17d6bcd36751827ac3c22ff2c266dc274bc399e215a531357ad",
+  "constants.py": "d6e598fd8af4f76dd4e3cd0c9d8ec7a2dd6918d2c650fc3d319f45e34e29e745",
   "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
   "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
   "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
