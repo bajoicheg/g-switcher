@@ -1,3 +1,0 @@
-# Independent revised source QUALITY
-
-PASS /root/platform_quality; payloade760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9. Exact4file wire delta, other27of31 unchanged. All16productionunsignedfields canonical16lowercasehex stringcodec preserve64bits; malformed/type mismatch failclosed. Same sourcebuilddigest bindscodec. Entropy, peer/build/nonce/map/authority/stagechecks and64KiBframing unchanged. Actualrole MAXnonce/epoch plus3portable and1allmessage regressions mandatory. Originalfixtures and26Windowsstepdicts retained. PrioractualWindowsTOMLu64failure observed; newcompile/tests/Windows andinstalledWord acceptance pending.
