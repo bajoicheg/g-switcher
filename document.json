@@ -90,7 +90,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 15,
+    "revision": 19,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -110,12 +110,13 @@
       },
       {
         "id": "quality",
-        "status": "failed",
+        "status": "queued",
         "attempt_ids": [
-          "quality-a1"
+          "quality-a1",
+          "quality-a2"
         ],
-        "active_attempt_id": null,
-        "reservation_token": null,
+        "active_attempt_id": "quality-a2",
+        "reservation_token": "reserve:quality-a2",
         "accepted_result_ref": null,
         "integrated": false,
         "discarded": false,
@@ -124,21 +125,21 @@
       },
       {
         "id": "spec-r2",
-        "status": "running",
+        "status": "succeeded",
         "attempt_ids": [
           "spec-a3"
         ],
-        "active_attempt_id": "spec-a3",
-        "reservation_token": "reserve:spec-a3",
-        "accepted_result_ref": null,
-        "integrated": false,
+        "active_attempt_id": null,
+        "reservation_token": null,
+        "accepted_result_ref": "report:broker-source-spec-ce748a2",
+        "integrated": true,
         "discarded": false,
-        "runtime_seconds": 0,
-        "cost_units": 0
+        "runtime_seconds": 209.850545,
+        "cost_units": 1
       }
     ],
-    "runtime_consumed_seconds": 1084.453088,
-    "cost_consumed_units": 3,
+    "runtime_consumed_seconds": 1294.303633,
+    "cost_consumed_units": 4,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -1048,6 +1049,49 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-broker-spec-review-a3-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:34:18.454551Z",
+        "reservation_id": "word-broker-spec-review-a3",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 209.850545
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "word-broker-quality-a2-remedy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:34:18.454551Z",
+        "scope": "word-broker-source-quality",
+        "signature": "Windows-nested-module-and-integration-imports-unresolved",
+        "reference": "report:word-broker-Windows-module-import-remedy-ce748a2",
+        "kind": "code_correction",
+        "detail": "Explicit grandparent selection import and retained full selection Chromium test; exact source ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5"
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-broker-quality-review-a2",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:34:18.454551Z",
+        "operation_key": "sha256:c399e81e0f439fb77f81228c0a835c90711028a82f57ddfb093ced5a8eea4b61",
+        "attempt_id": "quality-a2",
+        "kind": "agent_start",
+        "scope": "word-broker-source-quality",
+        "recovery_ref": "report:word-broker-Windows-module-import-remedy-ce748a2",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
       }
     ],
     "policy": {
@@ -1242,6 +1286,22 @@
       ],
       "host_transport_verdict": "No additional concrete source blocker",
       "tests_executed": false
+    },
+    "spec-a3": {
+      "verdict": "PASS",
+      "scope": "experimental compile/Windows fixture candidate only",
+      "payload_sha256": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
+      "tests_executed": false,
+      "corrected": [
+        "explicit broker OS selection import across parent hierarchy",
+        "complete selection import in Chromium post-state retry test; both assertions retained"
+      ],
+      "acceptance_pending": [
+        "default manual/Undo passthrough",
+        "nonWord Tab behavior",
+        "native partial mutation/hangs",
+        "effective formatting and installed Word"
+      ]
     }
   },
   "authorized_replan": {
