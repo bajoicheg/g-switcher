@@ -1,3 +1,3 @@
-# Independent source SPEC
+# Independent revised source SPEC
 
-PASS for experimental compile/Windows fixture candidate only. Reviewer /root/broker_spec, task spec-r2, spec-a3. Payload ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5. Verified29 files27changed and all7protocol/original-base bindings. Corrected broker nested selection imports and complete Chromium selection test dependency. Both Chromium assertions retained. Retained UndoRecord completion once survives revoked normal admission; new ordinary provider stages denied. Native per-character replacement body SHA256 ef49ce1f0ed027a9b672543c36b7fb136acd0aa1ebf6e3e2d2bf1e27e314f43c remains unchanged. No compiler/tests run. Installed Word, formatting, partial writes/hangs, default manual/Undo passthrough and nonWord Tab remain acceptance gates.
+PASS /root/platform_spec; payload 2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133. Exact four-file mechanical lint correction, other25sourcefiles and all tests/gates unchanged. Security/ABI/provider/native semantics retained. Compilation and actual Word acceptance pending.

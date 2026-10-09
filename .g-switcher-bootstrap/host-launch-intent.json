@@ -1,6 +1,6 @@
 {
   "base": "436003d9287937d10606c74ae942b5518495d62a",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261009-2348-a3",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261010-0004-a4",
   "budget_ledger": {
     "events": [
       {
@@ -1130,6 +1130,114 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:03:25.839288Z",
+        "event_id": "word-broker-host-a3-outcome",
+        "failure": {
+          "category": "code",
+          "signature": "Windows-clippy-type-pattern-FFI-signature"
+        },
+        "reservation_id": "word-broker-host-20261009-2348-a3",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 154,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:03:25.839288Z",
+        "detail": "Exact4file mechanical delta: typealiases, char-array pattern, ABI-identical void-pointer CreateMutexW and forwarded deadline wrapper; no lint suppression; original regressions retained; previous52 portable and Windows typecompile passed, Clippy RED observed.",
+        "event_id": "word-broker-clippy-mechanical-remedy",
+        "kind": "code_correction",
+        "reference": "report:word-broker-lint-2059b8d6",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "signature": "Windows-clippy-type-pattern-FFI-signature",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:03:25.839288Z",
+        "attempt_id": "lint-spec-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-lint-spec-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133",
+        "recovery_ref": null,
+        "scope": "word-broker-source-lint-spec",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:05:31.587989Z",
+        "event_id": "word-broker-lint-spec-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-lint-spec-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 125.748701,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:05:31.587989Z",
+        "attempt_id": "lint-quality-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-lint-quality-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133",
+        "recovery_ref": null,
+        "scope": "word-broker-source-lint-quality",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:09:20.184152Z",
+        "event_id": "word-broker-lint-quality-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-lint-quality-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 228.596163,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:09:39.121062Z",
+        "attempt_id": "word-broker-host-a4",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-host-20261010-0004-a4",
+        "kind": "ci_start",
+        "operation_key": "sha256:f8e49be175f8e7d52476af934dc846ce46eb8509220e70a0179d92387b9c4e72",
+        "recovery_ref": "report:word-broker-lint-2059b8d6",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -1150,7 +1258,7 @@
         "tool_calls": 1000
       },
       "wake_limits": {
-        "agent_starts": 8,
+        "agent_starts": 16,
         "ci_starts": 16,
         "compute_starts": 4,
         "elapsed_seconds": null,
@@ -1159,7 +1267,7 @@
         "tool_calls": 240
       }
     },
-    "policy_digest": "sha256:c684c3d9545007fed2ea12b18c94f79d4848598724cde09553516a912405acbb",
+    "policy_digest": "sha256:6456d573cd950b112717e9d28de598b2b3a709b15569e51193efa2d99e96d417",
     "schema": "budget-ledger/v1",
     "task_id": "g-switcher/2.0.1",
     "wake_ids": [
@@ -1202,7 +1310,7 @@
     "tests/browser_uia_adapter.rs",
     "tests/chromium_post_state_retry.rs"
   ],
-  "expected_generation": 41,
+  "expected_generation": 42,
   "guard_reader_platform_evidence": {
     "all_required_on_windows": [
       "restart_refuses_previous_pending_before_any_provider_call",
@@ -1257,17 +1365,17 @@
     ]
   },
   "host_reservation": {
-    "at_utc": "2026-10-09T20:55:57.925784Z",
-    "attempt_id": "word-broker-host-a3",
+    "at_utc": "2026-10-09T21:09:39.121062Z",
+    "attempt_id": "word-broker-host-a4",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-broker-host-20261009-2348-a3",
+    "event_id": "word-broker-host-20261010-0004-a4",
     "kind": "ci_start",
-    "operation_key": "sha256:fd3502301f68dc72a101a1ebc59c07718c45a9b00c3012d31eb282cec6e3ec7d",
-    "recovery_ref": "report:guard-reader-platform-evidence-partition-a3",
+    "operation_key": "sha256:f8e49be175f8e7d52476af934dc846ce46eb8509220e70a0179d92387b9c4e72",
+    "recovery_ref": "report:word-broker-lint-2059b8d6",
     "scope": "github-actions/g-switcher/word-broker-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -1276,14 +1384,14 @@
   "mode": "HOST_BOOTSTRAP",
   "no_scheduler_mutations": true,
   "payload_sha256": {
-    "constants.py": "a4300feb8a984b718f453554b34e5f1df59d1350cbbde99c20a2f792a4bd9e86",
+    "constants.py": "d931c8a17f164040471d084224be08f0208f5ae59ae34fb6449b3067eb24854a",
     "controller.py": "f822f53d122763d550fca99d9a38aa7c570735c46128f39d29f64d3e5ee10c2e",
     "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
-    "host-quality-review.md": "81c8b854febc8da805cd5ba7cb3b3b9d7d05f25e540cf52bb9de1e201b58024d",
+    "host-quality-review.md": "2b34516c56f28ab0704e64004007275fe1d4e3ca21f684678180853e4795ef0c",
     "host_step.py": "a0f52fc41dd4ed07ea01adf70ed3604e317aa25502aa9a6a5da359b6f64e7912",
     "preflight_child_budget.py": "40b52c2c224a86b59cdfc8645670ed7a6e301967051c9cacc162283bac9bfb5c",
-    "product-payload.json": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
-    "product-quality-review.md": "89d2898d60ec687e24fac77390dd90b040fa53c1b9507958cf5515fa1b44eb84",
+    "product-payload.json": "2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133",
+    "product-quality-review.md": "1c12f54291a67538232e283f3998207b164eb4471398fbff43ea2227e644acb0",
     "product/src/windows_runtime/word_call_gate_requirements.rs": "951d3ddffb8874c047aa48b7aad06b4f3f4271e38a0a5e01eba703295dac56a8",
     "protocol-tests/authority-baseline.rs": "b994cba352ee522a05e9e1eaa033140916314cfa1cda5c60a232f7996cff7315",
     "protocol-tests/authority-regression-tests.rs": "851b25b4d6a79d871d9c128b141128e1d729e94cdf53ff915e27f036583462d8",
@@ -1292,27 +1400,27 @@
     "protocol-tests/requirements.rs": "bfd1e22ebc9bf7d62d1f304ecfc5eee8d468539e2ca50eb71e65589d871fccd1",
     "routing-result.json": "b0585a6094dcd7ee56e1eb2dc428693c7e2972f40f15fc76e668b77b2c65a1e3",
     "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
-    "spec-review.md": "5464a1062d8715d4076abea986aa078d13bff095359f2a66febadab6bd708e08",
+    "spec-review.md": "3c10f48805aedccab1a6930b44a71c5ac4581faff23bcf7fddadf95dc3de7155",
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "c97c1293c43f323d201994e16471d98932a3d383273714d99c37f0a85252d4a4",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "9a4e4d987c534cfab4024dc42c862b8cfb66d59b1b350c20741b7bc2edf99bbf",
+    "word-bootstrap.yml": "9b5c2d148fd27b864eb0bff3bbb3c8f40212635983b1fcf5babfdde3db69a875",
     "worker.py": "babc725ae806ce1dd87d747be0505ce834cc98ff214bb831103796bc145f7fe3"
   },
-  "prepared_at_utc": "2026-10-09T20:55:57.925784Z",
+  "prepared_at_utc": "2026-10-09T21:09:39.121062Z",
   "prior_external_guard": null,
-  "prior_generation": 40,
+  "prior_generation": 41,
   "prior_release": {
-    "at_utc": "2026-10-09T20:46:00.544089Z",
-    "checkpoint_ref": "managed-host:terminal:883755e2-fba3-5b83-8adf-68ec4fd799b3:failed",
+    "at_utc": "2026-10-09T20:59:46.512715Z",
+    "checkpoint_ref": "managed-host:terminal:7a6a35b1-2360-587a-99b3-4613b7398bcf:failed",
     "completion_reason": "resumable_blocker",
     "external_reconciliation": "none",
-    "generation": 40,
-    "invocation_id": "managed-terminal:e3ae6c60adca84ad2bfadf2bd300fccd1276407b51af1e90941e71d7a31c771e",
-    "owner_id": "580ade9a-18da-4720-8f24-638df82329df"
+    "generation": 41,
+    "invocation_id": "managed-terminal:dcd7476f3b81b779a9ffa48835fc2e7eec6822544394d09caf14b7d13473020f",
+    "owner_id": "00a97a8f-5673-4df8-a150-de56de4b64e5"
   },
-  "prior_release_revision": "d5bfeb4cc2e8fd7f57d8eaec67e12acf6f0a573e",
-  "product_payload_sha256": "ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
+  "prior_release_revision": "4c827f143428effa8d7255fa578413ec70b6c870",
+  "product_payload_sha256": "2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133",
   "publication": "Only owned canonical managed writer finish after exact Windows gates; development Draft branch only, no merge/public promotion/installed acceptance",
   "required_guard_reader_tests": [
     "restart_refuses_previous_pending_before_any_provider_call",
@@ -1440,7 +1548,7 @@
   "schema": "word-broker-host-bootstrap-intent/v1",
   "scope_limit": "Experimental broker isolation and retained cleanup; native per-character mutation unchanged; default Word manual/Undo, nonWordTab, formatting and installed Word acceptance pending",
   "source_quality_verdict": "PASS",
-  "source_review_reference": "git:9a9fd7488ae6c3bf3cc0f9349df4902abfa9ab00:document.json",
+  "source_review_reference": "git:f99087101a420178fbd819d0e545810d1beaa0f4:document.json",
   "source_spec_verdict": "PASS",
   "user_authorization": "Continue authorized g-switcher repair autonomously; owner increased needed limits 2026-10-09 23:06 MSK; do not upgrade CDC; preserve consumed budget and paused schedulers",
   "windows_contract": {
@@ -1605,9 +1713,9 @@
       }
     ]
   },
-  "windows_head": "44fb0f90859e18c3cbd8a771717922ef3cf42491",
+  "windows_head": "b5900c5072f5d1552d5deb13501875e1b0fc56b7",
   "windows_recovery_ref": null,
-  "windows_ref": "refs/heads/cdc/word-broker-windows-20261009-2348-a3",
+  "windows_ref": "refs/heads/cdc/word-broker-windows-20261010-0004-a4",
   "write_paths": [
     "build.rs",
     "src/lib.rs",
