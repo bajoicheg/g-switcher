@@ -1,6 +1,6 @@
 {
   "base": "436003d9287937d10606c74ae942b5518495d62a",
-  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261010-0017-a5",
+  "bootstrap_admission_ref": "refs/heads/cdc/word-broker-bootstrap-admission-20261010-0030-a6",
   "budget_ledger": {
     "events": [
       {
@@ -1392,6 +1392,160 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:23:23.571292Z",
+        "attempt_id": "word-bootstrap-37992873668-1-windows-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-bootstrap-37992873668-1-windows-ci",
+        "kind": "ci_start",
+        "operation_key": "sha256:87078c3b8b5813e29e8e2a65c294036caf09c1ca741de47ce7af482e2c4103c3",
+        "recovery_ref": "report:word-broker-windows-gate-82deff66",
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:26:37.268901Z",
+        "event_id": "word-bootstrap-37992873668-1-windows-outcome",
+        "failure": {
+          "category": "code",
+          "signature": "Windows-candidate-check-failed"
+        },
+        "reservation_id": "word-bootstrap-37992873668-1-windows-ci",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": null,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:30:11.083417Z",
+        "event_id": "word-broker-host-a5-outcome",
+        "failure": {
+          "category": "code",
+          "signature": "TOML-u64-random-identity-overflow"
+        },
+        "reservation_id": "word-broker-host-20261010-0017-a5",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 454,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:30:11.083417Z",
+        "detail": "Actual Windows handshake OutOfRange u64 failure observed; all16 unsigned message fields use canonical16hex string serde, preserves64bits; newboundary/malformed/message regressions, actualrole MAXepoch/nonce; original gates intact.",
+        "event_id": "word-broker-wire-e760ca7d",
+        "kind": "code_correction",
+        "reference": "report:word-broker-wire-e760ca7d",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "signature": "TOML-u64-random-identity-overflow",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:30:11.083417Z",
+        "detail": "Actual Windows handshake OutOfRange u64 failure observed; all16 unsigned message fields use canonical16hex string serde, preserves64bits; newboundary/malformed/message regressions, actualrole MAXepoch/nonce; original gates intact.",
+        "event_id": "word-broker-windows-wire-e760ca7d",
+        "kind": "code_correction",
+        "reference": "report:word-broker-windows-wire-e760ca7d",
+        "scope": "github-actions/g-switcher/exact-word-diagnostic-windows",
+        "signature": "Windows-candidate-check-failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:30:11.083417Z",
+        "attempt_id": "wire-spec-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-wire-spec-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:e760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9",
+        "recovery_ref": null,
+        "scope": "word-broker-source-wire-spec",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:31:55.210519Z",
+        "event_id": "word-broker-wire-spec-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-wire-spec-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 104.127102,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:31:55.210519Z",
+        "attempt_id": "wire-quality-a1",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-wire-quality-a1",
+        "kind": "agent_start",
+        "operation_key": "sha256:e760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9",
+        "recovery_ref": null,
+        "scope": "word-broker-source-wire-quality",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:33:52.755997Z",
+        "event_id": "word-broker-wire-quality-outcome",
+        "failure": null,
+        "reservation_id": "word-broker-wire-quality-a1",
+        "status": "succeeded",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": 117.545478,
+          "tokens": null
+        },
+        "wake_id": "Word-restart-guard-20261009-1837"
+      },
+      {
+        "at_utc": "2026-10-09T21:34:18.386113Z",
+        "attempt_id": "word-broker-host-a6",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-broker-host-20261010-0030-a6",
+        "kind": "ci_start",
+        "operation_key": "sha256:251c09a843ec46de07cc33a55b1def81668fbdd78329490264236e2a66709c50",
+        "recovery_ref": "report:word-broker-wire-e760ca7d",
+        "scope": "github-actions/g-switcher/word-broker-managed-writer",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "Word-restart-guard-20261009-1837"
       }
     ],
     "policy": {
@@ -1403,7 +1557,7 @@
       "max_parallel_agents": 2,
       "provider_max_age_seconds": 300,
       "task_limits": {
-        "agent_starts": 16,
+        "agent_starts": 32,
         "ci_starts": null,
         "compute_starts": 8,
         "elapsed_seconds": null,
@@ -1412,8 +1566,8 @@
         "tool_calls": 1000
       },
       "wake_limits": {
-        "agent_starts": 16,
-        "ci_starts": 16,
+        "agent_starts": 32,
+        "ci_starts": 32,
         "compute_starts": 4,
         "elapsed_seconds": null,
         "status_polls": null,
@@ -1421,7 +1575,7 @@
         "tool_calls": 240
       }
     },
-    "policy_digest": "sha256:6456d573cd950b112717e9d28de598b2b3a709b15569e51193efa2d99e96d417",
+    "policy_digest": "sha256:ac18a39e64713cf514ea72fa56a6daa003912d02e586a44c29744c5e837eaed7",
     "schema": "budget-ledger/v1",
     "task_id": "g-switcher/2.0.1",
     "wake_ids": [
@@ -1461,11 +1615,12 @@
     "src/windows_runtime/word_dispatch_requirements.rs",
     "src/windows_runtime/word_focus.rs",
     "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/word_wire.rs",
     "src/windows_runtime_v201.rs",
     "tests/browser_uia_adapter.rs",
     "tests/chromium_post_state_retry.rs"
   ],
-  "expected_generation": 43,
+  "expected_generation": 44,
   "guard_reader_platform_evidence": {
     "all_required_on_windows": [
       "restart_refuses_previous_pending_before_any_provider_call",
@@ -1520,17 +1675,17 @@
     ]
   },
   "host_reservation": {
-    "at_utc": "2026-10-09T21:20:18.305838Z",
-    "attempt_id": "word-broker-host-a5",
+    "at_utc": "2026-10-09T21:34:18.386113Z",
+    "attempt_id": "word-broker-host-a6",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-broker-host-20261010-0017-a5",
+    "event_id": "word-broker-host-20261010-0030-a6",
     "kind": "ci_start",
-    "operation_key": "sha256:3e50c8d094ea0b0bc2bf8c4b1b6da3ec4f9b8f2682e0cd3aca34fcb80d78178d",
-    "recovery_ref": "report:word-broker-source-gate-82deff66",
+    "operation_key": "sha256:251c09a843ec46de07cc33a55b1def81668fbdd78329490264236e2a66709c50",
+    "recovery_ref": "report:word-broker-wire-e760ca7d",
     "scope": "github-actions/g-switcher/word-broker-managed-writer",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
@@ -1539,14 +1694,14 @@
   "mode": "HOST_BOOTSTRAP",
   "no_scheduler_mutations": true,
   "payload_sha256": {
-    "constants.py": "4df7a56a8b3aeb8feebdfbcf670df0b9480956c40c753feafe7e3d6c3f3d09a6",
+    "constants.py": "91da3aad08e9d17d6bcd36751827ac3c22ff2c266dc274bc399e215a531357ad",
     "controller.py": "f822f53d122763d550fca99d9a38aa7c570735c46128f39d29f64d3e5ee10c2e",
     "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
-    "host-quality-review.md": "ecc376cf5fe334a4bddfe54c250e7c6a94aa04613c817a2ccd49417f366c407d",
+    "host-quality-review.md": "82e928d11a7f31ac1faca84074d2e681ee83d19a45d392249b5342d2ee2898ac",
     "host_step.py": "a0f52fc41dd4ed07ea01adf70ed3604e317aa25502aa9a6a5da359b6f64e7912",
     "preflight_child_budget.py": "40b52c2c224a86b59cdfc8645670ed7a6e301967051c9cacc162283bac9bfb5c",
-    "product-payload.json": "82deff66d7e3d2c13423f9fd098d050dba5102238b0ad972cce5356d6b360d58",
-    "product-quality-review.md": "9a2e9198127dda65e281f7ff45d90e843c87ccc1acbca574a55afbaa9b283b1e",
+    "product-payload.json": "e760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9",
+    "product-quality-review.md": "ef6d37d9e3fb0d418b5aa1c4ce011ac0ea50f3064ce2a38640670da26e50a58c",
     "product/src/windows_runtime/word_call_gate_requirements.rs": "951d3ddffb8874c047aa48b7aad06b4f3f4271e38a0a5e01eba703295dac56a8",
     "protocol-tests/authority-baseline.rs": "b994cba352ee522a05e9e1eaa033140916314cfa1cda5c60a232f7996cff7315",
     "protocol-tests/authority-regression-tests.rs": "851b25b4d6a79d871d9c128b141128e1d729e94cdf53ff915e27f036583462d8",
@@ -1555,27 +1710,27 @@
     "protocol-tests/requirements.rs": "bfd1e22ebc9bf7d62d1f304ecfc5eee8d468539e2ca50eb71e65589d871fccd1",
     "routing-result.json": "b0585a6094dcd7ee56e1eb2dc428693c7e2972f40f15fc76e668b77b2c65a1e3",
     "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
-    "spec-review.md": "f09edd291fd9df2edfad3686785ee7eb9df28c5f8507d4c8470e6deeb47eb7d2",
+    "spec-review.md": "18681d4f053a060553c6887831df778537aa1efdc15bb7cf010e0f7313efecbe",
     "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",
     "windows-ci.yml": "c97c1293c43f323d201994e16471d98932a3d383273714d99c37f0a85252d4a4",
     "windows_bundle_gate.py": "faf862a3b6e4233db9f7ec7048be0388cf9e3754a582e203393e44c59b34dc3d",
-    "word-bootstrap.yml": "f85e8439dd441495758d30a4c2523e633406fea4a794b0bd311dd9dce922584e",
+    "word-bootstrap.yml": "dd11d8d42da94024bbd8d24725bbf4affda39ed83399c7413fc9e56e6e0167c8",
     "worker.py": "babc725ae806ce1dd87d747be0505ce834cc98ff214bb831103796bc145f7fe3"
   },
-  "prepared_at_utc": "2026-10-09T21:20:18.305838Z",
+  "prepared_at_utc": "2026-10-09T21:34:18.386113Z",
   "prior_external_guard": null,
-  "prior_generation": 42,
+  "prior_generation": 43,
   "prior_release": {
-    "at_utc": "2026-10-09T21:14:49.032745Z",
-    "checkpoint_ref": "managed-host:terminal:8c600501-0b70-57d7-a783-3e58d5a828b7:failed",
+    "at_utc": "2026-10-09T21:26:56.832876Z",
+    "checkpoint_ref": "managed-host:terminal:ef9ed4af-c00b-53b5-a22d-3b040f2d5cff:failed",
     "completion_reason": "resumable_blocker",
     "external_reconciliation": "none",
-    "generation": 42,
-    "invocation_id": "managed-terminal:eaaa195ee2e73da6162338a9ec128917f413941b92319b5a6fa3c5fab311a02c",
-    "owner_id": "e056e469-737f-4e55-84cc-dc27e567fe95"
+    "generation": 43,
+    "invocation_id": "managed-terminal:ad9122c2ddb8c9adfd4905c6ec9484d3133bd89bdc52a2d5a1e5972736b4310c",
+    "owner_id": "b9c0d233-ade2-4a46-a2a1-2fa0d7139aca"
   },
-  "prior_release_revision": "fd995dd400eecc820f6b6d4ec9ec10a41999cdfc",
-  "product_payload_sha256": "82deff66d7e3d2c13423f9fd098d050dba5102238b0ad972cce5356d6b360d58",
+  "prior_release_revision": "4ede851b2c4877ecf23d6283679c32be201f0537",
+  "product_payload_sha256": "e760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9",
   "publication": "Only owned canonical managed writer finish after exact Windows gates; development Draft branch only, no merge/public promotion/installed acceptance",
   "required_guard_reader_tests": [
     "restart_refuses_previous_pending_before_any_provider_call",
@@ -1612,6 +1767,10 @@
     "actual_registry_lazy_enrollment_uses_client_birth_and_retains_pending",
     "actual_same_process_focus_change_refuses_captured_other_hwnd",
     "actual_retained_process_exit_and_foreign_birth_revoke_identity",
+    "broker_wire_preserves_full_u64_range",
+    "broker_wire_rejects_invalid_u64_strings",
+    "broker_wire_rejects_signed_and_integer_u64_fields",
+    "actual_broker_wire_round_trips_unsigned_message_fields",
     "undo_cleanup_attempts_once_after_authority_revocation",
     "failed_undo_cleanup_is_not_repeated",
     "undo_completion_never_authorizes_a_new_provider_stage",
@@ -1703,7 +1862,7 @@
   "schema": "word-broker-host-bootstrap-intent/v1",
   "scope_limit": "Experimental broker isolation and retained cleanup; native per-character mutation unchanged; default Word manual/Undo, nonWordTab, formatting and installed Word acceptance pending",
   "source_quality_verdict": "PASS",
-  "source_review_reference": "git:2b53f1c9d8a9c7e23372e8564dd1d84074c80f31:document.json",
+  "source_review_reference": "git:3f5056934f7785f82bc9cc9bcc24e2fc4b25b6b3:document.json",
   "source_spec_verdict": "PASS",
   "user_authorization": "Continue authorized g-switcher repair autonomously; owner increased needed limits 2026-10-09 23:06 MSK; do not upgrade CDC; preserve consumed budget and paused schedulers",
   "windows_contract": {
@@ -1868,9 +2027,9 @@
       }
     ]
   },
-  "windows_head": "7a8daa4228a1b005ce40fa1b86d6d510c2306a32",
-  "windows_recovery_ref": "report:word-broker-windows-gate-82deff66",
-  "windows_ref": "refs/heads/cdc/word-broker-windows-20261010-0017-a5",
+  "windows_head": "456918f440853966698522fa36e39fedb1d8b462",
+  "windows_recovery_ref": "report:word-broker-windows-wire-e760ca7d",
+  "windows_ref": "refs/heads/cdc/word-broker-windows-20261010-0030-a6",
   "write_paths": [
     "build.rs",
     "scripts/ci-normalize-v201.ps1",
@@ -1899,6 +2058,7 @@
     "src/windows_runtime/word_dispatch_requirements.rs",
     "src/windows_runtime/word_focus.rs",
     "src/windows_runtime/word_native.rs",
+    "src/windows_runtime/word_wire.rs",
     "src/windows_runtime_v201.rs",
     "tests/browser_uia_adapter.rs",
     "tests/chromium_post_state_retry.rs"

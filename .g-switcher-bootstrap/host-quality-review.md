@@ -1,10 +1,10 @@
 # Independent revised source QUALITY
 
-PASS /root/platform_quality; payload82deff66d7e3d2c13423f9fd098d050dba5102238b0ad972cce5356d6b360d58. Exactly one source gate script delta; prior29files byte-identical to strictClippy/portable-validated a4. Current runtime_id HWNDsignature mandatory, guarded GetRuntimeId and subtreeassertions added. All privacy/password/cleanliness checks, fixture names and26Windowsstepobjects retained. All5marker groups present in actual formatted dd85ae40source. Static-only; PowerShell/CI/runtime and installed Word acceptance pending.
+PASS /root/platform_quality; payloade760ca7d28f8070fe5c0100ea15f432ea6c3ff9a83d074b37393a1d34b3d66f9. Exact4file wire delta, other27of31 unchanged. All16productionunsignedfields canonical16lowercasehex stringcodec preserve64bits; malformed/type mismatch failclosed. Same sourcebuilddigest bindscodec. Entropy, peer/build/nonce/map/authority/stagechecks and64KiBframing unchanged. Actualrole MAXnonce/epoch plus3portable and1allmessage regressions mandatory. Originalfixtures and26Windowsstepdicts retained. PrioractualWindowsTOMLu64failure observed; newcompile/tests/Windows andinstalledWord acceptance pending.
 
-Prior a4 executed host/child admission; transport only advances expected released generation42 to43 and binds corrected30file scope; no controller/worker code change. Exact helper hashes:
+Prior a5 exacthost/child admission executed; helpercode unchanged, constantsadvance released43 to44. Frozen31file scope and45mandatoryWindowsnames bound by newintent; no priorWindowsPASS inferred. Exact helper hashes:
 {
-  "constants.py": "4df7a56a8b3aeb8feebdfbcf670df0b9480956c40c753feafe7e3d6c3f3d09a6",
+  "constants.py": "91da3aad08e9d17d6bcd36751827ac3c22ff2c266dc274bc399e215a531357ad",
   "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
   "github_api.py": "fc6633fa9fec5c9f54a27e6bd16ad1f11b520a8e34fb13491bc7e474068eeac0",
   "stable_reader.py": "560e878636d84f3f1307e0537a6807baf91d53f91c5e535215656eab2147fe3f",

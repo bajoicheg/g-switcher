@@ -1,0 +1,60 @@
+{
+  "schema": "owner-authorized-budget-migration/v1",
+  "before": {
+    "actions_budget": "normal",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 16,
+      "ci_starts": null,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 1000
+    },
+    "wake_limits": {
+      "agent_starts": 16,
+      "ci_starts": 16,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 240
+    }
+  },
+  "after": {
+    "actions_budget": "normal",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 32,
+      "ci_starts": null,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 1000
+    },
+    "wake_limits": {
+      "agent_starts": 32,
+      "ci_starts": 32,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 240
+    }
+  },
+  "authorization": "User: \u0414\u043e\u0431\u0430\u0432\u044c \u0441\u0435\u0431\u0435 \u043b\u0438\u043c\u0438\u0442\u043e\u0432 \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u043d\u0443\u0436\u043d\u043e (2026-10-09)",
+  "preserved_events": 92,
+  "events_unchanged": true
+}
