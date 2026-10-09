@@ -82,7 +82,7 @@ def main():
         current_revision, current = store.read()
         assert current_revision == revision == pinned['prior_release_revision']
         leasev2.validate(current)
-        assert current['generation'] == pinned['prior_generation'] == 34
+        assert current['generation'] == pinned['prior_generation'] == EXPECTED_GENERATION - 1
         assert current['owner_id'] is None and current['invocation'] is None
         assert current['external_guard'] == pinned['prior_external_guard'] and current['finalization'] is None
         assert current['last_release'] == pinned['prior_release']

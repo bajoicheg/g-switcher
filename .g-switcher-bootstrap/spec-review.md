@@ -2,6 +2,12 @@
 
 Verdict: **PASS for the refrozen source-level SPEC.** Source-only independent SPEC review of the frozen proposal, not execution acceptance. No compiler, tests, CI, installed Word experiment, launch, product change, or remote mutation performed. No CDC version change.
 
+## Actual a2 failure and narrow Clippy correction
+
+Previous source SPEC is preserved separately in spec-review-d592-historical.md. Authenticated recovered a2 protocol logs record named baseline RED expected101,13 core GREEN,42 portable library tests and typed Windows compilation success, then actual Clippy rejection `items_after_test_module` in registry_store. Those outcomes apply to a2 source only; revised compilation/Clippy/full Windows execution is not yet evidence.
+
+Only proposed source delta is moving the identical three cfg(test) registry fixture functions before mod tests, plus surrounding blankline relocation. Independent comparison confirms all function/test/production bodies unchanged and the other11 Rust files byte-identical. Registry hash is now `bb80842c13919c386b8a1c2de07bdafaaf85ae0618a8dee32651283875e9aff2`; all12 proposed copies/hashes match the new manifest. Normalized host product payload `60794cc8c161604be8df9c2dc4ea2b94b9d64fbf7db04695d8c6557ed3bb417e` contains precisely those12 authored source strings and original/hash bindings. This closes the observed source-order Clippy defect without suppressing the lint or changing admission/ownership/security/mutation behavior. Actual revised checks remain required.
+
 ## Targeted corrections verified
 
 Both previously reported blockers are closed in the refrozen payload. `RegistryStore::clear` now retains the expected nonce-bound Idle bytes across the write, RegFlushKey and readback, and invokes `require_exact_idle_readback`. That production predicate returns success only for those exact bytes; foreign valid Idle, missing value and storage errors fail. The added Windows-only real registry regression writes foreign Idle, deletes the value, then writes exact Idle in a disposable namespace and exercises that actual predicate for rejection/rejection/acceptance. Source inspection verifies the test intent; no execution outcome exists.
@@ -34,14 +40,14 @@ Portable tests cover exact pending restart refusal, child timeout/late completio
 
 ## Exact frozen binding
 
-Proposal `word-refusal-bootstrap/restart-guard-proposal/payload.json` SHA-256: `d5921eac760ace2b64f88d8ae166eca6d1785670bb8d24ee4f63fd7c0c1b1f22`.
+Proposal `word-refusal-bootstrap/restart-guard-proposal/payload.json` SHA-256: `f4600d94f764d10ade4ae29cf6e5c5a473c3ba16efd61089165dd7a747f98ba5`.
 Source BASE: `10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3`; reviewed diagnostic: `3407a2d0570b88864fd265de61a8761999995380`. All 12 manifest contents match proposed product files and payload hashes; all original hashes match exact BASE objects, and every reviewed-original hash matches diagnostic3407 objects. Native original separately binds diagnostic3407; its source baseline hash differs only because this increment carries the previously reviewed diagnostic code forward. No executable acceptance inferred.
 
 | Proposed file | SHA-256 |
 | --- | --- |
 | `src/windows_runtime/guard_core.rs` | `5c60561b83829409edfed4933b2e179591b927e06045d19e35e41a3c8e8d6c30` |
 | `src/windows_runtime/read_worker.rs` | `86b3d3c0176688b5e8b3632a747e0eb9874075513ecc79f81d9a755b094133b9` |
-| `src/windows_runtime/registry_store.rs` | `095e4aa54ff642629885c7c5ea6074d11a8113e4a6161e84ce63bdf630f5eb95` |
+| `src/windows_runtime/registry_store.rs` | `bb80842c13919c386b8a1c2de07bdafaaf85ae0618a8dee32651283875e9aff2` |
 | `src/windows_runtime/requirements_tests.rs` | `b75587213f09b8766e5b87873f3967cafd90b42387357d97eb26b8bc0f2a90c8` |
 | `src/windows_runtime/secure_input.rs` | `74fcc65f7a2b878955aed79951d39568939db35f6b6790c2d42ed4670b37c7c6` |
 | `src/windows_runtime/selection.rs` | `a0b70c96f717318344b1f704b07a6730c2235636e773e6d093d93a46fba948f5` |

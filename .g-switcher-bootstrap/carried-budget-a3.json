@@ -498,50 +498,33 @@
       "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "at_utc": "2026-10-09T16:52:29.932487Z",
+      "type": "outcome",
       "event_id": "word-restart-host-a2-clippy-failed",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T16:52:29.932487Z",
+      "reservation_id": "word-restart-host-20261009-1837-a2",
+      "status": "failed",
       "failure": {
         "category": "code",
         "signature": "registry-store-clippy-items-after-test-module"
       },
-      "reservation_id": "word-restart-host-20261009-1837-a2",
-      "status": "failed",
-      "task_id": "g-switcher/2.0.1",
-      "type": "outcome",
       "usage": {
         "elapsed_seconds": 104,
         "tokens": null
-      },
-      "wake_id": "Word-restart-guard-20261009-1837"
+      }
     },
     {
-      "at_utc": "2026-10-09T16:53:16.403787Z",
-      "detail": "Move unchanged cfg(test) fixture definitions before registry_store test module. Actual a2 artifact11630673968 digest99bfe48c8d9e71b37baa8c1aa585c17bb619abc45bc9dd6e8ad25b4f4837b99d proves Clippy order failure after RED/GREEN13/lib42/Windows typed pass. Only one source file reordered; no lint suppression, no runtime change. Generation35 failed canonical release86cccc2728f77b4295635b4565643a5ee5f12cc8, guard null, publication null. New unique a3/generation36, unchanged CDC2.12.1.",
+      "type": "remedy",
       "event_id": "word-restart-registry-fixtures-reordered-a3",
-      "kind": "code_correction",
-      "reference": "report:word-registry-fixture-order-correction-a3",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T16:53:16.403787Z",
       "scope": "github-actions/g-switcher/word-restart-managed-writer",
       "signature": "registry-store-clippy-items-after-test-module",
-      "task_id": "g-switcher/2.0.1",
-      "type": "remedy",
-      "wake_id": "Word-restart-guard-20261009-1837"
-    },
-    {
-      "at_utc": "2026-10-09T16:55:56.440668Z",
-      "attempt_id": "word-restart-host-a3",
-      "cost": {
-        "elapsed_seconds": null,
-        "tokens": null,
-        "tool_calls": 1
-      },
-      "event_id": "word-restart-host-20261009-1837-a3",
-      "kind": "ci_start",
-      "operation_key": "sha256:d2f164c0c2622a1190a9612056fa53745bc0baa52cb433c4138f4e5482482542",
-      "recovery_ref": "report:word-registry-fixture-order-correction-a3",
-      "scope": "github-actions/g-switcher/word-restart-managed-writer",
-      "task_id": "g-switcher/2.0.1",
-      "type": "reserve",
-      "wake_id": "Word-restart-guard-20261009-1837"
+      "reference": "report:word-registry-fixture-order-correction-a3",
+      "kind": "code_correction",
+      "detail": "Move unchanged cfg(test) fixture definitions before registry_store test module. Actual a2 artifact11630673968 digest99bfe48c8d9e71b37baa8c1aa585c17bb619abc45bc9dd6e8ad25b4f4837b99d proves Clippy order failure after RED/GREEN13/lib42/Windows typed pass. Only one source file reordered; no lint suppression, no runtime change. Generation35 failed canonical release86cccc2728f77b4295635b4565643a5ee5f12cc8, guard null, publication null. New unique a3/generation36, unchanged CDC2.12.1."
     }
   ],
   "policy": {
