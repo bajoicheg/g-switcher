@@ -2,7 +2,7 @@ name: Word restart guard managed writer
 'on':
   push:
     branches:
-    - cdc/word-restart-host-20261009-1837-a3
+    - cdc/word-restart-host-20261009-1837-a4
 permissions:
   contents: read
 concurrency:
@@ -45,6 +45,8 @@ jobs:
         sudo apt-get install -y -qq gcc-mingw-w64-x86-64
 
         '
+    - name: Preflight fresh Windows reservation with canonical budget
+      run: python -B orchestration/.g-switcher-bootstrap/preflight_child_budget.py
     - name: Start gated managed host and wait for exact bundle
       run: python -B orchestration/.g-switcher-bootstrap/host_step.py start
       env:

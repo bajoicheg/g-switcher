@@ -19,11 +19,11 @@ document = {'schema': 'word-host-bootstrap-admission/v1', 'state': 'prepared', '
     'host_head': head, 'intent_sha256': digest('host-launch-intent.json'),
     'operation_key': intent['host_reservation']['operation_key'], 'source_base': intent['base'],
     'prior_generation': intent['prior_generation'], 'prior_release_revision': intent['prior_release_revision'],
-    'budget_ledger': intent['budget_ledger'], 'spec_review_sha256': digest('host-launch-spec-a3.md'),
-    'quality_review_sha256': digest('host-launch-quality-a3.md'),
+    'budget_ledger': intent['budget_ledger'], 'spec_review_sha256': digest('host-launch-spec-a4.md'),
+    'quality_review_sha256': digest('host-launch-quality-a4.md'),
     'product_spec_review_sha256': digest('spec-review.md'),
     'product_quality_review_sha256': digest('product-quality-review.md'), 'cdc_version': '2.12.1'}
 encoded = canonical(document)
 assert canonical(json.loads(encoded)) == encoded
-(root / 'bootstrap-admission-a3.json').write_text(encoded, encoding='utf-8')
+(root / 'bootstrap-admission-a4.json').write_text(encoded, encoding='utf-8')
 print('Canonical admission SHA256 ' + hashlib.sha256(encoded.encode()).hexdigest())

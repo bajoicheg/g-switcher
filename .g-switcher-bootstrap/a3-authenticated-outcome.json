@@ -1,0 +1,198 @@
+{
+  "schema": "word-restart-a3-authenticated-outcome/v1",
+  "run_id": 37963472183,
+  "job_id": 113931856762,
+  "artifact_id": 11632138226,
+  "archive_sha256": "004dd58ab1f56d8f3e2c449a8312603cfec62b4898482733a1cd9146c1126f1e",
+  "source_validation": {
+    "source": "10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3",
+    "result": "d272ae9cbb455b82a42a1d16ae0fa511287361b7",
+    "owned_worker_checks_passed": true,
+    "checks": [
+      {
+        "name": "red-compile",
+        "argv": [
+          "rustc",
+          "--edition",
+          "2021",
+          "--test",
+          "/home/runner/work/g-switcher/g-switcher/orchestration/.g-switcher-bootstrap/protocol-tests/baseline.rs",
+          "-o",
+          "/home/runner/work/_temp/word-bootstrap-37963472183-1/recovered/baseline-tests"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 0.215
+      },
+      {
+        "name": "red-restart-regression",
+        "argv": [
+          "/home/runner/work/_temp/word-bootstrap-37963472183-1/recovered/baseline-tests",
+          "tests::restart_refuses_previous_pending_before_any_provider_call",
+          "--exact",
+          "--nocapture"
+        ],
+        "exit_code": 101,
+        "expected_exit_code": 101,
+        "elapsed_seconds": 0.004
+      },
+      {
+        "name": "green-compile",
+        "argv": [
+          "rustc",
+          "--edition",
+          "2021",
+          "--test",
+          "/home/runner/work/_temp/word-bootstrap-37963472183-1/recovered/production-guard-tests.rs",
+          "-o",
+          "/home/runner/work/_temp/word-bootstrap-37963472183-1/recovered/fixed-tests"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 0.215
+      },
+      {
+        "name": "green-protocol-tests",
+        "argv": [
+          "/home/runner/work/_temp/word-bootstrap-37963472183-1/recovered/fixed-tests",
+          "--test-threads=1",
+          "--nocapture"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 0.032
+      },
+      {
+        "name": "format",
+        "argv": [
+          "rustfmt",
+          "--edition",
+          "2021",
+          "--config",
+          "skip_children=true",
+          "src/windows_runtime/guard_core.rs",
+          "src/windows_runtime/read_worker.rs",
+          "src/windows_runtime/registry_store.rs",
+          "src/windows_runtime/requirements_tests.rs",
+          "src/windows_runtime/secure_input.rs",
+          "src/windows_runtime/selection.rs",
+          "src/windows_runtime/uia_secure.rs",
+          "src/windows_runtime/win32_identity.rs",
+          "src/windows_runtime/word_admission.rs",
+          "src/windows_runtime/word_focus.rs",
+          "src/windows_runtime/word_native.rs",
+          "src/windows_runtime_v201.rs"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 0.114
+      },
+      {
+        "name": "portable-library-tests",
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--lib"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 54.644
+      },
+      {
+        "name": "Windows-typed-compile",
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 15.477
+      },
+      {
+        "name": "Windows-clippy",
+        "argv": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 3.174
+      },
+      {
+        "name": "whitespace",
+        "argv": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "expected_exit_code": 0,
+        "elapsed_seconds": 0.008
+      }
+    ],
+    "write_paths": [
+      "src/windows_runtime/guard_core.rs",
+      "src/windows_runtime/read_worker.rs",
+      "src/windows_runtime/registry_store.rs",
+      "src/windows_runtime/requirements_tests.rs",
+      "src/windows_runtime/secure_input.rs",
+      "src/windows_runtime/selection.rs",
+      "src/windows_runtime/uia_secure.rs",
+      "src/windows_runtime/win32_identity.rs",
+      "src/windows_runtime/word_admission.rs",
+      "src/windows_runtime/word_focus.rs",
+      "src/windows_runtime/word_native.rs",
+      "src/windows_runtime_v201.rs"
+    ],
+    "bundle_sha256": "e990b22b087948d58b0c29ebf4b3356ee25739363bd03a123d4d97f4aa25422e",
+    "installed_Word_acceptance": "pending",
+    "partial_replacement_fix": false
+  },
+  "failure": "controller198 canonical budget denies recovery_ref has no matching failure circuit before child reservation, guard and dispatch",
+  "canonical_finish": {
+    "attempt_id": "word-bootstrap-37963472183-1-a1",
+    "changed_paths": null,
+    "current_lease_revision": "b6a9d28a3e5c31a6c340a0ec468265ab57b72f09",
+    "final_response_allowed": true,
+    "generation": 36,
+    "handle_id": "ab13570f-4845-59b1-ab8c-c7e7ea8cdc68",
+    "invocation_id": "managed-terminal:95446b8f08f7a285ecd5b15ba49604b65b251e34ded7c6d63d82d3e6a0749cc3",
+    "lease_revision": "b6a9d28a3e5c31a6c340a0ec468265ab57b72f09",
+    "owner_id": "6bad3c1d-1d80-4407-972b-eb3f0a233d6c",
+    "publication_ref": "refs/heads/cdc/managed-host-publish-ab13570f484559b1ab8cc7e7ea8cdc68",
+    "published_commit": null,
+    "release_receipt": {
+      "lease_revision": "b6a9d28a3e5c31a6c340a0ec468265ab57b72f09",
+      "release": {
+        "at_utc": "2026-10-09T17:05:13.884186Z",
+        "checkpoint_ref": "managed-host:terminal:ab13570f-4845-59b1-ab8c-c7e7ea8cdc68:failed",
+        "completion_reason": "resumable_blocker",
+        "external_reconciliation": "none",
+        "generation": 36,
+        "invocation_id": "managed-terminal:95446b8f08f7a285ecd5b15ba49604b65b251e34ded7c6d63d82d3e6a0749cc3",
+        "owner_id": "6bad3c1d-1d80-4407-972b-eb3f0a233d6c"
+      },
+      "schema": "execution-release-receipt/v1"
+    },
+    "schema": "managed-host-handle/v1",
+    "scope_complete": false,
+    "state": "released",
+    "task_id": "word-restart-guard",
+    "worker_status": "failed"
+  },
+  "Windows_validation": "not started",
+  "product_publication": null,
+  "scope_complete": false
+}

@@ -17,7 +17,7 @@
         "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.github/workflows/windows-ci.yml"
       ],
       "kind": "github_actions",
-      "last_verified_at_utc": "2026-10-09T16:55:56.440668Z",
+      "last_verified_at_utc": "2026-10-09T17:09:29.164257Z",
       "rank": 10,
       "state": "ready"
     },
@@ -37,7 +37,7 @@
         "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:.agents/skills/continuous-development-cycle/scripts/managed_host_bridge.py"
       ],
       "kind": "github_actions",
-      "last_verified_at_utc": "2026-10-09T16:55:56.440668Z",
+      "last_verified_at_utc": "2026-10-09T17:09:29.164257Z",
       "rank": 20,
       "state": "ready"
     },
@@ -52,11 +52,11 @@
         "git:10b7e90dfa9521170c48d9f09e2c5a4d6d77c3c3:docs/development-cycle.yaml#compute.codex_backend.configuration_status=unconfigured"
       ],
       "kind": "codex_compute",
-      "last_verified_at_utc": "2026-10-09T16:55:56.440668Z",
+      "last_verified_at_utc": "2026-10-09T17:09:29.164257Z",
       "rank": 30,
       "state": "unavailable"
     }
   ],
-  "observed_at_utc": "2026-10-09T16:55:56.440668Z",
+  "observed_at_utc": "2026-10-09T17:09:29.164257Z",
   "schema": "backend-capability-registry/v1"
 }

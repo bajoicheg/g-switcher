@@ -544,50 +544,33 @@
       "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "at_utc": "2026-10-09T17:08:11.878242Z",
+      "type": "outcome",
       "event_id": "word-restart-host-a3-child-budget-failed",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T17:08:11.878242Z",
+      "reservation_id": "word-restart-host-20261009-1837-a3",
+      "status": "setup_failed",
       "failure": {
         "category": "configuration",
         "signature": "fresh-Windows-reservation-has-recovery-ref-without-failure"
       },
-      "reservation_id": "word-restart-host-20261009-1837-a3",
-      "status": "setup_failed",
-      "task_id": "g-switcher/2.0.1",
-      "type": "outcome",
       "usage": {
         "elapsed_seconds": 141,
         "tokens": null
-      },
-      "wake_id": "Word-restart-guard-20261009-1837"
+      }
     },
     {
-      "at_utc": "2026-10-09T17:08:11.878242Z",
-      "detail": "Actual a3 controller198 failed budget.decide before child reservation/guard/dispatch: recovery_ref has no matching failure circuit. Set fresh Windows recovery_ref None while preserving historical successful child/circuit history; execute actual controller AST reservation through unchanged canonical budget before any new writer start. All9 worker gates PASS and candidate d272 built, but no Windows validation/publication. Canonical36 released b6a9d28a3e5c31a6c340a0ec468265ab57b72f09 nullguard. Keep all35prior events, no refund. New unique a4 and owned37, same12 product bytes/CDC2.12.1.",
+      "type": "remedy",
       "event_id": "word-restart-fresh-Windows-reservation-a4",
-      "kind": "configuration_correction",
-      "reference": "report:word-fresh-Windows-budget-correction-a4",
+      "task_id": "g-switcher/2.0.1",
+      "wake_id": "Word-restart-guard-20261009-1837",
+      "at_utc": "2026-10-09T17:08:11.878242Z",
       "scope": "github-actions/g-switcher/word-restart-managed-writer",
       "signature": "fresh-Windows-reservation-has-recovery-ref-without-failure",
-      "task_id": "g-switcher/2.0.1",
-      "type": "remedy",
-      "wake_id": "Word-restart-guard-20261009-1837"
-    },
-    {
-      "at_utc": "2026-10-09T17:09:29.164257Z",
-      "attempt_id": "word-restart-host-a4",
-      "cost": {
-        "elapsed_seconds": null,
-        "tokens": null,
-        "tool_calls": 1
-      },
-      "event_id": "word-restart-host-20261009-1837-a4",
-      "kind": "ci_start",
-      "operation_key": "sha256:d3ebfde242e5032fb08ed05aca65c7b7ee7848bc5e029c43104ee51cddf6aecd",
-      "recovery_ref": "report:word-fresh-Windows-budget-correction-a4",
-      "scope": "github-actions/g-switcher/word-restart-managed-writer",
-      "task_id": "g-switcher/2.0.1",
-      "type": "reserve",
-      "wake_id": "Word-restart-guard-20261009-1837"
+      "reference": "report:word-fresh-Windows-budget-correction-a4",
+      "kind": "configuration_correction",
+      "detail": "Actual a3 controller198 failed budget.decide before child reservation/guard/dispatch: recovery_ref has no matching failure circuit. Set fresh Windows recovery_ref None while preserving historical successful child/circuit history; execute actual controller AST reservation through unchanged canonical budget before any new writer start. All9 worker gates PASS and candidate d272 built, but no Windows validation/publication. Canonical36 released b6a9d28a3e5c31a6c340a0ec468265ab57b72f09 nullguard. Keep all35prior events, no refund. New unique a4 and owned37, same12 product bytes/CDC2.12.1."
     }
   ],
   "policy": {
