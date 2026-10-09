@@ -69,22 +69,22 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 2,
+    "revision": 3,
     "execution_mode": "parallel",
     "tasks": [
       {
         "id": "spec",
-        "status": "running",
+        "status": "failed",
         "attempt_ids": [
           "spec-a1"
         ],
-        "active_attempt_id": "spec-a1",
-        "reservation_token": "reserve:spec-a1",
+        "active_attempt_id": null,
+        "reservation_token": null,
         "accepted_result_ref": null,
         "integrated": false,
         "discarded": false,
-        "runtime_seconds": 0,
-        "cost_units": 0
+        "runtime_seconds": 681.159212,
+        "cost_units": 1
       },
       {
         "id": "quality",
@@ -99,8 +99,8 @@
         "cost_units": 0
       }
     ],
-    "runtime_consumed_seconds": 0,
-    "cost_consumed_units": 0,
+    "runtime_consumed_seconds": 681.159212,
+    "cost_consumed_units": 1,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -899,6 +899,23 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-broker-spec-review-20261009-2306-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:21:06.419713Z",
+        "reservation_id": "word-broker-spec-review-20261009-2306",
+        "status": "failed",
+        "failure": {
+          "category": "code",
+          "signature": "undo-completion-refused-after-authority-revocation"
+        },
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 681.159212
+        }
       }
     ],
     "policy": {
@@ -1051,5 +1068,16 @@
     "superseded_reason": null
   },
   "authorization": "Owner continue/raise limits 2026-10-09 23:06 MSK",
-  "reviews": {}
+  "reviews": {
+    "spec-a1": {
+      "verdict": "BLOCKED",
+      "payload_sha256": "44fc08a35a91cf4b84f6af1c78b59459c678b23f6262e25cdf3cad3cde308a12",
+      "findings": [
+        "UndoRecord::end could refuse mandatory EndCustomRecord after revocation and clear active without cleanup",
+        "Disconnect/expiry fixtures do not traverse configured production security stage"
+      ],
+      "tests_executed": false,
+      "actual_elapsed_includes_root_observation_delay": true
+    }
+  }
 }
