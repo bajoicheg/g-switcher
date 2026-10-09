@@ -759,203 +759,249 @@
       "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "outcome",
-      "event_id": "word-restart-host-a6-authenticated-terminal-success",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:09:02.608455Z",
+      "event_id": "word-restart-host-a6-authenticated-terminal-success",
+      "failure": null,
       "reservation_id": "word-restart-host-20261009-1837-a6",
       "status": "succeeded",
-      "usage": {
-        "tokens": null,
-        "elapsed_seconds": null
-      },
-      "failure": null
-    },
-    {
-      "type": "reserve",
-      "event_id": "word-broker-spec-review-20261009-2306",
       "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:09:45.260501Z",
-      "operation_key": "sha256:d22a24b19bc111883dd2bd433d8389b15aa35642329fc082a135433bfcc0a00e",
-      "attempt_id": "spec-a1",
-      "kind": "agent_start",
-      "scope": "word-broker-source-spec",
-      "recovery_ref": null,
-      "cost": {
-        "tool_calls": 1,
-        "tokens": null,
-        "elapsed_seconds": null
-      }
-    },
-    {
       "type": "outcome",
-      "event_id": "word-broker-spec-review-20261009-2306-outcome",
+      "usage": {
+        "elapsed_seconds": null,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:09:45.260501Z",
+      "attempt_id": "spec-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-spec-review-20261009-2306",
+      "kind": "agent_start",
+      "operation_key": "sha256:d22a24b19bc111883dd2bd433d8389b15aa35642329fc082a135433bfcc0a00e",
+      "recovery_ref": null,
+      "scope": "word-broker-source-spec",
       "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
       "at_utc": "2026-10-09T20:21:06.419713Z",
-      "reservation_id": "word-broker-spec-review-20261009-2306",
-      "status": "failed",
+      "event_id": "word-broker-spec-review-20261009-2306-outcome",
       "failure": {
         "category": "code",
         "signature": "undo-completion-refused-after-authority-revocation"
       },
+      "reservation_id": "word-broker-spec-review-20261009-2306",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
       "usage": {
-        "tokens": null,
-        "elapsed_seconds": 681.159212
-      }
+        "elapsed_seconds": 681.159212,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "remedy",
-      "event_id": "word-broker-spec-a2-remedy",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:23:12.619131Z",
+      "detail": "Narrow retained-record completion capability and configured production callback fixture; frozen source ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194",
+      "event_id": "word-broker-spec-a2-remedy",
+      "kind": "code_correction",
+      "reference": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
       "scope": "word-broker-source-spec",
       "signature": "undo-completion-refused-after-authority-revocation",
-      "reference": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
-      "kind": "code_correction",
-      "detail": "Narrow retained-record completion capability and configured production callback fixture; frozen source ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194"
+      "task_id": "g-switcher/2.0.1",
+      "type": "remedy",
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "reserve",
-      "event_id": "word-broker-spec-review-a2",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:23:12.619131Z",
-      "operation_key": "sha256:cee50d71836e1d6f173d20a8e6e7c2a9c24cd87e27bb641bbcc8847f9fcf06fe",
       "attempt_id": "spec-a2",
-      "kind": "agent_start",
-      "scope": "word-broker-source-spec",
-      "recovery_ref": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
       "cost": {
-        "tool_calls": 1,
+        "elapsed_seconds": null,
         "tokens": null,
-        "elapsed_seconds": null
-      }
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-spec-review-a2",
+      "kind": "agent_start",
+      "operation_key": "sha256:cee50d71836e1d6f173d20a8e6e7c2a9c24cd87e27bb641bbcc8847f9fcf06fe",
+      "recovery_ref": "report:word-broker-undo-completion-and-configured-stage-remedy-ad0b43c",
+      "scope": "word-broker-source-spec",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "outcome",
-      "event_id": "word-broker-spec-review-a2-outcome",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:26:00.601932Z",
+      "event_id": "word-broker-spec-review-a2-outcome",
+      "failure": null,
       "reservation_id": "word-broker-spec-review-a2",
       "status": "succeeded",
-      "failure": null,
-      "usage": {
-        "tokens": null,
-        "elapsed_seconds": 167.982801
-      }
-    },
-    {
-      "type": "reserve",
-      "event_id": "word-broker-quality-review-a1",
       "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:26:00.601932Z",
-      "operation_key": "sha256:69fdbbb602cfd6f39bfebebdc10dbf072f11583981bd207f94bcaf4842a3f849",
-      "attempt_id": "quality-a1",
-      "kind": "agent_start",
-      "scope": "word-broker-source-quality",
-      "recovery_ref": null,
-      "cost": {
-        "tool_calls": 1,
-        "tokens": null,
-        "elapsed_seconds": null
-      }
-    },
-    {
       "type": "outcome",
-      "event_id": "word-broker-quality-review-a1-outcome",
+      "usage": {
+        "elapsed_seconds": 167.982801,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:26:00.601932Z",
+      "attempt_id": "quality-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-quality-review-a1",
+      "kind": "agent_start",
+      "operation_key": "sha256:69fdbbb602cfd6f39bfebebdc10dbf072f11583981bd207f94bcaf4842a3f849",
+      "recovery_ref": null,
+      "scope": "word-broker-source-quality",
       "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
       "at_utc": "2026-10-09T20:29:55.913007Z",
-      "reservation_id": "word-broker-quality-review-a1",
-      "status": "failed",
+      "event_id": "word-broker-quality-review-a1-outcome",
       "failure": {
         "category": "code",
         "signature": "Windows-nested-module-and-integration-imports-unresolved"
       },
+      "reservation_id": "word-broker-quality-review-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
       "usage": {
-        "tokens": null,
-        "elapsed_seconds": 235.311075
-      }
+        "elapsed_seconds": 235.311075,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "reserve",
-      "event_id": "word-broker-spec-review-a3",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:30:48.604006Z",
-      "operation_key": "sha256:e1e6100b8a0e243ed678abb6780aedca17543f4bb5b18436f67a88940ae81112",
       "attempt_id": "spec-a3",
-      "kind": "agent_start",
-      "scope": "word-broker-source-spec",
-      "recovery_ref": null,
       "cost": {
-        "tool_calls": 1,
+        "elapsed_seconds": null,
         "tokens": null,
-        "elapsed_seconds": null
-      }
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-spec-review-a3",
+      "kind": "agent_start",
+      "operation_key": "sha256:e1e6100b8a0e243ed678abb6780aedca17543f4bb5b18436f67a88940ae81112",
+      "recovery_ref": null,
+      "scope": "word-broker-source-spec",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:34:18.454551Z",
+      "event_id": "word-broker-spec-review-a3-outcome",
+      "failure": null,
+      "reservation_id": "word-broker-spec-review-a3",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 209.850545,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:34:18.454551Z",
+      "detail": "Explicit grandparent selection import and retained full selection Chromium test; exact source ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5",
+      "event_id": "word-broker-quality-a2-remedy",
+      "kind": "code_correction",
+      "reference": "report:word-broker-Windows-module-import-remedy-ce748a2",
+      "scope": "word-broker-source-quality",
+      "signature": "Windows-nested-module-and-integration-imports-unresolved",
+      "task_id": "g-switcher/2.0.1",
+      "type": "remedy",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:34:18.454551Z",
+      "attempt_id": "quality-a2",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-quality-review-a2",
+      "kind": "agent_start",
+      "operation_key": "sha256:c399e81e0f439fb77f81228c0a835c90711028a82f57ddfb093ced5a8eea4b61",
+      "recovery_ref": "report:word-broker-Windows-module-import-remedy-ce748a2",
+      "scope": "word-broker-source-quality",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:35:50.180941Z",
+      "event_id": "word-broker-quality-review-a2-outcome",
+      "failure": null,
+      "reservation_id": "word-broker-quality-review-a2",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 91.72639,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-09T20:37:31.507448Z",
+      "attempt_id": "word-broker-host-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "word-broker-host-20261009-2306-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:a5d07a431ed5e92b7a7ed3fe9ac200bdeabf4193d9deb870a3070aa832fcfce4",
+      "recovery_ref": null,
+      "scope": "github-actions/g-switcher/word-broker-managed-writer",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
       "type": "outcome",
-      "event_id": "word-broker-spec-review-a3-outcome",
+      "event_id": "word-broker-host-a1-outcome",
       "task_id": "g-switcher/2.0.1",
       "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:34:18.454551Z",
-      "reservation_id": "word-broker-spec-review-a3",
-      "status": "succeeded",
-      "failure": null,
+      "at_utc": "2026-10-09T20:40:37.168102Z",
+      "reservation_id": "word-broker-host-20261009-2306-a1",
+      "status": "setup_failed",
+      "failure": {
+        "category": "configuration",
+        "signature": "canonical-coordination-JSON-encoding"
+      },
       "usage": {
         "tokens": null,
-        "elapsed_seconds": 209.850545
+        "elapsed_seconds": null
       }
     },
     {
       "type": "remedy",
-      "event_id": "word-broker-quality-a2-remedy",
+      "event_id": "word-broker-host-a2-remedy",
       "task_id": "g-switcher/2.0.1",
       "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:34:18.454551Z",
-      "scope": "word-broker-source-quality",
-      "signature": "Windows-nested-module-and-integration-imports-unresolved",
-      "reference": "report:word-broker-Windows-module-import-remedy-ce748a2",
-      "kind": "code_correction",
-      "detail": "Explicit grandparent selection import and retained full selection Chromium test; exact source ce748a21b655ee3238af5fd65473830881f9df3865344ff1a6416b22ed4790b5"
-    },
-    {
-      "type": "reserve",
-      "event_id": "word-broker-quality-review-a2",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:34:18.454551Z",
-      "operation_key": "sha256:c399e81e0f439fb77f81228c0a835c90711028a82f57ddfb093ced5a8eea4b61",
-      "attempt_id": "quality-a2",
-      "kind": "agent_start",
-      "scope": "word-broker-source-quality",
-      "recovery_ref": "report:word-broker-Windows-module-import-remedy-ce748a2",
-      "cost": {
-        "tool_calls": 1,
-        "tokens": null,
-        "elapsed_seconds": null
-      }
-    },
-    {
-      "type": "outcome",
-      "event_id": "word-broker-quality-review-a2-outcome",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
-      "at_utc": "2026-10-09T20:35:50.180941Z",
-      "reservation_id": "word-broker-quality-review-a2",
-      "status": "succeeded",
-      "failure": null,
-      "usage": {
-        "tokens": null,
-        "elapsed_seconds": 91.72639
-      }
+      "at_utc": "2026-10-09T20:40:37.168102Z",
+      "scope": "github-actions/g-switcher/word-broker-managed-writer",
+      "signature": "canonical-coordination-JSON-encoding",
+      "reference": "report:canonical-json-encoder-actual-CDC2121-host-a2",
+      "kind": "configuration_correction",
+      "detail": "Use package git_document_store.canonical; require sorted compact UTF8 exact newline and dedicated single document tree before launch; previous run37988367440 terminal before lease acquisition/source apply"
     }
   ],
   "policy": {
