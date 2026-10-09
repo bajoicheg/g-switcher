@@ -1,3 +1,0 @@
-# Independent revised source SPEC
-
-PASS /root/platform_spec; payloadd743a6bac4fbf8b239c6b35a8ab70fab40d16f1ed28d504da8c62900b4fb10b6. Exact1runtimefile delta, other30of31 unchanged. Tab incrementsgeneration and immediatelysetsHOOK_POLICYUNKNOWN; onlycandidate/strokes retained foradjacentgeneration priorHWND thenfreshfocusPID/nativeplainEdit/password/metadata; cachecleared, pending/Undo/contextreset. Ctrl/Alt andvirtual/RichEditTab neverrestore. Exactsuffix/currentgeneration/focusPIDthreadlayout mutationguards intact. ExistingactualnativeEditE2EREDassertion andalltestbodies/arrays/26Windowssteps preserved. Staticonly; newcompile/E2E/Windows andinstalledWord acceptance pending.
