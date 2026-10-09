@@ -15,11 +15,42 @@
     "operation-refused",
     "refuse-uncertain-mutation"
   ],
-  "confirmed": "Repeated partial per-character mutation followed by Word adapter process-wide uncertain state refusal; screenshot agrees",
+  "confirmed": "User screenshot and report establish partial replacement; logs record write attempts followed by selection mismatch and retained uncertainty; individual put completions are not directly logged",
   "source_mapping": "word_native.rs Context::replace per-character loop checks evolving range and exact original selection before next write; changed selection aborts with retained latch",
   "uncertain": "Origin of selection drift cannot be distinguished between user typing and Word behavior using current stage-only log",
   "separate_issue": "Prior PID23548 focus reader timeout before any mutation remains distinct; latest PID11356 has no reader timeout",
   "project_complete": false,
   "functional_fix_verified": false,
-  "next_engineering_scope": "Prepare and verify transaction design that prevents partial correction during changing input while preserving character formatting, protected/sensitive focus checks, single writer and Undo; never clear latch without proof"
+  "next_engineering_scope": "Implement and verify restart-persistent Word provider admission/uncertainty before both UIA and NativeOM; broker isolation and formatting-preserving single destination writer remain separately gated",
+  "session_pid_kind": "switcher process, not authenticated Word process",
+  "latest_user_observation": {
+    "reported_at_msk": "2026-10-09T18:10:22+03:00",
+    "text": "After switcher stops working, restarting it is followed by Word hanging after a few characters; another switcher restart leaves Word hung for several minutes",
+    "exact_blocked_call": "unknown",
+    "client_restart_proves_server_quiescence": false
+  },
+  "cdc_version_constraint": {
+    "version": "2.12.1",
+    "release_sha": "9b38bd4d9f5fb113ec10bdbca9fbe33908619a54",
+    "package_tree": "9c45d98c3254e9658d452c505d8c97698e3fc9a7",
+    "user_instruction": "Не обновляй пока версию CDC",
+    "reported_at_msk": "2026-10-09T18:17:53+03:00",
+    "upgrade_authorized": false
+  },
+  "independent_review": {
+    "design_path": "word-transaction-design-spec.md",
+    "quality_path": "word-transaction-design-quality.md",
+    "verdict": "PASS for containment/investigation only; replacement writer unaccepted",
+    "design_sha256": "72f84e62765566e7aede48a54932a8841540a94fbe40f59c3590d7e8cdf4b8eb"
+  },
+  "operational_containment": {
+    "application": "winword.exe",
+    "mode": "Disabled",
+    "ui_label": "Отключено — без анализа и горячих клавиш",
+    "effect": "Prevents new Word analysis/correction requests while preserving other application modes",
+    "cannot_cancel_outstanding_request": true,
+    "verification_source": "3407a2d0570b88864fd265de61a8761999995380"
+  },
+  "engineering_pending": true,
+  "new_executable_created": false
 }
