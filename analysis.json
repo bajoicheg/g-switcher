@@ -1,20 +1,25 @@
 {
   "schema": "word-diagnostic-log-analysis/v1",
-  "log_library_id": "libfile_a9d2b2549b9881919092b1ab8b55908a",
-  "log_sha256": "ce6b5886c9d3640c7c7959415ceccdebe5517ee808e5d09c0c70c51f8ec30638",
-  "session_pid": 23548,
-  "confirmed": [
-    "First native read completed",
-    "Second Context::open stopped during fresh-uia-focus",
-    "750 ms bounded reader timeout logged",
-    "No custom-undo-started or character-write in new session"
+  "log_library_id": "libfile_270ab3ec3ba48191a245ee8bfe7425a0",
+  "log_sha256": "ff48021345a0477f6daddd709bd2d2abbd0fd09c072e75d46a6691be02a59ada",
+  "screenshot_library_id": "libfile_a691f88326d881919a9f955417b5a7dd",
+  "session_pid": 11356,
+  "failed_at_msk": "2026-10-09T18:04:20.012+03:00",
+  "character_write_attempts_before_abort": 3,
+  "confirmed_sequence": [
+    "custom-undo-started",
+    "character-write x3",
+    "replace-selection-moved",
+    "custom-undo-end",
+    "replace-uncertain-latch-retained",
+    "operation-refused",
+    "refuse-uncertain-mutation"
   ],
-  "unproven": [
-    "Exact stalled provider call",
-    "Whether Word recovers when switcher exits",
-    "Whether an outstanding UIA provider call caused Word freeze"
-  ],
-  "next_test": "While Word is frozen, terminate only g-switcher.exe; wait 10 seconds; report whether Word recovers; do not restart switcher until observation",
+  "confirmed": "Repeated partial per-character mutation followed by Word adapter process-wide uncertain state refusal; screenshot agrees",
+  "source_mapping": "word_native.rs Context::replace per-character loop checks evolving range and exact original selection before next write; changed selection aborts with retained latch",
+  "uncertain": "Origin of selection drift cannot be distinguished between user typing and Word behavior using current stage-only log",
+  "separate_issue": "Prior PID23548 focus reader timeout before any mutation remains distinct; latest PID11356 has no reader timeout",
   "project_complete": false,
-  "functional_fix_verified": false
+  "functional_fix_verified": false,
+  "next_engineering_scope": "Prepare and verify transaction design that prevents partial correction during changing input while preserving character formatting, protected/sensitive focus checks, single writer and Undo; never clear latch without proof"
 }
