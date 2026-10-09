@@ -1,3 +1,3 @@
 # Independent revised source SPEC
 
-PASS /root/platform_spec; payload 2059b8d6d79c00bf4b2d0e692cae0e20237692a86aa1a3c76705b0116a55e133. Exact four-file mechanical lint correction, other25sourcefiles and all tests/gates unchanged. Security/ABI/provider/native semantics retained. Compilation and actual Word acceptance pending.
+PASS /root/platform_spec; payload82deff66d7e3d2c13423f9fd098d050dba5102238b0ad972cce5356d6b360d58. Exactly one source gate script delta; prior29files byte-identical to strictClippy/portable-validated a4. Current runtime_id HWNDsignature mandatory, guarded GetRuntimeId and subtreeassertions added. All privacy/password/cleanliness checks, fixture names and26Windowsstepobjects retained. All5marker groups present in actual formatted dd85ae40source. Static-only; PowerShell/CI/runtime and installed Word acceptance pending.
