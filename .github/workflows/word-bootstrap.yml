@@ -2,7 +2,7 @@ name: Word broker managed writer
 'on':
   push:
     branches:
-    - cdc/word-broker-host-20261010-0043-a7
+    - cdc/word-broker-host-20261010-0100-a8
 permissions:
   contents: read
 concurrency:
