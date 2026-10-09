@@ -69,30 +69,32 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-broker-review-20261009-2306",
     "coordination_store_id": "sha256:4444662ea0b0792b6838eb887d4eebfc48526c8bd59592ea044b79f599d95536",
-    "revision": 7,
+    "revision": 10,
     "execution_mode": "parallel",
     "tasks": [
       {
         "id": "spec",
-        "status": "running",
+        "status": "succeeded",
         "attempt_ids": [
           "spec-a1",
           "spec-a2"
         ],
-        "active_attempt_id": "spec-a2",
-        "reservation_token": "reserve:spec-a2",
-        "accepted_result_ref": null,
-        "integrated": false,
+        "active_attempt_id": null,
+        "reservation_token": null,
+        "accepted_result_ref": "report:broker-source-spec-ad0b43c",
+        "integrated": true,
         "discarded": false,
-        "runtime_seconds": 681.159212,
-        "cost_units": 1
+        "runtime_seconds": 849.142013,
+        "cost_units": 2
       },
       {
         "id": "quality",
-        "status": "planned",
-        "attempt_ids": [],
-        "active_attempt_id": null,
-        "reservation_token": null,
+        "status": "queued",
+        "attempt_ids": [
+          "quality-a1"
+        ],
+        "active_attempt_id": "quality-a1",
+        "reservation_token": "reserve:quality-a1",
         "accepted_result_ref": null,
         "integrated": false,
         "discarded": false,
@@ -100,8 +102,8 @@
         "cost_units": 0
       }
     ],
-    "runtime_consumed_seconds": 681.159212,
-    "cost_consumed_units": 1,
+    "runtime_consumed_seconds": 849.142013,
+    "cost_consumed_units": 2,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -946,6 +948,37 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-broker-spec-review-a2-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:26:00.601932Z",
+        "reservation_id": "word-broker-spec-review-a2",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 167.982801
+        }
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-broker-quality-review-a1",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "Word-restart-guard-20261009-1837",
+        "at_utc": "2026-10-09T20:26:00.601932Z",
+        "operation_key": "sha256:69fdbbb602cfd6f39bfebebdc10dbf072f11583981bd207f94bcaf4842a3f849",
+        "attempt_id": "quality-a1",
+        "kind": "agent_start",
+        "scope": "word-broker-source-quality",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
       }
     ],
     "policy": {
@@ -1115,6 +1148,18 @@
       ],
       "tests_executed": false,
       "actual_elapsed_includes_root_observation_delay": true
+    },
+    "spec-a2": {
+      "verdict": "PASS",
+      "scope": "experimental compile/Windows fixture candidate only",
+      "payload_sha256": "ad0b43c879f180f348e72745198d4e131ff53957e0f2e7ceb190b146ab846194",
+      "tests_executed": false,
+      "acceptance_pending": [
+        "default manual/Undo passthrough",
+        "nonWord Tab behavior",
+        "native partial mutation/hangs",
+        "effective formatting and installed Word"
+      ]
     }
   },
   "authorized_replan": {
