@@ -709,23 +709,6 @@
       "task_id": "g-switcher/2.0.1",
       "type": "remedy",
       "wake_id": "Word-restart-guard-20261009-1837"
-    },
-    {
-      "at_utc": "2026-10-09T17:50:09.454613Z",
-      "attempt_id": "word-restart-host-a6",
-      "cost": {
-        "elapsed_seconds": null,
-        "tokens": null,
-        "tool_calls": 1
-      },
-      "event_id": "word-restart-host-20261009-1837-a6",
-      "kind": "ci_start",
-      "operation_key": "sha256:4ba658df9a58d855c115ddd1a4517966c2b954ac48820acb3408a8040d96816d",
-      "recovery_ref": "report:word-captured-GREEN-output-corrected-host-a6",
-      "scope": "github-actions/g-switcher/word-restart-managed-writer",
-      "task_id": "g-switcher/2.0.1",
-      "type": "reserve",
-      "wake_id": "Word-restart-guard-20261009-1837"
     }
   ],
   "policy": {

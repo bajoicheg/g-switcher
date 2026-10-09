@@ -2,7 +2,7 @@ name: Word restart guard managed writer
 'on':
   push:
     branches:
-    - cdc/word-restart-host-20261009-1837-a5
+    - cdc/word-restart-host-20261009-1837-a6
 permissions:
   contents: read
 concurrency:

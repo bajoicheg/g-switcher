@@ -1,0 +1,24 @@
+
+running 19 tests
+test production_guard::tests::actual_host_birth_change_does_not_reuse_old_host_authority ... ok
+test production_guard::tests::actual_pending_worker_owns_ticket_beyond_caller_timeout ... ok
+test production_guard::tests::caller_timeout_does_not_complete_worker_owned_read ... ok
+test production_guard::tests::corrupt_prior_marker_never_becomes_idle ... ok
+test production_guard::tests::duplicate_child_completion_cannot_consume_another_child ... ok
+test production_guard::tests::foreign_completion_cannot_clear_current_operation ... ok
+test production_guard::tests::late_child_does_not_clear_uncertain_native_mutation ... ok
+test production_guard::tests::missing_identity_never_admits ... ok
+test production_guard::tests::missing_marker_at_completion_is_not_success ... ok
+test production_guard::tests::normal_exact_completion_allows_fresh_admission ... ok
+test production_guard::tests::persistence_failure_refuses_before_provider_admission ... ok
+test production_guard::tests::restart_refuses_previous_pending_before_any_provider_call ... ok
+test production_guard::tests::timed_out_window_message_quarantine_is_sticky_after_parent_completion ... ok
+test production_reader::concurrency_tests::concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader ... ok
+test production_reader::recovery_regression::transient_stall_recovers_same_worker_with_fresh_result_only ... ok
+test production_reader::tests::each_successful_request_reads_fresh_state ... ok
+test production_reader::tests::provider_failure_returns_none_without_panicking_the_caller ... ok
+test production_reader::tests::provider_runs_off_the_requesting_thread ... ok
+test production_reader::tests::stalled_metadata_returns_none_and_never_queues_a_replacement ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+

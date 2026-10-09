@@ -1,0 +1,11 @@
+{
+  "head": "b9092f923e81c99df45b7dbca96662fccd3cc32d",
+  "tree": "43722754169b270b5bc3eaeeac183a7df32d8c84",
+  "blobs": {
+    ".g-switcher-bootstrap/constants.py": "be8bba18419e5287fcd86aa9ae396d8b0c014e4a",
+    ".g-switcher-bootstrap/github_api.py": "9ac88aa6b98eb8600a82839a5ff88d712a2d032b",
+    ".g-switcher-bootstrap/stable_reader.py": "8f8d854d62ffce5fac0e301bfdf8c7c275de0816",
+    ".g-switcher-bootstrap/windows_bundle_gate.py": "59a61b308abfeb58367df78efdbff1e5591a827c",
+    ".github/workflows/windows-ci.yml": "aec3ac6257534b1dc0f0d7f02bac5329e989d608"
+  }
+}
