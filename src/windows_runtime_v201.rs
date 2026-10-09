@@ -14,6 +14,8 @@ mod tray_status;
 mod ui;
 #[path = "windows_runtime/uia_secure.rs"]
 mod uia_secure;
+#[path = "windows_runtime/word_broker.rs"]
+mod word_broker;
 
 use std::mem::{size_of, zeroed};
 use std::ptr::{null, null_mut};
@@ -68,6 +70,8 @@ const WM_RUNTIME_KEY_EVENT: u32 = WM_APP + 0x60;
 const WM_RUNTIME_CORRECTION: u32 = WM_APP + 0x61;
 const WM_RUNTIME_SELECTION: u32 = WM_APP + 0x62;
 const WM_RUNTIME_INVALIDATE: u32 = WM_APP + 0x63;
+const WM_RUNTIME_WORD_RESULT: u32 = WM_APP + 0x64;
+static WORD_TIMER: AtomicU64 = AtomicU64::new(0);
 
 const POLICY_UNKNOWN: u8 = 0;
 const POLICY_READY: u8 = 1;
@@ -224,6 +228,14 @@ impl UiaSecurityCache {
     }
 }
 
+struct BrokerUndo {
+    hwnd: i64,
+    pid: u32,
+    birth: u64,
+    generation: u32,
+    value: word_broker::Undo,
+}
+
 #[derive(Default)]
 struct Engine {
     candidate: String,
@@ -239,6 +251,7 @@ struct Engine {
     process_name: String,
     generation: u32,
     uia_cache: UiaSecurityCache,
+    word_undo: Option<BrokerUndo>,
 }
 
 pub fn run() -> Result<()> {
@@ -269,7 +282,14 @@ pub fn run() -> Result<()> {
     selection::configure_runtime_policy(current_generation, settings::paused);
     let tray = ui::TrayGuard::install()?;
     ENGINE.get_or_init(|| Mutex::new(Engine::default()));
+    word_broker::initialize();
     let hook = KeyboardHook::install()?;
+    let timer =
+        unsafe { windows_sys::Win32::UI::WindowsAndMessaging::SetTimer(null_mut(), 0, 30, None) };
+    if timer == 0 {
+        anyhow::bail!("Word broker activity timer unavailable");
+    }
+    WORD_TIMER.store(timer as u64, Ordering::SeqCst);
 
     let mut message: MSG = unsafe { zeroed() };
     loop {
@@ -286,6 +306,12 @@ pub fn run() -> Result<()> {
         }
     }
 
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::KillTimer(
+            null_mut(),
+            WORD_TIMER.swap(0, Ordering::SeqCst) as usize,
+        );
+    }
     drop(hook);
     drop(tray);
     drop(mutex);
@@ -329,6 +355,14 @@ fn handle_runtime_message(message: &MSG) -> bool {
     let Some(engine) = ENGINE.get() else {
         return false;
     };
+    if message.message == WM_RUNTIME_WORD_RESULT
+        || (message.message == windows_sys::Win32::UI::WindowsAndMessaging::WM_TIMER
+            && message.wParam as u64 == WORD_TIMER.load(Ordering::SeqCst))
+    {
+        engine.lock().apply_word_result();
+        word_broker::tick();
+        return true;
+    }
     match message.message {
         WM_RUNTIME_KEY_EVENT => {
             let event = decode_hook_event(message.wParam, message.lParam);
@@ -449,6 +483,12 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
 }
 
 unsafe fn keyboard_proc_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if code >= 0
+        && (wparam as u32 == windows_sys::Win32::UI::WindowsAndMessaging::WM_KEYUP
+            || wparam as u32 == windows_sys::Win32::UI::WindowsAndMessaging::WM_SYSKEYUP)
+    {
+        word_broker::input_activity(current_generation());
+    }
     if code < 0 || (wparam as u32 != WM_KEYDOWN && wparam as u32 != WM_SYSKEYDOWN) {
         return CallNextHookEx(null_mut(), code, wparam, lparam);
     }
@@ -473,11 +513,17 @@ unsafe fn keyboard_proc_inner(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRES
         generation = CONTEXT_GENERATION
             .fetch_add(1, Ordering::SeqCst)
             .wrapping_add(1);
+        if event.vkCode as u16 == VK_TAB {
+            HOOK_POLICY.store(POLICY_UNKNOWN, Ordering::SeqCst);
+        }
     }
 
-    let ready = focus != 0
-        && HOOK_POLICY.load(Ordering::SeqCst) == POLICY_READY
-        && HOOK_FOCUS.load(Ordering::SeqCst) == focus;
+    word_broker::input_activity(generation);
+    let ready = hook_policy_can_suppress(
+        HOOK_POLICY.load(Ordering::SeqCst),
+        HOOK_FOCUS.load(Ordering::SeqCst),
+        focus,
+    );
     let hotkey = ready && matches_published_hotkey(event.vkCode as u16, modifiers);
     let packed = encode_hook_event(event.vkCode as u16, modifiers, caps, generation, hotkey);
     let posted = post_runtime(WM_RUNTIME_KEY_EVENT, packed, focus);
@@ -511,6 +557,10 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
     let result = CallNextHookEx(null_mut(), code, wparam, lparam);
     record_callback_time(started.elapsed().as_nanos().min(u64::MAX as u128) as u64);
     result
+}
+
+fn hook_policy_can_suppress(policy: u8, tracked_focus: isize, focus: isize) -> bool {
+    focus != 0 && policy == POLICY_READY && tracked_focus == focus
 }
 
 fn should_ignore_hook_event(event: &KBDLLHOOKSTRUCT) -> bool {
@@ -558,7 +608,10 @@ fn post_runtime(message: u32, wparam: usize, lparam: isize) -> bool {
 }
 
 fn invalidate_context(policy_unknown: bool) {
-    CONTEXT_GENERATION.fetch_add(1, Ordering::SeqCst);
+    let generation = CONTEXT_GENERATION
+        .fetch_add(1, Ordering::SeqCst)
+        .wrapping_add(1);
+    word_broker::input_activity(generation);
     if policy_unknown {
         HOOK_POLICY.store(POLICY_UNKNOWN, Ordering::SeqCst);
     }
@@ -612,6 +665,7 @@ fn invalidates_context(vk: u16, modifiers: Modifiers) -> bool {
             | VK_NEXT
             | VK_DELETE
             | VK_INSERT
+            | VK_TAB
     ) || ((modifiers.ctrl || modifiers.alt) && !matches_published_hotkey(vk, modifiers))
 }
 
@@ -692,7 +746,7 @@ impl Engine {
             return self.uia_cache.is_password;
         }
 
-        let probe = uia_secure::probe_focused(target.process_id);
+        let probe = uia_secure::probe_target(target.process_id, target.hwnd);
         self.uia_cache = UiaSecurityCache {
             generation,
             process_id: target.process_id,
@@ -713,6 +767,24 @@ impl Engine {
         let runtime_settings = settings::runtime_settings();
         publish_hotkeys(&runtime_settings);
 
+        // Tab invalidates the security generation even when a native Edit
+        // inserts a literal tab. Retain only its not-yet-admitted value token;
+        // restoring it still requires fresh exact focus/PID and password checks.
+        let tab_candidate = if event.vk == VK_TAB
+            && !event.modifiers.ctrl
+            && !event.modifiers.alt
+            && self.generation.wrapping_add(1) == event.generation
+            && self.candidate_focus != 0
+            && self.candidate_focus == event.focus
+        {
+            Some((
+                self.process_id,
+                self.candidate.clone(),
+                self.strokes.clone(),
+            ))
+        } else {
+            None
+        };
         if self.generation != event.generation {
             self.reset_transient();
             self.generation = event.generation;
@@ -738,14 +810,22 @@ impl Engine {
             return;
         }
 
-        if self.process_name.eq_ignore_ascii_case("winword.exe")
-            && !selection::word_admission::may_access(target.hwnd as isize)
-        {
-            HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
-            self.reset_transient();
+        if self.process_name.eq_ignore_ascii_case("winword.exe") {
+            self.on_word_event(event, target, &runtime_settings);
             return;
         }
-
+        // A virtual UIA field can move while keeping its HWND. Such Tab events
+        // remain pass-through and discard context. A native plain Edit may
+        // retain only its value token after fresh security admission below.
+        let native_tab = event.vk == VK_TAB && selection::is_plain_edit(target.hwnd);
+        if event.vk == VK_TAB {
+            HOOK_POLICY.store(POLICY_UNKNOWN, Ordering::SeqCst);
+            self.uia_cache = UiaSecurityCache::default();
+            if !native_tab {
+                self.reset_transient();
+                return;
+            }
+        }
         if secure_input::is_secure_input(target.hwnd, &self.process_name) {
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
@@ -856,13 +936,21 @@ impl Engine {
         if is_modifier_vk(event.vk) {
             return;
         }
-        if invalidates_context(event.vk, event.modifiers) {
+        if invalidates_context(event.vk, event.modifiers) && !native_tab {
             self.reset_transient();
             return;
         }
         if event.modifiers.ctrl || event.modifiers.alt {
             self.reset_transient();
             return;
+        }
+
+        if let Some((process_id, candidate, strokes)) = tab_candidate {
+            if native_tab && process_id == target.process_id {
+                self.candidate = candidate;
+                self.strokes = strokes;
+                self.candidate_focus = target.hwnd as isize;
+            }
         }
 
         let target_id = target.hwnd as isize;
@@ -1154,6 +1242,16 @@ impl Engine {
         }
         self.refresh_process_name(target.process_id);
         let runtime_settings = settings::runtime_settings();
+        if self.process_name.eq_ignore_ascii_case("winword.exe") {
+            let _ = word_broker::submit(
+                target,
+                pending.generation,
+                word_broker::Kind::Selected,
+                &runtime_settings,
+                None,
+            );
+            return;
+        }
         if runtime_settings.app_mode(&self.process_name) == AppMode::Disabled
             || secure_input::is_secure_input(target.hwnd, &self.process_name)
             || !selection::is_standard_edit(target.hwnd)
@@ -1406,6 +1504,16 @@ impl Engine {
             return;
         }
         self.refresh_process_name(now.process_id);
+        if self.process_name.eq_ignore_ascii_case("winword.exe") {
+            let _ = word_broker::submit(
+                now,
+                pending.generation,
+                word_broker::Kind::Manual,
+                &settings::runtime_settings(),
+                None,
+            );
+            return;
+        }
         if secure_input::is_secure_input(hwnd, &self.process_name) {
             return;
         }
@@ -1494,6 +1602,9 @@ impl Engine {
     }
 
     fn try_undo(&mut self, target: FocusTarget, modifiers: Modifiers, generation: u32) -> bool {
+        if self.process_name.eq_ignore_ascii_case("winword.exe") {
+            return self.queue_word_undo(target, generation, &settings::runtime_settings());
+        }
         if let Some(undo) = self.selection_undo.take() {
             if undo.focus != target.hwnd as isize
                 || undo.process_id != target.process_id
@@ -1597,6 +1708,7 @@ impl Engine {
         self.selection_undo = None;
         self.pending_correction = None;
         self.pending_selection = None;
+        self.word_undo = None;
     }
 }
 
@@ -2056,9 +2168,281 @@ mod cross_process_e2e;
 #[path = "windows_runtime/e2e_tests.rs"]
 mod e2e_tests;
 
+pub fn run_word_broker() -> Result<()> {
+    word_broker::run_role()
+}
+
+// Pure routing only, shared by the actual posted-key path and regression tests.
+// A request does not suppress input or confer provider/security authority.
+fn word_request_kind(
+    vk: u16,
+    modifiers: Modifiers,
+    settings: &settings::RuntimeSettings,
+    paused: bool,
+) -> Option<word_broker::Kind> {
+    if paused || settings.app_mode("winword.exe") == AppMode::Disabled {
+        return None;
+    }
+    let hotkey =
+        |h: settings::Hotkey| h.matches(vk, modifiers.ctrl, modifiers.shift, modifiers.alt);
+    if hotkey(settings.selected_text_hotkey) {
+        return Some(word_broker::Kind::Selected);
+    }
+    if hotkey(settings.manual_current_hotkey) {
+        return Some(word_broker::Kind::Manual);
+    }
+    if hotkey(settings.previous_word_hotkey) {
+        return Some(word_broker::Kind::Previous);
+    }
+    if hotkey(settings.undo_hotkey) {
+        return Some(word_broker::Kind::Undo);
+    }
+    if is_modifier_vk(vk)
+        || modifiers.ctrl
+        || modifiers.alt
+        || (vk != VK_TAB && invalidates_context(vk, modifiers))
+    {
+        return None;
+    }
+    (settings.app_mode("winword.exe") == AppMode::Auto && settings.auto_correct).then_some(
+        if matches!(vk, VK_SPACE | VK_RETURN | VK_TAB) {
+            word_broker::Kind::Boundary
+        } else {
+            word_broker::Kind::Auto
+        },
+    )
+}
+
+impl Engine {
+    fn on_word_event(
+        &mut self,
+        event: HookEvent,
+        target: FocusTarget,
+        settings: &settings::RuntimeSettings,
+    ) {
+        self.on_word_event_with_dispatch(event, target, settings, settings::paused(), |kind| {
+            word_broker::submit(target, event.generation, kind, settings, None)
+        });
+    }
+    fn on_word_event_with_dispatch(
+        &mut self,
+        event: HookEvent,
+        target: FocusTarget,
+        settings: &settings::RuntimeSettings,
+        paused: bool,
+        mut dispatch: impl FnMut(word_broker::Kind) -> bool,
+    ) {
+        // Unknown Word hotkeys pass through in the hook. Explicit requests are values,
+        // not authority; Word's own shortcut may invalidate them before broker checks.
+        HOOK_POLICY.store(POLICY_UNKNOWN, Ordering::SeqCst);
+        self.reset_candidate();
+        self.previous = None;
+        self.context_tokens.clear();
+        self.undo = None;
+        self.selection_undo = None;
+        let matches = |hotkey: settings::Hotkey| {
+            hotkey.matches(
+                event.vk,
+                event.modifiers.ctrl,
+                event.modifiers.shift,
+                event.modifiers.alt,
+            )
+        };
+        if matches(settings.pause_hotkey) {
+            let paused = settings::toggle_paused();
+            tray_status::set_paused(paused);
+            return;
+        }
+        if paused {
+            return;
+        }
+        let kind = word_request_kind(event.vk, event.modifiers, settings, paused);
+        if kind == Some(word_broker::Kind::Undo) {
+            let _ = self.queue_word_undo(target, event.generation, settings);
+            return;
+        }
+        if !is_modifier_vk(event.vk) {
+            self.word_undo = None;
+        }
+        if let Some(kind) = kind {
+            let _ = dispatch(kind);
+        }
+    }
+    fn queue_word_undo(
+        &mut self,
+        target: FocusTarget,
+        generation: u32,
+        settings: &settings::RuntimeSettings,
+    ) -> bool {
+        let Some(undo) = self.word_undo.take() else {
+            return false;
+        };
+        if undo.hwnd != target.hwnd as i64
+            || undo.pid != target.process_id
+            || undo.generation != generation
+            || selection::word_admission::identity(target.hwnd as isize)
+                != Some((undo.pid, undo.birth))
+        {
+            return false;
+        }
+        word_broker::submit(
+            target,
+            generation,
+            word_broker::Kind::Undo,
+            settings,
+            Some(undo.value),
+        )
+    }
+    fn apply_word_result(&mut self) {
+        let Some(result) = word_broker::poll() else {
+            return;
+        };
+        if result.uncertain || !result.success {
+            return;
+        }
+        if result.generation != current_generation()
+            || word_broker::current_input() != Some(result.input)
+            || focused_target()
+                .is_none_or(|t| t.hwnd as i64 != result.hwnd || t.process_id != result.pid)
+            || selection::word_admission::identity(result.hwnd as isize)
+                != Some((result.pid, result.birth))
+        {
+            return;
+        }
+        let Some(value) = result.undo else {
+            return;
+        };
+        if result.undone {
+            self.word_undo = None;
+            tray_status::note_undo(infer_language(&value.original).unwrap_or(Language::English));
+            return;
+        }
+        self.word_undo = Some(BrokerUndo {
+            hwnd: result.hwnd,
+            pid: result.pid,
+            birth: result.birth,
+            generation: result.generation,
+            value,
+        });
+        let language = if result.target_language == 1 {
+            Language::Russian
+        } else {
+            Language::English
+        };
+        tray_status::note_correction(language);
+        sound::play_correction(&settings::runtime_settings());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn tab_invalidates_virtual_field_security_generation() {
+        assert!(invalidates_context(VK_TAB, Modifiers::default()));
+    }
+
+    #[test]
+    fn actual_engine_word_route_returns_while_its_provider_fixture_is_stalled() {
+        // Explicit non-COM route fixture: the synthetic HWND is never admitted
+        // to native Word. The real Engine handler and real Dispatcher execute.
+        use std::sync::{atomic::AtomicUsize, mpsc, Arc};
+        let (entered_tx, entered_rx) = mpsc::sync_channel(1);
+        let (release_tx, release_rx) = mpsc::sync_channel(1);
+        let (returned_tx, returned_rx) = mpsc::sync_channel(1);
+        let calls = Arc::new(AtomicUsize::new(0));
+        let counted = calls.clone();
+        let dispatcher = word_broker::fixture_dispatcher(move |kind| {
+            counted.fetch_add(1, Ordering::SeqCst);
+            entered_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+            kind
+        });
+        let main = std::thread::spawn(move || {
+            let mut engine = Engine::default();
+            let settings = settings::RuntimeSettings::default();
+            let target = FocusTarget {
+                hwnd: 1usize as HWND,
+                thread_id: 1,
+                process_id: 1,
+                hkl: 0x409,
+                language: Language::English,
+            };
+            let event = HookEvent {
+                vk: u16::from(b'N'),
+                modifiers: Modifiers::default(),
+                caps: false,
+                generation: 1,
+                suppressed: false,
+                focus: 1,
+            };
+            engine.on_word_event_with_dispatch(event, target, &settings, false, |kind| {
+                dispatcher.submit(1, 1, kind)
+            });
+            returned_tx.send(()).unwrap();
+            drop(engine);
+            drop(dispatcher)
+        });
+        entered_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("actual provider must enter");
+        let returned = returned_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .is_ok();
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        release_tx.send(()).unwrap();
+        main.join().unwrap();
+        assert!(
+            returned,
+            "actual Engine Word route waited for provider completion"
+        );
+    }
+
+    #[test]
+    fn actual_hook_unknown_word_policy_never_suppresses_manual_or_undo() {
+        assert!(!hook_policy_can_suppress(POLICY_UNKNOWN, 7, 7));
+        assert!(!hook_policy_can_suppress(POLICY_READY, 7, 8));
+        assert!(!hook_policy_can_suppress(POLICY_READY, 0, 0));
+        assert!(hook_policy_can_suppress(POLICY_READY, 7, 7));
+    }
+
+    #[test]
+    fn actual_word_key_router_requests_no_space_auto_and_enforces_modes() {
+        let mut settings = settings::RuntimeSettings::default();
+        let ordinary = Modifiers::default();
+        assert!(
+            word_request_kind(VK_TAB, ordinary, &settings, false)
+                == Some(word_broker::Kind::Boundary)
+        );
+        for vk in b"GHBDTN" {
+            assert!(
+                word_request_kind(u16::from(*vk), ordinary, &settings, false)
+                    == Some(word_broker::Kind::Auto)
+            );
+        }
+        settings.manual_only_apps.push("winword.exe".into());
+        assert!(word_request_kind(u16::from(b'N'), ordinary, &settings, false).is_none());
+        let hotkey = settings.manual_current_hotkey;
+        let chord = Modifiers {
+            ctrl: hotkey.ctrl,
+            shift: hotkey.shift,
+            alt: hotkey.alt,
+        };
+        assert!(
+            word_request_kind(hotkey.vk, chord, &settings, false)
+                == Some(word_broker::Kind::Manual)
+        );
+        settings.disabled_apps.push("winword.exe".into());
+        assert!(word_request_kind(hotkey.vk, chord, &settings, false).is_none());
+        assert!(word_request_kind(hotkey.vk, chord, &settings, true).is_none());
+    }
+    #[test]
+    fn actual_word_router_does_not_treat_modifiers_or_edit_navigation_as_auto() {
+        let settings = settings::RuntimeSettings::default();
+        for vk in [VK_CONTROL, VK_SHIFT, VK_LEFT, VK_DELETE] {
+            assert!(word_request_kind(vk, Modifiers::default(), &settings, false).is_none());
+        }
+    }
 
     #[test]
     fn recognizes_ru_and_en_hkl_language_ids() {

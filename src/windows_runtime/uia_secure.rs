@@ -3,8 +3,9 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use super::selection::read_worker;
-static READER: OnceLock<Option<read_worker::BoundedReader<u32, Option<UiaSecurityProbe>>>> =
-    OnceLock::new();
+type SecurityQuery = (u32, isize, Option<super::selection::uia_scope::Target>);
+type SecurityReader = read_worker::BoundedReader<SecurityQuery, Option<UiaSecurityProbe>>;
+static READER: OnceLock<Option<SecurityReader>> = OnceLock::new();
 use std::ffi::c_void;
 use std::mem::{size_of, zeroed};
 
@@ -14,7 +15,10 @@ use windows::Win32::System::Com::{
 use windows::Win32::System::Ole::{
     SafeArrayDestroy, SafeArrayGetDim, SafeArrayGetElement, SafeArrayGetLBound, SafeArrayGetUBound,
 };
-use windows::Win32::UI::Accessibility::{CUIAutomation, IUIAutomation, IUIAutomationElement};
+use windows::Win32::UI::Accessibility::{
+    CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Descendants,
+    UIA_HasKeyboardFocusPropertyId,
+};
 use windows_sys::Win32::Foundation::HWND;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetGUIThreadInfo, GetWindowThreadProcessId, SendMessageTimeoutW,
@@ -52,35 +56,61 @@ thread_local! {
 /// requested. The opaque RuntimeId is copied for identity comparison only.
 /// Failure is returned as None so the caller can fail open (leave user input
 /// unchanged) for unsupported, hung, disappearing, or unidentifiable controls.
+#[cfg(test)]
 pub fn probe_focused(expected_process_id: u32) -> Option<UiaSecurityProbe> {
-    let hwnd = focused_hwnd_identity(expected_process_id)?;
+    probe_target(
+        expected_process_id,
+        focused_hwnd_identity(expected_process_id)?,
+    )
+}
+pub fn probe_target(expected_process_id: u32, hwnd: HWND) -> Option<UiaSecurityProbe> {
+    if focused_hwnd_identity(expected_process_id)? != hwnd {
+        return None;
+    }
+    let is_word = super::selection::word_admission::classify_word(hwnd as isize)?;
+    let identity = if is_word {
+        None
+    } else {
+        Some(super::selection::uia_scope::Target::capture(
+            hwnd,
+            expected_process_id,
+        )?)
+    };
+    let query = (expected_process_id, hwnd as isize, identity);
     let reader = READER
         .get_or_init(|| read_worker::BoundedReader::start(probe_focused_on_mta).ok())
         .as_ref()?;
-    if super::selection::word_admission::classify_word(hwnd as isize)? {
+    if is_word {
+        if !super::selection::broker_role() {
+            return None;
+        }
         let inherited = super::selection::word_admission::current();
         let parent = match inherited.as_ref() {
             Some(p) => p.clone(),
             None => super::selection::word_admission::begin(hwnd as isize)?,
         };
-        let result =
-            reader.request_guarded(expected_process_id, Duration::from_millis(750), &parent);
+        let result = reader.request_guarded(query, Duration::from_millis(750), &parent);
         if inherited.is_none() && !parent.complete(false) {
             return None;
         }
         result?
     } else {
-        reader.request(expected_process_id, Duration::from_millis(750))?
+        reader.request(query, Duration::from_millis(750))?
     }
 }
 
-fn probe_focused_on_mta(expected_process_id: u32) -> Option<UiaSecurityProbe> {
+fn probe_focused_on_mta(
+    (expected_process_id, expected_hwnd, identity): SecurityQuery,
+) -> Option<UiaSecurityProbe> {
     // Avoid entering a potentially blocking UIA provider when the Win32 focus
     // thread is already unresponsive. This does not read any user text.
-    let _responsive_hwnd = responsive_focused_hwnd(expected_process_id)?;
+    if identity.as_ref().is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    let _responsive_hwnd = responsive_focused_hwnd(expected_process_id, expected_hwnd)?;
 
     if super::selection::word_admission::classify_word(_responsive_hwnd as isize)? {
-        return probe_word_on_mta(expected_process_id);
+        return probe_word_on_mta(expected_process_id, expected_hwnd);
     }
 
     AUTOMATION.with(|slot| {
@@ -95,11 +125,25 @@ fn probe_focused_on_mta(expected_process_id: u32) -> Option<UiaSecurityProbe> {
 
         let automation = slot.borrow();
         let automation = automation.as_ref()?;
-        probe_using(automation, expected_process_id)
+        probe_using(
+            automation,
+            expected_process_id,
+            expected_hwnd,
+            identity.as_ref(),
+        )
     })
 }
 
-fn probe_word_on_mta(expected_process_id: u32) -> Option<UiaSecurityProbe> {
+// Non-Word requests retain their captured process identity; Word requests also
+// revalidate live broker authority before EACH new provider entry.
+fn security_stage<R>(hwnd: isize, provider: impl FnOnce() -> R) -> Option<R> {
+    if super::selection::word_admission::classify_word(hwnd)? {
+        super::selection::word_security_stage(hwnd, provider)
+    } else {
+        Some(provider())
+    }
+}
+fn probe_word_on_mta(expected_process_id: u32, expected_hwnd: isize) -> Option<UiaSecurityProbe> {
     unsafe {
         CoInitializeEx(None, COINIT_MULTITHREADED).ok().ok()?;
     }
@@ -112,21 +156,76 @@ fn probe_word_on_mta(expected_process_id: u32) -> Option<UiaSecurityProbe> {
         }
     }
     let _apartment = Apartment;
-    let automation: IUIAutomation =
-        unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
-    probe_using(&automation, expected_process_id)
+    let automation: IUIAutomation = security_stage(expected_hwnd, || unsafe {
+        CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()
+    })??;
+    probe_using(&automation, expected_process_id, expected_hwnd, None)
 }
-fn probe_using(automation: &IUIAutomation, expected_process_id: u32) -> Option<UiaSecurityProbe> {
-    let live_hwnd = responsive_focused_hwnd(expected_process_id)?;
+fn probe_using(
+    automation: &IUIAutomation,
+    expected_process_id: u32,
+    expected_hwnd: isize,
+    identity: Option<&super::selection::uia_scope::Target>,
+) -> Option<UiaSecurityProbe> {
+    if identity.is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    let live_hwnd = responsive_focused_hwnd(expected_process_id, expected_hwnd)?;
     if super::selection::word_admission::classify_word(live_hwnd as isize)?
         && !super::selection::word_admission::current()
             .is_some_and(|p| p.matches(live_hwnd as isize))
     {
         return None;
     }
-    // Focus can still change between this Win32 check and UIA; reject any returned PID mismatch.
-    let element = unsafe { automation.GetFocusedElement().ok()? };
-    let process_id = unsafe { element.CurrentProcessId().ok()? } as u32;
+    // Target HWND only: no global focused-element fallback can choose Word
+    // after an ordinary Chrome request's precheck. Virtual descendants must
+    // prove keyboard focus within this captured process-bound subtree.
+    let root = security_stage(expected_hwnd, || unsafe {
+        automation
+            .ElementFromHandle(windows::Win32::Foundation::HWND(live_hwnd))
+            .ok()
+    })??;
+    if security_stage(expected_hwnd, || unsafe { root.CurrentProcessId().ok() })?? as u32
+        != expected_process_id
+    {
+        return None;
+    }
+    // A focused native root may also contain a focused virtual field. The
+    // password/runtime identity must describe that field, never its host.
+    let condition = security_stage(expected_hwnd, || unsafe {
+        automation
+            .CreatePropertyCondition(
+                UIA_HasKeyboardFocusPropertyId,
+                &windows::Win32::System::Variant::VARIANT::from(true),
+            )
+            .ok()
+    })??;
+    if identity.is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    let focused = security_stage(expected_hwnd, || unsafe {
+        root.FindAll(TreeScope_Descendants, &condition).ok()
+    })??;
+    if identity.is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    let count = security_stage(expected_hwnd, || unsafe { focused.Length().ok() })??;
+    if identity.is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    let element = match count {
+        1 => security_stage(expected_hwnd, || unsafe { focused.GetElement(0).ok() })??,
+        0 if security_stage(expected_hwnd, || unsafe {
+            root.CurrentHasKeyboardFocus().ok()
+        })??
+        .as_bool() =>
+        {
+            root
+        }
+        _ => return None,
+    };
+    let process_id =
+        security_stage(expected_hwnd, || unsafe { element.CurrentProcessId().ok() })?? as u32;
     if process_id == 0 || process_id != expected_process_id {
         return None;
     }
@@ -134,9 +233,26 @@ fn probe_using(automation: &IUIAutomation, expected_process_id: u32) -> Option<U
     // RuntimeId is opaque metadata specifically intended for comparing UIA
     // element identity. Copy it before any password decision; do not query
     // Name, Value, TextPattern or another text-bearing property here.
-    let element_id = runtime_id(&element)?;
-    let native_hwnd = unsafe { element.CurrentNativeWindowHandle().ok()? }.0 as isize;
-    let is_password = unsafe { element.CurrentIsPassword().ok()? }.as_bool();
+    let element_id = runtime_id(&element, expected_hwnd)?;
+    let native_hwnd = security_stage(expected_hwnd, || unsafe {
+        element.CurrentNativeWindowHandle().ok()
+    })??
+    .0 as isize;
+    let is_password = security_stage(expected_hwnd, || unsafe {
+        element.CurrentIsPassword().ok()
+    })??
+    .as_bool();
+    if identity.is_some_and(|target| !target.valid()) {
+        return None;
+    }
+    if focused_hwnd_identity(expected_process_id)? as isize != expected_hwnd
+        || !security_stage(expected_hwnd, || unsafe {
+            element.CurrentHasKeyboardFocus().ok()
+        })??
+        .as_bool()
+    {
+        return None;
+    }
     Some(UiaSecurityProbe {
         process_id,
         native_hwnd,
@@ -145,8 +261,8 @@ fn probe_using(automation: &IUIAutomation, expected_process_id: u32) -> Option<U
     })
 }
 
-fn runtime_id(element: &IUIAutomationElement) -> Option<UiaElementId> {
-    let array = unsafe { element.GetRuntimeId().ok()? };
+fn runtime_id(element: &IUIAutomationElement, expected_hwnd: isize) -> Option<UiaElementId> {
+    let array = security_stage(expected_hwnd, || unsafe { element.GetRuntimeId().ok() })??;
     if array.is_null() {
         return None;
     }
@@ -222,15 +338,18 @@ fn focused_hwnd_identity(expected_process_id: u32) -> Option<HWND> {
         Some(focused)
     }
 }
-fn responsive_focused_hwnd(expected_process_id: u32) -> Option<HWND> {
+fn responsive_focused_hwnd(expected_process_id: u32, expected_hwnd: isize) -> Option<HWND> {
     let focused = focused_hwnd_identity(expected_process_id)?;
+    if focused as isize != expected_hwnd {
+        return None;
+    }
     if super::selection::word_admission::classify_word(focused as isize)?
         && !super::selection::word_admission::current().is_some_and(|p| p.matches(focused as isize))
     {
         return None;
     }
     let mut result = 0usize;
-    let ok = unsafe {
+    let ok = security_stage(expected_hwnd, || unsafe {
         SendMessageTimeoutW(
             focused,
             WM_NULL,
@@ -240,7 +359,7 @@ fn responsive_focused_hwnd(expected_process_id: u32) -> Option<HWND> {
             UIA_PREFLIGHT_TIMEOUT_MS,
             &mut result,
         )
-    };
+    })?;
     if ok == 0 && super::selection::word_admission::classify_word(focused as isize)? {
         if let Some(p) = super::selection::word_admission::current() {
             p.quarantine();

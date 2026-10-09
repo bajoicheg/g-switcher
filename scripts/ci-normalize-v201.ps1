@@ -75,7 +75,11 @@ foreach ($marker in $requiredSelectionMarkers) {
 $requiredSecurityMarkers = @(
     'pub struct UiaElementId',
     'element.CurrentIsPassword()',
-    'let element_id = runtime_id(&element)?;'
+    'let element_id = runtime_id(&element, expected_hwnd)?;',
+    'security_stage(expected_hwnd, || unsafe { element.GetRuntimeId().ok() })',
+    'root.FindAll(TreeScope_Descendants, &condition)',
+    'focused.Length().ok()',
+    'focused.GetElement(0).ok()'
 )
 foreach ($marker in $requiredSecurityMarkers) {
     if (-not $uiaSecure.Contains($marker)) {

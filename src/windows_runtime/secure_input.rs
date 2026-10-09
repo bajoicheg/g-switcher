@@ -14,11 +14,26 @@ pub fn is_secure_input(hwnd: HWND, process_name: &str) -> bool {
         return true;
     };
     if is_word {
-        let Some(parent) = super::selection::word_admission::begin(hwnd as isize) else {
+        if !super::selection::broker_role() {
             return true;
+        }
+        let inherited = super::selection::word_admission::current();
+        let parent = match inherited.as_ref() {
+            Some(p) => p.clone(),
+            None => match super::selection::word_admission::begin(hwnd as isize) {
+                Some(p) => p,
+                None => return true,
+            },
         };
+        if !parent.matches(hwnd as isize) {
+            parent.quarantine();
+            return true;
+        }
         let result = is_secure_word_input(hwnd);
-        if !parent.complete(result.is_none()) {
+        if result.is_none() {
+            parent.quarantine();
+        }
+        if inherited.is_none() && !parent.complete(result.is_none()) {
             return true;
         }
         result.unwrap_or(true)
@@ -37,7 +52,9 @@ fn is_secure_word_input(hwnd: HWND) -> Option<bool> {
         {
             return Some(true);
         }
-        if has_password_character_checked(current)? {
+        if super::selection::word_security_stage(hwnd as isize, || {
+            has_password_character_checked(current)
+        })?? {
             return Some(true);
         }
         current = unsafe { GetParent(current) };

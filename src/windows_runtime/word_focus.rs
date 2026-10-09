@@ -60,9 +60,10 @@ fn probe_on_mta(handle: isize) -> Option<Focus> {
         }
     }
     let _apartment = Apartment;
-    let automation: IUIAutomation =
-        unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
-    let cache = focus_cache_request(&automation)?;
+    let automation: IUIAutomation = super::super::word_security_stage(handle, || unsafe {
+        CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()
+    })??;
+    let cache = super::super::word_security_stage(handle, || focus_cache_request(&automation))??;
     // Objects release and apartment cleanup complete before reader ticket acknowledges completion.
     probe(&automation, &cache, handle as HWND)
 }
@@ -116,15 +117,17 @@ fn probe(
             return None;
         }
         let mut result = 0usize;
-        if SendMessageTimeoutW(
-            hwnd,
-            WM_NULL,
-            0,
-            0,
-            SMTO_ABORTIFHUNG | SMTO_BLOCK,
-            75,
-            &mut result,
-        ) == 0
+        if super::super::word_security_stage(hwnd as isize, || {
+            SendMessageTimeoutW(
+                hwnd,
+                WM_NULL,
+                0,
+                0,
+                SMTO_ABORTIFHUNG | SMTO_BLOCK,
+                75,
+                &mut result,
+            )
+        })? == 0
         {
             if let Some(parent) = super::super::word_admission::current() {
                 parent.quarantine();
@@ -133,7 +136,9 @@ fn probe(
         }
         // Build a NEW metadata snapshot on every check. Reuse only the request,
         // never a cached positive result across checks, characters or events.
-        let element = automation.GetFocusedElementBuildCache(cache).ok()?;
+        let element = super::super::word_security_stage(hwnd as isize, || {
+            automation.GetFocusedElementBuildCache(cache).ok()
+        })??;
         if element.CachedProcessId().ok()? as u32 != pid
             || element.CachedIsPassword().ok()?.as_bool()
             || !element.CachedIsEnabled().ok()?.as_bool()
@@ -151,7 +156,8 @@ fn probe(
         if native_hwnd != 0 && native_hwnd != hwnd as isize && native_hwnd != root as isize {
             return None;
         }
-        let array = element.GetRuntimeId().ok()?;
+        let array =
+            super::super::word_security_stage(hwnd as isize, || element.GetRuntimeId().ok())??;
         if array.is_null() {
             return None;
         }

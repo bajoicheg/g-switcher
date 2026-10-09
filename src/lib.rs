@@ -18,3 +18,11 @@ pub mod windows_runtime;
 
 pub const PRODUCT_NAME: &str = "G-switcher";
 pub const PRODUCT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(any(windows, test))]
+#[path = "windows_runtime/word_candidate.rs"]
+pub(crate) mod word_candidate;
+
+#[cfg(any(windows, test))]
+#[path = "windows_runtime/word_wire.rs"]
+pub(crate) mod word_wire;

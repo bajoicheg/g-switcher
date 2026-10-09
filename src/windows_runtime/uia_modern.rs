@@ -45,6 +45,7 @@ struct RuntimeId {
 }
 
 struct ModernContext {
+    _identity: super::uia_scope::Target,
     runtime_id: RuntimeId,
     text: IUIAutomationTextPattern,
     value: IUIAutomationValuePattern,
@@ -290,6 +291,7 @@ fn focused_context(hwnd: HWND) -> Option<ModernContext> {
     if thread_id == 0 || expected_process_id == 0 {
         return None;
     }
+    let identity = super::uia_scope::Target::capture(hwnd, expected_process_id)?;
     send_timeout(hwnd, WM_NULL, 0, 0)?;
 
     AUTOMATION.with(|slot| {
@@ -304,7 +306,8 @@ fn focused_context(hwnd: HWND) -> Option<ModernContext> {
 
         let automation = slot.borrow();
         let automation = automation.as_ref()?;
-        let element = unsafe { automation.GetFocusedElement().ok()? };
+        let element =
+            super::uia_scope::focused_element(automation, hwnd, expected_process_id, &identity)?;
         let process_id = unsafe { element.CurrentProcessId().ok()? } as u32;
         if process_id != expected_process_id
             || unsafe { element.CurrentIsPassword().ok()? }.as_bool()
@@ -328,6 +331,7 @@ fn focused_context(hwnd: HWND) -> Option<ModernContext> {
         let value_unknown = unsafe { element.GetCurrentPattern(UIA_ValuePatternId).ok()? };
         let value: IUIAutomationValuePattern = value_unknown.cast().ok()?;
         Some(ModernContext {
+            _identity: identity,
             runtime_id,
             text,
             value,

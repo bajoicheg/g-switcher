@@ -166,3 +166,47 @@ impl AuthenticatedWord {
         Self { handle, pid, birth }
     }
 }
+
+#[cfg(test)]
+pub(super) fn fixture_process_birth() -> u64 {
+    let path =
+        module_path!().split_once("::").unwrap().1.to_string() + "::tests::fixture_birth_holder";
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", &path, "--ignored", "--nocapture"])
+        .env("GSWITCHER_FIXTURE_ROLE", "birth")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let handle = unsafe { OpenProcess(0x0010_1000, 0, child.id()) };
+    let birth = if handle.is_null() {
+        None
+    } else {
+        unsafe {
+            let mut created = FileTime { low: 0, high: 0 };
+            let mut exited = FileTime { low: 0, high: 0 };
+            let mut kernel = FileTime { low: 0, high: 0 };
+            let mut user = FileTime { low: 0, high: 0 };
+            let ok =
+                GetProcessTimes(handle, &mut created, &mut exited, &mut kernel, &mut user) != 0;
+            CloseHandle(handle);
+            ok.then_some((u64::from(created.high) << 32) | u64::from(created.low))
+        }
+    };
+    let _ = child.kill();
+    let _ = child.wait();
+    birth.expect("real fixture process creation time")
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "explicit no-provider subprocess holder for birth regression"]
+    fn fixture_birth_holder() {
+        if std::env::var("GSWITCHER_FIXTURE_ROLE").as_deref() != Ok("birth") {
+            return;
+        }
+        use std::io::Read;
+        let mut byte = [0; 1];
+        let _ = std::io::stdin().read(&mut byte);
+    }
+}

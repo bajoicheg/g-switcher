@@ -181,6 +181,7 @@ fn with_focused_element<T>(
         return None;
     }
 
+    let identity = super::uia_scope::Target::capture(hwnd, expected_process_id)?;
     send_timeout(hwnd, WM_NULL, 0, 0)?;
 
     AUTOMATION.with(|slot| {
@@ -195,7 +196,8 @@ fn with_focused_element<T>(
 
         let automation = slot.borrow();
         let automation = automation.as_ref()?;
-        let element = unsafe { automation.GetFocusedElement().ok()? };
+        let element =
+            super::uia_scope::focused_element(automation, hwnd, expected_process_id, &identity)?;
         let process_id = unsafe { element.CurrentProcessId().ok()? } as u32;
         if process_id != expected_process_id
             || unsafe { element.CurrentIsPassword().ok()? }.as_bool()

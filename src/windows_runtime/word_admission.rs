@@ -5,7 +5,11 @@ mod guard_core;
 mod registry_store;
 #[path = "win32_identity.rs"]
 mod win32_identity;
+pub(crate) use guard_core::provider_stage;
 use guard_core::{Child, Gate, Operation};
+pub(crate) fn deadline_current(deadline: std::time::Instant) -> bool {
+    guard_core::deadline_current(deadline)
+}
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex, OnceLock};
 use win32_identity::AuthenticatedWord;
@@ -119,17 +123,6 @@ pub(crate) fn with_parent<R>(parent: Parent, run: impl FnOnce() -> R) -> R {
     run()
 }
 
-pub(crate) fn may_access(hwnd: isize) -> bool {
-    let Some(host) = AuthenticatedWord::from_window(hwnd as *mut core::ffi::c_void) else {
-        trace(0, "identity-unavailable");
-        return false;
-    };
-    registry_store::may_access(guard_core::Host {
-        pid: host.pid,
-        birth: host.birth,
-    })
-}
-
 pub(crate) fn classify_word(hwnd: isize) -> Option<bool> {
     win32_identity::classify_word(hwnd as *mut core::ffi::c_void)
 }
@@ -218,6 +211,19 @@ impl Fixture {
 impl Drop for Fixture {
     fn drop(&mut self) {
         registry_store::fixture_cleanup(&self.namespace);
+    }
+}
+
+pub(crate) fn identity(hwnd: isize) -> Option<(u32, u64)> {
+    let host = AuthenticatedWord::from_window(hwnd as *mut core::ffi::c_void)?;
+    Some((host.pid, host.birth))
+}
+
+fn enrollment_client_birth() -> Option<u64> {
+    if super::broker_role() {
+        super::broker_client_birth()
+    } else {
+        win32_identity::client_birth()
     }
 }
 

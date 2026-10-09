@@ -298,6 +298,21 @@ fn exercise_browser(browser: &BrowserSpec) {
         browser.label
     );
     assert!(password_probe.is_password);
+    // Exercise scoped metadata across virtual fields, not only global focus.
+    let fresh_password = security_probe(password_hwnd, browser.label, "password after Tab");
+    let mut password_pid = 0;
+    assert_ne!(
+        unsafe { GetWindowThreadProcessId(password_hwnd, &mut password_pid) },
+        0
+    );
+    assert!(
+        uia_secure::probe_target(password_pid, password_hwnd)
+            .expect("captured password subtree")
+            .is_password
+    );
+    assert!(fresh_password.is_password);
+    assert_ne!(fresh_password.element_id, textarea_probe.element_id);
+
     assert!(
         !selection::is_standard_edit(password_hwnd),
         "{} password field unexpectedly exposed a writable G-switcher adapter",
@@ -426,8 +441,102 @@ fn wait_for_editable_focus(expected: &str, timeout: Duration) -> HWND {
         (adapter_text(hwnd).as_deref() == Some(expected)).then_some(hwnd)
     })
     .unwrap_or_else(|| {
+        diagnose_scoped_browser_focus();
         panic!("browser editable field did not expose a verified modern adapter with value {expected:?}")
     })
+}
+
+// Failure-only metadata evidence: never query global focus, names or values.
+// A retained live process and the captured native focus authorize every lookup.
+fn diagnose_scoped_browser_focus() {
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
+    };
+    use windows::Win32::System::Variant::VARIANT;
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Descendants,
+        UIA_HasKeyboardFocusPropertyId, UIA_TextPatternId, UIA_ValuePatternId,
+    };
+
+    fn metadata(label: &str, element: &IUIAutomationElement, pid: u32) {
+        unsafe {
+            let process = element.CurrentProcessId();
+            let password = element.CurrentIsPassword();
+            eprintln!(
+                "scoped browser metadata {label}: pid={process:?} focus={:?} password={password:?} native={:?} control={:?}",
+                element.CurrentHasKeyboardFocus(),
+                element.CurrentNativeWindowHandle(),
+                element.CurrentControlType(),
+            );
+            if process.ok().map(|p| p as u32) == Some(pid)
+                && password.ok().map(|p| p.as_bool()) == Some(false)
+            {
+                eprintln!(
+                    "scoped browser patterns {label}: text={} value={}",
+                    element.GetCurrentPattern(UIA_TextPatternId).is_ok(),
+                    element.GetCurrentPattern(UIA_ValuePatternId).is_ok(),
+                );
+            }
+        }
+    }
+
+    let hwnd = focused_hwnd();
+    let mut pid = 0;
+    unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
+    let Some(identity) = selection::uia_scope::Target::capture(hwnd, pid) else {
+        eprintln!("scoped browser metadata: native focus/process authority refused");
+        return;
+    };
+    unsafe {
+        if let Err(error) = CoInitializeEx(None, COINIT_MULTITHREADED).ok() {
+            eprintln!("scoped browser metadata: COM init {error:?}");
+            return;
+        }
+        let automation: IUIAutomation =
+            match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+                Ok(value) => value,
+                Err(error) => {
+                    eprintln!("scoped browser metadata: automation {error:?}");
+                    return;
+                }
+            };
+        if !identity.valid() {
+            return;
+        }
+        let root = match automation.ElementFromHandle(windows::Win32::Foundation::HWND(hwnd)) {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("scoped browser metadata: captured root {error:?}");
+                return;
+            }
+        };
+        if !identity.valid() {
+            return;
+        }
+        metadata("root", &root, pid);
+        if root.CurrentProcessId().ok().map(|p| p as u32) != Some(pid) || !identity.valid() {
+            return;
+        }
+        let condition = match automation
+            .CreatePropertyCondition(UIA_HasKeyboardFocusPropertyId, &VARIANT::from(true))
+        {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("scoped browser metadata: focus condition {error:?}");
+                return;
+            }
+        };
+        if !identity.valid() {
+            return;
+        }
+        match root.FindFirst(TreeScope_Descendants, &condition) {
+            Ok(element) if identity.valid() => metadata("focused descendant", &element, pid),
+            Ok(_) => {
+                eprintln!("scoped browser metadata: authority revoked after descendant lookup")
+            }
+            Err(error) => eprintln!("scoped browser metadata: descendant lookup {error:?}"),
+        }
+    }
 }
 
 fn wait_for_password_focus(timeout: Duration) -> (HWND, uia_secure::UiaSecurityProbe) {

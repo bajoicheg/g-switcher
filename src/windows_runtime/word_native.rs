@@ -10,6 +10,9 @@ mod plan;
 #[path = "word_auto_correct.rs"]
 mod auto_correct;
 
+#[path = "word_call_gate.rs"]
+mod call_gate;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::zeroed;
@@ -217,6 +220,9 @@ fn run_at_generation<R: Send + 'static>(
     generation: u32,
     operation: impl FnOnce(&Context) -> Option<R> + Send + 'static,
 ) -> Option<R> {
+    if !super::broker_role() {
+        return None;
+    }
     if UNCERTAIN_MUTATION.load(Ordering::Acquire) {
         trace("refuse-uncertain-mutation");
         return None;
@@ -229,7 +235,15 @@ fn run_at_generation<R: Send + 'static>(
         trace("refuse-uncertain-mutation");
         return None;
     }
-    let parent = super::word_admission::begin(hwnd as isize)?;
+    let inherited = super::word_admission::current();
+    let parent = match inherited.as_ref() {
+        Some(p) => p.clone(),
+        None => super::word_admission::begin(hwnd as isize)?,
+    };
+    if !parent.matches(hwnd as isize) {
+        parent.quarantine();
+        return None;
+    }
     let worker_parent = parent.clone();
     let handle = hwnd as isize;
     // The thread owns every interface, VARIANT and BSTR. COM pumps incoming
@@ -294,7 +308,7 @@ fn run_at_generation<R: Send + 'static>(
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
     let result = worker.join().ok()?;
-    if !parent.complete(UNCERTAIN_MUTATION.load(Ordering::Acquire)) {
+    if inherited.is_none() && !parent.complete(UNCERTAIN_MUTATION.load(Ordering::Acquire)) {
         return None;
     }
     result
@@ -682,13 +696,9 @@ struct UndoRecord {
 }
 impl UndoRecord {
     fn end(&mut self) -> Option<()> {
-        if !self.active {
-            return Some(());
-        }
-        // Mark the attempt before provider I/O. On failure Drop must not repeat
-        // a possibly completed effect; the global latch stays set.
-        self.active = false;
-        call(&self.dispatch, "EndCustomRecord", vec![]).map(|_| ())
+        call_gate::finish_once(&mut self.active, || {
+            invoke_undo_completion(&self.dispatch).map(|_| ())
+        })
     }
 }
 impl Drop for UndoRecord {
@@ -721,6 +731,7 @@ fn set_range(range: &IDispatch, start: u32, end: u32) -> Option<()> {
 }
 
 fn native_window(hwnd: HWND) -> Option<IDispatch> {
+    super::word_security_stage(hwnd as isize, || ())?;
     let diagnostic = NativeCallTrace::start("AccessibleObjectFromWindow", "acquire");
     diagnostic.phase("acquire");
     let mut raw = std::ptr::null_mut();
@@ -743,7 +754,27 @@ fn invoke(
     object: &IDispatch,
     name: &str,
     flags: DISPATCH_FLAGS,
+    args: Vec<VARIANT>,
+) -> Option<VARIANT> {
+    invoke_with_gate(object, name, flags, args, call_gate::CallGate::provider())
+}
+// Only the retained UndoRecord::end call reaches this nonserialized obligation.
+// It cannot name another member, read text, mutate a range or grant a new stage.
+fn invoke_undo_completion(object: &IDispatch) -> Option<VARIANT> {
+    invoke_with_gate(
+        object,
+        "EndCustomRecord",
+        DISPATCH_METHOD,
+        vec![],
+        call_gate::CallGate::undo_completion(),
+    )
+}
+fn invoke_with_gate(
+    object: &IDispatch,
+    name: &str,
+    flags: DISPATCH_FLAGS,
     mut args: Vec<VARIANT>,
+    gate: call_gate::CallGate,
 ) -> Option<VARIANT> {
     let kind = if flags == DISPATCH_PROPERTYGET {
         "get"
@@ -772,6 +803,9 @@ fn invoke(
         };
         if let Some(id) = cache[index].ids.get(name) {
             return Some(*id);
+        }
+        if !gate.allows(super::security_authorized) {
+            return None;
         }
         let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
         let name_pointer = PCWSTR(wide.as_ptr());
@@ -810,6 +844,9 @@ fn invoke(
     };
     let mut result = VARIANT::default();
     diagnostic.phase("invoke");
+    if !gate.allows(super::security_authorized) {
+        return None;
+    }
     unsafe {
         // No EXCEPINFO allocation or diagnostic text is retained/logged.
         object
@@ -895,4 +932,11 @@ fn pump() {
             DispatchMessageW(&message);
         }
     }
+}
+
+pub(crate) fn uncertain() -> bool {
+    UNCERTAIN_MUTATION.load(Ordering::Acquire)
+}
+pub(crate) fn quarantine() {
+    UNCERTAIN_MUTATION.store(true, Ordering::Release);
 }

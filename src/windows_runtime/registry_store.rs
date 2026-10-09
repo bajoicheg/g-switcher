@@ -150,41 +150,7 @@ pub(super) struct RegistryStore {
 impl Store for RegistryStore {
     type Hold = ();
     fn reserve(&self, host: Host, marker: &[u8]) -> Result<(), ()> {
-        let _lock = Lock::take(&self.namespace)?;
-        let key = Registry::open(&self.namespace)?;
-        match key.read(host)? {
-            Some(bytes) if valid_idle(host, &bytes) => {}
-            Some(_) => {
-                super::trace(3, "prior-pending-or-uncertain");
-                return Err(());
-            }
-            None => {
-                if host.birth <= super::win32_identity::client_birth().ok_or(())? {
-                    super::trace(4, "first-enrollment-old-word");
-                    return Err(());
-                }
-            }
-        }
-        // Enrollment safety must be checked by the retained Win32 identity wrapper.
-        let name = Registry::name(host);
-        unsafe {
-            if RegSetValueExW(
-                key.0,
-                name.as_ptr(),
-                0,
-                3,
-                marker.as_ptr(),
-                marker.len() as u32,
-            ) != 0
-                || RegFlushKey(key.0) != 0
-            {
-                return Err(());
-            }
-        }
-        if key.read(host)?.as_deref() != Some(marker) {
-            return Err(());
-        }
-        Ok(())
+        self.reserve_at_boundary(host, marker, super::enrollment_client_birth().ok_or(())?)
     }
     fn matches(&self, host: Host, marker: &[u8]) -> bool {
         (|| {
@@ -216,6 +182,46 @@ impl Store for RegistryStore {
     }
 }
 
+impl RegistryStore {
+    fn reserve_at_boundary(&self, host: Host, marker: &[u8], client_birth: u64) -> Result<(), ()> {
+        let _lock = Lock::take(&self.namespace)?;
+        let key = Registry::open(&self.namespace)?;
+        match key.read(host)? {
+            Some(bytes) if valid_idle(host, &bytes) => {}
+            Some(_) => {
+                super::trace(3, "prior-pending-or-uncertain");
+                return Err(());
+            }
+            None => {
+                if host.birth <= client_birth {
+                    super::trace(4, "first-enrollment-old-word");
+                    return Err(());
+                }
+            }
+        }
+        // Enrollment safety must be checked by the retained Win32 identity wrapper.
+        let name = Registry::name(host);
+        unsafe {
+            if RegSetValueExW(
+                key.0,
+                name.as_ptr(),
+                0,
+                3,
+                marker.as_ptr(),
+                marker.len() as u32,
+            ) != 0
+                || RegFlushKey(key.0) != 0
+            {
+                return Err(());
+            }
+        }
+        if key.read(host)?.as_deref() != Some(marker) {
+            return Err(());
+        }
+        Ok(())
+    }
+}
+
 // Completion is bound to this operation's exact Idle nonce, not merely a valid record.
 fn require_exact_idle_readback(key: &Registry, host: Host, idle: &[u8]) -> Result<(), ()> {
     if key.read(host)?.as_deref() != Some(idle) {
@@ -243,30 +249,6 @@ fn valid_idle(host: Host, bytes: &[u8]) -> bool {
         && lines.next().is_none()
         && text.ends_with('\n')
 }
-pub(super) fn may_access(host: Host) -> bool {
-    (|| {
-        let _lock = Lock::take("Software\\GSwitcher\\WordAdmission")?;
-        let key = Registry::open("Software\\GSwitcher\\WordAdmission")?;
-        Ok::<_, ()>(match key.read(host)? {
-            Some(v) => {
-                let allowed = valid_idle(host, &v);
-                if !allowed {
-                    super::trace(3, "prior-pending-or-uncertain");
-                }
-                allowed
-            }
-            None => {
-                let allowed = host.birth > super::win32_identity::client_birth().ok_or(())?;
-                if !allowed {
-                    super::trace(4, "first-enrollment-old-word");
-                }
-                allowed
-            }
-        })
-    })()
-    .unwrap_or(false)
-}
-
 #[cfg(test)]
 pub(super) fn fixture_pending(namespace: &str, host: Host) -> bool {
     Registry::open(namespace)
@@ -296,6 +278,53 @@ pub(super) fn fixture_cleanup(namespace: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn actual_registry_lazy_enrollment_uses_client_birth_and_retains_pending() {
+        let fixture = super::super::Fixture::new();
+        let client_birth = super::super::win32_identity::client_birth().unwrap();
+        let broker_birth = super::super::win32_identity::fixture_process_birth();
+        assert!(broker_birth > client_birth + 1);
+        let host = Host {
+            pid: fixture.host.pid + 0x1000,
+            birth: broker_birth - 1,
+        };
+        assert!(host.birth > client_birth && host.birth < broker_birth);
+        let marker = format!(
+            "word-provider-pending/v1\n{}\n{}\n00000000000000000000000000000003\n",
+            host.pid, host.birth
+        )
+        .into_bytes();
+        let store = RegistryStore {
+            namespace: fixture.namespace.clone(),
+        };
+        assert!(
+            store
+                .reserve_at_boundary(host, &marker, broker_birth)
+                .is_err(),
+            "old lazy-broker boundary must reject this scenario"
+        );
+        assert!(store
+            .reserve_at_boundary(host, &marker, client_birth)
+            .is_ok());
+        assert!(store.matches(host, &marker));
+        assert!(
+            store
+                .reserve_at_boundary(host, &marker, broker_birth)
+                .is_err(),
+            "restarted younger client cannot overwrite Pending"
+        );
+        let old = Host {
+            pid: host.pid + 1,
+            birth: client_birth - 1,
+        };
+        assert!(
+            store
+                .reserve_at_boundary(old, b"unsubmitted", client_birth)
+                .is_err(),
+            "Word older than authenticated client must refuse first enrollment"
+        );
+    }
+
     #[test]
     fn completion_readback_rejects_foreign_idle_and_absent_value() {
         // Real disposable registry values exercise the production completion predicate.

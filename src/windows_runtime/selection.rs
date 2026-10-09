@@ -1,3 +1,5 @@
+#[path = "uia_scope.rs"]
+pub(super) mod uia_scope;
 #[path = "word_admission.rs"]
 pub(super) mod word_admission;
 use std::sync::OnceLock;
@@ -10,13 +12,13 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 #[path = "read_worker.rs"]
 pub(super) mod read_worker;
 #[path = "uia_legacy_v2.rs"]
-mod uia_legacy;
+pub(super) mod uia_legacy;
 #[path = "uia_modern.rs"]
 mod uia_modern;
 #[path = "uia_text.rs"]
 mod uia_text;
 #[path = "word_native.rs"]
-mod word_native;
+pub(super) mod word_native;
 
 const EM_GETSEL_VALUE: u32 = 0x00B0;
 const EM_SETSEL_VALUE: u32 = 0x00B1;
@@ -26,6 +28,46 @@ const CONTROL_TIMEOUT_MS: u32 = 75;
 
 // This module is also imported by the standalone failure-E2E binary. Bind the
 // real runtime explicitly instead of assuming a particular parent module.
+// Explicit broker-only binding also works when selection is imported by a
+// standalone test binary. Absence never enables Word provider access.
+struct BrokerPolicy {
+    client_birth: fn() -> Option<u64>,
+    security_allowed: fn() -> bool,
+}
+static BROKER_POLICY: OnceLock<BrokerPolicy> = OnceLock::new();
+pub(crate) fn configure_broker_runtime(
+    client_birth: fn() -> Option<u64>,
+    security_allowed: fn() -> bool,
+) {
+    let _ = BROKER_POLICY.set(BrokerPolicy {
+        client_birth,
+        security_allowed,
+    });
+}
+pub(crate) fn broker_role() -> bool {
+    BROKER_POLICY.get().is_some()
+}
+fn broker_client_birth() -> Option<u64> {
+    (BROKER_POLICY.get()?.client_birth)()
+}
+pub(crate) fn security_authorized() -> bool {
+    BROKER_POLICY.get().is_some_and(|p| (p.security_allowed)())
+}
+// Per-stage dynamic gate, valid in all standalone module-parent arrangements.
+pub(crate) fn word_security_stage<R>(hwnd: isize, provider: impl FnOnce() -> R) -> Option<R> {
+    word_security_stage_for_parent(
+        || word_admission::current().is_some_and(|p| p.matches(hwnd)),
+        provider,
+    )
+}
+// Shared configured callback path; production always binds the authenticated parent.
+pub(super) fn word_security_stage_for_parent<R>(
+    parent_matches: impl FnOnce() -> bool,
+    provider: impl FnOnce() -> R,
+) -> Option<R> {
+    word_admission::provider_stage(|| security_authorized() && parent_matches(), provider)
+}
+
 struct RuntimePolicy {
     generation: fn() -> u32,
     paused: fn() -> bool,
