@@ -10,6 +10,41 @@ const MAX_PARENT_DEPTH: usize = 4;
 const PASSWORD_PROBE_TIMEOUT_MS: u32 = 50;
 
 pub fn is_secure_input(hwnd: HWND, process_name: &str) -> bool {
+    let Some(is_word) = super::selection::word_admission::classify_word(hwnd as isize) else {
+        return true;
+    };
+    if is_word {
+        let Some(parent) = super::selection::word_admission::begin(hwnd as isize) else {
+            return true;
+        };
+        let result = is_secure_word_input(hwnd);
+        if !parent.complete(result.is_none()) {
+            return true;
+        }
+        result.unwrap_or(true)
+    } else {
+        is_secure_input_inner(hwnd, process_name)
+    }
+}
+fn is_secure_word_input(hwnd: HWND) -> Option<bool> {
+    let mut current = hwnd;
+    for _ in 0..MAX_PARENT_DEPTH {
+        if current.is_null() {
+            break;
+        }
+        if has_password_style(current)
+            || class_name(current).is_some_and(|n| is_secure_class_name(&n))
+        {
+            return Some(true);
+        }
+        if has_password_character_checked(current)? {
+            return Some(true);
+        }
+        current = unsafe { GetParent(current) };
+    }
+    Some(false)
+}
+fn is_secure_input_inner(hwnd: HWND, process_name: &str) -> bool {
     if is_secure_process(process_name) {
         return true;
     }
@@ -35,6 +70,9 @@ fn has_password_style(hwnd: HWND) -> bool {
 }
 
 fn has_password_character(hwnd: HWND) -> bool {
+    has_password_character_checked(hwnd).unwrap_or(false)
+}
+fn has_password_character_checked(hwnd: HWND) -> Option<bool> {
     let mut result = 0usize;
     let ok = unsafe {
         SendMessageTimeoutW(
@@ -47,7 +85,7 @@ fn has_password_character(hwnd: HWND) -> bool {
             &mut result,
         )
     };
-    ok != 0 && result != 0
+    (ok != 0).then_some(result != 0)
 }
 
 fn class_name(hwnd: HWND) -> Option<String> {

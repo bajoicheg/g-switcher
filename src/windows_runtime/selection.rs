@@ -1,3 +1,5 @@
+#[path = "word_admission.rs"]
+pub(super) mod word_admission;
 use std::sync::OnceLock;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -101,6 +103,9 @@ pub fn is_standard_edit(hwnd: HWND) -> bool {
 /// marshalled cross-process message adapter. Other supported text controls
 /// require successful UIA metadata verification before mutation.
 pub fn is_plain_edit(hwnd: HWND) -> bool {
+    if word_admission::classify_word(hwnd as isize) != Some(false) {
+        return false;
+    }
     class_name(hwnd).is_some_and(|name| is_plain_edit_class(&name))
 }
 
@@ -459,6 +464,13 @@ fn replace_range_raw_messages(hwnd: HWND, start: u32, end: u32, text: &str) -> b
 }
 
 fn adapter(hwnd: HWND) -> Option<TextAdapter> {
+    if word_admission::classify_word(hwnd as isize)? {
+        // Every Word-owned non-native dialog/control is refused before WM_NULL/UIA.
+        if class_name(hwnd).as_deref() != Some("_WwG") {
+            return None;
+        }
+        return word_native::has_adapter(hwnd).then_some(TextAdapter::WordNative);
+    }
     send_timeout(hwnd, WM_NULL, 0, 0)?;
 
     let name = class_name(hwnd)?;

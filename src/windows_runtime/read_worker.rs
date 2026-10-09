@@ -10,6 +10,8 @@ struct Read<Q, R> {
     input: Q,
     result: SyncSender<R>,
     completed: Arc<AtomicBool>,
+    #[cfg(windows)]
+    provider_permit: Option<super::word_admission::ReaderChild>,
 }
 
 #[derive(Default)]
@@ -32,9 +34,19 @@ impl<Q: Send + 'static, R: Send + 'static> BoundedReader<Q, R> {
             .name("g-switcher-uia-reader".into())
             .spawn(move || {
                 while let Ok(request) = queue.recv() {
+                    #[cfg(windows)]
+                    let result = match request.provider_permit.as_ref() {
+                        Some(permit) => permit.run(|| process(request.input)),
+                        None => process(request.input),
+                    };
+                    #[cfg(not(windows))]
                     let result = process(request.input);
                     // Completion acknowledges provider quiescence only. It
                     // never grants writable/security authority to the caller.
+                    #[cfg(windows)]
+                    if let Some(permit) = request.provider_permit {
+                        let _ = permit.complete();
+                    }
                     request.completed.store(true, Ordering::Release);
                     let _ = request.result.try_send(result);
                 }
@@ -46,6 +58,28 @@ impl<Q: Send + 'static, R: Send + 'static> BoundedReader<Q, R> {
     }
 
     pub fn request(&self, input: Q, timeout: Duration) -> Option<R> {
+        self.request_inner(
+            input,
+            timeout,
+            #[cfg(windows)]
+            None,
+        )
+    }
+    #[cfg(windows)]
+    pub(crate) fn request_guarded(
+        &self,
+        input: Q,
+        timeout: Duration,
+        parent: &super::word_admission::Parent,
+    ) -> Option<R> {
+        self.request_inner(input, timeout, Some(parent))
+    }
+    fn request_inner(
+        &self,
+        input: Q,
+        timeout: Duration,
+        #[cfg(windows)] parent: Option<&super::word_admission::Parent>,
+    ) -> Option<R> {
         let deadline = Instant::now().checked_add(timeout)?;
         let completed = Arc::new(AtomicBool::new(false));
         let recovered = {
@@ -78,16 +112,33 @@ impl<Q: Send + 'static, R: Send + 'static> BoundedReader<Q, R> {
         if recovered {
             trace_reader("reader-recovered-fresh-request");
         }
+        #[cfg(windows)]
+        let provider_permit = match parent {
+            Some(parent) => match parent.child() {
+                Some(ticket) => Some(ticket),
+                None => {
+                    completed.store(true, Ordering::Release);
+                    return None;
+                }
+            },
+            None => None,
+        };
         let (result, response) = mpsc::sync_channel(1);
-        if self
-            .requests
-            .try_send(Read {
-                input,
-                result,
-                completed,
-            })
-            .is_err()
-        {
+        if let Err(error) = self.requests.try_send(Read {
+            input,
+            result,
+            completed,
+            #[cfg(windows)]
+            provider_permit,
+        }) {
+            let request = match error {
+                mpsc::TrySendError::Full(r) | mpsc::TrySendError::Disconnected(r) => r,
+            };
+            request.completed.store(true, Ordering::Release);
+            #[cfg(windows)]
+            if let Some(permit) = request.provider_permit {
+                let _ = permit.complete();
+            }
             self.state.lock().ok()?.disconnected = true;
             trace_reader("reader-disconnected");
             return None;
@@ -148,6 +199,63 @@ mod tests {
     use std::sync::{Arc, Condvar, Mutex};
     use std::time::{Duration, Instant};
 
+    #[cfg(windows)]
+    fn guarded_timeout_lifecycle(uncertain: bool) {
+        use super::super::word_admission::Fixture;
+        let fixture = Fixture::new();
+        let parent = fixture.parent.clone();
+        let (entered, entry) = mpsc::channel();
+        let (release, held) = mpsc::channel();
+        let reader = BoundedReader::start(move |()| {
+            entered.send(()).unwrap();
+            held.recv().unwrap();
+            42
+        })
+        .unwrap();
+        assert_eq!(
+            reader.request_guarded((), Duration::from_millis(750), &parent),
+            None
+        );
+        entry.recv_timeout(Duration::from_secs(1)).unwrap(); // Actual worker entered, no fake zero-call assertion.
+        assert!(fixture.pending());
+        assert!(parent.complete(uncertain));
+        assert!(fixture.pending());
+        release.send(()).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            let complete = reader
+                .state
+                .lock()
+                .unwrap()
+                .in_flight
+                .as_ref()
+                .unwrap()
+                .load(Ordering::Acquire);
+            if complete {
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        if uncertain {
+            assert!(fixture.pending());
+            assert!(!fixture.idle());
+        } else {
+            assert!(fixture.idle());
+            assert!(!fixture.pending());
+        }
+    }
+    #[cfg(windows)]
+    #[test]
+    fn guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns() {
+        guarded_timeout_lifecycle(false);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn guarded_actual_reader_late_completion_never_clears_uncertainty() {
+        guarded_timeout_lifecycle(true);
+    }
+
     #[test]
     fn provider_runs_off_the_requesting_thread() {
         let caller = std::thread::current().id();
@@ -162,48 +270,78 @@ mod tests {
     fn stalled_metadata_returns_none_and_never_queues_a_replacement() {
         let gate = Arc::new((Mutex::new(false), Condvar::new()));
         let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let (entered_tx, entered_rx) = mpsc::sync_channel(1);
         let worker_gate = gate.clone();
         let worker_calls = calls.clone();
-        let reader = BoundedReader::start(move |value| {
-            worker_calls.fetch_add(1, Ordering::SeqCst);
-            let (lock, wake) = &*worker_gate;
-            let _guard = wake
-                .wait_while(lock.lock().unwrap(), |ready| !*ready)
-                .unwrap();
-            value
-        })
-        .unwrap();
-        // Baseline synchronous behavior is released eventually, so RED cannot hang.
-        let release = gate.clone();
-        let releaser = std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(250));
-            *release.0.lock().unwrap() = true;
-            release.1.notify_all();
+        let reader = Arc::new(
+            BoundedReader::start(move |value| {
+                let invocation = worker_calls.fetch_add(1, Ordering::SeqCst);
+                if invocation == 0 {
+                    entered_tx.send(()).unwrap();
+                }
+                let (lock, wake) = &*worker_gate;
+                let _guard = wake
+                    .wait_while(lock.lock().unwrap(), |ready| !*ready)
+                    .unwrap();
+                value
+            })
+            .unwrap(),
+        );
+        // Only this test releases the actual first provider, after pending refusal.
+        let (returned_tx, returned_rx) = mpsc::sync_channel(1);
+        let caller_reader = reader.clone();
+        let caller = std::thread::spawn(move || {
+            let started = Instant::now();
+            let result = caller_reader.request(42, Duration::from_millis(20));
+            returned_tx.send((result, started.elapsed())).unwrap();
         });
-        let started = Instant::now();
-        let result = reader.request(42, Duration::from_millis(20));
-        let elapsed = started.elapsed();
-        let second = reader.request(43, Duration::from_millis(20));
-        releaser.join().unwrap();
+        entered_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("actual provider must enter");
+        let returned = returned_rx.recv_timeout(Duration::from_secs(2));
+        if returned.is_err() {
+            // Release before reporting a synchronous-call regression; never strand a fixture.
+            *gate.0.lock().unwrap() = true;
+            gate.1.notify_all();
+        }
+        let (result, elapsed) = returned.expect("caller must return while provider is held");
+        caller.join().unwrap();
         assert_eq!(
             result, None,
             "late metadata must not become writable authority"
         );
         assert!(
-            elapsed < Duration::from_millis(200),
+            elapsed < Duration::from_secs(1),
             "caller blocked {elapsed:?}"
         );
-        assert_eq!(second, None, "a timed-out reader remains quarantined");
+        let second_started = Instant::now();
+        assert_eq!(
+            reader.request(43, Duration::from_millis(20)),
+            None,
+            "pending provider must refuse a replacement"
+        );
+        assert!(second_started.elapsed() < Duration::from_secs(1));
         assert_eq!(calls.load(Ordering::SeqCst), 1);
-        let deadline = Instant::now() + Duration::from_secs(1);
-        loop {
-            if let Some(value) = reader.request(44, Duration::from_millis(100)) {
-                assert_eq!(value, 44);
-                break;
-            }
-            assert!(Instant::now() < deadline);
-            std::thread::sleep(Duration::from_millis(1));
+        let completed = reader
+            .state
+            .lock()
+            .unwrap()
+            .in_flight
+            .clone()
+            .expect("exact old request remains tracked");
+        assert!(!completed.load(Ordering::Acquire));
+        *gate.0.lock().unwrap() = true;
+        gate.1.notify_all();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !completed.load(Ordering::Acquire) {
+            assert!(
+                Instant::now() < deadline,
+                "actual old provider did not complete"
+            );
+            std::thread::yield_now();
         }
+        // One fresh request, separate response channel; no retry can add a third call.
+        assert_eq!(reader.request(44, Duration::from_secs(5)), Some(44));
         assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 

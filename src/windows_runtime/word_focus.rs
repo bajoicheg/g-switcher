@@ -2,7 +2,6 @@
 //! A stalled reader is quarantined; it never performs text mutations.
 use super::super::read_worker;
 use super::is_word_window;
-use std::cell::RefCell;
 use std::ffi::c_void;
 use std::mem::{size_of, zeroed};
 use std::sync::OnceLock;
@@ -26,34 +25,46 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     SendMessageTimeoutW, GA_ROOT, GUITHREADINFO, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_NULL,
 };
 static READER: OnceLock<Option<read_worker::BoundedReader<isize, Option<Focus>>>> = OnceLock::new();
-thread_local! {
-    // Only interface/request configuration is reused. Every probe builds fresh
-    // metadata and compares the live runtime identity; no positive-state cache.
-    static AUTOMATION: RefCell<Option<(IUIAutomation, IUIAutomationCacheRequest)>> = const { RefCell::new(None) };
-}
 
 pub(super) fn focused(hwnd: HWND) -> Option<Focus> {
-    READER
-        .get_or_init(|| read_worker::BoundedReader::start(probe_on_mta).ok())
-        .as_ref()?
-        .request(hwnd as isize, Duration::from_millis(750))?
+    let inherited = super::super::word_admission::current();
+    let parent = match inherited.as_ref() {
+        Some(p) => p.clone(),
+        None => super::super::word_admission::begin(hwnd as isize)?,
+    };
+    let result = (|| {
+        READER
+            .get_or_init(|| read_worker::BoundedReader::start(probe_on_mta).ok())
+            .as_ref()?
+            .request_guarded(hwnd as isize, Duration::from_millis(750), &parent)?
+    })();
+    if inherited.is_none() && !parent.complete(false) {
+        return None;
+    }
+    result
 }
 
 fn probe_on_mta(handle: isize) -> Option<Focus> {
-    AUTOMATION.with(|slot| {
-        if slot.borrow().is_none() {
+    if !super::super::word_admission::current().is_some_and(|p| p.matches(handle)) {
+        return None;
+    }
+    unsafe {
+        CoInitializeEx(None, COINIT_MULTITHREADED).ok().ok()?;
+    }
+    struct Apartment;
+    impl Drop for Apartment {
+        fn drop(&mut self) {
             unsafe {
-                CoInitializeEx(None, COINIT_MULTITHREADED).ok().ok()?;
+                windows::Win32::System::Com::CoUninitialize();
             }
-            let automation: IUIAutomation =
-                unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
-            let cache = focus_cache_request(&automation)?;
-            *slot.borrow_mut() = Some((automation, cache));
         }
-        let slot = slot.borrow();
-        let (automation, cache) = slot.as_ref()?;
-        probe(automation, cache, handle as HWND)
-    })
+    }
+    let _apartment = Apartment;
+    let automation: IUIAutomation =
+        unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()? };
+    let cache = focus_cache_request(&automation)?;
+    // Objects release and apartment cleanup complete before reader ticket acknowledges completion.
+    probe(&automation, &cache, handle as HWND)
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -115,6 +126,9 @@ fn probe(
             &mut result,
         ) == 0
         {
+            if let Some(parent) = super::super::word_admission::current() {
+                parent.quarantine();
+            }
             return None;
         }
         // Build a NEW metadata snapshot on every check. Reuse only the request,

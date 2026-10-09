@@ -738,6 +738,14 @@ impl Engine {
             return;
         }
 
+        if self.process_name.eq_ignore_ascii_case("winword.exe")
+            && !selection::word_admission::may_access(target.hwnd as isize)
+        {
+            HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
+            self.reset_transient();
+            return;
+        }
+
         if secure_input::is_secure_input(target.hwnd, &self.process_name) {
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
