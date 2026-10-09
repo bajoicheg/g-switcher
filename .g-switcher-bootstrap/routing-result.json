@@ -14,11 +14,11 @@
         "configuration_digest": "sha256:6a82c08da034fdd527210a236eb9063229626582648cb5918b3807088c4755e1",
         "enabled": true,
         "evidence_refs": [
-          "https://github.com/bajoicheg/g-switcher/actions/runs/37969871428",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/37997527777",
           "git:436003d9287937d10606c74ae942b5518495d62a:.github/workflows/windows-ci.yml"
         ],
         "kind": "github_actions",
-        "last_verified_at_utc": "2026-10-09T20:34:55.395363Z",
+        "last_verified_at_utc": "2026-10-09T22:16:14.988980Z",
         "rank": 10,
         "state": "ready"
       },
@@ -34,11 +34,11 @@
         "configuration_digest": "sha256:9303251a6bbb687c07435385f3aa302ee5119c59f8e53abc480371e3231bbaee",
         "enabled": true,
         "evidence_refs": [
-          "https://github.com/bajoicheg/g-switcher/actions/runs/37969527006",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/37997322604",
           "git:436003d9287937d10606c74ae942b5518495d62a:.agents/skills/continuous-development-cycle/scripts/managed_host_bridge.py"
         ],
         "kind": "github_actions",
-        "last_verified_at_utc": "2026-10-09T20:34:55.395363Z",
+        "last_verified_at_utc": "2026-10-09T22:16:14.988980Z",
         "rank": 20,
         "state": "ready"
       },
@@ -58,31 +58,35 @@
         "state": "unavailable"
       }
     ],
-    "observed_at_utc": "2026-10-09T20:34:55.395363Z",
+    "observed_at_utc": "2026-10-09T22:16:14.988980Z",
     "schema": "backend-capability-registry/v1"
   },
   "requests": {
     "Windows": {
-      "schema": "capability-request/v1",
-      "task_id": "Word-broker-isolation-Windows",
       "candidate_sha": "436003d9287937d10606c74ae942b5518495d62a",
+      "forbidden_backend_ids": [],
+      "max_registry_age_seconds": 900,
+      "preferred_kinds": [
+        "github_actions"
+      ],
+      "required_backend_id": "github-actions-windows",
       "required_capabilities": [
         "os:windows",
         "rust:1.98.1",
         "feature:windows-e2e",
         "artifact:upload"
       ],
+      "schema": "capability-request/v1",
+      "task_id": "Word-broker-isolation-Windows"
+    },
+    "host": {
+      "candidate_sha": "436003d9287937d10606c74ae942b5518495d62a",
+      "forbidden_backend_ids": [],
+      "max_registry_age_seconds": 900,
       "preferred_kinds": [
         "github_actions"
       ],
-      "forbidden_backend_ids": [],
-      "required_backend_id": "github-actions-windows",
-      "max_registry_age_seconds": 900
-    },
-    "host": {
-      "schema": "capability-request/v1",
-      "task_id": "Word-broker-managed-writer",
-      "candidate_sha": "436003d9287937d10606c74ae942b5518495d62a",
+      "required_backend_id": "github-actions-managed-host",
       "required_capabilities": [
         "os:linux",
         "python:3",
@@ -90,71 +94,67 @@
         "feature:managed-host",
         "network:common-dependencies"
       ],
-      "preferred_kinds": [
-        "github_actions"
-      ],
-      "forbidden_backend_ids": [],
-      "required_backend_id": "github-actions-managed-host",
-      "max_registry_age_seconds": 900
+      "schema": "capability-request/v1",
+      "task_id": "Word-broker-managed-writer"
     }
   },
   "results": {
     "Windows": {
       "capability": {
         "action": "route",
-        "reason": "compatible_backend_selected",
+        "authorizes_external_start": false,
         "backend_id": "github-actions-windows",
         "backend_kind": "github_actions",
         "configuration_digest": "sha256:6a82c08da034fdd527210a236eb9063229626582648cb5918b3807088c4755e1",
         "evidence_refs": [
-          "https://github.com/bajoicheg/g-switcher/actions/runs/37969871428",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/37997527777",
           "git:436003d9287937d10606c74ae942b5518495d62a:.github/workflows/windows-ci.yml"
         ],
         "missing_by_backend": {},
-        "authorizes_external_start": false
+        "reason": "compatible_backend_selected"
       },
       "cost": {
         "action": "route",
-        "reason": "lowest_cost_compatible_ready_backend",
+        "authorizes_external_start": false,
+        "authorizes_product_write": false,
+        "authorizes_scheduler_mutation": false,
+        "authorizes_takeover": false,
         "backend_id": "github-actions-windows",
         "backend_kind": "github_actions",
         "expensive_fallback": false,
         "expensive_reason": null,
-        "retry_after_seconds": null,
         "missing_by_backend": {},
-        "authorizes_external_start": false,
-        "authorizes_product_write": false,
-        "authorizes_takeover": false,
-        "authorizes_scheduler_mutation": false
+        "reason": "lowest_cost_compatible_ready_backend",
+        "retry_after_seconds": null
       }
     },
     "host": {
       "capability": {
         "action": "route",
-        "reason": "compatible_backend_selected",
+        "authorizes_external_start": false,
         "backend_id": "github-actions-managed-host",
         "backend_kind": "github_actions",
         "configuration_digest": "sha256:9303251a6bbb687c07435385f3aa302ee5119c59f8e53abc480371e3231bbaee",
         "evidence_refs": [
-          "https://github.com/bajoicheg/g-switcher/actions/runs/37969527006",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/37997322604",
           "git:436003d9287937d10606c74ae942b5518495d62a:.agents/skills/continuous-development-cycle/scripts/managed_host_bridge.py"
         ],
         "missing_by_backend": {},
-        "authorizes_external_start": false
+        "reason": "compatible_backend_selected"
       },
       "cost": {
         "action": "route",
-        "reason": "lowest_cost_compatible_ready_backend",
+        "authorizes_external_start": false,
+        "authorizes_product_write": false,
+        "authorizes_scheduler_mutation": false,
+        "authorizes_takeover": false,
         "backend_id": "github-actions-managed-host",
         "backend_kind": "github_actions",
         "expensive_fallback": false,
         "expensive_reason": null,
-        "retry_after_seconds": null,
         "missing_by_backend": {},
-        "authorizes_external_start": false,
-        "authorizes_product_write": false,
-        "authorizes_takeover": false,
-        "authorizes_scheduler_mutation": false
+        "reason": "lowest_cost_compatible_ready_backend",
+        "retry_after_seconds": null
       }
     }
   }
