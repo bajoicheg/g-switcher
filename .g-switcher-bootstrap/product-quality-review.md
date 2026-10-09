@@ -1,3 +1,0 @@
-# Independent browser diagnostic QUALITY
-
-PASS /root/platform_quality; payload 45236029b90be352f86fef862be21483f4628898351ff3f30d775675c82e3599. Exact one-file diagnostic insertion all31hashes verified other30bytes unchanged. Originaltimeoutpanic/assertions/requiredarrays/26Windowsstepdicts unchanged. CapturedHWND/PID retainedlivebirth/nativefocus deniesWord; scopedElementFromHandle/rootdescendant only. Metadata andpatternpresence only; noName/Value/text/globalUIAfocus. Windows0.59.0 COM/Variant/Accessibility feature/API forms consistent withexistingproduction. StaticnoAPI/typeblocker; identitybetweenphases andsynchronousprovider calls diagnosticlimits; outer240s timeout remains. Compile/CI andEdgecauseunconfirmed.

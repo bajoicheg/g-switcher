@@ -1,3 +1,0 @@
-# Independent browser diagnostic SPEC
-
-PASS /root/platform_spec; payload 45236029b90be352f86fef862be21483f4628898351ff3f30d775675c82e3599. Exact one test-file failure-only metadata diagnostic; other30files byte-identical; removing addeddiagnostics restores priorfile. Existing timeout panic/assertions, requiredarrays and26originalstepdicts unchanged. CapturedWin32 HWND/PID retainedlivebirth/nativefocus identity excludesWord; ElementFromHandle androotdescendantsearch only. Outputs metadata/patternavailability only; patternchecksPID andIsPasswordfalse; noName/Value/text/globalfocus. Diagnosticlimits: capturedPIDnotprinted, no rawtree discrimination; synchronousfailurepath can delaypanic but240secgate remains. Staticonly; compile/APIcompatibility andEdgecause unconfirmed.
