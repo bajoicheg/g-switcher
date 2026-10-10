@@ -2285,6 +2285,37 @@
           "tool_calls": 1
         },
         "recovery_ref": null
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-capture-host-quality-a1-finished",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:18:01.264985Z",
+        "reservation_id": "word-capture-host-quality-a1",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 152.6
+        }
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-capture-host-20261010-1252-a1",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:18:01.264985Z",
+        "kind": "ci_start",
+        "scope": "github-actions/g-switcher/word-capture-standalone-Windows",
+        "operation_key": "sha256:4980bc36c1809994798bc778ef6741344b55acf765b46f3dff86a8438fe36bf1",
+        "attempt_id": "word-capture-host-a1",
+        "cost": {
+          "tokens": null,
+          "elapsed_seconds": null,
+          "tool_calls": 1
+        },
+        "recovery_ref": null
       }
     ],
     "policy": {
@@ -2347,7 +2378,7 @@
     "schema": "word-xml-capture-proposal/v1"
   },
   "payload_sha256": "1ee3e6efee98a56980c6fff8730f0291ef04485aa9ae517e346f3d26d4eb538a",
-  "phase": "host-quality-running",
+  "phase": "reviewed-CI-reserved",
   "plan": {
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
     "change_id": "Word-capture-managed-host-envelope",
@@ -2417,7 +2448,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
     "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
-    "revision": 6,
+    "revision": 8,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -2436,21 +2467,21 @@
       },
       {
         "id": "quality",
-        "status": "running",
+        "status": "succeeded",
         "attempt_ids": [
           "host-quality-a1"
         ],
-        "active_attempt_id": "host-quality-a1",
-        "reservation_token": "reserve:host-quality-a1",
-        "accepted_result_ref": null,
-        "integrated": false,
+        "active_attempt_id": null,
+        "reservation_token": null,
+        "accepted_result_ref": "sha256:1cbc7ffda21574d11a322c79fe987df54c282df4a1ba514bfd6ba54ce658cf0c",
+        "integrated": true,
         "discarded": false,
-        "runtime_seconds": 0,
-        "cost_units": 0
+        "runtime_seconds": 152.6,
+        "cost_units": 1
       }
     ],
-    "runtime_consumed_seconds": 119.786,
-    "cost_consumed_units": 1,
+    "runtime_consumed_seconds": 272.38599999999997,
+    "cost_consumed_units": 2,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -2471,6 +2502,24 @@
       "actual_word": "NOT_RUN",
       "launch_intent": "NOT_INSTANTIATED",
       "correction": "reject stale/expired ownership and inactive exact managed controller job"
+    },
+    "quality": {
+      "verdict": "PASS",
+      "reviewer": "/root/capture_quality",
+      "host_files_mapping_sha256": "013024b572ab4c5807bbf93a1d52340df877bd5353a344bd1ac1543d7755545e",
+      "observed_review_interval_seconds": 152.6,
+      "findings": [],
+      "actual_word": "NOT_RUN",
+      "launch_intent": "NOT_INSTANTIATED",
+      "checks": [
+        "Python AST3",
+        "PowerShell gate parser",
+        "6 worker stepnames exact",
+        "package complete",
+        "canonical pool schema",
+        "canonical intent contracts",
+        "runtimefactory canonical types"
+      ]
     }
   },
   "schema": "word-capture-review-coordination/v1",
@@ -2752,5 +2801,93 @@
     "worker.py": "6404b6ddc17c6eac6e5df6ff25cb8e37ca9041434b873697341fead5555e135c",
     "workflow.yml": "b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f"
   },
-  "host_revision_note": "SPEC in-progress observation led to freshness check for expires/heartbeat and exact active controller job; reviewer must verify updated hashes before verdict."
+  "host_revision_note": "SPEC in-progress observation led to freshness check for expires/heartbeat and exact active controller job; reviewer must verify updated hashes before verdict.",
+  "routing": {
+    "registry": {
+      "schema": "backend-capability-registry/v1",
+      "observed_at_utc": "2026-10-10T10:15:17.460222Z",
+      "backends": [
+        {
+          "backend_id": "github-actions-standard-windows-and-managed-linux",
+          "kind": "github_actions",
+          "enabled": true,
+          "state": "ready",
+          "rank": 0,
+          "capabilities": [
+            "os:windows",
+            "powershell:5.1",
+            "os:linux",
+            "python:3",
+            "git:conditional-push",
+            "artifact:github-actions"
+          ],
+          "configuration_digest": "sha256:b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f",
+          "last_verified_at_utc": "2026-10-10T10:15:17.460222Z",
+          "evidence_refs": [
+            "https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md",
+            "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_windows_powershell_5.1?view=powershell-5.1",
+            "https://github.com/bajoicheg/g-switcher/actions/runs/37998673312"
+          ]
+        }
+      ]
+    },
+    "request": {
+      "schema": "capability-request/v1",
+      "task_id": "g-switcher/word-capture-Windows-validation",
+      "candidate_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+      "required_capabilities": [
+        "os:windows",
+        "powershell:5.1",
+        "os:linux",
+        "python:3",
+        "git:conditional-push",
+        "artifact:github-actions"
+      ],
+      "preferred_kinds": [
+        "github_actions"
+      ],
+      "forbidden_backend_ids": [],
+      "required_backend_id": "github-actions-standard-windows-and-managed-linux",
+      "max_registry_age_seconds": 300
+    },
+    "context": {
+      "schema": "compute-cost-context/v1",
+      "evidence_class": "platform",
+      "primary_failure_class": "none",
+      "distinct_primary_recovery_attempts": 0,
+      "provider_outage_confirmed": false,
+      "required_capability_gap_on_primary": false,
+      "last_primary_failure_at_utc": null,
+      "repository_visibility": "public"
+    },
+    "capability_decision": {
+      "action": "route",
+      "reason": "compatible_backend_selected",
+      "backend_id": "github-actions-standard-windows-and-managed-linux",
+      "backend_kind": "github_actions",
+      "configuration_digest": "sha256:b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f",
+      "evidence_refs": [
+        "https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md",
+        "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_windows_powershell_5.1?view=powershell-5.1",
+        "https://github.com/bajoicheg/g-switcher/actions/runs/37998673312"
+      ],
+      "missing_by_backend": {},
+      "authorizes_external_start": false
+    },
+    "cost_decision": {
+      "action": "route",
+      "reason": "lowest_cost_compatible_ready_backend",
+      "backend_id": "github-actions-standard-windows-and-managed-linux",
+      "backend_kind": "github_actions",
+      "expensive_fallback": false,
+      "expensive_reason": null,
+      "retry_after_seconds": null,
+      "missing_by_backend": {},
+      "authorizes_external_start": false,
+      "authorizes_product_write": false,
+      "authorizes_takeover": false,
+      "authorizes_scheduler_mutation": false
+    },
+    "evidence_scope": "Fresh official runner-image/PowerShell capability metadata and terminal product CI; new probe execution still NOT_RUN."
+  }
 }
