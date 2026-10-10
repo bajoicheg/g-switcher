@@ -2347,7 +2347,7 @@
     "schema": "word-xml-capture-proposal/v1"
   },
   "payload_sha256": "1ee3e6efee98a56980c6fff8730f0291ef04485aa9ae517e346f3d26d4eb538a",
-  "phase": "host-quality-queued",
+  "phase": "host-quality-running",
   "plan": {
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
     "change_id": "Word-capture-managed-host-envelope",
@@ -2417,7 +2417,7 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
     "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
-    "revision": 5,
+    "revision": 6,
     "execution_mode": "parallel",
     "tasks": [
       {
@@ -2436,7 +2436,7 @@
       },
       {
         "id": "quality",
-        "status": "queued",
+        "status": "running",
         "attempt_ids": [
           "host-quality-a1"
         ],
