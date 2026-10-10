@@ -267,3 +267,24 @@ Canonical immutable release 62cd32e91446675799d42247eac2a0312c33d363, package 68
 
 
 CDC 3.3.0 process migration: policy binding and actual released control readback above; product work and historical proof remain pending/unchanged.
+
+## Prepared owner-approved usability batch — 2026-10-10
+
+The owner approved all five proposed extensions: visible stop reasons, quick
+application mode, explicit diagnostics export, settings transfer and timed pause.
+The isolated implementation is based on exact source
+`f2db9a73219668d2d3c3bb8e655e015e5e090e8f`; see `docs/USABILITY_CONTROLS.md`.
+Local portable behavior checks and Windows cross-compilation are preparation
+evidence only. Independent reviews and exact-candidate Windows execution are
+not complete; no new EXE, product publication, release or native Word repair
+is claimed.
+
+Automatic approval review rejected the attempted durable CDC budget/control
+publication as separately unauthorized metadata export to an unverified remote.
+Read-only reconciliation confirmed the original control ref was unchanged and
+the process had stopped. No managed lease or provider start was acquired.
+The prepared diff remains isolated. Next action: obtain approval for the named
+CDC coordination publication, then reserve the preserved budget, perform ordered
+reviews and run the required Windows gate through the managed lifecycle.
+All existing product blockers, exact-source proofs, budgets and scheduler pause
+remain preserved. CDC core and adoption policy are unchanged.

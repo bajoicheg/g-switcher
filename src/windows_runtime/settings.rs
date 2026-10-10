@@ -40,13 +40,14 @@ const VK_F12_VALUE: u16 = 0x7B;
 
 static RUNTIME_SETTINGS: OnceLock<RwLock<RuntimeSettings>> = OnceLock::new();
 static PAUSED: AtomicBool = AtomicBool::new(false);
+static PAUSE_CLOCK: OnceLock<parking_lot::Mutex<crate::user_controls::PauseClock>> =
+    OnceLock::new();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AppMode {
-    Auto,
-    ManualOnly,
-    Disabled,
+fn pause_clock() -> &'static parking_lot::Mutex<crate::user_controls::PauseClock> {
+    PAUSE_CLOCK.get_or_init(Default::default)
 }
+
+pub(crate) use crate::user_controls::AppMode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SensitivityProfile {
@@ -200,14 +201,47 @@ pub fn paused() -> bool {
 }
 
 pub fn set_paused(value: bool) {
+    let mut clock = pause_clock().lock();
+    clock.set(value);
     PAUSED.store(value, Ordering::SeqCst);
+    drop(clock);
     super::word_broker::policy_changed();
 }
 
 pub fn toggle_paused() -> bool {
-    let next = !paused();
-    set_paused(next);
+    let mut clock = pause_clock().lock();
+    let next = !clock.paused;
+    clock.set(next);
+    PAUSED.store(next, Ordering::SeqCst);
+    drop(clock);
+    super::word_broker::policy_changed();
     next
+}
+
+pub(super) fn pause_for(minutes: u32) {
+    let mut clock = pause_clock().lock();
+    clock.pause_for(std::time::Instant::now(), minutes);
+    PAUSED.store(true, Ordering::SeqCst);
+    drop(clock);
+    super::word_broker::policy_changed();
+}
+
+pub(super) fn expire_pause() -> bool {
+    let mut clock = pause_clock().lock();
+    if !clock.expire(std::time::Instant::now()) {
+        return false;
+    }
+    PAUSED.store(false, Ordering::SeqCst);
+    drop(clock);
+    super::word_broker::policy_changed();
+    true
+}
+
+pub(super) fn pause_remaining_minutes() -> Option<u64> {
+    pause_clock()
+        .lock()
+        .remaining(std::time::Instant::now())
+        .map(|d| d.as_millis().div_ceil(60_000) as u64)
 }
 
 pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {

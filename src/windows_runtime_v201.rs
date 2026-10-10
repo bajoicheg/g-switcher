@@ -14,6 +14,8 @@ mod tray_status;
 mod ui;
 #[path = "windows_runtime/uia_secure.rs"]
 mod uia_secure;
+#[path = "windows_runtime/user_tools.rs"]
+mod user_tools;
 #[path = "windows_runtime/word_broker.rs"]
 mod word_broker;
 
@@ -345,6 +347,28 @@ pub(crate) fn toggle_pause() -> bool {
     value
 }
 
+pub(super) fn pause_for(minutes: u32) {
+    settings::pause_for(minutes);
+    refresh_user_policy();
+}
+
+pub(super) fn refresh_user_policy() {
+    publish_hotkeys(&settings::runtime_settings());
+    // A new app policy must not reuse a cached hotkey-suppression admission.
+    invalidate_context(true);
+    if let Some(engine) = ENGINE.get() {
+        engine.lock().reset_transient();
+    }
+    tray_status::refresh_policy_view();
+}
+
+pub(super) fn user_timer_tick() {
+    if settings::expire_pause() {
+        refresh_user_policy();
+    }
+    tray_status::set_paused(settings::paused());
+}
+
 pub(crate) fn current_process_name() -> Option<String> {
     let engine = ENGINE.get()?;
     let process_name = engine.lock().process_name.clone();
@@ -357,6 +381,7 @@ fn handle_runtime_message(message: &MSG) -> bool {
     };
     if message.message == WM_RUNTIME_WORD_RESULT
         || (message.message == windows_sys::Win32::UI::WindowsAndMessaging::WM_TIMER
+            && message.hwnd.is_null()
             && message.wParam as u64 == WORD_TIMER.load(Ordering::SeqCst))
     {
         engine.lock().apply_word_result();
@@ -802,9 +827,11 @@ impl Engine {
         }
 
         self.refresh_process_name(target.process_id);
+        tray_status::observe_process(target.process_id);
         let app_mode = runtime_settings.app_mode(&self.process_name);
         tray_status::update_context(app_mode, &self.process_name, target.language);
         if app_mode == AppMode::Disabled {
+            tray_status::note_reason(target.process_id, tray_status::StopReason::Disabled);
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
             return;
@@ -827,6 +854,7 @@ impl Engine {
             }
         }
         if secure_input::is_secure_input(target.hwnd, &self.process_name) {
+            tray_status::note_reason(target.process_id, tray_status::StopReason::Secure);
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
             return;
@@ -840,6 +868,7 @@ impl Engine {
         // UIA/password metadata below and fresh native mutation guards remain
         // mandatory. Class/process routing never proves a range writable.
         if !selection::is_word_target(target.hwnd) && !selection::is_standard_edit(target.hwnd) {
+            tray_status::note_reason(target.process_id, tray_status::StopReason::Unsupported);
             HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
             self.reset_transient();
             return;
@@ -851,11 +880,13 @@ impl Engine {
         // probe because its verified text adapter is UIA-backed.
         match self.uia_password_state(target, event.generation) {
             Some(true) => {
+                tray_status::note_reason(target.process_id, tray_status::StopReason::Secure);
                 HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
                 self.reset_transient();
                 return;
             }
             None if !selection::is_plain_edit(target.hwnd) => {
+                tray_status::note_reason(target.process_id, tray_status::StopReason::Unsupported);
                 HOOK_POLICY.store(POLICY_DENY, Ordering::SeqCst);
                 self.reset_transient();
                 return;
@@ -2297,6 +2328,13 @@ impl Engine {
         let Some(result) = word_broker::poll() else {
             return;
         };
+        tray_status::complete_word(
+            result.pid,
+            result.birth,
+            result.operation,
+            result.success,
+            result.uncertain,
+        );
         if result.uncertain || !result.success {
             return;
         }

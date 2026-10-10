@@ -21,14 +21,15 @@ use windows_sys::Win32::UI::Shell::{
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
     DestroyWindow, DispatchMessageW, GetClientRect, GetCursorPos, GetDlgItem, GetSystemMetrics,
-    GetWindowRect, IsDialogMessageW, IsWindow, LoadCursorW, LoadIconW, LoadImageW, MoveWindow,
-    PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, SetWindowPos,
-    ShowWindow, SystemParametersInfoW, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
-    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL,
-    IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA,
-    STM_SETICON, SWP_NOACTIVATE, SWP_NOZORDER, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP,
-    WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_GETFONT, WM_RBUTTONUP, WM_SETFONT,
-    WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
+    GetWindowRect, IsDialogMessageW, IsWindow, KillTimer, LoadCursorW, LoadIconW, LoadImageW,
+    MoveWindow, PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow,
+    SetTimer, SetWindowPos, ShowWindow, SystemParametersInfoW, TrackPopupMenu, TranslateMessage,
+    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, CBS_DROPDOWNLIST, CB_ADDSTRING,
+    CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_CHECKED, MF_GRAYED, MF_SEPARATOR, MF_STRING, MSG,
+    PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SWP_NOACTIVATE,
+    SWP_NOZORDER, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND,
+    WM_CTLCOLORSTATIC, WM_DESTROY, WM_GETFONT, WM_RBUTTONUP, WM_SETFONT, WM_TIMER, WNDCLASSW,
+    WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -41,6 +42,21 @@ const ID_SETTINGS: usize = 1000;
 const ID_AUTOSTART: usize = 1001;
 const ID_EXIT: usize = 1002;
 const ID_PAUSE: usize = 1003;
+const ID_MODE_AUTO: usize = 1010;
+const ID_MODE_MANUAL: usize = 1011;
+const ID_MODE_DISABLED: usize = 1012;
+const ID_PAUSE_5: usize = 1020;
+const ID_PAUSE_15: usize = 1021;
+const ID_PAUSE_30: usize = 1022;
+const ID_DIAGNOSTICS: usize = 1030;
+const ID_EXPORT: usize = 1031;
+const ID_IMPORT: usize = 1032;
+const USER_TIMER: usize = 0x6773;
+static LAST_APP: std::sync::OnceLock<parking_lot::Mutex<Option<super::user_tools::AppIdentity>>> =
+    std::sync::OnceLock::new();
+fn last_app() -> &'static parking_lot::Mutex<Option<super::user_tools::AppIdentity>> {
+    LAST_APP.get_or_init(Default::default)
+}
 const ID_AUTOSTART_CHECKBOX: i32 = 2001;
 const ID_OK: i32 = 1;
 const ID_CANCEL: i32 = 2;
@@ -128,6 +144,14 @@ impl TrayGuard {
                 return Err(anyhow!("Shell_NotifyIconW(NIM_ADD) failed"));
             }
 
+            if SetTimer(hwnd, USER_TIMER, 1000, None) == 0 {
+                Shell_NotifyIconW(NIM_DELETE, &data);
+                DestroyWindow(hwnd);
+                return Err(anyhow!(
+                    "Не удалось запустить таймер пользовательских функций"
+                ));
+            }
+            *last_app().lock() = super::user_tools::foreground_app();
             Ok(Self { hwnd, data })
         }
     }
@@ -136,6 +160,7 @@ impl TrayGuard {
 impl Drop for TrayGuard {
     fn drop(&mut self) {
         unsafe {
+            KillTimer(self.hwnd, USER_TIMER);
             Shell_NotifyIconW(NIM_DELETE, &self.data);
             if !self.hwnd.is_null() {
                 DestroyWindow(self.hwnd);
@@ -818,6 +843,14 @@ unsafe extern "system" fn tray_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match message {
+        WM_TIMER if wparam == USER_TIMER => {
+            if let Some(app) = super::user_tools::foreground_app() {
+                super::tray_status::observe_foreground(&app);
+                *last_app().lock() = Some(app);
+            }
+            super::user_timer_tick();
+            0
+        }
         WM_TRAY => {
             if lparam as u32 == WM_RBUTTONUP {
                 show_tray_menu(hwnd);
@@ -831,6 +864,19 @@ unsafe extern "system" fn tray_proc(
                 }
                 ID_SETTINGS => {
                     let _ = settings_dialog::show();
+                }
+                ID_PAUSE_5 => super::pause_for(5),
+                ID_PAUSE_15 => super::pause_for(15),
+                ID_PAUSE_30 => super::pause_for(30),
+                ID_DIAGNOSTICS => super::user_tools::report_error(
+                    hwnd,
+                    super::user_tools::export_diagnostics(hwnd),
+                ),
+                ID_EXPORT => {
+                    super::user_tools::report_error(hwnd, super::user_tools::export_settings(hwnd))
+                }
+                ID_IMPORT => {
+                    super::user_tools::report_error(hwnd, super::user_tools::import_settings(hwnd))
                 }
                 ID_AUTOSTART => {
                     let enabled = settings::autostart_enabled();
@@ -846,6 +892,11 @@ unsafe extern "system" fn tray_proc(
 }
 
 unsafe fn show_tray_menu(hwnd: HWND) {
+    if let Some(app) = super::user_tools::foreground_app() {
+        super::tray_status::observe_foreground(&app);
+        *last_app().lock() = Some(app);
+    }
+    let app = last_app().lock().clone();
     let menu = CreatePopupMenu();
     if menu.is_null() {
         return;
@@ -865,7 +916,63 @@ unsafe fn show_tray_menu(hwnd: HWND) {
     let autostart_label = wide(autostart_label);
     let exit_label = wide("Выход");
     AppendMenuW(menu, MF_STRING, ID_PAUSE, pause_label.as_ptr());
+    for (id, label) in [
+        (ID_PAUSE_5, "Пауза на 5 минут"),
+        (ID_PAUSE_15, "Пауза на 15 минут"),
+        (ID_PAUSE_30, "Пауза на 30 минут"),
+    ] {
+        AppendMenuW(menu, MF_STRING, id, wide(label).as_ptr());
+    }
+    let reason = super::tray_status::reason_label();
+    if !reason.is_empty() {
+        AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, wide(reason).as_ptr());
+    }
+    AppendMenuW(menu, MF_SEPARATOR, 0, null());
+    if let Some(app) = &app {
+        AppendMenuW(
+            menu,
+            MF_STRING | MF_GRAYED,
+            0,
+            wide(&format!("Режим приложения: {}", app.name)).as_ptr(),
+        );
+        let current = settings::runtime_settings().app_mode(&app.name);
+        for (id, mode, label) in [
+            (ID_MODE_AUTO, settings::AppMode::Auto, "Авто"),
+            (
+                ID_MODE_MANUAL,
+                settings::AppMode::ManualOnly,
+                "Только вручную",
+            ),
+            (ID_MODE_DISABLED, settings::AppMode::Disabled, "Отключено"),
+        ] {
+            AppendMenuW(
+                menu,
+                MF_STRING | if current == mode { MF_CHECKED } else { 0 },
+                id,
+                wide(label).as_ptr(),
+            );
+        }
+        AppendMenuW(menu, MF_SEPARATOR, 0, null());
+    }
     AppendMenuW(menu, MF_STRING, ID_SETTINGS, settings_label.as_ptr());
+    AppendMenuW(
+        menu,
+        MF_STRING,
+        ID_DIAGNOSTICS,
+        wide("Сохранить диагностику…").as_ptr(),
+    );
+    AppendMenuW(
+        menu,
+        MF_STRING,
+        ID_EXPORT,
+        wide("Экспорт настроек и словаря…").as_ptr(),
+    );
+    AppendMenuW(
+        menu,
+        MF_STRING,
+        ID_IMPORT,
+        wide("Импорт настроек и словаря…").as_ptr(),
+    );
     AppendMenuW(menu, MF_SEPARATOR, 0, null());
     AppendMenuW(menu, MF_STRING, ID_AUTOSTART, autostart_label.as_ptr());
     AppendMenuW(menu, MF_SEPARATOR, 0, null());
@@ -885,7 +992,15 @@ unsafe fn show_tray_menu(hwnd: HWND) {
     );
     DestroyMenu(menu);
 
-    if command != 0 {
+    let mode = match command as usize {
+        ID_MODE_AUTO => Some(settings::AppMode::Auto),
+        ID_MODE_MANUAL => Some(settings::AppMode::ManualOnly),
+        ID_MODE_DISABLED => Some(settings::AppMode::Disabled),
+        _ => None,
+    };
+    if let (Some(app), Some(mode)) = (app, mode) {
+        super::user_tools::report_error(hwnd, super::user_tools::set_app_mode(&app, mode));
+    } else if command != 0 {
         SendMessageW(hwnd, WM_COMMAND, command as usize, 0);
     }
 }
