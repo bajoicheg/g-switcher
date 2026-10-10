@@ -1,0 +1,90 @@
+{
+  "registry": {
+    "schema": "backend-capability-registry/v1",
+    "observed_at_utc": "2026-10-10T10:23:14.943893Z",
+    "backends": [
+      {
+        "backend_id": "github-actions-standard-windows-and-managed-linux",
+        "kind": "github_actions",
+        "enabled": true,
+        "state": "ready",
+        "rank": 0,
+        "capabilities": [
+          "os:windows",
+          "powershell:5.1",
+          "os:linux",
+          "python:3",
+          "git:conditional-push",
+          "artifact:github-actions"
+        ],
+        "configuration_digest": "sha256:b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f",
+        "last_verified_at_utc": "2026-10-10T10:23:14.943893Z",
+        "evidence_refs": [
+          "https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md",
+          "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_windows_powershell_5.1?view=powershell-5.1",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/37998673312",
+          "https://github.com/bajoicheg/g-switcher/actions/runs/38044518474"
+        ]
+      }
+    ]
+  },
+  "request": {
+    "schema": "capability-request/v1",
+    "task_id": "g-switcher/word-capture-Windows-validation",
+    "candidate_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+    "required_capabilities": [
+      "os:windows",
+      "powershell:5.1",
+      "os:linux",
+      "python:3",
+      "git:conditional-push",
+      "artifact:github-actions"
+    ],
+    "preferred_kinds": [
+      "github_actions"
+    ],
+    "forbidden_backend_ids": [],
+    "required_backend_id": "github-actions-standard-windows-and-managed-linux",
+    "max_registry_age_seconds": 300
+  },
+  "context": {
+    "schema": "compute-cost-context/v1",
+    "evidence_class": "platform",
+    "primary_failure_class": "none",
+    "distinct_primary_recovery_attempts": 0,
+    "provider_outage_confirmed": false,
+    "required_capability_gap_on_primary": false,
+    "last_primary_failure_at_utc": null,
+    "repository_visibility": "public"
+  },
+  "capability_decision": {
+    "action": "route",
+    "reason": "compatible_backend_selected",
+    "backend_id": "github-actions-standard-windows-and-managed-linux",
+    "backend_kind": "github_actions",
+    "configuration_digest": "sha256:b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f",
+    "evidence_refs": [
+      "https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md",
+      "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_windows_powershell_5.1?view=powershell-5.1",
+      "https://github.com/bajoicheg/g-switcher/actions/runs/37998673312",
+      "https://github.com/bajoicheg/g-switcher/actions/runs/38044518474"
+    ],
+    "missing_by_backend": {},
+    "authorizes_external_start": false
+  },
+  "cost_decision": {
+    "action": "route",
+    "reason": "lowest_cost_compatible_ready_backend",
+    "backend_id": "github-actions-standard-windows-and-managed-linux",
+    "backend_kind": "github_actions",
+    "expensive_fallback": false,
+    "expensive_reason": null,
+    "retry_after_seconds": null,
+    "missing_by_backend": {},
+    "authorizes_external_start": false,
+    "authorizes_product_write": false,
+    "authorizes_takeover": false,
+    "authorizes_scheduler_mutation": false
+  },
+  "evidence_scope": "Fresh observed Linux and Windows hosted jobs and WindowsPowerShell shell path; immutable Microsoft51 capability reference reused. Probe tests NOT_RUN."
+}

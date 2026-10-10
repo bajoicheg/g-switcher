@@ -1,6 +1,6 @@
 {
   "actual_word_execution": "NOT_RUN",
-  "admission_ref": "refs/heads/cdc/word-capture-admission-20261010-1252-a1",
+  "admission_ref": "refs/heads/cdc/word-capture-admission-20261010-1252-a2",
   "base": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
   "budget_ledger": {
     "events": [
@@ -2319,6 +2319,52 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "word-xml-capture-20261010-1252"
+      },
+      {
+        "at_utc": "2026-10-10T10:23:14.943893Z",
+        "event_id": "word-capture-bootstrap-a1-failed",
+        "failure": {
+          "category": "configuration",
+          "signature": "Canonical-document-encoding"
+        },
+        "reservation_id": "word-capture-host-20261010-1252-a1",
+        "status": "failed",
+        "task_id": "g-switcher/2.0.1",
+        "type": "outcome",
+        "usage": {
+          "elapsed_seconds": null,
+          "tokens": null
+        },
+        "wake_id": "word-xml-capture-20261010-1252"
+      },
+      {
+        "at_utc": "2026-10-10T10:23:14.943893Z",
+        "detail": "Use unchanged CDC GitDocumentStore.canonical (compact sorted UTF8 plus newline). Actual read passed against corrected remote dedicated ref. Both old jobs terminal; failed before lease acquisition. New admission preflight read before submission. Toolkit and all5 reviewed host source hashes unchanged.",
+        "event_id": "word-capture-canonical-json-correction",
+        "kind": "configuration_correction",
+        "reference": "git:af3198ccb970dad6e45683cff3569df2c72ba4f0:document.json",
+        "scope": "github-actions/g-switcher/word-capture-standalone-Windows",
+        "signature": "Canonical-document-encoding",
+        "task_id": "g-switcher/2.0.1",
+        "type": "remedy",
+        "wake_id": "word-xml-capture-20261010-1252"
+      },
+      {
+        "at_utc": "2026-10-10T10:23:14.943893Z",
+        "attempt_id": "word-capture-host-a2",
+        "cost": {
+          "elapsed_seconds": null,
+          "tokens": null,
+          "tool_calls": 1
+        },
+        "event_id": "word-capture-host-20261010-1252-a2",
+        "kind": "ci_start",
+        "operation_key": "sha256:4980bc36c1809994798bc778ef6741344b55acf765b46f3dff86a8438fe36bf1",
+        "recovery_ref": "git:af3198ccb970dad6e45683cff3569df2c72ba4f0:document.json",
+        "scope": "github-actions/g-switcher/word-capture-standalone-Windows",
+        "task_id": "g-switcher/2.0.1",
+        "type": "reserve",
+        "wake_id": "word-xml-capture-20261010-1252"
       }
     ],
     "policy": {
@@ -2364,17 +2410,17 @@
   "cdc_package_tree": "9c45d98c3254e9658d452c505d8c97698e3fc9a7",
   "cdc_version": "2.12.1",
   "host_reservation": {
-    "at_utc": "2026-10-10T10:18:01.264985Z",
-    "attempt_id": "word-capture-host-a1",
+    "at_utc": "2026-10-10T10:23:14.943893Z",
+    "attempt_id": "word-capture-host-a2",
     "cost": {
       "elapsed_seconds": null,
       "tokens": null,
       "tool_calls": 1
     },
-    "event_id": "word-capture-host-20261010-1252-a1",
+    "event_id": "word-capture-host-20261010-1252-a2",
     "kind": "ci_start",
     "operation_key": "sha256:4980bc36c1809994798bc778ef6741344b55acf765b46f3dff86a8438fe36bf1",
-    "recovery_ref": null,
+    "recovery_ref": "git:af3198ccb970dad6e45683cff3569df2c72ba4f0:document.json",
     "scope": "github-actions/g-switcher/word-capture-standalone-Windows",
     "task_id": "g-switcher/2.0.1",
     "type": "reserve",
