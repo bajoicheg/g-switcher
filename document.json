@@ -2222,7 +2222,7 @@
     "schema": "word-xml-capture-proposal/v1"
   },
   "payload_sha256": "bb44bf6313c967473c22a6f30f892604b6f8750c7b821277bee9d66204596ce3",
-  "phase": "spec-queued",
+  "phase": "spec-running",
   "plan": {
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
     "change_id": "Word-XML-capture-diagnostic",
@@ -2300,7 +2300,7 @@
     "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
     "plan_digest": "sha256:ec11d40eecc7bad27eb552647de21b3d57f8e1567bebaf63397ea2fa0cdde9aa",
     "pool_id": "word-capture-review-20261010-1252",
-    "revision": 1,
+    "revision": 2,
     "runtime_consumed_seconds": 0,
     "schema": "managed-executor-pool-state/v1",
     "tasks": [
@@ -2316,7 +2316,7 @@
         "integrated": false,
         "reservation_token": "reserve:spec-a1",
         "runtime_seconds": 0,
-        "status": "queued"
+        "status": "running"
       },
       {
         "accepted_result_ref": null,
