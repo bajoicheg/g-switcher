@@ -2995,7 +2995,7 @@
   "source_spec_verdict": "PASS",
   "source_quality_verdict": "PASS",
   "payload_sha256": {
-    "controller.py": "6704818fa081a34911c3b0c6fb862a3a4d6ed4f738d02accd4b0d956f7757cc1",
+    "controller.py": "471eb0a51b25224c1464116b20c0e389ca0d212a7174406af1a7413ed53fc068",
     "required-steps.json": "db9c817adc2447badc2439dba48acc1b462b16af6e17e0c377a214cfff5afd14",
     "worker.py": "85b3ffcc3e5130dafd5396491e14926e896988204839809322a3efd5b166be6b",
     "Wait-ManagedAdmission.ps1": "bef144a91161ecc36856683449d9dbcb070f0401d630fbca9c08b4cd5c59ddf3",

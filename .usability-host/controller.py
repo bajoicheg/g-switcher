@@ -126,7 +126,7 @@ def main():
    ci_id=pinned['ci_reservation']['event_id']
    if not any(e['type']=='outcome' and e['reservation_id']==ci_id for e in ledger['events']):
     conclusion=conclusions[job['conclusion']]
-    ledger=budget.apply_event(ledger,dict(type='outcome',event_id='usability-ci-a1-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),reservation_id=ci_id,status=conclusion,failure=None if conclusion in ['succeeded','cancelled'] else {'category':'code','signature':'Full-Windows-'+conclusion},usage={'tokens':None,'elapsed_seconds':None}))
+    ledger=budget.apply_event(ledger,dict(type='outcome',event_id=ci_id+'-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),reservation_id=ci_id,status=conclusion,failure=None if conclusion in ['succeeded','cancelled'] else {'category':'code','signature':'Full-Windows-'+conclusion},usage={'tokens':None,'elapsed_seconds':None}))
    document.update(windows_terminal_observation=observation,budget_ledger=ledger)
    nonlocal_revision=store.compare_and_swap(revision,document)
    assert store.read()==(nonlocal_revision,document)
@@ -141,7 +141,7 @@ def main():
   if status=='succeeded': assert result['payload_sha256']==pinned['proposal_hash'] and result['windows_job_conclusion']=='success'
   ledger=document['budget_ledger'];reservation=pinned['host_reservation']
   elapsed=(datetime.fromisoformat(utc().replace('Z','+00:00'))-datetime.fromisoformat(reservation['at_utc'].replace('Z','+00:00'))).total_seconds()
-  ledger=budget.apply_event(ledger,dict(type='outcome',event_id='usability-host-a1-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),
+  ledger=budget.apply_event(ledger,dict(type='outcome',event_id=reservation['event_id']+'-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),
    reservation_id=reservation['event_id'],status=status,failure=None if status in ['succeeded','cancelled'] else {'category':'code','signature':'Full-Windows-validation-failed'},usage={'tokens':None,'elapsed_seconds':elapsed}))
   document.update(state='worker-terminal',worker_status=status,result=result,budget_ledger=ledger)
   revision=store.compare_and_swap(revision,document);assert store.read()==(revision,document)
@@ -188,9 +188,9 @@ def main():
       revision,document=store.read()
       assert document['host_admission']['run_id']==int(run) and document['host_head']==os.environ['GITHUB_SHA']
       ledger=document['budget_ledger'];reservation=pinned['host_reservation']
-      if not any(e['event_id']=='usability-host-a1-outcome' for e in ledger['events']):
+      if not any(e['event_id']==reservation['event_id']+'-outcome' for e in ledger['events']):
        elapsed=(datetime.fromisoformat(utc().replace('Z','+00:00'))-datetime.fromisoformat(reservation['at_utc'].replace('Z','+00:00'))).total_seconds()
-       ledger=budget.apply_event(ledger,dict(type='outcome',event_id='usability-host-a1-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),reservation_id=reservation['event_id'],status=status,failure=None if status=='cancelled' else {'category':'configuration','signature':'Managed-usability-controller-incomplete'},usage={'tokens':None,'elapsed_seconds':elapsed}))
+       ledger=budget.apply_event(ledger,dict(type='outcome',event_id=reservation['event_id']+'-outcome',task_id=ledger['task_id'],wake_id=ledger['wake_ids'][-1],at_utc=utc(),reservation_id=reservation['event_id'],status=status,failure=None if status=='cancelled' else {'category':'configuration','signature':'Managed-usability-controller-incomplete'},usage={'tokens':None,'elapsed_seconds':elapsed}))
       document.update(state='failure-checkpoint',worker_status=status,budget_ledger=ledger,handle_id=handle['handle_id'],failure_observation=state)
       revision=store.compare_and_swap(revision,document);assert store.read()==(revision,document)
       released=bridge.finish(dict(schema='managed-host-finish/v1',handle_root=str(work/'handles'),handle_id=handle['handle_id'],output_refs=['failure:usability-worker:'+status],evidence_refs=['failure:usability-controller-incomplete'],checkpoint_ref='git:'+revision+':document.json'))
