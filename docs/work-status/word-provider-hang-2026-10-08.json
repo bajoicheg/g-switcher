@@ -1,0 +1,124 @@
+{
+  "scope": "Word provider thread isolation and correction call reduction",
+  "source_base": "53d3d5cc9597f480d5f7760a2b8af66ccc640ec4",
+  "user_report": "Word still becomes Not Responding after short typing/corrections with delivered8ad780a EXE",
+  "quality_level": "FULL",
+  "validation_cycle": 2,
+  "max_validation_cycles": 2,
+  "root_cause_evidence": [
+    "UIA metadata on native STA and runtime UI thread",
+    "NativeOM correction availability and snapshot context amplification",
+    "unbounded native join excludes runtime message dispatch"
+  ],
+  "changes": [
+    "windowless read-only MTA metadata readers; fresh plain security snapshots",
+    "750ms metadata wait budget; process-lifetime quarantine after timeout, never late acceptance or replacement reader",
+    "sent-message-only pumping while waiting; posted runtime events stay queued",
+    "Word routing skips availability-only probes and suffix mutation avoids extra snapshot context",
+    "native per-character mutation, evolving exact text/security checks, custom Undo and uncertain-state latch preserved",
+    "capped stage-only diagnostic log in TEMP"
+  ],
+  "installed_word_verdict": false,
+  "limitations": [
+    "NativeOM COM calls and sent callbacks retain synchronous ownership and do not have a hard whole-operation deadline",
+    "Actual Word responsiveness, mixed formatting and one Undo require installed Word observation"
+  ],
+  "remaining_gates": [
+    "exact candidate Windows CI",
+    "installed Word repeated correction acceptance"
+  ],
+  "managed_validation": [
+    {
+      "label": "format",
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "src/windows_runtime/read_worker.rs",
+        "src/windows_runtime/selection.rs",
+        "src/windows_runtime/uia_secure.rs",
+        "src/windows_runtime/word_focus.rs",
+        "src/windows_runtime/word_native.rs",
+        "src/windows_runtime_v201.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.064
+    },
+    {
+      "label": "reader-compile",
+      "argv": [
+        "rustc",
+        "--edition",
+        "2021",
+        "--test",
+        "src/windows_runtime/read_worker.rs",
+        "-o",
+        "/home/runner/work/_temp/g-switcher-word-build-uyo1yz37/read-worker-tests"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.319
+    },
+    {
+      "label": "reader-tests",
+      "argv": [
+        "/home/runner/work/_temp/g-switcher-word-build-uyo1yz37/read-worker-tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.265
+    },
+    {
+      "label": "portable-cargo-library-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 52.34
+    },
+    {
+      "label": "windows-typed-compile",
+      "argv": [
+        "cargo",
+        "check",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 14.182
+    },
+    {
+      "label": "windows-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.974
+    },
+    {
+      "label": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.008
+    }
+  ],
+  "installed_word_latency_measured": false
+}

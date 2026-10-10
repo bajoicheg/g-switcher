@@ -1,0 +1,17 @@
+name: Continuous Development Cycle
+description: Durable CDC orchestration with behavioral verification, two-stage review and isolated parallel execution.
+version: 3.3.0
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
+interface:
+  display_name: Continuous Development Cycle
+  short_description: Managed host-bridged durable development
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+  default_prompt: Use $continuous-development-cycle to continue durable development through CDC 3.3.0 quality levels, evidence reuse, managed host bridging, multi-subscription fencing, truthful liveness, fail-closed finalization and verified native release delivery and forward rollback controls.
+

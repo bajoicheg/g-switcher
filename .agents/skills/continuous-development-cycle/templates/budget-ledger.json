@@ -1,0 +1,36 @@
+{
+  "events": [],
+  "policy": {
+    "actions_budget": "conserve",
+    "checkpoint_reserve": {
+      "tokens": 2000,
+      "tool_calls": 4
+    },
+    "max_parallel_agents": 2,
+    "provider_max_age_seconds": 300,
+    "task_limits": {
+      "agent_starts": 6,
+      "ci_starts": 2,
+      "compute_starts": 8,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 200
+    },
+    "wake_limits": {
+      "agent_starts": 3,
+      "ci_starts": 1,
+      "compute_starts": 4,
+      "elapsed_seconds": null,
+      "status_polls": null,
+      "tokens": null,
+      "tool_calls": 60
+    }
+  },
+  "policy_digest": "sha256:84514da65788dc51e73b0376f70993a416785fce6511208179d6d4ed60f84087",
+  "schema": "budget-ledger/v1",
+  "task_id": "TASK-ID",
+  "wake_ids": [
+    "WAKE-ID"
+  ]
+}

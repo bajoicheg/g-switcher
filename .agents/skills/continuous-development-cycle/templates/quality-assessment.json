@@ -1,0 +1,8 @@
+{
+  "schema": "quality-assessment/v1",
+  "project_level": "MEDIUM",
+  "risk_level": "FAST",
+  "risk_categories": ["ordinary_feature"],
+  "risk_reason": "ordinary application feature",
+  "mandatory_check_ids": []
+}

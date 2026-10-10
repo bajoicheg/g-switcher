@@ -596,7 +596,7 @@ unsafe fn create_controls(hwnd: HWND) {
         module,
         &button_class,
         "Горячие клавиши",
-        UiRect::new(24, 472, 852, 142),
+        UiRect::new(24, 472, 852, 154),
     );
     set_font(hotkeys_group, section_font);
     let hotkey_hint = create_static(

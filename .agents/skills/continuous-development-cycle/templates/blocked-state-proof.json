@@ -1,0 +1,13 @@
+{
+  "schema": "blocked-state-proof/v1",
+  "dependency_id": "dependency:example",
+  "category": "capability",
+  "observed_at_utc": "2026-01-01T00:00:00Z",
+  "max_age_seconds": 900,
+  "evidence_refs": [
+    "probe:example"
+  ],
+  "next_action": "Re-probe dependency after its trigger.",
+  "recheck_trigger": "dependency-change",
+  "same_invocation_work_exhausted": true
+}
