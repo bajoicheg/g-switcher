@@ -2701,10 +2701,11 @@
     }
   ],
   "host_files": {
-    "Wait-ManagedAdmission.ps1": "5a0ab364bf62b3de8ccd15e665f99ae14b27a7e85cea2962a0607020a5d7fe67",
+    "Wait-ManagedAdmission.ps1": "b417828d414de48bfd3c57dadbea9434ec381cef3c50233adcc8562470bd687d",
     "controller.py": "3c04b1724281df282e991d7c0b627429830dc7ce2e0cd1d84a3ffcdef73e9ce9",
     "runtime_factory.py": "a894e91261575f6bebf5d19ae66d7476cd58f73cd22cd19cc0fa47ff920c8058",
     "worker.py": "6404b6ddc17c6eac6e5df6ff25cb8e37ca9041434b873697341fead5555e135c",
     "workflow.yml": "b6b429e19b13272285584824720b0ce5116e86fc53bf23c2c8d47caf8f9c406f"
-  }
+  },
+  "host_revision_note": "SPEC in-progress observation led to freshness check for expires/heartbeat and exact active controller job; reviewer must verify updated hashes before verdict."
 }
