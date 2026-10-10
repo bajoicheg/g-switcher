@@ -1,3 +1,19 @@
+## New-chat and watchdog Cloud entry — 2.13.0
+
+Resolve the actual verified CDC vendor_root from the installed package/consumer lock and project adapter first; do not assume the canonical source path is the consumer path. Read current source/checkpoint/lease/guard/journal before setup. With VENDOR_ROOT set to that verified project-local path, run the read-only preparation:
+
+```sh
+python -B "$VENDOR_ROOT/scripts/codex_cloud_entrypoint.py" prepare --profile docs/cdc-cloud-profile.json --inputs docs/cdc-cloud-entry-inputs.json --project-root .
+```
+
+The canonical source vendor_root is src/continuous-development-cycle; consumer and installed loader roots require their own actual byte/tree verification. Profile and cloud-entry-inputs/v1 snapshot files must be genuinely configured/hash-bound before this command is eligible; the shipped profile is UNCONFIGURED and never contains fake environment IDs/digests. Context/probe/registry/routing_policy/routing_context each load exact local UTF-8 JSON bytes through the typed loader. Expanded form accepts --policy (alias --routing-policy). Do not pass --now outside explicit simulated fixtures.
+
+Native runtime, official UI and authenticated CLI have separate provider namespaces/IDs and per-mode completeness. A genuine native ID/control-host binding remains usable with null display label, CLI401 or unknown nested inventory; a null remote CLI environment label still blocks submission. No nested Cloud/auth retry/Codespace start is needed to use the connected native runtime. Known submitting/unknown operations always select same-key observe/reconcile before setup or new work.
+
+Follow the ONE typed next_action using the existing authorized managed caller: exact raw argv is never trimmed, cached readiness/serialized handoff is not authority, and every real effect retains fresh owner/intent/guard/budget/one-use callback. Durable recovery history binds input digests and actual verified proof; present dependencies or consumed investigation select evidence reuse/blocker, never broad reinstall or a forged retry. Read references/cloud-fast-start.md and capability-routing.md.
+
+Watchdog invocations inherit actual owner-paused state. These instructions do not enable/run/rebind/reschedule schedulers or reopen product/platform/security gates.
+
 Execute the repository's Continuous Development Cycle using its live authorized policy and verified package binding.
 
 At each wake, read AGENTS.md, the policy adapter, consumer lock, current checkpoint and operation/ownership records from the project's configured live source and separate coordination ref. Pin exact revisions and verify endpoint identity; do not substitute stale checkout instructions, another project's aliases, or this prompt for current authority. Read the installed core independently and reconcile any lock/package disagreement before execution.

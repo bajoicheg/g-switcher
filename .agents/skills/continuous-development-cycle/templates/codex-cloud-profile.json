@@ -1,0 +1,20 @@
+{
+  "schema": "codex-cloud-project-profile/v1",
+  "repository": "OWNER/REPOSITORY",
+  "source_ref": "refs/heads/BRANCH",
+  "environments": {
+    "native_runtime": {"provider_namespace": "managed_cloud_runtime", "id": null, "url": null, "label": null},
+    "official_ui": {"provider_namespace": "codex_cloud_ui", "id": null, "url": null, "label": null},
+    "official_cli": {"provider_namespace": "codex_cloud_cli", "id": null, "url": null, "label": null}
+  },
+  "control_host": {"kind": "unknown", "provider_namespace": "unknown", "binding_ref": null},
+  "access_modes": {
+    "native_runtime": {"configured": false, "capability_ref": null},
+    "official_ui": {"configured": false, "capability_ref": null},
+    "official_cli": {"configured": false, "capability_ref": null}
+  },
+  "toolchain": {"cli_executable": null, "cli_version": null},
+  "setup": {"fingerprint": null, "commands": []},
+  "policy_digest": null,
+  "provenance": []
+}

@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "2.12.1",
+  "version": "3.3.0",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Explicit risk-based quality levels, independent review depth, dependency-bound evidence reuse and bounded validation cycles."
+  "description": "Exact verified native release delivery and safe forward rollback composed with existing ownership, assembly and durable publication."
 }

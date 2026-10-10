@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy,hashlib,re
 from datetime import datetime
 import json
 from pathlib import Path
@@ -61,7 +62,7 @@ def validate_policy(policy):
     if not reasons<=EXPENSIVE_REASONS:raise ValueError("unsupported expensive fallback reason")
     return policy
 
-def validate_context(context):
+def _validate_v1_context(context):
     required={"schema","evidence_class","primary_failure_class","distinct_primary_recovery_attempts",
               "provider_outage_confirmed","required_capability_gap_on_primary","last_primary_failure_at_utc"}
     optional={"repository_visibility"}
@@ -86,7 +87,7 @@ def _result(action,reason,backend=None,*,expensive=False,expensive_reason=None,r
             "authorizes_external_start":False,"authorizes_product_write":False,
             "authorizes_takeover":False,"authorizes_scheduler_mutation":False}
 
-def route(registry,request,policy,context,now_utc):
+def _route_v1(registry,request,policy,context,now_utc):
     capability.validate_registry(registry);capability.validate_request(request)
     validate_policy(policy);validate_context(context)
     now=_time(now_utc,"now_utc");observed=_time(registry["observed_at_utc"],"registry.observed_at_utc")
@@ -181,6 +182,101 @@ def route(registry,request,policy,context,now_utc):
         if reason in set(policy["expensive_fallback_reasons"]):
             return _result("route","policy_allows_expensive_fallback",expensive_ready[0],expensive=True,expensive_reason=reason,missing=missing)
     return _result("waiting_compute","compatible_low_cost_backend_not_ready",missing=missing)
+
+# Explicit provider metadata is separate from legacy backend kind. These pure
+# checks describe supplied evidence; only the existing live callback can verify
+# repository/request/current budget and consume real launch authority.
+V2_FIELDS={'schema','base_context','provider_bindings','codespace_exception','provider_action'}
+BINDING_FIELDS={'backend_id','provider_namespace','provider_kind','environment_id','configuration_digest','evidence_ref','evidence_digest'}
+ACTION_FIELDS={'backend_id','provider_namespace','provider_kind','environment_id','consumption','action','control_host_ref','compute_backend_ref'}
+EXCEPTION_FIELDS={'schema','reason','repository','backend_id','provider_namespace','environment_id','consumption','action','configuration_digest','policy_digest','evidence_ref','evidence_digest','observed_at_utc','max_age_seconds','budget_ref','budget_revision','budget_reservation_id','budget_operation_key','budget_attempt_id','request_plan_digest'}
+PROVIDERS={'codex_cloud','codespace','local','github_actions','other','unknown'}
+
+def _exact(v,fields,name):
+    if not isinstance(v,dict) or set(v)!=fields:raise ValueError(name+' fields mismatch')
+
+def _bound_text(v,nullable=False):
+    if v is None and nullable:return
+    if not isinstance(v,str) or not v or v!=v.strip() or any(ord(c)<32 for c in v):raise ValueError('invalid provider binding text')
+
+def _sha(v):
+    if not isinstance(v,str) or not re.fullmatch(r'sha256:[0-9a-f]{64}',v):raise ValueError('invalid provider binding digest')
+
+def _hash(v):return 'sha256:'+hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False).encode()).hexdigest()
+
+def validate_context(context):
+    if isinstance(context,dict) and context.get('schema')==CONTEXT_SCHEMA:return _validate_v1_context(context)
+    _exact(context,V2_FIELDS,'compute cost context v2')
+    if context['schema']!='compute-cost-context/v2':raise ValueError('unsupported compute cost context')
+    _validate_v1_context(context['base_context'])
+    bindings=context['provider_bindings'];_exact(bindings,{'schema','bindings'},'provider bindings')
+    if bindings['schema']!='backend-provider-bindings/v1' or not isinstance(bindings['bindings'],list):raise ValueError('invalid provider bindings')
+    seen=set()
+    for b in bindings['bindings']:
+        _exact(b,BINDING_FIELDS,'provider binding')
+        for k in ('backend_id','provider_namespace','evidence_ref'):_bound_text(b[k])
+        _bound_text(b['environment_id'],True);_sha(b['configuration_digest']);_sha(b['evidence_digest'])
+        if b['provider_kind'] not in PROVIDERS or b['backend_id'] in seen:raise ValueError('invalid/duplicate provider identity')
+        seen.add(b['backend_id'])
+    a=context['provider_action'];_exact(a,ACTION_FIELDS,'provider action')
+    for k in ('backend_id','provider_namespace'):_bound_text(a[k])
+    for k in ('environment_id','control_host_ref','compute_backend_ref'):_bound_text(a[k],True)
+    if (a['provider_kind'] not in PROVIDERS or a['consumption'] not in {'compute_backend','control_host'}
+            or a['action'] not in {'create','resume','reuse_active','observe'}):raise ValueError('invalid provider action enum')
+    e=context['codespace_exception']
+    if e is not None:
+        _exact(e,EXCEPTION_FIELDS,'codespace exception')
+        if e['schema']!='codespace-exception/v1':raise ValueError('unsupported codespace exception')
+        for k in ('reason','repository','backend_id','provider_namespace','consumption','action','evidence_ref','budget_ref','budget_reservation_id','budget_attempt_id'):_bound_text(e[k])
+        _bound_text(e['environment_id'],True)
+        for k in ('configuration_digest','policy_digest','evidence_digest','budget_operation_key','request_plan_digest'):_sha(e[k])
+        if not isinstance(e['budget_revision'],str) or not re.fullmatch(r'[0-9a-f]{40}',e['budget_revision']):raise ValueError('budget revision must be pinned')
+        _time(e['observed_at_utc'],'exception.observed_at_utc')
+        if type(e['max_age_seconds']) is not int or e['max_age_seconds']<1:raise ValueError('invalid exception age')
+    return context
+
+def assess_provider_action(action,context,policy,now_utc):
+    validate_context(context);validate_policy(policy);now=_time(now_utc,'now_utc')
+    result={'allowed_for_callback':False,'reason':'provider_binding_unknown','exception_digest':None,'authorizes_external_start':False}
+    if context['schema']!='compute-cost-context/v2':return result
+    if action!=context['provider_action']:return dict(result,reason='provider_action_mismatch')
+    b=next((x for x in context['provider_bindings']['bindings'] if x['backend_id']==action['backend_id']),None)
+    if b is None or any(b[k]!=action[k] for k in ('provider_namespace','provider_kind','environment_id')):return result
+    if action['provider_kind']=='unknown':return result
+    if action['action']!='create' and action['environment_id'] is None:return dict(result,reason='existing_environment_unknown')
+    if action['consumption']=='control_host' and action['control_host_ref'] is None:return dict(result,reason='control_host_binding_unknown')
+    if action['provider_kind']!='codespace' or action['action'] in {'reuse_active','observe'}:
+        return dict(result,allowed_for_callback=True,reason='bound_provider_precondition_only')
+    e=context['codespace_exception']
+    if e is None:return dict(result,reason='typed_codespace_exception_required')
+    if e['reason'] not in {'required_capability','final_platform','artifact','release_attestation'}:return dict(result,reason='codespace_reason_not_permitted')
+    if any(e[k]!=action[k] for k in ('backend_id','provider_namespace','environment_id','consumption','action')):return dict(result,reason='exception_action_binding_mismatch')
+    if e['configuration_digest']!=b['configuration_digest'] or e['policy_digest']!=_hash(policy):return dict(result,reason='exception_policy_configuration_mismatch')
+    age=(now-_time(e['observed_at_utc'],'exception.observed_at_utc')).total_seconds()
+    if age<0 or age>min(300,e['max_age_seconds']):return dict(result,reason='exception_not_fresh')
+    base=context['base_context']
+    requirement=(base['required_capability_gap_on_primary'] if e['reason']=='required_capability' else
+                 base['evidence_class']=={'final_platform':'platform','artifact':'artifact','release_attestation':'release_attestation'}[e['reason']])
+    if not requirement:return dict(result,reason='actual_requirement_missing')
+    return dict(result,allowed_for_callback=True,reason='typed_exception_precondition_only',exception_digest=_hash(e))
+
+def route(registry,request,policy,context,now_utc):
+    validate_context(context)
+    if context['schema']==CONTEXT_SCHEMA:return _route_v1(registry,request,policy,context,now_utc)
+    capability.validate_registry(registry);capability.validate_request(request);validate_policy(policy)
+    a=context['provider_action']
+    assessed=assess_provider_action(a,context,policy,now_utc)
+    if a['consumption']=='control_host' and not assessed['allowed_for_callback']:
+        return _result('blocked',assessed['reason'])
+    filtered=copy.deepcopy(registry)
+    for b in filtered['backends']:
+        binding=next((v for v in context['provider_bindings']['bindings'] if v['backend_id']==b['backend_id']),None)
+        if binding is None:continue  # Legacy selection stays readable; no create grant.
+        if binding['configuration_digest']!=b['configuration_digest']:
+            b['enabled']=False;continue
+        if binding['provider_kind']=='codespace' and (a['backend_id']!=b['backend_id'] or not assessed['allowed_for_callback']):b['enabled']=False
+    return _route_v1(filtered,request,policy,context['base_context'],now_utc)
+
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)

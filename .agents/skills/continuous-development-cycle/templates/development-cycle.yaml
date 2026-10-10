@@ -1,3 +1,10 @@
+# CDC2.13.0 generated startup binding (instruction metadata; schema/budgets unchanged):
+# Resolve actual byte-verified consumer vendor_root; canonical source uses src/continuous-development-cycle.
+# python -B "$VENDOR_ROOT/scripts/codex_cloud_entrypoint.py" prepare --profile docs/cdc-cloud-profile.json --inputs docs/cdc-cloud-entry-inputs.json --project-root .
+# Profiles/inputs start UNCONFIGURED and must bind current project/source/namespace/ID/policy/setup evidence.
+# Existing codex_backend.enabled/configuration_status describe the configured remote transport, not this connected native Cloud runtime.
+# Qualify native_runtime / official_ui / official_cli separately. Native qualification survives CLI401/unknown nested inventory.
+# Preserve same-key unknown/submitting journals and actual paused watchdogs; pure preparation grants no effects.
 schema: continuous-development-cycle/v3
 
 # Explicit migration is required for legacy consumers without this block.
@@ -8,7 +15,7 @@ quality:
 policy:
   revision: "1"
   skill_min_version: "2.11.3"
-  skill_max_version_exclusive: "3.0.0"
+  skill_max_version_exclusive: "4.0.0"
   approved_exceptions: []
 
 repository:

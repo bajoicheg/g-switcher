@@ -250,42 +250,23 @@ def _evidence_binding(binding, canonical_identity):
     return value
 
 
-def resolve_live_target(registry_source: RegistrySource, canonical_source: ReleaseSource, *, registry_ref,
-                        canonical_repository, registry_path="fleet/registry.json",
-                        target_path=None, release_path="fleet/target-release.json",
-                        package_path="src/continuous-development-cycle",
-                        max_age_seconds=300, clock=_utc_now):
-    """Read one live registry revision, then verify its canonical release binding.
-
-    A transport implements identity(), pin(ref), read_file(revision, path),
-    tree_oid(revision, path, revision=None), is_ancestor(a, b), assert_current().
-    GitSource is the real Git implementation. External transports must provide
-    equivalent trusted identity, exact objects and independently timed live reads.
-    Any unknown, disagreement, stale observation or moved authority raises
-    ValueError. The successful result confers no permission for side effects.
-    """
+def verify_release_binding(canonical_source: ReleaseSource, binding, *, canonical_repository,
+                           package_path="src/continuous-development-cycle", max_age_seconds=300,
+                           clock=_utc_now):
+    """Verify exact configured release objects; this grants no effect authority."""
     if not isinstance(canonical_repository, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", canonical_repository):
         raise ValueError("independently configured canonical_repository is required")
     if type(max_age_seconds) is not int or max_age_seconds <= 0:
         raise ValueError("max_age_seconds must be a positive integer")
-    for path in (registry_path, release_path, package_path):
-        _path(path)
-    if target_path is not None:
-        _path(target_path)
-    registry_identity = _identity(registry_source.identity())
-    canonical_identity = _identity(canonical_source.identity())
-    registry_revision = registry_source.pin(registry_ref)
-    _fresh(registry_revision, registry_identity, registry_ref, clock(), max_age_seconds)
-    registry = _json(registry_source, registry_revision, registry_path)
-    validate_registry(registry)
-    target = registry["target"]
-    if target_path is not None:
-        standalone = _json(registry_source, registry_revision, target_path)
-        validate_target(standalone)
-        if standalone != target:
-            raise ValueError("embedded and standalone live targets disagree")
-    binding = _json(registry_source, registry_revision, release_path)
+    _path(package_path)
+    if not isinstance(binding, dict):
+        raise ValueError("invalid release binding")
+    target = {"schema": "version-convergence-target/v1", "target_version": binding.get("version"),
+              "target_package_fingerprint": "git-tree:" + str(binding.get("package_tree")),
+              "checkpoint_schema": "development-work-status/v4", "safe_boundary_required": True}
+    validate_target(target)
     _release_binding(binding, target, canonical_repository)
+    canonical_identity = _identity(canonical_source.identity())
     release_revision = canonical_source.pin(binding["release_ref"])
     _fresh(release_revision, canonical_identity, binding["release_ref"], clock(), max_age_seconds)
     if release_revision.revision != binding["release_commit"]:
@@ -324,6 +305,64 @@ def resolve_live_target(registry_source: RegistrySource, canonical_source: Relea
         raise ValueError("canonical candidate is not a release ancestor")
     if canonical_source.tree_oid(release_revision, package_path, revision=candidate) != binding["package_tree"]:
         raise ValueError("canonical candidate package tree disagrees")
+    canonical_source.assert_current(release_revision)
+    if split_evidence:
+        canonical_source.assert_current(evidence_revision)
+    finished = clock()
+    _fresh(release_revision, canonical_source.identity(), binding["release_ref"], finished, max_age_seconds)
+    if split_evidence:
+        _fresh(evidence_revision, canonical_source.identity(), evidence_binding["ref"], finished, max_age_seconds)
+    return {"schema": "canonical-release-verification/v1", "release": binding,
+            "release_revision": release_revision, "evidence_revision": evidence_revision,
+            "evidence": evidence, "canonical_source_identity": canonical_identity,
+            "observed_at_utc": _stamp(finished), "authorizes_adoption": False,
+            "authorizes_product_write": False, "authorizes_scheduler_write": False}
+
+
+def resolve_live_target(registry_source: RegistrySource, canonical_source: ReleaseSource, *, registry_ref,
+                        canonical_repository, registry_path="fleet/registry.json",
+                        target_path=None, release_path="fleet/target-release.json",
+                        package_path="src/continuous-development-cycle",
+                        max_age_seconds=300, clock=_utc_now):
+    """Read one live registry revision, then verify its canonical release binding.
+
+    A transport implements identity(), pin(ref), read_file(revision, path),
+    tree_oid(revision, path, revision=None), is_ancestor(a, b), assert_current().
+    GitSource is the real Git implementation. External transports must provide
+    equivalent trusted identity, exact objects and independently timed live reads.
+    Any unknown, disagreement, stale observation or moved authority raises
+    ValueError. The successful result confers no permission for side effects.
+    """
+    if not isinstance(canonical_repository, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", canonical_repository):
+        raise ValueError("independently configured canonical_repository is required")
+    if type(max_age_seconds) is not int or max_age_seconds <= 0:
+        raise ValueError("max_age_seconds must be a positive integer")
+    for path in (registry_path, release_path, package_path):
+        _path(path)
+    if target_path is not None:
+        _path(target_path)
+    registry_identity = _identity(registry_source.identity())
+    canonical_identity = _identity(canonical_source.identity())
+    registry_revision = registry_source.pin(registry_ref)
+    _fresh(registry_revision, registry_identity, registry_ref, clock(), max_age_seconds)
+    registry = _json(registry_source, registry_revision, registry_path)
+    validate_registry(registry)
+    target = registry["target"]
+    if target_path is not None:
+        standalone = _json(registry_source, registry_revision, target_path)
+        validate_target(standalone)
+        if standalone != target:
+            raise ValueError("embedded and standalone live targets disagree")
+    binding = _json(registry_source, registry_revision, release_path)
+    _release_binding(binding, target, canonical_repository)
+    proof = verify_release_binding(canonical_source, binding,
+        canonical_repository=canonical_repository, package_path=package_path,
+        max_age_seconds=max_age_seconds, clock=clock)
+    release_revision = proof["release_revision"]
+    evidence_revision = proof["evidence_revision"]
+    split_evidence = binding["schema"] == "live-target-release/v2"
+    if split_evidence:
+        evidence_binding = binding["evidence_binding"]
     registry_source.assert_current(registry_revision)
     canonical_source.assert_current(release_revision)
     if split_evidence:

@@ -1,0 +1,27 @@
+{
+  "schema": "cdc-delivery-request/v1",
+  "source_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "canonical_repository": "owner/cdc",
+  "canonical_source_identity": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "release": {
+    "schema": "live-target-release/v1",
+    "version": "3.3.0",
+    "canonical_repository": "owner/cdc",
+    "release_ref": "refs/heads/release/v3.3.0",
+    "release_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "package_tree": "cccccccccccccccccccccccccccccccccccccccc"
+  },
+  "current_lock": {
+    "schema": "cdc-consumer-lock/v1",
+    "version": "3.2.0",
+    "canonical_repository": "owner/cdc",
+    "release_ref": "refs/heads/release/v3.2.0",
+    "release_commit": "dddddddddddddddddddddddddddddddddddddddd",
+    "package_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "checkpoint_schema": "development-work-status/v4",
+    "safe_boundary_required": true,
+    "local_core_modifications_allowed": false
+  },
+  "rollback_from": null,
+  "operation_budget": 100
+}

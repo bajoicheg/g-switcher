@@ -16,11 +16,11 @@ EXECUTION_CONTINUITY_SCHEMA = {
 }
 V4_EXTRA = {"resume_capsule_ref": nonempty, "execution_continuity": EXECUTION_CONTINUITY_SCHEMA}
 
-def validate_checkpoint_24(data, adapter):
+def validate_checkpoint_24(data, adapter, *, skill_version=None):
     if not isinstance(data, dict):
         raise ContractError("checkpoint must be a mapping")
     if data.get("schema") == "development-work-status/v3":
-        return legacy.validate_checkpoint(data, adapter)
+        return legacy.validate_checkpoint(data, adapter, skill_version=skill_version)
     if data.get("schema") != "development-work-status/v4":
         raise ContractError("unsupported checkpoint schema")
     expected = set(legacy.SCHEMA) | set(V4_EXTRA)
@@ -30,7 +30,7 @@ def validate_checkpoint_24(data, adapter):
     if unknown: raise ContractError("checkpoint: unknown fields: " + ", ".join(sorted(unknown)))
     base = {k: copy.deepcopy(v) for k, v in data.items() if k not in V4_EXTRA}
     base["schema"] = "development-work-status/v3"
-    binding = legacy.validate_checkpoint(base, adapter)
+    binding = legacy.validate_checkpoint(base, adapter, skill_version=skill_version)
     check(data["execution_continuity"], EXECUTION_CONTINUITY_SCHEMA, "checkpoint.execution_continuity")
     ec = data["execution_continuity"]
     external = data["lease_state"] == "waiting_external" or data["phase"] == "waiting_external"

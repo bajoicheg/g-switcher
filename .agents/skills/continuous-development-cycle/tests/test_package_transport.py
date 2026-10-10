@@ -28,4 +28,17 @@ class T(unittest.TestCase):
    self.assertTrue(verify_directory(copy.deepcopy(MANIFEST),d)["content_verified"])
    Path(d,"VERSION").write_text("2.9.1\n",encoding="utf-8")
    self.assertFalse(verify_directory(copy.deepcopy(MANIFEST),d)["content_verified"])
+
+ def test_template_binds_current_package_version_bytes(self):
+  root=Path(__file__).resolve().parents[1]
+  version_bytes=(root/"VERSION").read_bytes()
+  manifest=validate_manifest(json.loads((root/"templates/package-transport.json").read_text()))
+  self.assertEqual(manifest["version"],version_bytes.decode().strip())
+  with tempfile.TemporaryDirectory() as d:
+   Path(d,"VERSION").write_bytes(version_bytes)
+   self.assertTrue(verify_directory(manifest,d)["content_verified"])
+ def test_package_validator_accepts_current_transport_fixture(self):
+  from validate_package import validate
+  root=Path(__file__).resolve().parents[1]
+  self.assertEqual(validate(),(root/"VERSION").read_text().strip())
 if __name__=="__main__":unittest.main()

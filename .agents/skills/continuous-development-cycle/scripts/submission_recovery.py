@@ -87,7 +87,11 @@ def resolve_released_guard(record, proof, evidence_reference, at):
     if not op._timestamp(claim['claimed_at_utc'], 'claim time') <= terminal <= released:
         raise ValueError('dispatch outcome must follow claim and precede release')
     prefix = 'repos/' + record['repository'] + '/pulls'
-    if intent['binding']['mode'] == 'PR_VALIDATION':
+    if (intent['binding']['mode'] == 'PR_VALIDATION'
+            or (intent['binding']['mode'] == 'required_pr_validation'
+                and intent['binding']['backend'] == 'github_create_pull_request'
+                and dispatch['outcome'] == 'not_submitted'
+                and dispatch['barrier_state'] == 'cancelled_before_send')):
         target_ok = dispatch['method'] == 'POST' and dispatch['target'] == prefix
     elif intent['binding']['mode'] == 'MERGE_VALIDATION':
         target_ok = (dispatch['method'] == 'PUT' and isinstance(dispatch['target'], str)

@@ -2,9 +2,9 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-08-cdc-2.12.1-atomic-adoption
-policy_digest: 4d5cfce31717243266089b4c5d1ea052d965c3db96712902a8b5c9c97b061692
-observed_at_utc: '2026-10-07T16:08:08.676006Z'
+policy_revision: 2026-10-10-cdc-3.3.0-all330-g-switcher
+policy_digest: df60d36a4bd1cd6a08c3c1ef6788713fbe4f74ccb9c1480fd4620c664a189321
+observed_at_utc: '2026-10-10T15:17:29.292927Z'
 orchestration_origin: chat
 active_executor: none
 lease_state: released
@@ -17,9 +17,9 @@ operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: null
+  execution_lease_revision: 6171891acbfb67c3189f6c1e569ec30d133210a3
   executor_id: null
-  lease_generation: 24
+  lease_generation: 49
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
@@ -33,12 +33,17 @@ last_green_evidence: https://github.com/bajoicheg/g-switcher/actions/runs/362595
 active_compute: ''
 active_ci_run_id: ''
 last_ci_run_id: '36259598328'
-last_ci_status: 'completed/success: Windows Rust CI #410; historical runtime-equivalent evidence'
+last_ci_status: 'completed/success: Windows Rust CI #410; historical runtime-equivalent
+  evidence'
 release_version: 2.0.1
 release_candidate_sha: ''
 release_state: blocked
-blocker: 'Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks.'
-next_action: Complete fresh exact-candidate Windows CI, then Run the exact candidate g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain final review and explicit public-promotion approval.
+blocker: 'Real Windows compatibility acceptance remains incomplete: ordinary Edge/Chrome
+  Auto/Manual/Undo/Focus/Pause, desktop Word and remaining protected-input checks.'
+next_action: Complete fresh exact-candidate Windows CI, then Run the exact candidate
+  g-switcher-compatibility.exe kit on real Windows following MANUAL_TESTING_2.0.1.md
+  and BROWSER_QUICK_TEST_2.0.1_RU.md; complete COMPATIBILITY_2.0.1.md, then obtain
+  final review and explicit public-promotion approval.
 resume_capsule_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/resume.json
 execution_continuity:
   invocation_id: null
@@ -259,3 +264,6 @@ Canonical immutable release 97706dd78a82cfb9ff9e1ce9191d21a42222db37, package 38
 ## CDC 2.11.9 atomic process adoption
 
 Canonical immutable release 62cd32e91446675799d42247eac2a0312c33d363, package 6867b012d01d776c2c0236b110980ba2c1292c26. Only policy bindings change in frontmatter; existing product state/evidence/platform blockers remain historical facts. This complete detached assembly does not claim publication, new product tests or a future ownership release. Actual managed publication and terminal release receipts are authoritative on separate control refs. Schedulers remain paused.
+
+
+CDC 3.3.0 process migration: policy binding and actual released control readback above; product work and historical proof remain pending/unchanged.

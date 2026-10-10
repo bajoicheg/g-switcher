@@ -84,6 +84,13 @@ from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
+    'scripts/release_delivery.py', 'tests/test_release_delivery.py',
+    'tests/test_release_delivery_git.py', 'tests/test_release_delivery_cli.py',
+    'references/release-delivery.md', 'templates/release-delivery.json',
+    'scripts/adaptive_allocation.py', 'tests/test_adaptive_allocation.py',
+    'references/adaptive-allocation.md', 'templates/adaptive-allocation.json',
+    'scripts/project_setup.py', 'tests/test_project_setup.py',
+    'references/project-setup.md',
     'scripts/quality_levels.py', 'scripts/evidence_reuse.py',
     'tests/test_quality_levels.py', 'tests/test_evidence_reuse.py',
     'tests/test_review_levels.py', 'tests/test_validation_cycles.py',
@@ -411,10 +418,17 @@ REQUIRED = [
     'tests/test_final_response_gate.py',
     'tests/test_fleet_supervisor_control.py',
     'tests/test_consumer_adoption.py',
-    'tests/test_v2113_guidance.py',
     'references/multi-subscription-coordination-and-ownership.md',
     'tests/test_guidance_contracts.py',
     'tests/test_policy_controls.py',
+    'scripts/cdc.py', 'scripts/development_contract.py',
+    'scripts/operation_report.py', 'scripts/execution_strategy.py',
+    'tests/test_cdc_entrypoint.py', 'tests/test_development_contract.py',
+    'tests/test_operation_report.py', 'tests/test_execution_strategy.py',
+    'tests/test_lean_package.py', 'references/phase-routing.md',
+    'references/lean-execution-core.md', 'references/legacy-core-2.12.1.md',
+    'templates/development-assessment.json', 'templates/operation-observation.json',
+    'templates/execution-strategy.json',
 ]
 
 
@@ -444,8 +458,9 @@ def validate():
                  'minimum sufficient effort', 'COMPUTE_ONLY', 'concurrency guard',
                  'runtime/tool limit', 'release-candidate SHA', 'policy-compatibility.md',
                  'command-evidence.md', 'external-operations.md'):
-        if term.lower() not in skill.lower():
+        if term.lower() not in ' '.join(skill.lower().split()):
             raise ContractError('skill contract missing: ' + term)
+    validate_lean_templates(ROOT)
     adapter = load_yaml(ROOT / 'templates/development-cycle.yaml')
     validate_adapter(adapter, version)
     validate_checkpoint(load_yaml(ROOT / 'templates/work-status.md', frontmatter=True), adapter)
@@ -785,6 +800,40 @@ def validate_quality_templates(root):
         result=function(load(name))
         if result[key]!=want or any(v for k,v in result.items() if k.startswith('authorizes_')):
             raise ContractError('invalid quality template: '+name)
+
+def validate_lean_templates(root):
+    """Execute source-development examples; missing core evidence stays missing."""
+    from development_contract import evaluate as assess
+    from execution_strategy import evaluate as strategy
+    from operation_report import measure, render
+    from adaptive_allocation import evaluate as allocate
+    from release_delivery import plan as delivery
+    def load(name):
+        return json.loads((root / 'templates' / name).read_text())
+    assessment = assess(load('development-assessment.json'))
+    if (assessment['quality']['effective_level'] != 'FULL' or
+            assessment['validation_recommended'] or
+            not assessment['blockers'] or
+            any(not blocker.startswith('mandatory_check_unsatisfied:')
+                for blocker in assessment['blockers'])):
+        raise ContractError('lean core template must retain missing mandatory FULL gates')
+    observation = load('operation-observation.json')
+    report = measure(observation)
+    if report['tokens']['provenance'] != 'unknown' or render(observation) != '(4 мин)':
+        raise ContractError('lean report template must omit unknown tokens')
+    execution = strategy(load('execution-strategy.json'))
+    if execution['action'] != 'SINGLE' or execution['batch_candidate']['effective_level'] != 'MEDIUM':
+        raise ContractError('lean strategy template must preserve project floor and missing admissions')
+    allocation = allocate(load('adaptive-allocation.json'))
+    if allocation['selection'] != 'default' or allocation['action'] != 'SINGLE' or allocation['measurement'] is not None:
+        raise ContractError('allocation template must preserve safe default without fabricated measurements')
+    proposed = delivery(load('release-delivery.json'))
+    if proposed['action'] != 'VERIFY_RELEASE_AND_OWNERSHIP' or proposed['publication_prerequisites_satisfied']:
+        raise ContractError('delivery template must retain missing live authority')
+    for result in (assessment, execution, allocation, proposed):
+        if any(value for key, value in result.items() if key.startswith('authorizes_')):
+            raise ContractError('lean template cannot grant effect authority')
+
 
 def main():
     try:

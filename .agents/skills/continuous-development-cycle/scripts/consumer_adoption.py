@@ -326,6 +326,12 @@ class GitConsumerAdoptionPublisher:
                 "assembly_store_id":claim["assembly_store_id"],"assembly_revision":claim["assembly_revision"],
                 "transaction_id":claim["transaction_id"]}
 
+    def pending_attempts(self):
+        """Read original unresolved attempts; callers must not manufacture a replacement."""
+        _,journal=self._read_journal()
+        return [copy.deepcopy(item) for item in journal["attempts"].values()
+                if item["status"] in {"prepared","submitted","unknown"}]
+
     def _prepare(self,state):
         expected=self._attempt_fields(state)
         for _ in range(6):
@@ -388,6 +394,15 @@ class GitConsumerAdoptionPublisher:
         if current==state["candidate_commit"]:
             if not self._exact_readback(state):
                 raise ValueError("consumer published candidate package readback mismatch")
+            _,journal=self._read_journal()
+            attempt=journal["attempts"].get(state["publication_claim"]["effect_id"])
+            if attempt is not None:
+                if any(attempt[k]!=v for k,v in self._attempt_fields(state).items()):
+                    raise ValueError("observed adoption attempt identity collision")
+                if attempt["status"] in {"submitted","unknown"}:
+                    self._transition(state,"confirmed",{attempt["status"]})
+                elif attempt["status"]=="prepared":
+                    self._transition(state,"aborted",{"prepared"})
             return {"schema":"consumer-adoption-publication-result/v1","action":"OBSERVED_EXISTING",
                     "published_head":current,"package_tree":state["target_package_tree"],
                     "conditional_update":False,"force_push":False,"replay_allowed":False}

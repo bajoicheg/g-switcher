@@ -117,6 +117,16 @@ class CodexCloudCLI:
         path=self._path(key)
         with path.with_suffix('.lock').open('a') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX);yield path
+    def snapshot(self,operation_key):
+        """Read the validated existing journal without a provider call.
+
+        None means only this exact local journal is absent, not complete
+        provider inventory or permission to submit. Corruption remains an error.
+        Subclasses retain their own journal validator via self._load.
+        """
+        with self._locked(operation_key) as path:
+            return copy.deepcopy(self._load(path)) if path.exists() else None
+
     def _save(self,path,state):
         tmp=path.with_suffix('.'+str(os.getpid())+'.tmp')
         with tmp.open('w') as stream:

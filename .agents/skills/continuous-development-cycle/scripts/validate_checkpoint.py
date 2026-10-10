@@ -42,8 +42,9 @@ CONTROL_SCHEMA = {
 }
 
 
-def validate_checkpoint(data, adapter):
-    binding = validate_adapter(adapter)
+def validate_checkpoint(data, adapter, *, skill_version=None):
+    """Optional version diagnoses original bindings; default remains installed VERSION."""
+    binding = validate_adapter(adapter, skill_version=skill_version)
     schema = dict(SCHEMA)
     if isinstance(data, dict) and "control" in data:
         schema["control"] = CONTROL_SCHEMA
