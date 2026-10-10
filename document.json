@@ -2365,11 +2365,13 @@
   },
   "host_admission": null,
   "bootstrap_submission": {
-    "state": "queued",
+    "state": "consumed",
     "attempt_id": "word-capture-host-a1",
     "operation_key": "sha256:4980bc36c1809994798bc778ef6741344b55acf765b46f3dff86a8438fe36bf1",
     "head": "c7d9794b5cc903ca95a31fb245bb6abda67871be",
-    "branch": "cdc/word-xml-capture-20261010-1252-a1"
+    "branch": "cdc/word-xml-capture-20261010-1252-a1",
+    "claim_id": "work-word-capture-20261010-1252-a1-c7d9794b",
+    "claimant": "work:1d146b6cc550:word-xml-capture-20261010"
   },
   "product_integration": false,
   "actual_word_execution": "NOT_RUN"
