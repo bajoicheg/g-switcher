@@ -1,0 +1,11 @@
+{
+  "verdict": "PASS",
+  "reviewer": "/root/capture_spec",
+  "snapshot_revision": "a068402fffd1cb6a9c82a2f89a9126a42f0b8632",
+  "host_files_mapping_sha256": "013024b572ab4c5807bbf93a1d52340df877bd5353a344bd1ac1543d7755545e",
+  "observed_review_interval_seconds": 119.786,
+  "findings": [],
+  "actual_word": "NOT_RUN",
+  "launch_intent": "NOT_INSTANTIATED",
+  "correction": "reject stale/expired ownership and inactive exact managed controller job"
+}

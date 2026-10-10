@@ -1,0 +1,116 @@
+name: Word XML capture tool Windows validation
+on:
+  push:
+    branches: [cdc/word-xml-capture-20261010-1252-a1]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: word-xml-capture-20261010-1252-a1
+  cancel-in-progress: false
+jobs:
+  managed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    permissions:
+      contents: write
+      actions: read
+    env:
+      CDC_REPO_ROOT: ${{ github.workspace }}/product
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout frozen managed host
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: orchestration
+          persist-credentials: false
+      - name: Checkout exact read-only product base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78
+          path: product
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Supervise Windows validation through canonical managed host
+        run: python -B orchestration/.word-xml-capture-host/controller.py
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/word-capture-python-cache
+      - name: Preserve managed lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: word-capture-managed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/word-capture-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+  diagnostic:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact standalone diagnostic proposal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Await exact managed admission
+        shell: powershell
+        run: '& ./.word-xml-capture-host/Wait-ManagedAdmission.ps1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Verify proposal and released CDC bindings
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Get-Content .word-xml-capture/manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.product_commit -ne '830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78') { throw 'Product binding mismatch' }
+          if ((git rev-parse 'HEAD:.agents/skills/continuous-development-cycle') -ne '9c45d98c3254e9658d452c505d8c97698e3fc9a7') { throw 'CDC tree mismatch' }
+          foreach ($entry in $manifest.files.PSObject.Properties) {
+            $hash = (Get-FileHash -LiteralPath (Join-Path .word-xml-capture $entry.Name) -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($hash -ne $entry.Value) { throw ('Digest mismatch: ' + $entry.Name) }
+          }
+          if ((git status --porcelain).Length -ne 0) { throw 'Dirty source' }
+      - name: Windows PowerShell 5.1 parser and behavior checks
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) { throw 'Expected Windows PowerShell 5.1' }
+          & ./.word-xml-capture/tests/Test-Parse.ps1
+          & ./.word-xml-capture/tests/Test-Core.ps1
+          & ./.word-xml-capture/tests/Test-Supervision.ps1
+          & ./.word-xml-capture/tests/Test-Cleanup.ps1
+          if ((git status --porcelain).Length -ne 0) { throw 'Tests changed source' }
+      - name: Package standalone probe and provenance
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $env:RUNNER_TEMP 'GSwitcher-Word-XML-Probe'
+          New-Item -ItemType Directory -Path $package | Out-Null
+          foreach ($name in @('Run-WordXmlProbe.cmd','Run-WordXmlProbe.ps1','WordXmlProbe.Core.ps1','README_RU.md','manifest.json','ci.yml')) {
+            Copy-Item -LiteralPath (Join-Path .word-xml-capture $name) -Destination $package
+          }
+          Copy-Item -LiteralPath .word-xml-capture/tests -Destination $package -Recurse
+          @{
+            schema = 'g-switcher-diagnostic-build/v1'
+            source_commit = '${{ github.sha }}'
+            product_commit = '830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78'
+            run_id = '${{ github.run_id }}'
+            powershell = $PSVersionTable.PSVersion.ToString()
+            product_integration = $false
+            actual_word_execution = 'NOT_RUN'
+            observed_core_tests = 18
+            observed_supervision_tests = 2
+            observed_cleanup_tests = 2
+          } | ConvertTo-Json | Set-Content (Join-Path $package 'BUILD-INFO.json') -Encoding UTF8
+          Compress-Archive -Path "$package/*" -DestinationPath (Join-Path $env:RUNNER_TEMP 'GSwitcher-Word-XML-Probe.zip')
+          $zip = Join-Path $env:RUNNER_TEMP 'GSwitcher-Word-XML-Probe.zip'
+          ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() + '  GSwitcher-Word-XML-Probe.zip') | Set-Content ($zip + '.sha256') -Encoding ASCII
+      - name: Upload tested diagnostic kit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g-switcher-word-xml-probe
+          path: |
+            ${{ runner.temp }}/GSwitcher-Word-XML-Probe.zip
+            ${{ runner.temp }}/GSwitcher-Word-XML-Probe.zip.sha256
+          if-no-files-found: error
+          retention-days: 30

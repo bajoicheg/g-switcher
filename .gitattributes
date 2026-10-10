@@ -1,0 +1,3 @@
+.word-xml-capture/** -text
+.word-xml-capture-host/** -text
+.github/workflows/word-xml-capture.yml -text

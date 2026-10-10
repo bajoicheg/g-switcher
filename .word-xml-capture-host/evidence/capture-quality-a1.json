@@ -1,0 +1,15 @@
+{
+  "verdict": "PASS",
+  "reviewer": "/root/capture_quality",
+  "manifest_sha256": "802a09160f8b3987e01b8745ffada32afb5ad3b70a941f274d871d8b1411f31f",
+  "observed_review_interval_seconds": 83.555,
+  "findings": [],
+  "actual_word": "NOT_RUN",
+  "Windows_PS51": "NOT_RUN",
+  "local_checks": {
+    "parser": 6,
+    "core": 18,
+    "supervision": 2,
+    "cleanup": 2
+  }
+}

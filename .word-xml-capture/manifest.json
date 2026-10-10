@@ -1,0 +1,19 @@
+{
+  "actual_word_execution": "NOT_RUN",
+  "cdc_package_tree": "9c45d98c3254e9658d452c505d8c97698e3fc9a7",
+  "cdc_version": "2.12.1",
+  "files": {
+    "README_RU.md": "01a873529b845787b6b795ae3ebaf066646e63c71e468c594294b7241047a5fd",
+    "Run-WordXmlProbe.cmd": "93ccbe80e8f8004ed226acd71fab81ab7554efbe9242afbbcea5581b06cfb6fb",
+    "Run-WordXmlProbe.ps1": "d08ea3dbad53ba7928a4b4cbc2d32d6c77031b0bdd9fdc4b2ed27fefb8b7878c",
+    "WordXmlProbe.Core.ps1": "f01886bef545f1d37f6e2522d2161bd252ce681c695e7a7001b9e626496d9a99",
+    "ci.yml": "42a422eec677c6a268f72b9c055819bf267ef592b6cb94b634b38ff9c4939949",
+    "tests/Test-Cleanup.ps1": "92d90d09a094ad629c9b3f5e6380cac63dd92ce64a1922cc62e08e853b3c2852",
+    "tests/Test-Core.ps1": "27cbb45b48eb0fdcfa92eecb099fcd46712e4cd9044d6071e2165e1924332825",
+    "tests/Test-Parse.ps1": "3d801d51e99ae95f2523379adc2e80a8587c691df928401dac1a9e3eff20a726",
+    "tests/Test-Supervision.ps1": "0075be062eaf1f27b5e9507f0821d13dcc984edf856c1dd67c86e8a96b6b62c5"
+  },
+  "product_commit": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+  "product_integration": false,
+  "schema": "word-xml-capture-proposal/v1"
+}

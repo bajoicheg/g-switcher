@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS",
+  "manifest_sha256": "802a09160f8b3987e01b8745ffada32afb5ad3b70a941f274d871d8b1411f31f",
+  "reviewer": "/root/capture_spec",
+  "actual_word": "NOT_RUN",
+  "observed_review_interval_seconds": 21.61,
+  "findings": [],
+  "resolved": [
+    "cleanup independent of report I/O",
+    "all manifest files included in kit"
+  ]
+}
