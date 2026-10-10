@@ -11,6 +11,8 @@ pub mod model;
 mod sound_wave;
 pub mod state;
 pub mod undo;
+#[cfg(any(windows, test))]
+pub(crate) mod user_controls;
 
 #[cfg(windows)]
 #[path = "windows_runtime_v201.rs"]

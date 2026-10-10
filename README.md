@@ -51,6 +51,11 @@ Version 2.0.1 continues the reviewed 2.0.0 line without changing its conservativ
 
 ## Privacy
 
+Prepared additions (Windows execution and review pending): tray controls for
+the named foreground application's mode, stop reasons, local technical
+diagnostics, explicit settings/dictionary transfer and 5/15/30-minute pause.
+See `docs/USABILITY_CONTROLS.md` for the data boundaries and acceptance cases.
+
 Normal typing is evaluated only in volatile memory. G-switcher retains the current candidate token, at most one previous token for manual previous-word conversion, and at most two completed context words in RAM. These values are cleared on relevant context changes and are never persisted or transmitted.
 
 Selected text is read only when the user invokes the selected-text hotkey, only from the currently focused control when a verified text adapter is available, and only for the duration required to validate and replace that range. The clipboard is not used. Native password fields, UIA password elements and recognized Windows credential/secure targets are excluded from G-switcher processing; unsupported or unverified controls are left unchanged.

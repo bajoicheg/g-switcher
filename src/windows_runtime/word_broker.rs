@@ -128,7 +128,24 @@ pub(super) fn initialize() {
         let mapping = os::Mapping::create().ok()?;
         let owned = mapping.clone();
         let dispatcher = dispatch::Dispatcher::start_notified(
-            move |request| transact(&owned, request).ok(),
+            move |request: Request| {
+                // A lost transport reply cannot establish whether the provider ran.
+                // This value-only result updates presentation; it grants no retry.
+                Some(transact(&owned, request.clone()).unwrap_or(Response {
+                    operation: request.operation,
+                    epoch: request.epoch,
+                    generation: request.generation,
+                    input: request.input,
+                    success: false,
+                    uncertain: true,
+                    hwnd: request.hwnd,
+                    pid: request.pid,
+                    birth: request.birth,
+                    target_language: 0,
+                    undo: None,
+                    undone: false,
+                }))
+            },
             || {
                 super::post_runtime(super::WM_RUNTIME_WORD_RESULT, 0, 0);
             },
@@ -208,6 +225,16 @@ pub(super) fn submit(
         return false;
     };
     // Coalesce only not-yet-admitted preparation. Busy provider submission will be refused.
+    if let Some(old) = slot.take() {
+        super::tray_status::complete_word(
+            old.request.pid,
+            old.request.birth,
+            old.request.operation,
+            false,
+            false,
+        );
+    }
+    let operation = request.operation;
     *slot = Some(Pending {
         request,
         due: Instant::now()
@@ -217,6 +244,7 @@ pub(super) fn submit(
                 Duration::from_millis(20)
             },
     });
+    super::tray_status::begin_word(target.process_id, birth, operation);
     true
 }
 pub(super) fn tick() {
@@ -248,6 +276,14 @@ fn dispatch_pending(client: &Client, generation: u32) {
             ) {
                 *slot = Some(pending);
             }
+        } else {
+            super::tray_status::complete_word(
+                pending.request.pid,
+                pending.request.birth,
+                pending.request.operation,
+                false,
+                false,
+            );
         }
     }
 }
