@@ -2161,6 +2161,37 @@
         "task_id": "g-switcher/2.0.1",
         "type": "reserve",
         "wake_id": "word-xml-capture-20261010-1252"
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-capture-spec-a1-finished",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:03:40.621527Z",
+        "reservation_id": "word-capture-spec-a1",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-capture-spec-a2",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:03:40.621527Z",
+        "kind": "agent_start",
+        "scope": "g-switcher/word-xml-capture/spec-corrected",
+        "operation_key": "sha256:73afe168721a8217205503619d75788ed1b79369198e9b20248bffa898f308cb",
+        "attempt_id": "spec-a2",
+        "cost": {
+          "tokens": null,
+          "elapsed_seconds": null,
+          "tool_calls": 1
+        },
+        "recovery_ref": null
       }
     ],
     "policy": {
@@ -2210,9 +2241,10 @@
     "files": {
       "README_RU.md": "01a873529b845787b6b795ae3ebaf066646e63c71e468c594294b7241047a5fd",
       "Run-WordXmlProbe.cmd": "93ccbe80e8f8004ed226acd71fab81ab7554efbe9242afbbcea5581b06cfb6fb",
-      "Run-WordXmlProbe.ps1": "52544f81b127b3b20603c388dcfdd5e08767503450af4f7c783a4a336568b1f0",
+      "Run-WordXmlProbe.ps1": "d08ea3dbad53ba7928a4b4cbc2d32d6c77031b0bdd9fdc4b2ed27fefb8b7878c",
       "WordXmlProbe.Core.ps1": "f01886bef545f1d37f6e2522d2161bd252ce681c695e7a7001b9e626496d9a99",
-      "ci.yml": "05d918e04799dfcd91f39a5f7087b53d48006458a337875361f1d2eed013ed7d",
+      "ci.yml": "42a422eec677c6a268f72b9c055819bf267ef592b6cb94b634b38ff9c4939949",
+      "tests/Test-Cleanup.ps1": "92d90d09a094ad629c9b3f5e6380cac63dd92ce64a1922cc62e08e853b3c2852",
       "tests/Test-Core.ps1": "27cbb45b48eb0fdcfa92eecb099fcd46712e4cd9044d6071e2165e1924332825",
       "tests/Test-Parse.ps1": "3d801d51e99ae95f2523379adc2e80a8587c691df928401dac1a9e3eff20a726",
       "tests/Test-Supervision.ps1": "0075be062eaf1f27b5e9507f0821d13dcc984edf856c1dd67c86e8a96b6b62c5"
@@ -2221,17 +2253,17 @@
     "product_integration": false,
     "schema": "word-xml-capture-proposal/v1"
   },
-  "payload_sha256": "bb44bf6313c967473c22a6f30f892604b6f8750c7b821277bee9d66204596ce3",
-  "phase": "spec-running",
+  "payload_sha256": "1ee3e6efee98a56980c6fff8730f0291ef04485aa9ae517e346f3d26d4eb538a",
+  "phase": "corrected-spec-queued",
   "plan": {
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
-    "change_id": "Word-XML-capture-diagnostic",
+    "change_id": "Word-XML-capture-diagnostic-cleanup-correction",
     "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
     "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
     "integrator_id": "root",
     "max_parallel": 2,
     "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
-    "pool_id": "word-capture-review-20261010-1252",
+    "pool_id": "word-capture-review-20261010-1252-corrected",
     "schema": "managed-executor-pool-plan/v1",
     "tasks": [
       {
@@ -2283,57 +2315,184 @@
     "total_runtime_budget_seconds": 1800
   },
   "pool": {
-    "authorizes_merge": false,
-    "authorizes_release": false,
-    "authorizes_scheduler_mutation": false,
-    "authorizes_scope_expansion": false,
-    "authorizes_shared_branch_write": false,
-    "authorizes_user_approval": false,
-    "authorizes_worker_launch": false,
+    "schema": "managed-executor-pool-state/v1",
+    "plan_digest": "sha256:c50ef880a0268e0620362dabb90d388f9ebbaf8356adc5b6bd515169bb5c9342",
+    "pool_id": "word-capture-review-20261010-1252-corrected",
+    "change_id": "Word-XML-capture-diagnostic-cleanup-correction",
+    "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
-    "change_id": "Word-XML-capture-diagnostic",
+    "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
     "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
-    "cost_consumed_units": 0,
+    "revision": 1,
     "execution_mode": "parallel",
-    "integrator_id": "root",
-    "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
-    "plan_digest": "sha256:ec11d40eecc7bad27eb552647de21b3d57f8e1567bebaf63397ea2fa0cdde9aa",
-    "pool_id": "word-capture-review-20261010-1252",
-    "revision": 2,
-    "runtime_consumed_seconds": 0,
-    "schema": "managed-executor-pool-state/v1",
     "tasks": [
       {
-        "accepted_result_ref": null,
-        "active_attempt_id": "spec-a1",
-        "attempt_ids": [
-          "spec-a1"
-        ],
-        "cost_units": 0,
-        "discarded": false,
         "id": "spec",
+        "status": "queued",
+        "attempt_ids": [
+          "spec-a2"
+        ],
+        "active_attempt_id": "spec-a2",
+        "reservation_token": "reserve:spec-a2",
+        "accepted_result_ref": null,
         "integrated": false,
-        "reservation_token": "reserve:spec-a1",
+        "discarded": false,
         "runtime_seconds": 0,
-        "status": "running"
+        "cost_units": 0
       },
       {
-        "accepted_result_ref": null,
-        "active_attempt_id": null,
-        "attempt_ids": [],
-        "cost_units": 0,
-        "discarded": false,
         "id": "quality",
-        "integrated": false,
+        "status": "planned",
+        "attempt_ids": [],
+        "active_attempt_id": null,
         "reservation_token": null,
+        "accepted_result_ref": null,
+        "integrated": false,
+        "discarded": false,
         "runtime_seconds": 0,
-        "status": "planned"
+        "cost_units": 0
       }
-    ]
+    ],
+    "runtime_consumed_seconds": 0,
+    "cost_consumed_units": 0,
+    "authorizes_worker_launch": false,
+    "authorizes_shared_branch_write": false,
+    "authorizes_merge": false,
+    "authorizes_release": false,
+    "authorizes_scope_expansion": false,
+    "authorizes_scheduler_mutation": false,
+    "authorizes_user_approval": false
   },
   "product_publication": false,
   "reviews": {},
   "schema": "word-capture-review-coordination/v1",
-  "source_base": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78"
+  "source_base": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+  "history": [
+    {
+      "plan": {
+        "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+        "change_id": "Word-XML-capture-diagnostic",
+        "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
+        "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
+        "integrator_id": "root",
+        "max_parallel": 2,
+        "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
+        "pool_id": "word-capture-review-20261010-1252",
+        "schema": "managed-executor-pool-plan/v1",
+        "tasks": [
+          {
+            "backend_preferences": [
+              "work_subagent"
+            ],
+            "branch": null,
+            "dependencies": [],
+            "executor_id": "spec-reviewer",
+            "expected_evidence": [
+              "evidence:spec"
+            ],
+            "expected_outputs": [
+              "review:spec"
+            ],
+            "id": "spec",
+            "max_cost_units": 1,
+            "max_runtime_seconds": 900,
+            "required": true,
+            "role": "review",
+            "worktree": null,
+            "write_paths": []
+          },
+          {
+            "backend_preferences": [
+              "work_subagent"
+            ],
+            "branch": null,
+            "dependencies": [
+              "spec"
+            ],
+            "executor_id": "quality-reviewer",
+            "expected_evidence": [
+              "evidence:quality"
+            ],
+            "expected_outputs": [
+              "review:quality"
+            ],
+            "id": "quality",
+            "max_cost_units": 1,
+            "max_runtime_seconds": 900,
+            "required": true,
+            "role": "review",
+            "worktree": null,
+            "write_paths": []
+          }
+        ],
+        "total_cost_budget_units": 4,
+        "total_runtime_budget_seconds": 1800
+      },
+      "pool": {
+        "authorizes_merge": false,
+        "authorizes_release": false,
+        "authorizes_scheduler_mutation": false,
+        "authorizes_scope_expansion": false,
+        "authorizes_shared_branch_write": false,
+        "authorizes_user_approval": false,
+        "authorizes_worker_launch": false,
+        "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
+        "change_id": "Word-XML-capture-diagnostic",
+        "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
+        "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
+        "cost_consumed_units": 1,
+        "execution_mode": "parallel",
+        "integrator_id": "root",
+        "parent_invocation_id": "work:1d146b6cc550:word-xml-capture-20261010",
+        "plan_digest": "sha256:ec11d40eecc7bad27eb552647de21b3d57f8e1567bebaf63397ea2fa0cdde9aa",
+        "pool_id": "word-capture-review-20261010-1252",
+        "revision": 4,
+        "runtime_consumed_seconds": 550,
+        "schema": "managed-executor-pool-state/v1",
+        "tasks": [
+          {
+            "accepted_result_ref": "sha256:a4c9081f93daac7da2a8ec6ab5c7ed90d78c85d5040d48eb376c4b57eae80ddf",
+            "active_attempt_id": null,
+            "attempt_ids": [
+              "spec-a1"
+            ],
+            "cost_units": 1,
+            "discarded": false,
+            "id": "spec",
+            "integrated": true,
+            "reservation_token": null,
+            "runtime_seconds": 550,
+            "status": "succeeded"
+          },
+          {
+            "accepted_result_ref": null,
+            "active_attempt_id": null,
+            "attempt_ids": [],
+            "cost_units": 0,
+            "discarded": false,
+            "id": "quality",
+            "integrated": false,
+            "reservation_token": null,
+            "runtime_seconds": 0,
+            "status": "planned"
+          }
+        ]
+      },
+      "review": {
+        "verdict": "RED",
+        "scope": "standalone diagnostic toolkit",
+        "manifest_sha256": "458afbe69e8c8c5942b9d82e92ee50f83fc000c516943a6dcd9e7cfb7f8e51da",
+        "findings": [
+          "Report I/O in finally could skip native cleanup and RCW release",
+          "Distribution omitted files referenced by the manifest"
+        ],
+        "reviewer": "/root/capture_spec",
+        "actual_word": "NOT_RUN",
+        "elapsed_seconds": null
+      },
+      "disposition": "RED findings fixed; unfinished quality review transferred to revised snapshot plan; original charges retained",
+      "runtime_accounting": "550 seconds conservative upper bound, not observed agent elapsed"
+    }
+  ]
 }
