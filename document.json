@@ -2192,6 +2192,37 @@
           "tool_calls": 1
         },
         "recovery_ref": null
+      },
+      {
+        "type": "outcome",
+        "event_id": "word-capture-spec-a2-finished",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:05:28.113659Z",
+        "reservation_id": "word-capture-spec-a2",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": 21.61
+        }
+      },
+      {
+        "type": "reserve",
+        "event_id": "word-capture-quality-a1",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "word-xml-capture-20261010-1252",
+        "at_utc": "2026-10-10T10:05:28.113659Z",
+        "kind": "agent_start",
+        "scope": "g-switcher/word-xml-capture/quality",
+        "operation_key": "sha256:1ee3e6efee98a56980c6fff8730f0291ef04485aa9ae517e346f3d26d4eb538a",
+        "attempt_id": "quality-a1",
+        "cost": {
+          "tokens": null,
+          "elapsed_seconds": null,
+          "tool_calls": 1
+        },
+        "recovery_ref": null
       }
     ],
     "policy": {
@@ -2254,7 +2285,7 @@
     "schema": "word-xml-capture-proposal/v1"
   },
   "payload_sha256": "1ee3e6efee98a56980c6fff8730f0291ef04485aa9ae517e346f3d26d4eb538a",
-  "phase": "corrected-spec-running",
+  "phase": "quality-queued",
   "plan": {
     "base_sha": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
     "change_id": "Word-XML-capture-diagnostic-cleanup-correction",
@@ -2324,29 +2355,31 @@
     "integrator_id": "root",
     "coordination_ref": "refs/heads/cdc/word-xml-capture-review-20261010-1252",
     "coordination_store_id": "sha256:93cd0fdaa837990b941833001bd2ca9f9186c3f8432a12d04ae2e313195ff781",
-    "revision": 2,
+    "revision": 5,
     "execution_mode": "parallel",
     "tasks": [
       {
         "id": "spec",
-        "status": "running",
+        "status": "succeeded",
         "attempt_ids": [
           "spec-a2"
         ],
-        "active_attempt_id": "spec-a2",
-        "reservation_token": "reserve:spec-a2",
-        "accepted_result_ref": null,
-        "integrated": false,
+        "active_attempt_id": null,
+        "reservation_token": null,
+        "accepted_result_ref": "sha256:9afcecd9dfa99124c86b9c8b43dc8df1d412cae0583ceb7fde1ee1802750eb06",
+        "integrated": true,
         "discarded": false,
-        "runtime_seconds": 0,
-        "cost_units": 0
+        "runtime_seconds": 21.61,
+        "cost_units": 1
       },
       {
         "id": "quality",
-        "status": "planned",
-        "attempt_ids": [],
-        "active_attempt_id": null,
-        "reservation_token": null,
+        "status": "queued",
+        "attempt_ids": [
+          "quality-a1"
+        ],
+        "active_attempt_id": "quality-a1",
+        "reservation_token": "reserve:quality-a1",
         "accepted_result_ref": null,
         "integrated": false,
         "discarded": false,
@@ -2354,8 +2387,8 @@
         "cost_units": 0
       }
     ],
-    "runtime_consumed_seconds": 0,
-    "cost_consumed_units": 0,
+    "runtime_consumed_seconds": 21.61,
+    "cost_consumed_units": 1,
     "authorizes_worker_launch": false,
     "authorizes_shared_branch_write": false,
     "authorizes_merge": false,
@@ -2365,7 +2398,20 @@
     "authorizes_user_approval": false
   },
   "product_publication": false,
-  "reviews": {},
+  "reviews": {
+    "spec": {
+      "verdict": "PASS",
+      "manifest_sha256": "802a09160f8b3987e01b8745ffada32afb5ad3b70a941f274d871d8b1411f31f",
+      "reviewer": "/root/capture_spec",
+      "actual_word": "NOT_RUN",
+      "observed_review_interval_seconds": 21.61,
+      "findings": [],
+      "resolved": [
+        "cleanup independent of report I/O",
+        "all manifest files included in kit"
+      ]
+    }
+  },
   "schema": "word-capture-review-coordination/v1",
   "source_base": "830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78",
   "history": [
