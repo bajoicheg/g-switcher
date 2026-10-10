@@ -1952,7 +1952,7 @@
       },
       {
         "at_utc": "2026-10-09T21:42:53.762718Z",
-        "detail": "Actual nativeEdit hookE2E Tabfailure observed ghbdtn TAB vs \u043f\u0440\u0438\u0432\u0435\u0442TAB. Preserve adjacent-generation token onlyforfreshnativeplainEdit focus/PID andpasswordchecks; immediate hook policyUNKNOWN, resetUIAcache; virtualTab pass-throughstillclearscontext; oldtestexpectations intact.",
+        "detail": "Actual nativeEdit hookE2E Tabfailure observed ghbdtn TAB vs приветTAB. Preserve adjacent-generation token onlyforfreshnativeplainEdit focus/PID andpasswordchecks; immediate hook policyUNKNOWN, resetUIAcache; virtualTab pass-throughstillclearscontext; oldtestexpectations intact.",
         "event_id": "word-broker-native-tab-d743a6ba",
         "kind": "code_correction",
         "reference": "report:word-broker-native-tab-d743a6ba",
@@ -1964,7 +1964,7 @@
       },
       {
         "at_utc": "2026-10-09T21:42:53.762718Z",
-        "detail": "Actual nativeEdit hookE2E Tabfailure observed ghbdtn TAB vs \u043f\u0440\u0438\u0432\u0435\u0442TAB. Preserve adjacent-generation token onlyforfreshnativeplainEdit focus/PID andpasswordchecks; immediate hook policyUNKNOWN, resetUIAcache; virtualTab pass-throughstillclearscontext; oldtestexpectations intact.",
+        "detail": "Actual nativeEdit hookE2E Tabfailure observed ghbdtn TAB vs приветTAB. Preserve adjacent-generation token onlyforfreshnativeplainEdit focus/PID andpasswordchecks; immediate hook policyUNKNOWN, resetUIAcache; virtualTab pass-throughstillclearscontext; oldtestexpectations intact.",
         "event_id": "word-broker-windows-tab-d743a6ba",
         "kind": "code_correction",
         "reference": "report:word-broker-windows-tab-d743a6ba",
@@ -2905,6 +2905,129 @@
           "tokens": null,
           "elapsed_seconds": null
         }
+      },
+      {
+        "type": "outcome",
+        "event_id": "usability-quality-a2-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:04:07.536178Z",
+        "reservation_id": "usability-quality-a2",
+        "status": "succeeded",
+        "failure": null,
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "usability-host-a1-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:07:57.803776Z",
+        "reservation_id": "usability-host-a1",
+        "status": "setup_failed",
+        "failure": {
+          "category": "configuration",
+          "signature": "Host-payload-missing-workflow"
+        },
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "outcome",
+        "event_id": "usability-ci-a1-outcome",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:45.967184Z",
+        "reservation_id": "usability-ci-a1",
+        "status": "setup_failed",
+        "failure": {
+          "category": "configuration",
+          "signature": "Host-payload-missing-workflow"
+        },
+        "usage": {
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "usability-host-a2-remedy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:46.096600Z",
+        "scope": "g-switcher/usability/managed-host",
+        "signature": "Host-payload-missing-workflow",
+        "reference": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.usability-host/workflow.yml",
+        "kind": "configuration_correction",
+        "detail": "Verified all eight pinned files in corrected immutable Git tree; workflow copy equals executed workflow."
+      },
+      {
+        "type": "reserve",
+        "event_id": "usability-host-a2",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:46.223781Z",
+        "operation_key": "sha256:5a195eb6a5c3ca3ff3d892b3b5466d7914f3b684639ccbbd3c723707d299159a",
+        "attempt_id": "usability-host-a2",
+        "kind": "compute_start",
+        "scope": "g-switcher/usability/managed-host",
+        "recovery_ref": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.usability-host/workflow.yml",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "remedy",
+        "event_id": "usability-ci-a2-remedy",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:46.347428Z",
+        "scope": "g-switcher/usability/windows-full",
+        "signature": "Host-payload-missing-workflow",
+        "reference": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.github/workflows/usability-validation.yml",
+        "kind": "configuration_correction",
+        "detail": "Verified all eight pinned files in corrected immutable Git tree; workflow copy equals executed workflow."
+      },
+      {
+        "type": "reserve",
+        "event_id": "usability-ci-a2",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:46.479710Z",
+        "operation_key": "sha256:7dd66a89fafd12c9a98ffdad0c0b01a6d8d93046546c5b24a545e79696a6e00c",
+        "attempt_id": "usability-ci-a2",
+        "kind": "ci_start",
+        "scope": "g-switcher/usability/windows-full",
+        "recovery_ref": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.github/workflows/usability-validation.yml",
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
+      },
+      {
+        "type": "reserve",
+        "event_id": "usability-quality-a3",
+        "task_id": "g-switcher/2.0.1",
+        "wake_id": "usability-20261010-2204",
+        "at_utc": "2026-10-10T20:08:46.618834Z",
+        "operation_key": "sha256:7fc886465fb36777ba8904b8ee09278904547304f77f02876c111549470ed38b",
+        "attempt_id": "usability-quality-a3",
+        "kind": "agent_start",
+        "scope": "g-switcher/usability/quality",
+        "recovery_ref": null,
+        "cost": {
+          "tool_calls": 1,
+          "tokens": null,
+          "elapsed_seconds": null
+        }
       }
     ],
     "policy": {
@@ -2950,15 +3073,15 @@
   },
   "host_reservation": {
     "type": "reserve",
-    "event_id": "usability-host-a1",
+    "event_id": "usability-host-a2",
     "task_id": "g-switcher/2.0.1",
     "wake_id": "usability-20261010-2204",
-    "at_utc": "2026-10-10T20:00:32.871449Z",
+    "at_utc": "2026-10-10T20:08:46.223781Z",
     "operation_key": "sha256:5a195eb6a5c3ca3ff3d892b3b5466d7914f3b684639ccbbd3c723707d299159a",
-    "attempt_id": "usability-host-a1",
+    "attempt_id": "usability-host-a2",
     "kind": "compute_start",
     "scope": "g-switcher/usability/managed-host",
-    "recovery_ref": null,
+    "recovery_ref": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.usability-host/workflow.yml",
     "cost": {
       "tool_calls": 1,
       "tokens": null,
@@ -2967,15 +3090,15 @@
   },
   "ci_reservation": {
     "type": "reserve",
-    "event_id": "usability-ci-a1",
+    "event_id": "usability-ci-a2",
     "task_id": "g-switcher/2.0.1",
     "wake_id": "usability-20261010-2204",
-    "at_utc": "2026-10-10T20:00:33.034546Z",
+    "at_utc": "2026-10-10T20:08:46.479710Z",
     "operation_key": "sha256:7dd66a89fafd12c9a98ffdad0c0b01a6d8d93046546c5b24a545e79696a6e00c",
-    "attempt_id": "usability-ci-a1",
+    "attempt_id": "usability-ci-a2",
     "kind": "ci_start",
     "scope": "g-switcher/usability/windows-full",
-    "recovery_ref": null,
+    "recovery_ref": "git:bajoicheg/g-switcher@a51945d6e41d230b6f52f9f5cd4dd1fb086aeb4d:.github/workflows/usability-validation.yml",
     "cost": {
       "tool_calls": 1,
       "tokens": null,
