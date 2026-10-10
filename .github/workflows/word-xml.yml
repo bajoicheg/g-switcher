@@ -1,0 +1,46 @@
+name: Word XML standalone proposal verification
+on:
+  push:
+    branches: [cdc/word-xml-host-20261010-0424-a1]
+permissions:
+  contents: read
+concurrency:
+  group: word-xml-managed-host
+  cancel-in-progress: false
+jobs:
+  managed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      CDC_REPO_ROOT: ${{ github.workspace }}/product
+      RUSTUP_TOOLCHAIN: 1.98.1
+    steps:
+      - name: Checkout frozen standalone host
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: orchestration
+          persist-credentials: false
+      - name: Checkout exact read-only product base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 830abfe7ef99a7c6e8ca8291fc7ae802ac5edd78
+          path: product
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Install exact test toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Execute owned standalone RED and GREEN
+        run: python -B orchestration/.word-xml/controller.py
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/word-xml-python-cache
+      - name: Preserve compiled and managed lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: word-xml-protocol-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/word-xml-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
