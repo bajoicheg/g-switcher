@@ -975,33 +975,152 @@
       "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "outcome",
-      "event_id": "word-broker-host-a1-outcome",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:40:37.168102Z",
-      "reservation_id": "word-broker-host-20261009-2306-a1",
-      "status": "setup_failed",
+      "event_id": "word-broker-host-a1-outcome",
       "failure": {
         "category": "configuration",
         "signature": "canonical-coordination-JSON-encoding"
       },
+      "reservation_id": "word-broker-host-20261009-2306-a1",
+      "status": "setup_failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
       "usage": {
-        "tokens": null,
-        "elapsed_seconds": null
-      }
+        "elapsed_seconds": null,
+        "tokens": null
+      },
+      "wake_id": "Word-restart-guard-20261009-1837"
     },
     {
-      "type": "remedy",
-      "event_id": "word-broker-host-a2-remedy",
-      "task_id": "g-switcher/2.0.1",
-      "wake_id": "Word-restart-guard-20261009-1837",
       "at_utc": "2026-10-09T20:40:37.168102Z",
+      "detail": "Use package git_document_store.canonical; require sorted compact UTF8 exact newline and dedicated single document tree before launch; previous run37988367440 terminal before lease acquisition/source apply",
+      "event_id": "word-broker-host-a2-remedy",
+      "kind": "configuration_correction",
+      "reference": "report:canonical-json-encoder-actual-CDC2121-host-a2",
       "scope": "github-actions/g-switcher/word-broker-managed-writer",
       "signature": "canonical-coordination-JSON-encoding",
-      "reference": "report:canonical-json-encoder-actual-CDC2121-host-a2",
-      "kind": "configuration_correction",
-      "detail": "Use package git_document_store.canonical; require sorted compact UTF8 exact newline and dedicated single document tree before launch; previous run37988367440 terminal before lease acquisition/source apply"
+      "task_id": "g-switcher/2.0.1",
+      "type": "remedy",
+      "wake_id": "Word-restart-guard-20261009-1837"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.091580Z",
+      "attempt_id": "cdc351-delivery-g-switcher-agent_start-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-g-switcher-agent_start-a1",
+      "kind": "agent_start",
+      "operation_key": "sha256:0f8c708db2c79e23d3a24f0071538cbd005138e9d9bee7c16e973d3934791f42",
+      "recovery_ref": null,
+      "scope": "One genuine native managed package-only writer; exact released3.5.1; product/platform gates preserved",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.109148Z",
+      "attempt_id": "cdc351-delivery-g-switcher-compute_start-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-g-switcher-compute_start-a1",
+      "kind": "compute_start",
+      "operation_key": "sha256:597f347282355ce356aa10fb642e072d2782b3efc533d32a81886405695a5b6c",
+      "recovery_ref": null,
+      "scope": "One genuine native managed package-only writer; exact released3.5.1; product/platform gates preserved",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.127406Z",
+      "attempt_id": "cdc351-delivery-switcher-auto-secret-scan-push-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-switcher-auto-secret-scan-push-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:3049dbf92f7572846118d9bbc99283ce08b8e2dc6bc5db832cf32643de2d7ddf",
+      "recovery_ref": null,
+      "scope": "Required automatic receiving-project check; exact resulting prepared HEAD bound before publication; no discretionary dispatch/core FULL",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.148620Z",
+      "attempt_id": "cdc351-delivery-switcher-auto-secret-scan-pull_request-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-switcher-auto-secret-scan-pull_request-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:07ecbd6945dd2dc18f4bbb7f126bcac544eb4860ba2a451934312ba064df0bb9",
+      "recovery_ref": null,
+      "scope": "Required automatic receiving-project check; exact resulting prepared HEAD bound before publication; no discretionary dispatch/core FULL",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.168474Z",
+      "attempt_id": "cdc351-delivery-switcher-auto-windows-ci-pull_request-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-switcher-auto-windows-ci-pull_request-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:856725fc0d3678431105ae20de93de892a4e38630b493100f44a69f188746a36",
+      "recovery_ref": null,
+      "scope": "Required automatic receiving-project check; exact resulting prepared HEAD bound before publication; no discretionary dispatch/core FULL",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.188137Z",
+      "attempt_id": "cdc351-delivery-switcher-auto-cdc-policy-pull_request-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-switcher-auto-cdc-policy-pull_request-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:81ddd5e262172b5b2cdbc374b769fb48dda2ba23072e2068e45ad068d7d863ae",
+      "recovery_ref": null,
+      "scope": "Required automatic receiving-project check; exact resulting prepared HEAD bound before publication; no discretionary dispatch/core FULL",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:30:15.208757Z",
+      "attempt_id": "cdc351-delivery-switcher-auto-release-2.0.1-workflow_run-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "cdc351-delivery-switcher-auto-release-2.0.1-workflow_run-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:198a6b945b4744f675745a26a06c20594bdf13a088f6c16d00b7d70c029446fd",
+      "recovery_ref": null,
+      "scope": "Required automatic receiving-project check; exact resulting prepared HEAD bound before publication; no discretionary dispatch/core FULL",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "cdc351-exact-package-delivery-20261012"
     }
   ],
   "policy": {
@@ -1039,6 +1158,7 @@
     "reader-recovery-20261008-1509",
     "word-refusal-diagnostics-20261008-1604",
     "word-bootstrap-recovery-20261008-1716",
-    "Word-restart-guard-20261009-1837"
+    "Word-restart-guard-20261009-1837",
+    "cdc351-exact-package-delivery-20261012"
   ]
 }
