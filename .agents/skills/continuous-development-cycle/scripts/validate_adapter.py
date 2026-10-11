@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import uuid
+from contracts import require_supported_runtime
 from contracts import (ContractError, check, digest, load_yaml, nonempty,
                        nullable_text, positive, semver, utc)
 
@@ -274,9 +275,7 @@ def validate_adapter(data, skill_version=None):
         except ValueError as exc:
             raise ContractError(f"quality policy: {exc}") from exc
     policy = data["policy"]
-    version = semver(skill_version or (ROOT / "VERSION").read_text().strip())
-    if version < (2, 11, 3):
-        raise ContractError("minimum supported CDC runtime is 2.11.3")
+    version = require_supported_runtime(skill_version or (ROOT / "VERSION").read_text().strip())
     lower, upper = semver(policy["skill_min_version"]), semver(policy["skill_max_version_exclusive"])
     if not lower <= version < upper:
         raise ContractError("policy skill version range is incompatible with installed skill")

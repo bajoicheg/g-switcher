@@ -18,6 +18,7 @@ import re
 import subprocess
 from typing import Protocol
 
+from contracts import require_supported_runtime
 from fleet_supervisor import validate_registry
 from git_remote_identity import remote_identity, repository_root
 from version_convergence import validate_target
@@ -227,6 +228,7 @@ def _release_binding(binding, target, canonical_repository):
     for name, value in expected.items():
         if binding[name] != value:
             raise ValueError("live target release provenance disagrees: " + name)
+    require_supported_runtime(binding["version"])
     _sha(binding["release_commit"])
     _sha(binding["package_tree"])
 

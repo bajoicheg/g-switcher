@@ -14,7 +14,7 @@ quality:
 
 policy:
   revision: "1"
-  skill_min_version: "2.11.3"
+  skill_min_version: "3.3.0"
   skill_max_version_exclusive: "4.0.0"
   approved_exceptions: []
 
@@ -245,7 +245,7 @@ fleet:
   assessment_max_age_seconds: 900
 
 convergence:
-  target_version: "2.11.3"
+  target_version: "3.5.0"
   target_package_fingerprint_ref: "coordination:fleet-target.json"
   exact_package_fingerprint_required: true
   safe_boundary_required: true

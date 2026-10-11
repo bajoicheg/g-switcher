@@ -6,6 +6,7 @@ its own authority requirements. A route is not permission to execute an effect.
 
 | Current action | Load before acting |
 |---|---|
+| Check planning, bounded evidence read, warm runtime or compact finish | `references/execution-efficiency.md` |
 | Source implementation / small batch | `references/lean-execution-core.md`, `references/task-lifecycle.md`, `references/quality-levels.md` |
 | Initialize project / preview migration | `references/project-setup.md`, `references/policy-compatibility.md` |
 | Resume mismatch or uncertain state | `references/bounded-recovery.md`, `references/policy-compatibility.md`, `references/progress-and-checkpoints.md`, `references/operational-hardening.md`, `references/deterministic-recovery.md` |
@@ -16,7 +17,7 @@ its own authority requirements. A route is not permission to execute an effect.
 | Existing external task / Cloud transport | `references/external-operations.md`, `references/codex-compute.md`, `references/submission-recovery.md` |
 | Watchdog health / scheduler or chat recovery | `references/watchdog-recovery-and-migration.md`, `references/watchdog-liveness-runtime.md` |
 | Public source publication | `references/publication-safety.md`, `references/autonomous-continuity-and-isolation.md` |
-| Release / isolated archived-consumer compatibility | `references/release-management.md`, `references/canonical-source-and-release.md`, `references/deterministic-distribution-and-convergence.md` |
+| Release / isolated supported-consumer compatibility | `references/release-management.md`, `references/canonical-source-and-release.md`, `references/deterministic-distribution-and-convergence.md` |
 | Live consumer adoption | `references/live-target-resolution.md`, `references/cooperative-project-lanes-and-watchdog-survivability.md` |
 | Detached release delivery / forward rollback | `references/release-delivery.md`, `references/execution-ownership.md`, `references/deterministic-distribution-and-convergence.md` |
 

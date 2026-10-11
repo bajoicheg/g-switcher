@@ -8,7 +8,7 @@ import re
 import sys
 
 sys.dont_write_bytecode = True
-from contracts import ContractError, load_yaml, semver
+from contracts import ContractError, load_yaml, semver, require_supported_runtime
 from codex_cloud_development import validate_development_request
 from validate_adapter import ADAPTER_SCHEMA, validate_adapter
 from validate_checkpoint import validate_checkpoint
@@ -84,9 +84,15 @@ from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
+    'scripts/submission_retirement.py', 'tests/test_submission_retirement.py',
+    'references/unknown-retirement.md',
     'scripts/release_delivery.py', 'tests/test_release_delivery.py',
     'tests/test_release_delivery_git.py', 'tests/test_release_delivery_cli.py',
     'references/release-delivery.md', 'templates/release-delivery.json',
+    'scripts/verification_economics.py', 'scripts/compact_evidence.py',
+    'scripts/execution_efficiency.py', 'scripts/suite_audit.py',
+    'references/execution-efficiency.md', 'tests/test_verification_economics.py',
+    'tests/test_execution_efficiency.py',
     'scripts/adaptive_allocation.py', 'tests/test_adaptive_allocation.py',
     'references/adaptive-allocation.md', 'templates/adaptive-allocation.json',
     'scripts/project_setup.py', 'tests/test_project_setup.py',
@@ -421,6 +427,15 @@ REQUIRED = [
     'references/multi-subscription-coordination-and-ownership.md',
     'tests/test_guidance_contracts.py',
     'tests/test_policy_controls.py',
+    'scripts/supported_consumer_qualification.py', 'tests/test_supported_consumer_qualification.py',
+    'templates/supported-consumer-provenance.json',
+    'templates/supported-consumer-fixtures/fleet-1/development-cycle.yaml',
+    'templates/supported-consumer-fixtures/fleet-1/work-status.md',
+    'templates/supported-consumer-fixtures/fleet-2/development-cycle.yaml',
+    'templates/supported-consumer-fixtures/fleet-2/work-status.md',
+    'templates/supported-consumer-fixtures/fleet-3/development-cycle.yaml',
+    'templates/supported-consumer-fixtures/fleet-3/work-status.md',
+    'tests/test_supported_runtime_floor.py',
     'scripts/cdc.py', 'scripts/development_contract.py',
     'scripts/operation_report.py', 'scripts/execution_strategy.py',
     'tests/test_cdc_entrypoint.py', 'tests/test_development_contract.py',
@@ -438,7 +453,7 @@ def validate():
         raise ContractError('missing package files: ' + ', '.join(missing))
     validate_liveness_probe(json.loads((ROOT / 'templates/watchdog-liveness-probe.json').read_text()))
     version = (ROOT / 'VERSION').read_text().strip()
-    semver(version)
+    require_supported_runtime(version)
     manifest = json.loads((ROOT / 'manifest.json').read_text())
     if manifest.get('version') != version or manifest.get('schema') != ADAPTER_SCHEMA or manifest.get('entrypoint') != 'SKILL.md':
         raise ContractError('manifest version/schema/entrypoint mismatch')

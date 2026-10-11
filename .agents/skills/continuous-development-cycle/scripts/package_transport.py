@@ -2,6 +2,7 @@
 """Carrier-neutral CDC package transport verification with exact Git tree identity."""
 from __future__ import annotations
 
+from contracts import require_supported_runtime
 from git_object_integrity import git_object_environment
 import argparse
 import hashlib
@@ -96,6 +97,7 @@ def validate_manifest(data):
     return data
 
 def verify_binding(data, *, version, release_commit, package_tree):
+    require_supported_runtime(data["version"])
     validate_manifest(data)
     expected = {"version": version, "release_commit": release_commit, "package_tree": package_tree}
     for name, value in expected.items():
@@ -104,6 +106,7 @@ def verify_binding(data, *, version, release_commit, package_tree):
     return True
 
 def verify_directory(data, package_dir):
+    require_supported_runtime(data["version"])
     validate_manifest(data)
     root = Path(package_dir)
     if not root.is_dir():
@@ -137,6 +140,7 @@ def verify_directory(data, package_dir):
     }
 
 def verify_git_tree(data, worktree, package_path):
+    require_supported_runtime(data["version"])
     validate_manifest(data)
     if not isinstance(package_path, str) or not PATH.fullmatch(package_path) or package_path.startswith("/"):
         raise ValueError("package_path invalid")

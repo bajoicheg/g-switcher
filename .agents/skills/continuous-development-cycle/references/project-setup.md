@@ -44,11 +44,9 @@ Use a current source observation; CLI accepts at most 90 seconds of age and
 Original policy/checkpoint bindings validate before planning. This fixed-path
 slice rejects custom checkpoint paths rather than redirecting the policy. Even
 unbound recovery validates a supplied Cloud profile and project/ref identity.
-Any saved external marker, including a keyless partial record, blocks artifacts. An explicit
-supported diagnostic version reads an archived policy; default checkpoint
-validation still rejects an incompatible installed runtime. Only a known
-exclusive ceiling 3.0.0 may be proposed as 4.0.0 for the 3.x target. Report
-original compatibility independently of detached proposal validity. Decimal
+Any saved external marker, including a keyless partial record, blocks artifacts. Executable diagnostic versions must be at least3.3.0. Below-floor
+policies remain historical data and cannot be widened or executed here. An
+incompatible current range requires a separately reviewed migration. Decimal
 revision advances once for semantic change. A nondecimal revision needing
 change requires a reviewed revision choice. Higher quality and an existing
 Windows/Android gate cannot be relaxed. Budgets, pauses, control fields,

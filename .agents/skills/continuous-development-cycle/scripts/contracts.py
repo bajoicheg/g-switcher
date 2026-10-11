@@ -116,3 +116,13 @@ def semver(value):
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
                                     ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+MINIMUM_EXECUTABLE_VERSION = "3.3.0"
+
+def require_supported_runtime(version):
+    """Check effect/runtime ingress; historical schema parsers remain readable."""
+    parsed = semver(version)
+    if parsed < (3, 3, 0):
+        raise ContractError("minimum supported CDC runtime is 3.3.0")
+    return parsed

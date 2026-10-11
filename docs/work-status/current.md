@@ -2,9 +2,9 @@
 schema: development-work-status/v4
 repository: bajoicheg/g-switcher
 branch: release/2.0.1
-policy_revision: 2026-10-10-cdc-3.3.0-all330-g-switcher
-policy_digest: df60d36a4bd1cd6a08c3c1ef6788713fbe4f74ccb9c1480fd4620c664a189321
-observed_at_utc: '2026-10-10T15:17:29.292927Z'
+policy_revision: 2026-10-11-cdc-3.5.0-safe-g-switcher
+policy_digest: 361ea2611fdbd0d1dd24887345aafb8ebd663827a43d13d4db810bfa36070b69
+observed_at_utc: '2026-10-11T10:44:17.277288Z'
 orchestration_origin: chat
 active_executor: none
 lease_state: released
@@ -17,9 +17,9 @@ operation_intent_ref: null
 operation_key: null
 control:
   execution_lease_ref: refs/heads/cdc/coordination
-  execution_lease_revision: 6171891acbfb67c3189f6c1e569ec30d133210a3
+  execution_lease_revision: c5db477fe377c61e37dee2b048e270013a7e3ac3
   executor_id: null
-  lease_generation: 49
+  lease_generation: 51
   budget_ref: https://github.com/bajoicheg/g-switcher/blob/cdc/coordination/budget-ledger.json
   recovery_snapshot_ref: null
   external_wait_ref: null
@@ -267,3 +267,8 @@ Canonical immutable release 62cd32e91446675799d42247eac2a0312c33d363, package 68
 
 
 CDC 3.3.0 process migration: policy binding and actual released control readback above; product work and historical proof remain pending/unchanged.
+
+
+## Current CDC 3.5.0 process provenance
+
+CDC3.5.0 process package/lock is current. Product phase, blocker, budgets and platform gates above are preserved; package CI is not product acceptance. The referenced control revision is the authentic prior released safe boundary; genuine new invocation, publication, lease release and physical closure are independently pinned in private per-consumer receipts. Schedulers remain PAUSED.

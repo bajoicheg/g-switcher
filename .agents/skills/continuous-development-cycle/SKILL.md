@@ -3,19 +3,17 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v3.3.0
+# Continuous Development Cycle v3.5.0
 
-This is the 3.3.0 release-delivery and forward-rollback source candidate. Its version identifies candidate
-bytes and is not release, installation or adoption evidence. Develop it under
-the independently verified 3.2.0 driver. The prior complete instructions
-are retained in `references/legacy-core-2.12.1.md`. Load current phase detail
-through `references/phase-routing.md`, rather than reading all history.
+This3.5.0 candidate extends actual execution economics under released3.4.0.
+Version labels identify bytes; source release, saved activation and adoption require
+separate evidence. Load only current phase references; history remains linked.
 
 ## Start and resume
 
 Verify the independently released runtime actually loaded: VERSION, manifest,
 installed bytes and canonical release evidence must agree. Develop a new CDC
-candidate under that released driver. Minimum executable runtime is 2.11.3;
+candidate under that released driver. Minimum executable runtime is 3.3.0;
 older records remain readable data, not executable authority.
 
 Read current applicable instructions, adapter and compact checkpoint/capsule.
@@ -134,8 +132,34 @@ wall time; no unobserved speedup, savings or quality improvement claims.
 Independent review covers behavior/spec and quality; critical work retains
 required ordered independent reviews. Verify actual evidence before success
 claims. Freeze an exact release-candidate SHA and use the release phase for
-bootstrap, package, compatibility, fault, archived-consumer and final CI gates.
+bootstrap, package, compatibility, fault, supported-consumer and final CI gates.
 Source release, installed runtime and consumer adoption are separate states.
 Adoption requires an exact released package, released/quiescent ownership,
 reconciled guards and preserved budgets/history. An explicit Fleet rollout
-pause is binding; archived-consumer tests do not deploy live consumers.
+pause is binding; supported-consumer tests do not deploy live consumers.
+
+## Unknown isolated Git submission
+
+Use `references/unknown-retirement.md` only for explicitly owner-authorized administrative isolation of an original returned create-only pilot Git submission on a physically released/quiescent v2 lease. Outcome stays UNKNOWN; do not invent provider terminal evidence or replay the candidate. All other unknown effects retain normal reconciliation.
+
+## Enforced execution economics
+
+Before planning new validation read `references/execution-efficiency.md`.
+Use command-check-plan/v2 with `scripts/run_checks.py`: covered original success
+is REUSED before subprocess spawn; it retains original SHA/provenance and is
+never a fresh exact-head result. Repeat aggregates need distinct reviewed reasons.
+One required frozen hosted FULL satisfies portable aggregate coverage; do not
+add source, clean-consumer or installation FULL by habit. Legacy v1 is retained
+for existing evidence contracts, not the default for new economics-aware tasks.
+
+Use `scripts/cdc.py inspect` for selected JSON pointers, bounded to8192UTF8bytes,
+with full original digest. Read current state once, history only on demand.
+Use `runtime` to verify actual saved loader/package identity without extracting
+an archive or rerunning FULL; interface snapshots do not override saved bytes.
+Use `efficient` for low-risk single-executor/review and bounded probe decisions;
+unknown effects retain their original key/guard and no replay authority.
+Use `closeout` with the existing Git store for one compact gate/physical/runtime/
+pool bundle. All exact owned process IDs need fresh absence evidence.
+`audit-tests` reports duplicate candidates for distinct-risk review, never deletes
+tests. Operation-observation/v2 records context, coordination, finish and repeats
+with explicit unknowns; compare equivalent actual workloads before claiming savings.

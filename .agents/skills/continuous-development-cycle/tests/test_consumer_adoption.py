@@ -7,7 +7,7 @@ from git_document_store import GitDocumentStore
 from git_remote_identity import endpoint_identity
 
 A="a"*40;B="b"*40;TREE="c"*40;REL="9"*40
-REQ=[".agents/skills/continuous-development-cycle","docs/cdc-consumer-lock.json","docs/development-cycle.yaml","docs/work-status/current.md","docs/cdc-adoption-2.11.3.md"]
+REQ=[".agents/skills/continuous-development-cycle","docs/cdc-consumer-lock.json","docs/development-cycle.yaml","docs/work-status/current.md","docs/cdc-adoption-3.3.0.md"]
 
 def fake_manifest(paths=REQ,package_tree=TREE):
  out=[]
@@ -23,8 +23,8 @@ def fake_authority(manifest=None):
          "manifest_digest":_manifest_digest(manifest)}
 
 def state():
- return {"schema":"consumer-adoption-publication/v1","source_head":A,"target_ref":"refs/heads/main","target_version":"2.11.3",
-  "target_release_ref":"refs/heads/release/v2.11.3","target_release_commit":REL,
+ return {"schema":"consumer-adoption-publication/v1","source_head":A,"target_ref":"refs/heads/main","target_version":"3.3.0",
+  "target_release_ref":"refs/heads/release/v3.3.0","target_release_commit":REL,
   "target_package_tree":TREE,"required_paths":REQ,"prepared_paths":[],"assembly_manifest":fake_manifest(),
   "assembly_authority":fake_authority(),
   "final_tree_sha":None,"observed_package_tree":None,
@@ -71,26 +71,38 @@ class GitPublisherTests(unittest.TestCase):
   self.required=[
    ".agents/skills/continuous-development-cycle",
    "docs/cdc-consumer-lock.json","docs/development-cycle.yaml",
-   "docs/work-status/current.md","docs/cdc-adoption-2.11.3.md"]
-  self.write(".agents/skills/continuous-development-cycle/VERSION","2.11.2\n")
+   "docs/work-status/current.md","docs/cdc-adoption-3.3.0.md"]
+  source_version=getattr(self,"source_version","3.3.0")
+  self.write(".agents/skills/continuous-development-cycle/VERSION",source_version+"\n")
   self.write("docs/cdc-consumer-lock.json","{}\n")
   self.write("docs/development-cycle.yaml","policy: base\n")
   self.write("docs/work-status/current.md","base\n")
-  self.write("docs/cdc-adoption-2.11.3.md","prepared\n")
+  self.write("docs/cdc-adoption-3.3.0.md","prepared\n")
+  if hasattr(self,'configured_package_path'):
+   self.write(self.configured_package_path+'/VERSION',getattr(self,'configured_package_version','2.11.2')+'\n')
+  self.git(self.work,"add",".")
+  source_tree=self.git(self.work,"write-tree")
+  source_package=self.git(self.work,"rev-parse",source_tree+":"+getattr(self,'configured_package_path','.agents/skills/continuous-development-cycle'))
+  source_lock={"schema":"cdc-consumer-lock/v1","canonical_repository":"owner/cdc","version":source_version,
+               "release_ref":"refs/heads/release/v"+source_version,"release_commit":"8"*40,"package_tree":source_package,
+               "checkpoint_schema":"development-work-status/v4","safe_boundary_required":True,"local_core_modifications_allowed":False}
+  source_lock.update(getattr(self,"source_lock_changes",{}))
+  import json
+  self.write("docs/cdc-consumer-lock.json",json.dumps(source_lock,sort_keys=True)+"\n")
   self.git(self.work,"add",".");self.git(self.work,"commit","-qm","source")
   self.source=self.git(self.work,"rev-parse","HEAD")
   self.git(self.work,"branch","-M","main")
   self.git(self.work,"push","-q","origin","main")
-  self.release_ref="refs/heads/release/v2.11.3";self.release_commit="9"*40
-  self.write(".agents/skills/continuous-development-cycle/VERSION","2.11.3\n")
+  self.release_ref="refs/heads/release/v3.3.0";self.release_commit="9"*40
+  self.write(".agents/skills/continuous-development-cycle/VERSION","3.3.0\n")
   self.write("docs/cdc-consumer-lock.json",'{}\n')
-  self.write("docs/development-cycle.yaml","policy: 2.11.3\n")
+  self.write("docs/development-cycle.yaml","policy: 3.3.0\n")
   self.write("docs/work-status/current.md","candidate\n")
-  self.write("docs/cdc-adoption-2.11.3.md","complete\n")
+  self.write("docs/cdc-adoption-3.3.0.md","complete\n")
   self.git(self.work,"add",".");self.git(self.work,"commit","-qm","candidate-prep")
   preliminary=self.git(self.work,"rev-parse","HEAD")
   self.package_tree=self.git(self.work,"rev-parse",preliminary+":.agents/skills/continuous-development-cycle")
-  lock={"schema":"cdc-consumer-lock/v1","canonical_repository":"owner/cdc","version":"2.11.3",
+  lock={"schema":"cdc-consumer-lock/v1","canonical_repository":"owner/cdc","version":"3.3.0",
         "release_ref":self.release_ref,"release_commit":self.release_commit,"package_tree":self.package_tree,
         "checkpoint_schema":"development-work-status/v4","safe_boundary_required":True,
         "local_core_modifications_allowed":False}
@@ -113,12 +125,12 @@ class GitPublisherTests(unittest.TestCase):
       "final_tree_sha":self.final_tree,"expected_subtree_tree":self.package_tree,
       "observed_subtree_tree":self.package_tree,"policy_reconciled":True}
   self.assembly_record=migration.assembly_record(
-      tx,target_version="2.11.3",target_release_ref=self.release_ref,
+      tx,target_version="3.3.0",target_release_ref=self.release_ref,
       target_release_commit=self.release_commit,completed_at_utc="2026-10-01T04:59:00Z")
   self.assembly_revision=self.assembly_store.compare_and_swap(None,self.assembly_record)
   self.publisher=GitConsumerAdoptionPublisher(
       self.work,"origin","refs/heads/main",self.remote_id,self.store,self.assembly_store,
-      clock=lambda:"2026-10-01T05:00:00Z")
+      clock=lambda:"2026-10-01T05:00:00Z",package_path=getattr(self,'configured_package_path','.agents/skills/continuous-development-cycle'))
  def git(self,cwd,*args):
   p=subprocess.run(["git","-C",str(cwd),*args],text=True,capture_output=True,check=True)
   return p.stdout.strip()
@@ -139,7 +151,7 @@ class GitPublisherTests(unittest.TestCase):
       "finalization_reserve_operations":1,"detached_checkpoints":[],
       "final_tree_sha":final_tree,"expected_subtree_tree":self.package_tree,
       "observed_subtree_tree":self.package_tree,"policy_reconciled":True}
-  record=migration.assembly_record(tx,target_version="2.11.3",target_release_ref=self.release_ref,
+  record=migration.assembly_record(tx,target_version="3.3.0",target_release_ref=self.release_ref,
       target_release_commit=self.release_commit,completed_at_utc="2026-10-01T05:01:00Z")
   current,_=self.assembly_store.read();revision=self.assembly_store.compare_and_swap(current,record)
   return {"schema":"migration-assembly-authority/v1","store_ref":self.assembly_store.ref,
@@ -147,7 +159,7 @@ class GitPublisherTests(unittest.TestCase):
           "transaction_id":record["transaction_id"],"manifest_digest":record["manifest_digest"]}
  def ready_state(self):
   d={"schema":"consumer-adoption-publication/v1","source_head":self.source,"target_ref":"refs/heads/main",
-     "target_version":"2.11.3","target_release_ref":self.release_ref,"target_release_commit":self.release_commit,
+     "target_version":"3.3.0","target_release_ref":self.release_ref,"target_release_commit":self.release_commit,
      "target_package_tree":self.package_tree,
      "required_paths":self.required[:],"prepared_paths":self.required[:],"assembly_manifest":copy.deepcopy(self.manifest),
      "assembly_authority":{"schema":"migration-assembly-authority/v1","store_ref":self.assembly_store.ref,
@@ -165,6 +177,36 @@ class GitPublisherTests(unittest.TestCase):
  def attempt(self,state):
   _,journal=self.store.read()
   return None if journal is None else journal["attempts"].get(state["publication_claim"]["effect_id"])
+ def test_below_floor_source_cannot_publish_or_create_attempt(self):
+  fixture=GitPublisherTests('test_real_publish_is_one_conditional_fast_forward_with_exact_readback')
+  fixture.source_version='2.11.2';fixture.setUp();self.addCleanup(fixture.doCleanups)
+  d=fixture.ready_state()
+  with self.assertRaisesRegex(ValueError,'3.3.0'):fixture.publisher.publish(d)
+  self.assertEqual(fixture.remote_head(),fixture.source);self.assertIsNone(fixture.attempt(d))
+ def test_source_lock_binding_must_match_installed_version_and_tree(self):
+  for changes in ({'version':'3.3.1','release_ref':'refs/heads/release/v3.3.1'},{'package_tree':'e'*40}):
+   with self.subTest(changes=changes):
+    fixture=GitPublisherTests('test_real_publish_is_one_conditional_fast_forward_with_exact_readback')
+    fixture.source_lock_changes=changes;fixture.setUp();self.addCleanup(fixture.doCleanups)
+    d=fixture.ready_state()
+    with self.assertRaisesRegex(ValueError,'source installed'):fixture.publisher.publish(d)
+    self.assertEqual(fixture.remote_head(),fixture.source);self.assertIsNone(fixture.attempt(d))
+ def test_configured_package_path_reads_its_source_version_before_publication(self):
+  fixture=GitPublisherTests('test_real_publish_is_one_conditional_fast_forward_with_exact_readback')
+  fixture.configured_package_path='vendor/cdc';fixture.setUp();self.addCleanup(fixture.doCleanups)
+  self.assertEqual(fixture.git(fixture.work,'show',fixture.source+':.agents/skills/continuous-development-cycle/VERSION'),'3.3.0')
+  self.assertEqual(fixture.git(fixture.work,'show',fixture.source+':vendor/cdc/VERSION'),'2.11.2')
+  d=fixture.ready_state()
+  with self.assertRaisesRegex(ValueError,'3.3.0'):fixture.publisher.publish(d)
+  self.assertEqual(fixture.remote_head(),fixture.source);self.assertIsNone(fixture.attempt(d))
+ def test_configured_package_version_lock_mismatch_cannot_publish(self):
+  fixture=GitPublisherTests('test_real_publish_is_one_conditional_fast_forward_with_exact_readback')
+  fixture.configured_package_path='vendor/cdc';fixture.configured_package_version='3.3.1'
+  fixture.setUp();self.addCleanup(fixture.doCleanups)
+  d=fixture.ready_state()
+  with self.assertRaisesRegex(ValueError,'source installed VERSION/lock/package binding mismatch'):
+   fixture.publisher.publish(d)
+  self.assertEqual(fixture.remote_head(),fixture.source);self.assertIsNone(fixture.attempt(d))
  def test_real_publish_is_one_conditional_fast_forward_with_exact_readback(self):
   d=self.ready_state();r=self.publisher.publish(d)
   self.assertEqual(r["action"],"PUBLISHED");self.assertTrue(r["conditional_update"])
@@ -208,11 +250,11 @@ class GitPublisherTests(unittest.TestCase):
   self.assertEqual(self.remote_head(),self.source);self.assertEqual(self.attempt(d)["status"],"unknown")
  def test_candidate_missing_required_path_fails_before_shared_ref_move(self):
   self.git(self.work,"checkout","-q","--detach",self.source)
-  self.write(".agents/skills/continuous-development-cycle/VERSION","2.11.3\n")
+  self.write(".agents/skills/continuous-development-cycle/VERSION","3.3.0\n")
   self.write("docs/cdc-consumer-lock.json",'{}\n')
-  self.write("docs/development-cycle.yaml","policy: 2.11.3\n")
+  self.write("docs/development-cycle.yaml","policy: 3.3.0\n")
   self.write("docs/work-status/current.md","candidate\n")
-  missing="docs/cdc-adoption-2.11.3.md"
+  missing="docs/cdc-adoption-3.3.0.md"
   (self.work/missing).unlink(missing_ok=True)
   self.git(self.work,"add","-A");self.git(self.work,"commit","-qm","missing adoption evidence")
   candidate=self.git(self.work,"rev-parse","HEAD")
@@ -230,13 +272,13 @@ class GitPublisherTests(unittest.TestCase):
    self.publisher.publish(d)
   self.assertEqual(self.remote_head(),self.source);self.assertIsNone(self.attempt(d))
  def test_adoption_provenance_path_tracks_target_version(self):
-  d=state();d["target_version"]="2.11.4"
-  d["required_paths"]=[p.replace("cdc-adoption-2.11.3.md","cdc-adoption-2.11.4.md") for p in d["required_paths"]]
+  d=state();d["target_version"]="3.3.1"
+  d["required_paths"]=[p.replace("cdc-adoption-3.3.0.md","cdc-adoption-3.3.1.md") for p in d["required_paths"]]
   d["prepared_paths"]=d["required_paths"][:];d["assembly_manifest"]=fake_manifest(d["required_paths"])
   d["assembly_authority"]=fake_authority(d["assembly_manifest"])
   d["final_tree_sha"]="d"*40;d["observed_package_tree"]=TREE;d["candidate_commit"]=B
   self.assertEqual(assess(d)["action"],"CLAIM_CONDITIONAL_PUBLISH")
-  bad=copy.deepcopy(d);bad["required_paths"]=[p.replace("cdc-adoption-2.11.4.md","cdc-adoption-2.11.3.md") for p in bad["required_paths"]]
+  bad=copy.deepcopy(d);bad["required_paths"]=[p.replace("cdc-adoption-3.3.1.md","cdc-adoption-3.3.0.md") for p in bad["required_paths"]]
   bad["prepared_paths"]=bad["required_paths"][:];bad["assembly_manifest"]=fake_manifest(bad["required_paths"])
   bad["assembly_authority"]=fake_authority(bad["assembly_manifest"])
   with self.assertRaisesRegex(ValueError,"required core path"):assess(bad)
@@ -261,7 +303,7 @@ class GitPublisherTests(unittest.TestCase):
      self.publisher.publish(d)
     self.assertEqual(self.remote_head(),self.source);self.assertIsNone(self.attempt(d))
  def test_regenerated_stale_manifest_cannot_replace_authoritative_detached_transaction(self):
-  for path in ["docs/development-cycle.yaml","docs/work-status/current.md","docs/cdc-adoption-2.11.3.md"]:
+  for path in ["docs/development-cycle.yaml","docs/work-status/current.md","docs/cdc-adoption-3.3.0.md"]:
    with self.subTest(path=path):
     self.git(self.work,"checkout","-q","--detach",self.candidate)
     self.write(path,"stale-but-self-consistent\n")

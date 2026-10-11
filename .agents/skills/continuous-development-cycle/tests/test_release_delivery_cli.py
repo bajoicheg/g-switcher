@@ -6,11 +6,11 @@ sys.path.insert(0,str(ROOT/"scripts"))
 import release_delivery
 
 def request():
-    version="3.3.0"
+    version="3.4.0"
     binding=dict(schema="live-target-release/v1",version=version,canonical_repository="owner/cdc",
         release_ref="refs/heads/release/v"+version,release_commit="b"*40,package_tree="c"*40)
-    lock=dict(schema="cdc-consumer-lock/v1",version="3.2.0",canonical_repository="owner/cdc",
-        release_ref="refs/heads/release/v3.2.0",release_commit="d"*40,package_tree="e"*40,
+    lock=dict(schema="cdc-consumer-lock/v1",version="3.3.1",canonical_repository="owner/cdc",
+        release_ref="refs/heads/release/v3.3.1",release_commit="d"*40,package_tree="e"*40,
         checkpoint_schema="development-work-status/v4",safe_boundary_required=True,local_core_modifications_allowed=False)
     return dict(schema="cdc-delivery-request/v1",source_head="a"*40,canonical_repository="owner/cdc",
         canonical_source_identity="sha256:"+"f"*64,release=binding,current_lock=lock,
@@ -43,7 +43,7 @@ class DeliveryCLITests(unittest.TestCase):
                 self.assertEqual(p.returncode,2,p.stderr);self.assertNotIn("Traceback",p.stderr)
 
     def test_downgrade_requires_historical_acceptance_and_retains_full_gates(self):
-        r=request();r["release"].update(version="3.1.0",release_ref="refs/heads/release/v3.1.0")
+        r=request();r["release"].update(version="3.3.0",release_ref="refs/heads/release/v3.3.0")
         with self.assertRaises(ValueError):release_delivery.plan(r)
         r["rollback_from"]="9"*40
         result=release_delivery.plan(r)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed atomic consumer adoption publication planning."""
 from __future__ import annotations
+from contracts import require_supported_runtime
 import argparse,copy,hashlib,json,re,secrets,subprocess,sys
 from datetime import datetime,timezone
 from pathlib import Path
@@ -10,6 +11,7 @@ from git_object_integrity import git_object_environment
 from git_remote_identity import isolated_remote_args,remote_identity,repository_root
 from parallel_task_planner import portable_path_key
 import migration_transaction as migration
+from consumer_lock import validate as validate_consumer_lock
 
 SCHEMA="consumer-adoption-publication/v1"
 REQUIRED_STATIC_PATHS={
@@ -112,6 +114,7 @@ def _claim(s):
 
 def assess(s):
     validate(s)
+    require_supported_runtime(s["target_version"])
     common={"schema":"consumer-adoption-publication-plan/v1","authorizes_ref_move":False,"authorizes_force_push":False,
             "authorizes_product_write":False,"publication_prerequisites_satisfied":False}
     missing=[p for p in s["required_paths"] if p not in s["prepared_paths"]]
@@ -232,6 +235,16 @@ class GitConsumerAdoptionPublisher:
         if state["target_ref"]!=self.target_ref:
             raise ValueError("consumer adoption target ref mismatch")
         candidate=state["candidate_commit"];source=state["source_head"]
+        installed,_=self._git('show',f'{source}:{self.package_path}/VERSION')
+        require_supported_runtime(installed.strip())
+        source_lock_raw,_=self._git('show',source+':docs/cdc-consumer-lock.json')
+        try:source_lock=validate_consumer_lock(json.loads(source_lock_raw))
+        except (TypeError,ValueError,KeyError) as exc:
+            raise ValueError('source installed consumer lock invalid') from exc
+        require_supported_runtime(source_lock['version'])
+        if (source_lock['version']!=installed.strip() or
+                source_lock['package_tree']!=self._package_tree(source)):
+            raise ValueError('source installed VERSION/lock/package binding mismatch')
         kind,_=self._git("cat-file","-t",candidate)
         if kind!="commit":
             raise ValueError("consumer adoption candidate must be a commit")

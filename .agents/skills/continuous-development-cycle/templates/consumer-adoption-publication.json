@@ -2,8 +2,8 @@
   "schema": "consumer-adoption-publication/v1",
   "source_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "target_ref": "refs/heads/main",
-  "target_version": "2.11.3",
-  "target_release_ref": "refs/heads/release/v2.11.3",
+  "target_version": "3.5.0",
+  "target_release_ref": "refs/heads/release/v3.5.0",
   "target_release_commit": "9999999999999999999999999999999999999999",
   "target_package_tree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "required_paths": [
@@ -11,7 +11,7 @@
     "docs/cdc-consumer-lock.json",
     "docs/development-cycle.yaml",
     "docs/work-status/current.md",
-    "docs/cdc-adoption-2.11.3.md"
+    "docs/cdc-adoption-3.5.0.md"
   ],
   "prepared_paths": [],
   "assembly_manifest": [
@@ -36,7 +36,7 @@
       "object_sha1": "0000000000000000000000000000000000000004"
     },
     {
-      "path": "docs/cdc-adoption-2.11.3.md",
+      "path": "docs/cdc-adoption-3.5.0.md",
       "object_type": "blob",
       "object_sha1": "0000000000000000000000000000000000000005"
     }
@@ -54,6 +54,6 @@
     "store_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "transaction_id": "migration-example",
-    "manifest_digest": "sha256:5b26b16d6fb70924e92030d313a09f94153918685cc2a09e242e6c2623313525"
+    "manifest_digest": "sha256:0cb39a9891bb255860f6728d98b8112b81be1d49c2126045dbd24d8c53c628b0"
   }
 }

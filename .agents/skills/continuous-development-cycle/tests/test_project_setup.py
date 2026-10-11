@@ -125,7 +125,7 @@ class ProjectMigrationTests(unittest.TestCase):
 
     def update_documents(self, adapter, cp, body):
         cp['policy_revision'] = adapter['policy']['revision']
-        cp['policy_digest'] = validate_adapter(adapter, skill_version='2.11.3')['policy_digest']
+        cp['policy_digest'] = validate_adapter(adapter, skill_version='3.3.0')['policy_digest']
         self.request['current_adapter_yaml'] = yaml.safe_dump(adapter, sort_keys=False)
         self.request['current_checkpoint_markdown'] = '---\n' + yaml.safe_dump(cp, sort_keys=False) + '---' + body
 
@@ -281,19 +281,12 @@ class ProjectMigrationTests(unittest.TestCase):
         self.assertEqual(result['existing_operation']['operation_key'], cp['operation_key'])
         self.assertEqual(result['files'], [])
 
-    def test_archived_ceiling_is_diagnostic_only_and_proposal_validates(self):
+    def test_below_floor_original_ceiling_cannot_be_migrated(self):
         adapter, cp, body = self.documents()
         adapter['policy']['skill_max_version_exclusive'] = '3.0.0'
-        self.update_documents(adapter, cp, body)
-        with self.assertRaises(ValueError): validate_checkpoint_24(cp, adapter)
-        result = self.migrate()
-        self.assertFalse(result['original_compatibility']['original_target_compatible'])
-        self.assertEqual(result['original_compatibility']['diagnostic_version'], '2.11.3')
-        files, proposed, rebound = self.result_documents(result)
-        self.assertEqual(proposed['policy']['skill_max_version_exclusive'], '4.0.0')
-        self.assertEqual(proposed['policy']['skill_min_version'], adapter['policy']['skill_min_version'])
-        validate_checkpoint_24(rebound, proposed)
-        with self.assertRaises(ValueError): validate_checkpoint_24(cp, adapter)
+        self.request['current_adapter_yaml'] = yaml.safe_dump(adapter)
+        with self.assertRaisesRegex(ValueError, 'supported diagnostic version'):
+            self.migrate()
 
     def test_stale_checkpoint_binding_cannot_be_rebound_silently(self):
         self.request['current_adapter_yaml'] += '\n# comment\n'
@@ -344,13 +337,10 @@ class ProjectMigrationTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertNotIn('READY_FOR_SUBMIT', result.stdout)
 
-    def test_optional_diagnostic_version_preserves_default_rejection(self):
+    def test_optional_diagnostic_version_cannot_execute_below_floor(self):
         adapter, cp, body = self.documents()
-        adapter['policy']['skill_max_version_exclusive'] = '3.0.0'
-        self.update_documents(adapter, cp, body)
-        self.assertTrue(callable(getattr(project_setup, 'migrate', None)), 'migration planner must exist')
-        validate_checkpoint_24(cp, adapter, skill_version='2.11.3')
-        with self.assertRaises(ValueError): validate_checkpoint_24(cp, adapter)
+        with self.assertRaisesRegex(ValueError, '3.3.0'):
+            validate_checkpoint_24(cp, adapter, skill_version='3.2.9')
 
 
 if __name__ == '__main__': unittest.main()

@@ -1,0 +1,9 @@
+# Administrative retirement of an UNKNOWN isolated Git submission
+
+An absent pilot ref, empty Actions list, elapsed time or different boot never prove Git rejection. Terminal reconciliation still requires real provider evidence.
+
+When the owner explicitly accepts preserving UNKNOWN without replay, `scripts/submission_retirement.py` supports exactly one narrow administrative transition. Authenticate original immutable caller/effect observations: one returned Git receive-pack invocation, create-only empty destination under refs/heads/pilot/, exact candidate, and original executor physically stopped with no pending shared writes. Bind current released v2 lease revision/digest, original guard and immutable owner decision. Persist the proof in the existing durable checkpoint and independently read it back before `retire_unknown_cas`.
+
+The canonical expected-revision CAS moves the unchanged guard to append-only submission_retirements, outcome UNKNOWN and replay_forbidden true. It preserves claims, terminal facts, resolutions, release and generation; its helper invokes no provider. A lost CAS response requires reading the actual state, never repeating a submission. A retired candidate cannot be rearmed under new identity/binding. Never delete/recreate the pilot or refund the original budget. Ordinary unrelated new candidates still require fresh managed ownership, budgets, intent and one-use dispatch checks.
+
+The evidence parser does not authenticate its producer. Release under CDC3.3.1 and verify its actual bytes before live application; older runtimes reject the optional new history field. Preserve original product validation blockers and checkpoints; upgrade only the independent CDC package scope. Accepted/taskful effects and arbitrary Git/source/release mutations are unsupported.

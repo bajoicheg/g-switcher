@@ -181,7 +181,8 @@ def validate(record):
     if record.get("schema") == "execution-lease/v1":
         return legacy.validate(record)
     record_fields=set(record)
-    if record_fields != FIELDS and record_fields != LEGACY_V2_FIELDS:
+    if record_fields not in (FIELDS, LEGACY_V2_FIELDS, FIELDS | {"submission_retirements"},
+                              LEGACY_V2_FIELDS | {"submission_retirements"}):
         raise ValueError("lease fields mismatch")
     if record["schema"] != "execution-lease/v2":
         raise ValueError("unsupported lease schema")
@@ -198,6 +199,20 @@ def validate(record):
         resolved_ids.append(item["grant_id"])
     if len(resolved_ids)!=len(set(resolved_ids)):
         raise ValueError("duplicate submission resolution")
+    retirements=record.get("submission_retirements",[])
+    if not isinstance(retirements,list):
+        raise ValueError("submission_retirements must be a list")
+    retired_ids=set()
+    from submission_retirement import validate_retirement, _forbids_intent
+    for entry in retirements:
+        validate_retirement(entry,record)
+        grant_id=entry["guard"]["submission_claim"]["grant_id"]
+        if grant_id in retired_ids or grant_id in resolved_ids:
+            raise ValueError("duplicate or terminal-resolved retirement")
+        retired_ids.add(grant_id)
+        guard=record["external_guard"]
+        if guard is not None and _forbids_intent(entry,guard["intent"]):
+            raise ValueError("retired UNKNOWN operation/candidate cannot be replayed")
     if record["owner_id"] is None:
         if record["invocation"] is not None or record["finalization"] is not None:
             raise ValueError("released v2 lease cannot retain live invocation/finalization")

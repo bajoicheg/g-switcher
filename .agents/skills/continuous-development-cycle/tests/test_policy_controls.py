@@ -45,8 +45,8 @@ class PolicyControlsTests(unittest.TestCase):
         data = self.template()
         data['policy']['skill_min_version'] = '2.10.2'
         data['convergence']['target_version'] = '2.10.2'
-        for version in ('2.11.3', VERSION):
+        for version in ('3.3.0', '3.3.1', '3.4.0', VERSION):
             with self.subTest(version=version):
                 validate_adapter(data, version)
-        with self.assertRaisesRegex(ContractError, 'minimum supported CDC runtime is 2.11.3'):
-            validate_adapter(data, '2.11.2')
+        with self.assertRaisesRegex(ContractError, 'minimum supported CDC runtime is 3.3.0'):
+            validate_adapter(data, '3.2.9')

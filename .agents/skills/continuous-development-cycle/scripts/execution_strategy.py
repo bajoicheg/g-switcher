@@ -44,8 +44,13 @@ def _batch(tasks, assessments):
 
 def evaluate(request):
     """Recommend only; simulated reservations never mutate the supplied ledger."""
-    _fields(request, ('schema', 'tasks', 'ledger', 'agent_reservations'), 'strategy')
-    if request['schema'] != 'execution-strategy/v1': raise ValueError('strategy schema mismatch')
+    v2=isinstance(request,dict) and request.get('schema')=='execution-strategy/v2'
+    _fields(request, ('schema', 'tasks', 'ledger', 'agent_reservations')+
+            (('parallel_benefit_ref',) if v2 else ()), 'strategy')
+    if request['schema'] not in ('execution-strategy/v1','execution-strategy/v2'):
+        raise ValueError('strategy schema mismatch')
+    if v2 and request['parallel_benefit_ref'] is not None:
+        _text(request['parallel_benefit_ref'],'parallel_benefit_ref')
     tasks = request['tasks']
     if not isinstance(tasks, list) or not tasks: raise ValueError('tasks must be a nonempty list')
     ids, scopes, assessments = set(), [], {}
@@ -97,6 +102,10 @@ def evaluate(request):
               'authorizes_release': False, 'agent_task_ids': []}
     if replay:
         return {**common, 'action': 'WAIT', 'reasons': ['reconcile recorded agent reservation before another start']}
+    if v2 and (all(task['small_reversible'] for task in tasks)
+               or request['parallel_benefit_ref'] is None):
+        return {**common,'action':'SINGLE',
+                'reasons':['small reversible batch or no concrete parallel benefit evidence']}
     independent = all(not task['depends_on'] for task in tasks)
     independent &= all(not any(_overlap(a, b) for a in scopes[i] for b in scopes[j])
                        for i in range(len(scopes)) for j in range(i + 1, len(scopes)))

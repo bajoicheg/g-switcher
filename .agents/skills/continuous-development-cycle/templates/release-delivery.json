@@ -5,9 +5,9 @@
   "canonical_source_identity": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
   "release": {
     "schema": "live-target-release/v1",
-    "version": "3.3.0",
+    "version": "3.5.0",
     "canonical_repository": "owner/cdc",
-    "release_ref": "refs/heads/release/v3.3.0",
+    "release_ref": "refs/heads/release/v3.5.0",
     "release_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "package_tree": "cccccccccccccccccccccccccccccccccccccccc"
   },

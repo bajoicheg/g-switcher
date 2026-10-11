@@ -29,25 +29,25 @@ class LiveTargetTests(unittest.TestCase):
         self.canonical = self.make_repo("canonical")
         self.registry = self.make_repo("registry")
         self.cache = self.make_repo("cache")
-        self.write(self.canonical, PACKAGE + "/VERSION", "3.2.1\n")
+        self.write(self.canonical, PACKAGE + "/VERSION", "3.3.1\n")
         self.candidate = self.commit(self.canonical)
         self.tree = self.git(self.canonical, "rev-parse", "HEAD:" + PACKAGE)
         self.evidence = {
-            "schema": "cdc-release-evidence/v1", "version": "3.2.1",
+            "schema": "cdc-release-evidence/v1", "version": "3.3.1",
             "canonical_repository": "owner/canonical", "status": "released",
             "candidate_source_commit": self.candidate, "package_tree": self.tree,
-            "release_ref": "refs/heads/release/v3.2.1",
+            "release_ref": "refs/heads/release/v3.3.1",
         }
-        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.write(self.canonical, "release/evidence-3.3.1.json", self.evidence)
         self.release = self.commit(self.canonical)
         self.git(self.canonical, "update-ref", self.evidence["release_ref"], self.release)
         self.target = {
-            "schema": "version-convergence-target/v1", "target_version": "3.2.1",
+            "schema": "version-convergence-target/v1", "target_version": "3.3.1",
             "target_package_fingerprint": "git-tree:" + self.tree,
             "checkpoint_schema": "development-work-status/v4", "safe_boundary_required": True,
         }
         self.provenance = {
-            "schema": "live-target-release/v1", "version": "3.2.1",
+            "schema": "live-target-release/v1", "version": "3.3.1",
             "canonical_repository": "owner/canonical", "release_ref": self.evidence["release_ref"],
             "release_commit": self.release, "package_tree": self.tree,
         }
@@ -129,7 +129,7 @@ class LiveTargetTests(unittest.TestCase):
         self.assertEqual(self.resolve()["target"], self.target)
 
     def test_configured_standalone_target_is_required_and_must_agree(self):
-        self.write(self.registry, "fleet/target.json", {**self.target, "target_version": "3.2.2"})
+        self.write(self.registry, "fleet/target.json", {**self.target, "target_version": "3.3.2"})
         self.commit(self.registry)
         with self.assertRaisesRegex(ValueError, "disagree"):
             self.resolve(target_path="fleet/target.json")
@@ -205,7 +205,7 @@ class LiveTargetTests(unittest.TestCase):
 
     def test_registry_and_release_document_bindings_cannot_disagree(self):
         for key, value in (("canonical_repository", "attacker/canonical"),
-                           ("version", "3.2.2"), ("package_tree", "0" * 40),
+                           ("version", "3.3.2"), ("package_tree", "0" * 40),
                            ("release_ref", "refs/heads/main")):
             original = self.provenance[key]
             self.provenance[key] = value
@@ -215,7 +215,7 @@ class LiveTargetTests(unittest.TestCase):
             self.provenance[key] = original
 
     def republish_release(self):
-        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.write(self.canonical, "release/evidence-3.3.1.json", self.evidence)
         self.release = self.commit(self.canonical)
         self.git(self.canonical, "update-ref", self.evidence["release_ref"], self.release)
         self.provenance["release_commit"] = self.release
@@ -223,7 +223,7 @@ class LiveTargetTests(unittest.TestCase):
 
     def test_canonical_release_evidence_must_be_released_and_agree(self):
         for key, value in (("status", "candidate"), ("canonical_repository", "other/repo"),
-                           ("version", "3.2.2"), ("package_tree", "0" * 40),
+                           ("version", "3.3.2"), ("package_tree", "0" * 40),
                            ("release_commit", "0" * 40)):
             original = dict(self.evidence)
             self.evidence[key] = value
@@ -233,7 +233,7 @@ class LiveTargetTests(unittest.TestCase):
             self.evidence = original
 
     def test_git_package_tree_and_version_must_match_provenance(self):
-        self.write(self.canonical, PACKAGE + "/VERSION", "3.2.2\n")
+        self.write(self.canonical, PACKAGE + "/VERSION", "3.3.2\n")
         self.republish_release()
         with self.assertRaises(ValueError):
             self.resolve()
@@ -253,7 +253,7 @@ class LiveTargetTests(unittest.TestCase):
 
     def test_duplicate_json_keys_and_unsafe_paths_are_rejected(self):
         self.write(self.registry, "fleet/target.json",
-                   json.dumps(self.target)[:-1] + ', "target_version": "3.2.1"}')
+                   json.dumps(self.target)[:-1] + ', "target_version": "3.3.1"}')
         self.commit(self.registry)
         with self.assertRaisesRegex(ValueError, "duplicate"):
             self.resolve(target_path="fleet/target.json")
@@ -278,16 +278,16 @@ class LiveTargetTests(unittest.TestCase):
         # Model actual8: immutable tested package, released evidence on descendant metadata.
         self.release = self.candidate
         self.evidence["release_commit"] = self.release
-        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.write(self.canonical, "release/evidence-3.3.1.json", self.evidence)
         self.metadata = self.commit(self.canonical)
-        self.evidence_ref = "refs/heads/cdc/release-evidence/v3.2.1"
+        self.evidence_ref = "refs/heads/cdc/release-evidence/v3.3.1"
         self.git(self.canonical, "update-ref", self.evidence["release_ref"], self.release)
         self.git(self.canonical, "update-ref", self.evidence_ref, self.metadata)
         self.provenance.update(schema="live-target-release/v2", release_commit=self.release,
                                evidence_binding={"schema": "canonical-release-evidence-binding/v1",
                                    "source_identity": git_remote_identity.remote_identity(self.cache, "canonical"),
                                    "ref": self.evidence_ref, "commit": self.metadata,
-                                   "path": "release/evidence-3.2.1.json"})
+                                   "path": "release/evidence-3.3.1.json"})
         self.publish_registry()
 
     def repin_metadata(self):
@@ -385,19 +385,19 @@ class LiveTargetTests(unittest.TestCase):
 
     def test_split_evidence_package_tree_mismatch_rejected(self):
         self.split_metadata()
-        self.write(self.canonical, PACKAGE + "/VERSION", "3.2.2\n")
+        self.write(self.canonical, PACKAGE + "/VERSION", "3.3.2\n")
         self.repin_metadata()
         with self.assertRaisesRegex(ValueError, "evidence.*package tree"):
             self.resolve()
 
     def test_split_evidence_release_fields_and_status_rejected(self):
         for field, value in (("status", "candidate"), ("release_commit", "0" * 40),
-                             ("version", "3.2.2"), ("package_tree", "0" * 40),
+                             ("version", "3.3.2"), ("package_tree", "0" * 40),
                              ("candidate_source_commit", "0" * 40)):
             self.split_metadata()
             original = dict(self.evidence)
             self.evidence[field] = value
-            self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+            self.write(self.canonical, "release/evidence-3.3.1.json", self.evidence)
             self.repin_metadata()
             with self.subTest(field=field), self.assertRaises(ValueError):
                 self.resolve()
@@ -406,14 +406,14 @@ class LiveTargetTests(unittest.TestCase):
     def test_split_evidence_requires_explicit_release_commit(self):
         self.split_metadata()
         del self.evidence["release_commit"]
-        self.write(self.canonical, "release/evidence-3.2.1.json", self.evidence)
+        self.write(self.canonical, "release/evidence-3.3.1.json", self.evidence)
         self.repin_metadata()
         with self.assertRaisesRegex(ValueError, "release_commit"):
             self.resolve()
 
     def test_split_evidence_missing_document_rejected(self):
         self.split_metadata()
-        (self.canonical / "release/evidence-3.2.1.json").unlink()
+        (self.canonical / "release/evidence-3.3.1.json").unlink()
         self.repin_metadata()
         with self.assertRaisesRegex(ValueError, "Git source operation failed"):
             self.resolve()

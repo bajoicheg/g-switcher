@@ -48,7 +48,9 @@ def load_json(path):
 
 def load_plan(path):
     plan = load_json(path)
-    if not isinstance(plan, dict) or set(plan) != {"schema", "checks"} or plan["schema"] != PLAN_SCHEMA:
+    v2 = isinstance(plan, dict) and plan.get('schema') == 'command-check-plan/v2'
+    expected = {"schema", "checks", "economics"} if v2 else {"schema", "checks"}
+    if not isinstance(plan, dict) or set(plan) != expected or plan["schema"] not in (PLAN_SCHEMA, 'command-check-plan/v2'):
         raise ValueError(f"plan requires schema {PLAN_SCHEMA} and checks only")
     if not isinstance(plan["checks"], list) or not plan["checks"]:
         raise ValueError("plan requires a nonempty checks list")
@@ -79,6 +81,9 @@ def load_plan(path):
                 raise ValueError(f"{name}: expected_red requires nonzero exit_code (1..255), literal signature and reason")
     if not any(check["required"] for check in plan["checks"]):
         raise ValueError("plan must contain at least one required check")
+    if v2:
+        from verification_economics import validate_aggregate_repeats
+        validate_aggregate_repeats(plan)
     return plan
 
 
@@ -281,7 +286,7 @@ def stop_process(process):
     process.wait(timeout=10)
 
 
-def run_one(check, evidence, output, index, blocked):
+def run_one(check, evidence, output, index, blocked, economics_plan=None, prior_records=()):
     directory = output / f"{index:03d}-{check['id']}"
     directory.mkdir()
     relative = directory.relative_to(output)
@@ -293,6 +298,18 @@ def run_one(check, evidence, output, index, blocked):
               "started_at_utc": utc_now(), "before": observe_source(evidence["worktree"]),
               "executed": False, "exit_code": None, "termination": "not_run", "diagnostic": "",
               "test_report": None, "result_path": (relative / "result.json").as_posix()}
+    if economics_plan is not None and not blocked and source_matches(result['before'], evidence['candidate_sha']):
+        from verification_economics import select
+        selection = select(economics_plan, check, evidence['worktree'], evidence['environment'],
+                           evidence['candidate_sha'], prior_records)
+        result['validation_inputs'] = selection['inputs']
+        result['repeat_exception'] = selection.get('repeat_exception')
+        if selection['action'] == 'REUSE':
+            result.update(status='REUSED', reason='original dependency-bound success reused',
+                          reuse=selection['reuse'], after=observe_source(evidence['worktree']),
+                          ended_at_utc=utc_now(), duration_seconds=round(time.monotonic()-started, 6))
+            atomic_json(directory / 'result.json', result)
+            return result
     log_path = directory / "command.log"
     temporary_log = directory / "command.log.part"
     with temporary_log.open("xb") as log:
@@ -349,6 +366,13 @@ def run(args):
     if output.resolve() != output or output == worktree or worktree in output.parents:
         raise ValueError("output-dir must be outside the worktree and have no symlink components")
     environment = environment_identity(args.environment_id, args.environment_config_sha256)
+    economics_plan = plan if plan['schema'] == 'command-check-plan/v2' else None
+    records = ()
+    if economics_plan is not None:
+        from verification_economics import prior_records, current_inputs
+        records = prior_records(plan['economics'])
+        for check in plan['checks']:
+            current_inputs(plan, check, worktree, environment)
     output.mkdir(parents=True, exist_ok=False)
     evidence = {"schema": EVIDENCE_SCHEMA, "skill_version": SKILL_VERSION, "candidate_sha": args.candidate_sha,
                 "worktree": str(worktree), "output_dir": str(output), "environment": environment,
@@ -360,7 +384,7 @@ def run(args):
     try:
         blocked = False
         for index, check in enumerate(plan["checks"], 1):
-            result = run_one(check, evidence, output, index, blocked)
+            result = run_one(check, evidence, output, index, blocked, economics_plan, records)
             evidence["checks"].append(result)
             blocked = blocked or any(not source_matches(result[side], args.candidate_sha) for side in ("before", "after"))
             atomic_json(output / "evidence.json", evidence)
@@ -368,6 +392,9 @@ def run(args):
         evidence["runner_status"] = "COMPLETE"
         evidence["gate_status"] = gate_status(evidence, plan)
         evidence["final_green"] = evidence["gate_status"] == "GREEN"
+        evidence['economics'] = {'executed_checks':sum(c['executed'] for c in evidence['checks']),
+            'reused_checks':sum(c['status']=='REUSED' for c in evidence['checks']),
+            'provider_token_usage':None}
     except BaseException as error:
         evidence["runner_status"] = "ERROR"
         evidence["gate_status"] = "NOT_RUN"

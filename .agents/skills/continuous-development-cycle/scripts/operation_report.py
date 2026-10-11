@@ -5,6 +5,8 @@ import math
 
 PHASES = ('startup', 'implementation', 'validation', 'wait')
 DELIVERY = ('delivered', 'escaped_defects')
+OVERHEAD = ('context_bytes', 'agent_starts', 'unchanged_probes', 'repeat_checks',
+            'coordination_seconds', 'finish_seconds')
 
 
 def _fields(data, names, label):
@@ -35,9 +37,12 @@ def _observation(data, label, *, integer=False):
 
 def measure(request):
     """Validate the observation and retain unknown values with their reasons."""
-    _fields(request, ('schema', 'observation_ref', 'comparison_group', 'elapsed_seconds',
-                      'tokens', 'budget_ref', 'phases', 'delivery'), 'operation')
-    if request['schema'] != 'operation-observation/v1': raise ValueError('operation schema mismatch')
+    v2=isinstance(request,dict) and request.get('schema')=='operation-observation/v2'
+    names=('schema','observation_ref','comparison_group','elapsed_seconds',
+           'tokens','budget_ref','phases','delivery')+ (('overhead',) if v2 else ())
+    _fields(request, names, 'operation')
+    if request['schema'] not in ('operation-observation/v1','operation-observation/v2'):
+        raise ValueError('operation schema mismatch')
     _text(request['observation_ref'], 'observation_ref')
     _text(request['comparison_group'], 'comparison_group')
     _number(request['elapsed_seconds'], 'elapsed_seconds')
@@ -59,12 +64,17 @@ def measure(request):
     _fields(request['delivery'], DELIVERY, 'delivery')
     phases = {key: _observation(request['phases'][key], key) for key in PHASES}
     delivery = {key: _observation(request['delivery'][key], key, integer=True) for key in DELIVERY}
+    overhead={}
+    if v2:
+        _fields(request['overhead'],OVERHEAD,'overhead')
+        overhead={key:_observation(request['overhead'][key],key,integer=not key.endswith('_seconds'))
+                  for key in OVERHEAD}
     return {'schema': 'operation-measurement/v1', 'observation_ref': request['observation_ref'],
             'comparison_group': request['comparison_group'],
             'elapsed_seconds': request['elapsed_seconds'],
             'rounded_minutes': math.floor(request['elapsed_seconds'] / 60 + 0.5),
             'tokens': dict(tokens), 'budget_ref': request['budget_ref'],
-            'phases': phases, 'delivery': delivery}
+            'phases': phases, 'delivery': delivery, **({'overhead':overhead} if v2 else {})}
 
 
 def render(request):
@@ -93,11 +103,14 @@ def compare(before, after):
         token_delta['delta'] = None
     token_delta['before_provenance'] = first['tokens']['provenance']
     token_delta['after_provenance'] = second['tokens']['provenance']
+    overhead={key:_delta(first.get('overhead',{}).get(key,{}).get('value'),
+                        second.get('overhead',{}).get(key,{}).get('value')) for key in OVERHEAD}
     return {'schema': 'operation-comparison/v1',
             'comparison_group': first['comparison_group'],
             'before_ref': first['observation_ref'], 'after_ref': second['observation_ref'],
             'elapsed_seconds': _delta(first['elapsed_seconds'], second['elapsed_seconds']),
             'tokens': token_delta,
+            **({'overhead':overhead} if 'overhead' in first or 'overhead' in second else {}),
             'phases': {key: _delta(first['phases'][key]['value'], second['phases'][key]['value'])
                        for key in PHASES},
             'delivery': {key: _delta(first['delivery'][key]['value'], second['delivery'][key]['value'])

@@ -87,9 +87,33 @@ def main(argv=None):
     for name in ('assess', 'report', 'strategy', 'allocate', 'init', 'migrate', 'delivery'):
         command = sub.add_parser(name)
         command.add_argument('input')
+    for name in ('efficient', 'runtime', 'closeout'):
+        command=sub.add_parser(name);command.add_argument('input')
+        if name=='closeout':
+            for option in ('repo','remote','coordination-ref'):command.add_argument('--'+option,required=True)
+    command=sub.add_parser('inspect');command.add_argument('input')
+    command.add_argument('--pointer',action='append',default=[])
+    command.add_argument('--max-bytes',type=int,default=8192)
+    command=sub.add_parser('audit-tests');command.add_argument('root')
     args = parser.parse_args(argv)
     try:
-        if args.command == 'resume':
+        if args.command == 'inspect':
+            from compact_evidence import project
+            result=project(args.input,args.pointer,args.max_bytes)
+        elif args.command == 'runtime':
+            from compact_evidence import runtime_identity
+            result=runtime_identity(_load(args.input))
+        elif args.command == 'efficient':
+            from execution_efficiency import evaluate
+            result=evaluate(_load(args.input))
+        elif args.command == 'closeout':
+            from execution_efficiency import terminal_bundle
+            from git_lease_store import GitLeaseStore
+            result=terminal_bundle(_load(args.input),GitLeaseStore(args.repo,args.remote,args.coordination_ref))
+        elif args.command == 'audit-tests':
+            from suite_audit import audit
+            result=audit(args.root)
+        elif args.command == 'resume':
             result = resume(_load(args.capsule), _load(args.probe),
                             max_age_seconds=args.max_age_seconds,
                             max_probe_age_seconds=args.max_probe_age_seconds)

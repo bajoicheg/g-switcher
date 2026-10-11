@@ -164,7 +164,7 @@ def _original_documents(request):
     adapter = _yaml(request['current_adapter_yaml'])
     checkpoint, body = _checkpoint(request['current_checkpoint_markdown'])
     policy = adapter['policy']
-    diagnostic_version = max(semver(policy['skill_min_version']), (2, 11, 3))
+    diagnostic_version = max(semver(policy['skill_min_version']), (3, 3, 0))
     ceiling = semver(policy['skill_max_version_exclusive'])
     if diagnostic_version >= ceiling:
         raise ValueError('original policy has no supported diagnostic version')
@@ -203,12 +203,7 @@ def _desired_sections(adapter, preset, compatibility):
         sections['validation'] = {**adapter['validation'], 'final_platform': platform}
     new_policy = copy.deepcopy(adapter['policy'])
     if not compatibility['original_target_compatible']:
-        target = semver(compatibility['target_version'])
-        if (new_policy['skill_max_version_exclusive'] != '3.0.0' or target[0] != 3
-                or target < semver(new_policy['skill_min_version'])):
-            raise ValueError('version range requires separately reviewed migration')
-        new_policy['skill_max_version_exclusive'] = '4.0.0'
-        sections['policy'] = new_policy
+        raise ValueError('version range requires separately reviewed migration')
     if sections:
         revision = new_policy['revision']
         if not re.fullmatch(r'[0-9]+', revision):

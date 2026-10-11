@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "3.3.0",
+  "version": "3.5.0",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Exact verified native release delivery and safe forward rollback composed with existing ownership, assembly and durable publication."
+  "description": "Supported Fleet floor3.3.0 with current-risk qualification and preserved audit history."
 }

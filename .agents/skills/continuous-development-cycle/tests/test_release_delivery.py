@@ -39,17 +39,17 @@ class ReleaseVerificationTests(unittest.TestCase):
     def test_split_wrong_candidate_and_duplicate_evidence_are_rejected(self):
         f=self.fixture; f.split_metadata()
         f.evidence["candidate_source_commit"]="0"*40
-        f.write(f.canonical,"release/evidence-3.2.1.json",f.evidence);f.repin_metadata()
+        f.write(f.canonical,"release/evidence-3.3.1.json",f.evidence);f.repin_metadata()
         with self.assertRaises(ValueError): self.verify()
         import json
         f.evidence["candidate_source_commit"]=f.candidate
-        f.write(f.canonical,"release/evidence-3.2.1.json",json.dumps(f.evidence)[:-1]+',"status":"released"}')
+        f.write(f.canonical,"release/evidence-3.3.1.json",json.dumps(f.evidence)[:-1]+',"status":"released"}')
         f.repin_metadata()
         with self.assertRaisesRegex(ValueError,"duplicate"): self.verify()
 
     def test_malformed_version_cannot_form_a_git_path(self):
         f=self.fixture
-        f.provenance["version"]="../3.2.1"
+        f.provenance["version"]="../3.3.1"
         with self.assertRaises(ValueError): self.verify()
 
 if __name__ == "__main__": unittest.main()

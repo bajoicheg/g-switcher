@@ -1,6 +1,6 @@
 schema: continuous-development-cycle/v3
 policy:
-  revision: 2026-10-10-cdc-3.3.0-all330-g-switcher
+  revision: 2026-10-11-cdc-3.5.0-safe-g-switcher
   skill_min_version: 3.3.0
   skill_max_version_exclusive: 4.0.0
   approved_exceptions: []
@@ -218,8 +218,8 @@ fleet:
   merge_authority: false
   assessment_max_age_seconds: 900
 convergence:
-  target_version: 3.3.0
-  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/2be2088d8e6ad59f87cdd9d07dc9f7ab8d4c34ad/src/continuous-development-cycle
+  target_version: 3.5.0
+  target_package_fingerprint_ref: https://github.com/bajoicheg/g-cdc/tree/b8f5b2cc64878715b63af388124ac0656d1c87b4/src/continuous-development-cycle
   exact_package_fingerprint_required: true
   safe_boundary_required: true
 progress_slo:

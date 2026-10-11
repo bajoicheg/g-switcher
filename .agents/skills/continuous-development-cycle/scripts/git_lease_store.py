@@ -83,6 +83,22 @@ def validate_coordination_transition(previous, record, *, ownership_capability=N
     if previous is None:
         return record
     validate_coordination_record(previous)
+    previous_retirements=previous.get('submission_retirements',[])
+    current_retirements=record.get('submission_retirements',[])
+    if current_retirements[:len(previous_retirements)] != previous_retirements:
+        raise ValueError('UNKNOWN retirement history cannot be removed or rewritten')
+    appended=current_retirements[len(previous_retirements):]
+    if appended:
+        if len(appended)!=1 or expected_revision is None:
+            raise ValueError('one exact revision-bound retirement required')
+        from submission_retirement import retire_unknown_guard
+        entry=appended[0]
+        if entry['proof']['lease_revision']!=expected_revision:
+            raise ValueError('retirement proof does not bind exact CAS revision')
+        expected=retire_unknown_guard(previous,entry['proof'],entry['evidence_reference'],entry['retired_at_utc'])
+        if expected!=record:
+            raise ValueError('retirement CAS contains noncanonical or unrelated mutations')
+        return record
     if any(previous[key] != record[key] for key in ('repository', 'source_ref')):
         raise ValueError('coordination binding is immutable')
     prev_schema=previous.get('schema');new_schema=record.get('schema')

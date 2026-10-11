@@ -2,10 +2,10 @@
   "canonical_repository": "bajoicheg/g-cdc",
   "checkpoint_schema": "development-work-status/v4",
   "local_core_modifications_allowed": false,
-  "package_tree": "3f00c4927557aa94912c8bf21a881add47c2f412",
-  "release_commit": "2be2088d8e6ad59f87cdd9d07dc9f7ab8d4c34ad",
-  "release_ref": "refs/heads/release/v3.3.0",
+  "package_tree": "bc7961ffc170db38bfa25d8bd132de127c24a8d0",
+  "release_commit": "b8f5b2cc64878715b63af388124ac0656d1c87b4",
+  "release_ref": "refs/heads/release/v3.5.0",
   "safe_boundary_required": true,
   "schema": "cdc-consumer-lock/v1",
-  "version": "3.3.0"
+  "version": "3.5.0"
 }
