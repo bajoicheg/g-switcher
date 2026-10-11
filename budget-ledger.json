@@ -1121,6 +1121,34 @@
       "task_id": "g-switcher/2.0.1",
       "type": "reserve",
       "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:35:23.272116Z",
+      "event_id": "cdc351-delivery-g-switcher-agent_start-a1-terminal",
+      "failure": null,
+      "reservation_id": "cdc351-delivery-g-switcher-agent_start-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 269.2621170140046,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:35:23.293498Z",
+      "event_id": "cdc351-delivery-g-switcher-compute_start-a1-terminal",
+      "failure": null,
+      "reservation_id": "cdc351-delivery-g-switcher-compute_start-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 269.2621170140046,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
     }
   ],
   "policy": {
