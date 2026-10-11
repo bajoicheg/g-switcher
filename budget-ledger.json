@@ -1149,6 +1149,85 @@
         "tokens": null
       },
       "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:44:32.125553Z",
+      "event_id": "cdc351-delivery-switcher-auto-secret-scan-push-a1-terminal",
+      "failure": {
+        "category": "configuration",
+        "signature": "redacted-history-scanner-16-generic-api-key-matches-unclassified"
+      },
+      "reservation_id": "cdc351-delivery-switcher-auto-secret-scan-push-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 0,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:44:32.148393Z",
+      "event_id": "cdc351-delivery-switcher-auto-secret-scan-pull_request-a1-terminal",
+      "failure": {
+        "category": "configuration",
+        "signature": "redacted-history-scanner-16-generic-api-key-matches-unclassified"
+      },
+      "reservation_id": "cdc351-delivery-switcher-auto-secret-scan-pull_request-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 0,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:44:32.172784Z",
+      "event_id": "cdc351-delivery-switcher-auto-windows-ci-pull_request-a1-terminal",
+      "failure": null,
+      "reservation_id": "cdc351-delivery-switcher-auto-windows-ci-pull_request-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 0,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:44:32.197430Z",
+      "event_id": "cdc351-delivery-switcher-auto-cdc-policy-pull_request-a1-terminal",
+      "failure": {
+        "category": "configuration",
+        "signature": "obsolete-CDC-2.11.5-identity-pin"
+      },
+      "reservation_id": "cdc351-delivery-switcher-auto-cdc-policy-pull_request-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 0,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-11T23:44:32.221837Z",
+      "event_id": "cdc351-delivery-switcher-auto-release-2.0.1-workflow_run-a1-terminal",
+      "failure": null,
+      "reservation_id": "cdc351-delivery-switcher-auto-release-2.0.1-workflow_run-a1",
+      "status": "unknown",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": null,
+        "tokens": null
+      },
+      "wake_id": "cdc351-exact-package-delivery-20261012"
     }
   ],
   "policy": {
