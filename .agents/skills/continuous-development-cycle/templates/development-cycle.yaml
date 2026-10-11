@@ -245,7 +245,7 @@ fleet:
   assessment_max_age_seconds: 900
 
 convergence:
-  target_version: "3.5.0"
+  target_version: "3.5.1"
   target_package_fingerprint_ref: "coordination:fleet-target.json"
   exact_package_fingerprint_required: true
   safe_boundary_required: true

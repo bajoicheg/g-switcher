@@ -3,9 +3,12 @@ name: continuous-development-cycle
 description: Use when substantial software development must continue across long sessions, interruptions, CI runs, repository migrations, watchdog resumes, development chat cleanup, Work/Codex orchestration, Codex Compute setup or failures, or limited compute budgets.
 ---
 
-# Continuous Development Cycle v3.5.0
+# Continuous Development Cycle v3.5.1
 
-This3.5.0 candidate extends actual execution economics under released3.4.0.
+This3.5.1 candidate adds strict administrative Actions UNKNOWN quarantine under released3.5.0.
+Missing transport cancellation proof remains UNKNOWN; native evidence and CAS
+retire only the exact read-only pilot without replay or a new submission grant.
+Load `references/unknown-retirement.md` only for that authorized recovery phase.
 Version labels identify bytes; source release, saved activation and adoption require
 separate evidence. Load only current phase references; history remains linked.
 

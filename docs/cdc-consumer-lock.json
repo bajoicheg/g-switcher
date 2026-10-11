@@ -1,11 +1,1 @@
-{
-  "canonical_repository": "bajoicheg/g-cdc",
-  "checkpoint_schema": "development-work-status/v4",
-  "local_core_modifications_allowed": false,
-  "package_tree": "bc7961ffc170db38bfa25d8bd132de127c24a8d0",
-  "release_commit": "b8f5b2cc64878715b63af388124ac0656d1c87b4",
-  "release_ref": "refs/heads/release/v3.5.0",
-  "safe_boundary_required": true,
-  "schema": "cdc-consumer-lock/v1",
-  "version": "3.5.0"
-}
+{"canonical_repository": "bajoicheg/g-cdc", "checkpoint_schema": "development-work-status/v4", "local_core_modifications_allowed": false, "package_tree": "3d3b07539ccf6e58914e8de03d6adff691f97b10", "release_commit": "5181ceb82ae4011229c651430c0e06c5f171ffba", "release_ref": "refs/heads/release/v3.5.1", "safe_boundary_required": true, "schema": "cdc-consumer-lock/v1", "version": "3.5.1"}

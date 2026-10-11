@@ -78,9 +78,11 @@ def _validate_submission_resolution_transition(previous, record, *, expected_rev
     return record
 
 
-def validate_coordination_transition(previous, record, *, ownership_capability=None, expected_revision=None):
+def validate_coordination_transition(previous, record, *, ownership_capability=None, expected_revision=None, retirement_capability=None, retirement_store=None):
     validate_coordination_record(record)
     if previous is None:
+        if any(e['schema']=='actions-submission-retirement/v1' for e in record.get('submission_retirements',[])):
+            raise ValueError('Actions retirement requires existing authenticated original lease, never raw initialization')
         return record
     validate_coordination_record(previous)
     previous_retirements=previous.get('submission_retirements',[])
@@ -91,11 +93,17 @@ def validate_coordination_transition(previous, record, *, ownership_capability=N
     if appended:
         if len(appended)!=1 or expected_revision is None:
             raise ValueError('one exact revision-bound retirement required')
-        from submission_retirement import retire_unknown_guard
+        from submission_retirement import retire_unknown_guard, retire_actions_unknown_guard, ActionsRetirementEvidence
         entry=appended[0]
         if entry['proof']['lease_revision']!=expected_revision:
             raise ValueError('retirement proof does not bind exact CAS revision')
-        expected=retire_unknown_guard(previous,entry['proof'],entry['evidence_reference'],entry['retired_at_utc'])
+        if entry['schema']=='actions-submission-retirement/v1':
+            if type(retirement_capability) is not ActionsRetirementEvidence:
+                raise ValueError('Actions UNKNOWN CAS requires authenticated native evidence capability')
+            retirement_capability.revalidate(retirement_store,expected_revision,previous,entry)
+            transition=retire_actions_unknown_guard
+        else:transition=retire_unknown_guard
+        expected=transition(previous,entry['proof'],entry['evidence_reference'],entry['retired_at_utc'])
         if expected!=record:
             raise ValueError('retirement CAS contains noncanonical or unrelated mutations')
         return record
@@ -281,7 +289,7 @@ class GitLeaseStore:
                         'release_record': record, 'current_revision': current}
         raise ValueError('exact historical lease release was not found')
 
-    def compare_and_swap(self, expected_revision, record, *, ownership_capability=None):
+    def compare_and_swap(self, expected_revision, record, *, ownership_capability=None, retirement_capability=None):
         validate_coordination_record(record)
         if record['source_ref'] == self.ref:
             raise ValueError('coordination ref must differ from product source ref')
@@ -289,7 +297,7 @@ class GitLeaseStore:
         if current != expected_revision:
             raise ValueError('stale expected coordination revision')
         validate_coordination_transition(previous, record, ownership_capability=ownership_capability,
-                                         expected_revision=expected_revision)
+                                         expected_revision=expected_revision,retirement_capability=retirement_capability,retirement_store=self)
         blob = self._git('hash-object', '-w', '--stdin', input=op._canonical(record).decode() + '\n')
         mode = '100644'
         neighbors = []

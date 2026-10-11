@@ -141,7 +141,8 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
                               output_refs=["out:" + task], evidence_refs=["test:" + task])
 
     def test_managed_runtime_capability_controls_execution_lease_terminal_lifecycle(self):
-        self.launch("a", self.worker("a", 3.0))
+        barrier = self.root / "capability-worker-go"
+        self.launch("a", self.worker("a", 0, barrier=barrier))
         end=time.monotonic()+4
         while time.monotonic()<end:
             observed=self.rt.observe("a","a1")
@@ -177,6 +178,7 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         revision=acquired["revision"];record=acquired["record"]
         self.assertEqual(invocation["execution_surface"],"managed")
         self.assertTrue(invocation_id.startswith("managed-terminal:"))
+        barrier.touch()
 
         end=time.monotonic()+4
         held=None
@@ -232,7 +234,8 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         self.assertEqual(final["status"],"succeeded");self.assertTrue(final["quiescent"])
 
     def test_ambiguous_acquire_transport_error_reconciles_authoritative_ownership_instead_of_aborting(self):
-        self.launch("a", self.worker("a", 2.0))
+        barrier = self.root / "ambiguous-worker-go"
+        self.launch("a", self.worker("a", 0, barrier=barrier))
         end=time.monotonic()+4
         while time.monotonic()<end:
             observed=self.rt.observe("a","a1")
@@ -260,6 +263,7 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         invocation_id=acquired["invocation"]["invocation_id"]
         paths=runtime._terminal_hold_paths(self.rt._terminal_hold_directory("a","a1"))
         self.assertTrue(paths["owned"].exists());self.assertFalse(paths["abort"].exists())
+        barrier.touch()
 
         record=acquired["record"];revision=acquired["revision"]
         checkpoint="checkpoint:ambiguous-acquire"

@@ -1,7 +1,7 @@
 {
   "name": "continuous-development-cycle",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "schema": "continuous-development-cycle/v3",
   "entrypoint": "SKILL.md",
-  "description": "Supported Fleet floor3.3.0 with current-risk qualification and preserved audit history."
+  "description": "Strict administrative Actions UNKNOWN quarantine with immutable claims and no replay; compatible test-only efficiency delta."
 }
