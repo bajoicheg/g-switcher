@@ -34,8 +34,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(cat .agents/skills/continuous-development-cycle/VERSION)" = "2.11.5"
-          test "$(git rev-parse HEAD:.agents/skills/continuous-development-cycle)" = "6e9fb338a83c532076a30e8feb0b6ce2ebbe4063"
+          python -B - <<'PY'
+          import json, pathlib, subprocess
+          package = pathlib.Path(".agents/skills/continuous-development-cycle")
+          lock = json.loads(pathlib.Path("docs/cdc-consumer-lock.json").read_text())
+          expected = {"canonical_repository": "bajoicheg/g-cdc", "version": "3.5.1", "release_commit": "5181ceb82ae4011229c651430c0e06c5f171ffba", "release_ref": "refs/heads/release/v3.5.1", "package_tree": "3d3b07539ccf6e58914e8de03d6adff691f97b10"}
+          for key, value in expected.items():
+              assert lock[key] == value, f"CDC lock {key} differs from pinned release"
+          assert (package / "VERSION").read_bytes() == (expected["version"] + "\n").encode()
+          tree = subprocess.check_output(["git", "rev-parse", "HEAD:.agents/skills/continuous-development-cycle"], text=True).strip()
+          assert tree == lock["package_tree"] == expected["package_tree"]
+          PY
 
       - name: Validate CDC package and project adapter
         run: |

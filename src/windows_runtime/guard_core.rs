@@ -247,9 +247,12 @@ pub(crate) fn provider_stage<R>(
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 include!("requirements_tests.rs");
+}
 
 #[cfg(test)]
+selection_unit_tests! {
 mod authority_tests {
     use super::*;
     #[test]
@@ -297,4 +300,5 @@ mod authority_tests {
         );
         assert_eq!(calls.get(), 0);
     }
+}
 }

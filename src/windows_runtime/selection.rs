@@ -572,6 +572,7 @@ fn wide(value: &str) -> Vec<u16> {
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
 
@@ -622,4 +623,5 @@ mod tests {
             assert!(!is_rich_edit_class(class_name));
         }
     }
+}
 }

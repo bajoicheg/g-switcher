@@ -53,6 +53,7 @@ pub fn reconcile_suffix(
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
 
@@ -122,4 +123,5 @@ mod tests {
         assert!(result.is_none());
         assert_eq!(reads, 1);
     }
+}
 }

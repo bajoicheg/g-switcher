@@ -19,6 +19,12 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_GETTEXTLENGTH, WM_NULL, WM_SETTEXT,
 };
 
+// Shared selection unit cases have one canonical library owner; E2E modules stay private.
+#[cfg(all(test, windows))]
+macro_rules! selection_unit_tests {
+    ($($items:item)*) => {};
+}
+
 #[cfg(windows)]
 #[allow(dead_code)]
 #[path = "../windows_runtime/selection.rs"]

@@ -198,6 +198,7 @@ pub(super) fn fixture_process_birth() -> u64 {
     birth.expect("real fixture process creation time")
 }
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     #[test]
     #[ignore = "explicit no-provider subprocess holder for birth regression"]
@@ -209,4 +210,5 @@ mod tests {
         let mut byte = [0; 1];
         let _ = std::io::stdin().read(&mut byte);
     }
+}
 }

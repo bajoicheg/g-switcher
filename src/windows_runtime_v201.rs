@@ -2,6 +2,12 @@
 mod runtime_dispatch;
 #[path = "windows_runtime/secure_input.rs"]
 mod secure_input;
+// Shared selection unit cases have one canonical library owner; E2E modules stay private.
+#[cfg(test)]
+macro_rules! selection_unit_tests {
+    ($($items:item)*) => { $($items)* };
+}
+
 #[path = "windows_runtime/selection.rs"]
 mod selection;
 #[path = "windows_runtime/settings.rs"]

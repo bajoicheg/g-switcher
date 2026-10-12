@@ -194,6 +194,7 @@ pub fn pump_sent_messages() {
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
     use std::sync::{Arc, Condvar, Mutex};
@@ -364,8 +365,10 @@ mod tests {
         assert_eq!(reader.request((), Duration::from_secs(1)), None);
     }
 }
+}
 
 #[cfg(all(test, windows))]
+selection_unit_tests! {
 mod windows_tests {
     use super::*;
     use std::ptr::{null, null_mut};
@@ -454,8 +457,10 @@ mod windows_tests {
         }
     }
 }
+}
 
 #[cfg(test)]
+selection_unit_tests! {
 mod concurrency_tests {
     use super::*;
     use std::sync::{Arc, Condvar, Mutex};
@@ -517,8 +522,10 @@ mod concurrency_tests {
         assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 }
+}
 
 #[cfg(test)]
+selection_unit_tests! {
 mod recovery_regression {
     use super::*;
     use std::sync::{Arc, Condvar, Mutex};
@@ -580,4 +587,5 @@ mod recovery_regression {
         );
         assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
+}
 }

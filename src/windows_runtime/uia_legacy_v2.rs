@@ -557,6 +557,7 @@ fn trace(message: &str) {
 fn trace(_message: &str) {}
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
 
@@ -569,4 +570,5 @@ mod tests {
         assert_eq!(byte_index_for_char(value, 3), Some(value.len()));
         assert_eq!(byte_index_for_char(value, 4), None);
     }
+}
 }

@@ -177,6 +177,7 @@ impl Plan {
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
 
@@ -266,4 +267,5 @@ mod tests {
         assert!(!selection_matches(1, 5, 2, 5, 9));
         assert!(!selection_matches(0, 7, 0, 6, 9));
     }
+}
 }

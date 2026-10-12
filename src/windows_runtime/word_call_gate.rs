@@ -24,4 +24,6 @@ pub(super) fn finish_once(active: &mut bool, cleanup: impl FnOnce() -> Option<()
     cleanup()
 }
 #[cfg(test)]
+selection_unit_tests! {
 include!("word_call_gate_requirements.rs");
+}

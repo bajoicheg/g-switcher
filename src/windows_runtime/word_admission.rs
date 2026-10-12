@@ -228,6 +228,7 @@ fn enrollment_client_birth() -> Option<u64> {
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
     #[test]
@@ -259,4 +260,5 @@ mod tests {
         assert!(next.parent_complete(&op, false).is_ok());
         assert!(fixture.idle());
     }
+}
 }

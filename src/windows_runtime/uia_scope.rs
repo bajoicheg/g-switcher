@@ -159,6 +159,7 @@ pub(super) fn focused_element(
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::SetFocus;
@@ -280,4 +281,5 @@ mod tests {
         assert!(preflight(first.0, pid).is_some());
         assert!(preflight(second.0, pid).is_none());
     }
+}
 }

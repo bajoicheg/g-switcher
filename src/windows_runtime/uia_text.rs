@@ -345,6 +345,7 @@ fn send_timeout(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> Opt
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
 
@@ -357,4 +358,5 @@ mod tests {
         assert_eq!(byte_index_for_char(value, 3), Some(value.len()));
         assert_eq!(byte_index_for_char(value, 4), None);
     }
+}
 }

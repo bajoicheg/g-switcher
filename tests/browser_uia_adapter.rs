@@ -19,6 +19,12 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     SW_RESTORE,
 };
 
+// Shared selection unit cases have one canonical library owner; E2E modules stay private.
+#[cfg(test)]
+macro_rules! selection_unit_tests {
+    ($($items:item)*) => {};
+}
+
 #[allow(dead_code)]
 #[path = "../src/windows_runtime/selection.rs"]
 mod selection;

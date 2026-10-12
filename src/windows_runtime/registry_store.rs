@@ -276,6 +276,7 @@ pub(super) fn fixture_cleanup(namespace: &str) {
 }
 
 #[cfg(test)]
+selection_unit_tests! {
 mod tests {
     use super::*;
     #[test]
@@ -398,4 +399,5 @@ mod tests {
         assert!(!valid_idle(host, marker));
         assert!(!valid_idle(host, b"word-provider-idle/v1\n1\n2\n0\n"));
     }
+}
 }
