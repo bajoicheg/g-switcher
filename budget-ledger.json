@@ -1228,6 +1228,40 @@
         "tokens": null
       },
       "wake_id": "cdc351-exact-package-delivery-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T07:36:31.529131Z",
+      "attempt_id": "testprune353-gs-writer-agent_start-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-writer-agent_start-a1",
+      "kind": "agent_start",
+      "operation_key": "sha256:0a56d129e2b90d71cbc2495cf60ff71b1ecefa0290f8589eaa71d17073e24973",
+      "recovery_ref": null,
+      "scope": "genuine project own-suite writer; no vendor/product behavior/Source/GAD/Fleet effects",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T07:36:31.553880Z",
+      "attempt_id": "testprune353-gs-writer-compute_start-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-writer-compute_start-a1",
+      "kind": "compute_start",
+      "operation_key": "sha256:6781f57d3374ea1e55a3b5ef4d74ffc4b36bd0de00d8f1bec82e04b4ff733a30",
+      "recovery_ref": null,
+      "scope": "genuine project own-suite writer; no vendor/product behavior/Source/GAD/Fleet effects",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
     }
   ],
   "policy": {
@@ -1266,6 +1300,7 @@
     "word-refusal-diagnostics-20261008-1604",
     "word-bootstrap-recovery-20261008-1716",
     "Word-restart-guard-20261009-1837",
-    "cdc351-exact-package-delivery-20261012"
+    "cdc351-exact-package-delivery-20261012",
+    "safe-suite-pruning-20261012"
   ]
 }
