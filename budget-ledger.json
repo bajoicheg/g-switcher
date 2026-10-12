@@ -1262,6 +1262,91 @@
       "task_id": "g-switcher/2.0.1",
       "type": "reserve",
       "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:07:46.810047Z",
+      "attempt_id": "testprune353-gs-receiving-1-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-receiving-1-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:c98f91a20f461227353519a711b7ad4bbeb5e2941c444b3cd9e42b47c017dcd8",
+      "recovery_ref": null,
+      "scope": "mandatory automatic pull_request .github/workflows/cdc-policy.yml exact immutable GS candidate; no manual dispatch/rerun/protection waiver",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:07:46.836839Z",
+      "attempt_id": "testprune353-gs-receiving-2-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-receiving-2-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:3817824032bbc7a6a5740cce72c411bbbafd72e726c3960ab37130c592785bc7",
+      "recovery_ref": null,
+      "scope": "mandatory automatic push .github/workflows/secret-scan.yml exact immutable GS candidate; no manual dispatch/rerun/protection waiver",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:07:46.864610Z",
+      "attempt_id": "testprune353-gs-receiving-3-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-receiving-3-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:e130d7d5b2d30f1a0851c466d815578749f0e4c42c97aaff1076d570325e15ee",
+      "recovery_ref": null,
+      "scope": "mandatory automatic pull_request .github/workflows/secret-scan.yml exact immutable GS candidate; no manual dispatch/rerun/protection waiver",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:07:46.893015Z",
+      "attempt_id": "testprune353-gs-receiving-4-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-receiving-4-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:925a76ab75763e068e06fcca7104875ea229a12b65892229660f5acf1d951577",
+      "recovery_ref": null,
+      "scope": "mandatory automatic pull_request .github/workflows/windows-ci.yml exact immutable GS candidate; no manual dispatch/rerun/protection waiver",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:07:46.922088Z",
+      "attempt_id": "testprune353-gs-receiving-5-a1",
+      "cost": {
+        "elapsed_seconds": null,
+        "tokens": null,
+        "tool_calls": 1
+      },
+      "event_id": "testprune353-gs-receiving-5-a1",
+      "kind": "ci_start",
+      "operation_key": "sha256:d2ec5c67a4af521a412e12ac9f0c084acb3288c3ec3b495e504dd0583df5cb7b",
+      "recovery_ref": null,
+      "scope": "mandatory automatic workflow_run .github/workflows/release-2.0.0.yml exact immutable GS candidate; no manual dispatch/rerun/protection waiver",
+      "task_id": "g-switcher/2.0.1",
+      "type": "reserve",
+      "wake_id": "safe-suite-pruning-20261012"
     }
   ],
   "policy": {
