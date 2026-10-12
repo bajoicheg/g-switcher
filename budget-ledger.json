@@ -1347,6 +1347,34 @@
       "task_id": "g-switcher/2.0.1",
       "type": "reserve",
       "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:09:53.571650Z",
+      "event_id": "testprune353-gs-writer-agent_start-a1-terminal",
+      "failure": null,
+      "reservation_id": "testprune353-gs-writer-agent_start-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 1940.5406883189862,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:09:53.601113Z",
+      "event_id": "testprune353-gs-writer-compute_start-a1-terminal",
+      "failure": null,
+      "reservation_id": "testprune353-gs-writer-compute_start-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 1940.5406883189862,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
     }
   ],
   "policy": {
