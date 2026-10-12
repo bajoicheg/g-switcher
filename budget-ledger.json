@@ -1375,6 +1375,82 @@
         "tokens": null
       },
       "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:19:18.290405Z",
+      "event_id": "testprune353-gs-receiving-1-a1-terminal",
+      "failure": null,
+      "reservation_id": "testprune353-gs-receiving-1-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 10.0,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:19:18.337481Z",
+      "event_id": "testprune353-gs-receiving-2-a1-terminal",
+      "failure": {
+        "category": "configuration",
+        "signature": "g-switcher-full-history-generic-api-key-findings-18"
+      },
+      "reservation_id": "testprune353-gs-receiving-2-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 13.0,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:19:18.385444Z",
+      "event_id": "testprune353-gs-receiving-3-a1-terminal",
+      "failure": {
+        "category": "configuration",
+        "signature": "g-switcher-full-history-generic-api-key-findings-18"
+      },
+      "reservation_id": "testprune353-gs-receiving-3-a1",
+      "status": "failed",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 12.0,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:19:18.433584Z",
+      "event_id": "testprune353-gs-receiving-4-a1-terminal",
+      "failure": null,
+      "reservation_id": "testprune353-gs-receiving-4-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": 308.0,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
+    },
+    {
+      "at_utc": "2026-10-12T08:19:18.482942Z",
+      "event_id": "testprune353-gs-receiving-5-a1-terminal",
+      "failure": null,
+      "reservation_id": "testprune353-gs-receiving-5-a1",
+      "status": "succeeded",
+      "task_id": "g-switcher/2.0.1",
+      "type": "outcome",
+      "usage": {
+        "elapsed_seconds": null,
+        "tokens": null
+      },
+      "wake_id": "safe-suite-pruning-20261012"
     }
   ],
   "policy": {
