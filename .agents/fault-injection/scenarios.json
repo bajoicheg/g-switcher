@@ -1,0 +1,860 @@
+{
+  "schema": "cdc-fault-scenarios/v1",
+  "scenarios": [
+    {
+      "id": "orphan-lease",
+      "fault": "owner_invocation_terminal_lease_owned",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "takeover_without_quiescence",
+        "product_write"
+      ]
+    },
+    {
+      "id": "stale-snapshot",
+      "fault": "fleet_snapshot_exceeds_freshness",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "merge"
+      ]
+    },
+    {
+      "id": "package-drift",
+      "fault": "version_equal_package_tree_differs",
+      "expected": "DRIFT",
+      "forbidden_authorities": [
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "audit-tamper",
+      "fault": "audit_previous_hash_or_event_hash_changed",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "ignore_audit_failure"
+      ]
+    },
+    {
+      "id": "duplicate-event",
+      "fault": "same_continuation_dedupe_key_redelivered",
+      "expected": "IDEMPOTENT",
+      "forbidden_authorities": [
+        "duplicate_external_start"
+      ]
+    },
+    {
+      "id": "backend-unavailable",
+      "fault": "no_fresh_compatible_backend",
+      "expected": "WAITING_EXTERNAL",
+      "forbidden_authorities": [
+        "blind_launch"
+      ]
+    },
+    {
+      "id": "live-owner-adoption",
+      "fault": "target_version_newer_owner_active",
+      "expected": "WAIT_SAFE_BOUNDARY",
+      "forbidden_authorities": [
+        "policy_fast_forward",
+        "takeover_by_ttl"
+      ]
+    },
+    {
+      "id": "bootstrap-self-corruption",
+      "fault": "candidate_runtime_green_bootstrap_red",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "malformed-v2-direct-patch",
+      "fault": "v2_owner_set_without_invocation_or_finalization",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "takeover_without_quiescence",
+        "product_write",
+        "duplicate_external_start"
+      ]
+    },
+    {
+      "id": "transient-codex-expensive-actions",
+      "fault": "portable_codex_transient_failure_actions_ready",
+      "expected": "WAITING_EXTERNAL",
+      "forbidden_authorities": [
+        "blind_launch"
+      ]
+    },
+    {
+      "id": "continue-primitive-stop",
+      "fault": "bare_continue_executor_stops_after_status",
+      "expected": "CONTINUE_TO_TERMINAL_STATE",
+      "forbidden_authorities": [
+        "primitive_only_completion"
+      ]
+    },
+    {
+      "id": "public-actions-mispriced",
+      "fault": "public_unmetered_actions_marked_expensive",
+      "expected": "ROUTE_BY_VISIBILITY_AWARE_COST",
+      "forbidden_authorities": [
+        "forced_codex_due_to_private_cost_assumption"
+      ]
+    },
+    {
+      "id": "no-idle-final-response",
+      "fault": "runnable_action_exists_executor_attempts_final_response",
+      "expected": "CONTINUE_TO_TERMINAL_STATE",
+      "forbidden_authorities": [
+        "terminal_response_while_runnable"
+      ]
+    },
+    {
+      "id": "backend-failover-stops",
+      "fault": "compatible_alternate_ready_primary_failed_executor_idles",
+      "expected": "ROUTE_ALTERNATE_BACKEND",
+      "forbidden_authorities": [
+        "silent_idle",
+        "manual_mechanical_escalation"
+      ]
+    },
+    {
+      "id": "concurrent-writer-nonoverlap",
+      "fault": "source_head_fast_forward_non_overlapping_change",
+      "expected": "REPLAY_ON_FRESH_HEAD",
+      "forbidden_authorities": [
+        "force_push",
+        "discard_remote_progress"
+      ]
+    },
+    {
+      "id": "publication-sensitive-context",
+      "fault": "secret_scan_green_internal_context_present",
+      "expected": "PUBLICATION_BLOCKED",
+      "forbidden_authorities": [
+        "visibility_toggle"
+      ]
+    },
+    {
+      "id": "publication-control-plane",
+      "fault": "product_repository_contains_operational_control_plane_state",
+      "expected": "SANITIZED_EXPORT_REQUIRED",
+      "forbidden_authorities": [
+        "direct_publication"
+      ]
+    },
+    {
+      "id": "watchdog-disabled-drift",
+      "fault": "desired_watchdog_enabled_scheduler_disabled",
+      "expected": "REPAIR_SCHEDULER",
+      "forbidden_authorities": [
+        "silent_idle",
+        "manual_mechanical_escalation"
+      ]
+    },
+    {
+      "id": "stale-blocker-proof",
+      "fault": "blocked_terminal_boundary_uses_stale_or_evidenceless_proof",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "accept_stale_blocker"
+      ]
+    },
+    {
+      "id": "ref-gc-open-pr",
+      "fault": "terminal_old_ref_still_has_open_pr_or_guard",
+      "expected": "RETAIN_REF",
+      "forbidden_authorities": [
+        "delete_protected_ref"
+      ]
+    },
+    {
+      "id": "routine-reversible-escalation",
+      "fault": "preauthorized_reversible_in_scope_action_prompts_owner",
+      "expected": "AUTO_EXECUTE",
+      "forbidden_authorities": [
+        "unnecessary_human_escalation"
+      ]
+    },
+    {
+      "id": "stalled-progress-no-recovery",
+      "fault": "progress_slo_stalled_but_executor_reports_status_only",
+      "expected": "KICK_WATCHDOG",
+      "forbidden_authorities": [
+        "silent_idle"
+      ]
+    },
+    {
+      "id": "evidence-compaction-loss",
+      "fault": "compact_record_drops_source_digest_or_durable_refs",
+      "expected": "COMPACT_EVIDENCE",
+      "forbidden_authorities": [
+        "drop_evidence_binding"
+      ]
+    },
+    {
+      "id": "fleet-superwriter",
+      "fault": "fleet_controller_attempts_product_write_or_takeover",
+      "expected": "CONTROL_PLANE_ONLY",
+      "forbidden_authorities": [
+        "fleet_product_write"
+      ]
+    },
+    {
+      "id": "stuck-repeat-loop",
+      "fault": "same_failed_strategy_repeated_without_new_information",
+      "expected": "CHANGE_STRATEGY",
+      "forbidden_authorities": [
+        "repeat_failed_strategy"
+      ]
+    },
+    {
+      "id": "public-direct-history",
+      "fault": "private_development_repository_visibility_toggled_public",
+      "expected": "EXPORT_NEW_HISTORY",
+      "forbidden_authorities": [
+        "direct_visibility_toggle"
+      ]
+    },
+    {
+      "id": "dogfood-authority",
+      "fault": "dogfood_metric_used_as_release_authority",
+      "expected": "MEASURE_ONLY",
+      "forbidden_authorities": [
+        "dogfood_release_authority"
+      ]
+    },
+    {
+      "id": "counterfactual-no-option",
+      "fault": "all_compatible_strategies_already_failed_or_zero_information_gain",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "repeat_failed_strategy"
+      ]
+    },
+    {
+      "id": "package-transport-tree-drift",
+      "fault": "transport_or_vendored_git_tree_differs_from_trusted_release_binding",
+      "expected": "TRANSPORT_REJECTED",
+      "forbidden_authorities": [
+        "accept_package_tree_drift"
+      ]
+    },
+    {
+      "id": "fleet-version-only-integration",
+      "fault": "version_matches_but_exact_convergence_vector_is_incomplete",
+      "expected": "CONVERGENCE_NOT_PROVEN",
+      "forbidden_authorities": [
+        "version_only_integration"
+      ]
+    },
+    {
+      "id": "ci-prerun-product-fix",
+      "fault": "pre_run_or_zero_product_steps_treated_as_product_red",
+      "expected": "RECOVER_EXECUTION_CHANNEL",
+      "forbidden_authorities": [
+        "source_change_without_product_execution"
+      ]
+    },
+    {
+      "id": "policy-migration-head-moved",
+      "fault": "target_head_moves_before_section_aware_commit",
+      "expected": "REPLAN_POLICY_MIGRATION",
+      "forbidden_authorities": [
+        "duplicate_policy_key",
+        "force_push"
+      ]
+    },
+    {
+      "id": "checkpoint-type-coercion",
+      "fault": "human_next_action_text_coerced_into_typed_checkpoint_control",
+      "expected": "CHECKPOINT_REJECTED",
+      "forbidden_authorities": [
+        "invalid_checkpoint_commit"
+      ]
+    },
+    {
+      "id": "migration-operation-budget-overrun",
+      "fault": "bulk_git_transfer_would_consume_finalization_reserve",
+      "expected": "CHUNK_MIGRATION",
+      "forbidden_authorities": [
+        "partial_migration_ref_move"
+      ]
+    },
+    {
+      "id": "provider-terminal-stale-guard",
+      "fault": "provider_terminal_guard_still_running_without_owner_reconciliation",
+      "expected": "RECONCILE_PROVIDER_TERMINAL",
+      "forbidden_authorities": [
+        "takeover_by_provider_terminal",
+        "takeover_by_ttl"
+      ]
+    },
+    {
+      "id": "command-timestamp-extrapolated",
+      "fault": "command_timestamp_is_manually_incremented_or_derived_from_previous_chat_timestamp",
+      "expected": "TIMESTAMP_REJECTED",
+      "forbidden_authorities": [
+        "synthetic_timestamp"
+      ]
+    },
+    {
+      "id": "material-rca-no-disposition",
+      "fault": "material_anomaly_finishes_without_deduplicated_systemic_fix_disposition",
+      "expected": "RCA_DISPOSITION_REQUIRED",
+      "forbidden_authorities": [
+        "rca_drop"
+      ]
+    },
+    {
+      "id": "fleet-watcher-no-improvement",
+      "fault": "fleet_watcher_finishes_without_exactly_one_proposal_or_reinforcement",
+      "expected": "IMPROVEMENT_REQUIRED",
+      "forbidden_authorities": [
+        "fleet_watcher_no_improvement"
+      ]
+    },
+    {
+      "id": "behavioral-fix-no-baseline",
+      "fault": "material_behavior_change_has_no_retained_baseline_red_pressure_case",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "terminal-claim-stale-evidence",
+      "fault": "complete_or_integrated_claim_uses_cached_state_without_fresh_verification",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release",
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "systematic-rca-ambiguous",
+      "fault": "rca_selects_root_cause_without_discriminating_competing_hypotheses",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "tests-green-spec-noncompliant",
+      "fault": "automated_tests_green_but_approved_spec_not_satisfied",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "quality-before-spec",
+      "fault": "code_quality_review_green_before_spec_compliance_green",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "plan-complete-no-evidence",
+      "fault": "plan_task_marked_complete_without_required_evidence_or_runnable_task_dropped",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "branch-finish-open-findings",
+      "fault": "branch_finish_attempted_with_stale_validation_or_unresolved_review_findings",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "parallel-shared-write",
+      "fault": "delegated_worker_attempts_shared_integration_branch_write",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "parallel-stale-worker",
+      "fault": "worker_result_base_is_stale_or_shared_head_moved_before_integration",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "force_push",
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "parallel-overlap",
+      "fault": "same_wave_or_terminal_writer_results_have_overlapping_write_paths",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "parallel-benchmark-no-benefit",
+      "fault": "parallel_release_claim_has_no_observed_wall_clock_gain_or_regresses_conflicts_or_rollbacks",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "parallel-write-set-escape",
+      "fault": "worker_terminal_diff_contains_path_outside_assigned_write_set",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "worker-success-missing-contract-evidence",
+      "fault": "worker_reports_success_without_required_output_or_evidence_contract_or_writer_change",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "parallel-benchmark-not-observed",
+      "fault": "parallel_speedup_claim_uses_estimate_package_fixture_unbound_measurement_or_nonfinite_timing_instead_of_external_observed_candidate_evidence",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "worker-contract-plan-spoof",
+      "fault": "worker_contract_plan_ref_is_valid_but_assignment_differs_from_selected_planner_wave",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "failed-worker-success-output-forced",
+      "fault": "failed_or_stale_worker_cannot_be_represented_without_fabricating_expected_success_output",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "parallel-write-path-nonportable",
+      "fault": "writer_or_terminal_path_uses_backslash_reserved_casefold_unicode_alias_or_other_nonportable_form",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "parallel-benchmark-duplicate-evidence",
+      "fault": "benchmark_claims_two_observations_using_duplicate_durable_evidence_ref",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "worker-terminal-path-escape",
+      "fault": "worker_terminal_changed_path_uses_traversal_or_nonportable_alias_to_escape_assigned_write_set",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "nonfinal-wave-premature-review",
+      "fault": "nonfinal_parallel_wave_routes_to_final_review_before_new_exact_base_contract",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "worker-self-reported-diff-incomplete",
+      "fault": "writer_result_omits_actual_out_of_scope_git_diff_path",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "benchmark-observation-bindings-fabricated",
+      "fault": "benchmark_observations_do_not_cross_bind_candidate_environment_plan_workload_and_distinct_evidence",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "worker-plan-ref-unbound",
+      "fault": "embedded_parallel_plan_mutates_while_durable_plan_ref_remains_unchanged",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "worker-result-unrelated-history",
+      "fault": "worker_result_commit_does_not_descend_from_exact_contracted_base",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "integration-live-head-stale",
+      "fault": "caller_observed_shared_head_matches_expected_but_live_shared_ref_has_advanced",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "benchmark-plan-ref-unbound",
+      "fault": "release_observed_benchmark_uses_matching_hash_shaped_plan_ref_without_resolving_the_actual_plan_artifact_bytes",
+      "expected": "RELEASE_BLOCKED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "worker-origin-unproven",
+      "fault": "writer_result_sha_is_valid_but_not_proven_to_come_from_assigned_branch_and_registered_worktree",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "review-only-live-head-unverified",
+      "fault": "review_only_wave_can_become_ready_without_resolving_live_shared_branch",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "shared-branch-ref-alias",
+      "fault": "writer_branch_aliases_shared_branch_via_short_vs_full_ref",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "intra-writer-portable-path-alias",
+      "fault": "single_writer_write_set_contains_case_or_unicode_aliases",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "integration-portable-terminal-alias",
+      "fault": "terminal_worker_diff_contains_case_or_unicode_equivalent_path_aliases",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "later-wave-integration-unresolved",
+      "fault": "later_wave_contract_accepts_claimed_integrated_head_without_resolving_prior_integration_and_green_gate_artifacts",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "auto_merge"
+      ]
+    },
+    {
+      "id": "managed-pool-fabricated-worker-launch",
+      "fault": "runtime_without_worker_capability_reports_parallel_worker_execution",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-premature-parent-complete",
+      "fault": "parent_declares_terminal_with_required_pool_task_runnable_queued_or_running",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-duplicate-active-attempt",
+      "fault": "same_pool_task_has_multiple_active_attempts_without_reconciliation",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "managed-pool-worker-failure-cancels-unrelated",
+      "fault": "one_worker_failure_cancels_independent_runnable_pool_tasks",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-sequential-fallback-drift",
+      "fault": "sequential_fallback_changes_pool_task_or_required_evidence_contract",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-unintegrated-success-terminal",
+      "fault": "parent_declares_complete_with_required_successful_result_still_unintegrated",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-worker-result-push-unavailable",
+      "fault": "worker_completed_validated_result_but_execution_environment_has_no_git_remote_or_push_credentials",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-local-only-publication-proof",
+      "fault": "publication_proof_accepts_local_assigned_branch_without_authoritative_remote_ref",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-bundle-artifact-toctou",
+      "fault": "authenticated_git_bundle_path_is_reopened_after_digest_and_can_be_replaced_before_proof",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-optional-work-implicit-omission",
+      "fault": "terminal_state_silently_omits_optional_planned_or_recoverable_task_without_explicit_disposition",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-retry-budget-overreservation",
+      "fault": "retry_dispatch_reserves_original_task_maximum_instead_of_remaining_task_budget",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write"
+      ]
+    },
+    {
+      "id": "managed-pool-local-branch-fakes-publication",
+      "fault": "publication_proof_accepts_local_assigned_branch_without_authoritative_remote_ref",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-optional-work-silent-omission",
+      "fault": "optional_planned_or_recoverable_task_is_ignored_at_terminal_without_explicit_omission",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-retry-reserves-original-budget",
+      "fault": "retry_dispatch_reserves_original_task_max_instead_of_remaining_budget_after_prior_attempt_consumption",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-inmemory-queue-bypasses-durable-cas",
+      "fault": "executor_launch_occurs_after_in_memory_queue_transition_without_successful_durable_store_compare_and_swap",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-coordination-ref-split-brain",
+      "fault": "same_pool_plan_can_be_initialized_on_two_caller_selected_coordination_refs_and_both_return_launch_authority",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-launch-grant-replay",
+      "fault": "queued_reservation_launch_grant_can_be_replayed_without_one_shot_durable_queued_to_running_cas",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-history-touch-hidden",
+      "fault": "worker_commit_history_touches_out_of_claim_path_then_restores_it_before_result_commit",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-required-depends-on-optional",
+      "fault": "required_task_depends_directly_or_transitively_on_optional_task_that_can_be_omitted",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-pool-publication-remote-identity-drift",
+      "fault": "publication_proof_trusts_mutable_or_alternate_remote_name_without_immutable_expected_remote_identity",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "release"
+      ]
+    },
+    {
+      "id": "managed-identical-cas-race",
+      "fault": "same-state concurrent CAS proposals at identical clock",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "active-package-unpinned-bytecode",
+      "fault": "unchanged source with executable unchecked-hash bytecode",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-exhausted-budget-effect",
+      "fault": "retry or legacy queued launch after runtime or cost exhausted",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-controller-unknown-start",
+      "fault": "controller exits or supervisor disappears without terminal descendant proof",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-queued-plan-scope-drift",
+      "fault": "expanded plan reused with queued claim after reconstruction",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "managed-preparation-deadline-effect",
+      "fault": "worktree preparation exhausts deadline or receives cancellation before command launch",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "watchdog-paused-enable",
+      "fault": "older enabled policy attempts to override fresh owner pause",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "watchdog-premature-invocation-complete",
+      "fault": "completed invocation leaves runnable project work",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "watchdog-effect-unknown-replay",
+      "fault": "scheduler accepted request loses reply before durable receipt",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "watchdog-pause-between-effects",
+      "fault": "owner pause observed after enable and before run",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "fleet-batch-truncation",
+      "fault": "bounded pass silently drops other registered projects",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "live-target-stale-alias",
+      "fault": "prompt or project alias overrides live canonical target",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    },
+    {
+      "id": "live-target-ref-moved",
+      "fault": "target and registry loaded from different revisions",
+      "expected": "RECOVERY_REQUIRED",
+      "forbidden_authorities": [
+        "product_write",
+        "release"
+      ]
+    }
+  ]
+}

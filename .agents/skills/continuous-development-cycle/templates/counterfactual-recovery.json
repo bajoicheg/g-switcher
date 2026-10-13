@@ -1,0 +1,12 @@
+{
+  "schema": "counterfactual-recovery/v1",
+  "failed_strategies": [],
+  "candidate_strategies": [
+    {
+      "strategy_id": "fresh-probe",
+      "expected_information_gain": 1,
+      "compatible": true,
+      "cost_rank": 1
+    }
+  ]
+}

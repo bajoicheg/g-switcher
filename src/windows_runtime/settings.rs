@@ -201,6 +201,7 @@ pub fn paused() -> bool {
 
 pub fn set_paused(value: bool) {
     PAUSED.store(value, Ordering::SeqCst);
+    super::word_broker::policy_changed();
 }
 
 pub fn toggle_paused() -> bool {
@@ -210,6 +211,7 @@ pub fn toggle_paused() -> bool {
 }
 
 pub fn save_runtime_settings(value: RuntimeSettings) -> Result<()> {
+    super::word_broker::policy_changed();
     let value = normalize_runtime_settings(value);
     write_dword(
         SETTINGS_KEY,

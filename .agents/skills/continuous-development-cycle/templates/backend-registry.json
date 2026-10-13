@@ -1,0 +1,8 @@
+{
+  "schema": "backend-capability-registry/v1",
+  "observed_at_utc": "2026-01-01T00:00:00Z",
+  "backends": [
+    {"backend_id":"codex-linux","kind":"codex_compute","enabled":true,"state":"ready","rank":10,"capabilities":["os:linux","python:3","git"],"configuration_digest":"sha256:1111111111111111111111111111111111111111111111111111111111111111","last_verified_at_utc":"2026-01-01T00:00:00Z","evidence_refs":["environment:codex-linux"]},
+    {"backend_id":"github-actions-windows","kind":"github_actions","enabled":true,"state":"ready","rank":50,"capabilities":["os:windows","pwsh:7","dotnet:8"],"configuration_digest":"sha256:2222222222222222222222222222222222222222222222222222222222222222","last_verified_at_utc":"2026-01-01T00:00:00Z","evidence_refs":["workflow:windows"]}
+  ]
+}

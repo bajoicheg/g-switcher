@@ -1,0 +1,88 @@
+{
+  "schema": "managed-executor-pool-plan/v1",
+  "pool_id": "pool-example",
+  "change_id": "change-example",
+  "parent_invocation_id": "parent-invocation",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "integrator_id": "integrator-main",
+  "max_parallel": 2,
+  "total_runtime_budget_seconds": 900,
+  "total_cost_budget_units": 100,
+  "tasks": [
+    {
+      "id": "writer-a",
+      "role": "writer",
+      "required": true,
+      "dependencies": [],
+      "write_paths": [
+        "src/a"
+      ],
+      "expected_outputs": [
+        "artifact:a"
+      ],
+      "expected_evidence": [
+        "tests:a"
+      ],
+      "backend_preferences": [
+        "codex_compute",
+        "local"
+      ],
+      "max_runtime_seconds": 300,
+      "max_cost_units": 30,
+      "executor_id": "executor-a",
+      "branch": "cdc/worker-a",
+      "worktree": "worktrees/worker-a"
+    },
+    {
+      "id": "writer-b",
+      "role": "writer",
+      "required": true,
+      "dependencies": [],
+      "write_paths": [
+        "src/b"
+      ],
+      "expected_outputs": [
+        "artifact:b"
+      ],
+      "expected_evidence": [
+        "tests:b"
+      ],
+      "backend_preferences": [
+        "codex_compute",
+        "local"
+      ],
+      "max_runtime_seconds": 300,
+      "max_cost_units": 30,
+      "executor_id": "executor-b",
+      "branch": "cdc/worker-b",
+      "worktree": "worktrees/worker-b"
+    },
+    {
+      "id": "review",
+      "role": "review",
+      "required": true,
+      "dependencies": [
+        "writer-a",
+        "writer-b"
+      ],
+      "write_paths": [],
+      "expected_outputs": [
+        "review:report"
+      ],
+      "expected_evidence": [
+        "review:green"
+      ],
+      "backend_preferences": [
+        "codex_compute",
+        "local"
+      ],
+      "max_runtime_seconds": 180,
+      "max_cost_units": 20,
+      "executor_id": "reviewer-a",
+      "branch": null,
+      "worktree": null
+    }
+  ],
+  "coordination_ref": "refs/heads/cdc/pool-example",
+  "coordination_store_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+}

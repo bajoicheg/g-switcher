@@ -1,0 +1,691 @@
+{
+  "actual_after_Windows_counts": "PENDING receiving Windows gate, not local execution claim",
+  "baseline_ignored_fixture_or_manual_methods": 13,
+  "baseline_ordinary_methods": 326,
+  "baseline_registered_methods": 339,
+  "corpus_five_rows_after": 150,
+  "corpus_five_rows_before": 151,
+  "duplicate_corpus_input_removed": 1,
+  "duplicate_method_definition_removed": 1,
+  "duplicate_registrations_removed": 162,
+  "expected_ignored_after": 7,
+  "expected_ordinary_methods_after": 169,
+  "expected_registered_methods_after": 176,
+  "format_check": {
+    "return_code": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "installed_CDC": "3.5.1",
+  "installed_package_tree": "3d3b07539ccf6e58914e8de03d6adff691f97b10",
+  "local_product_FULL": 0,
+  "new_version_based_retirements": 0,
+  "original_code_preservation": [
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "9b4e4036691a025c9d42d5c4944387844498a9d87ffb569749f3fd12a8c839da",
+      "original_sha256": "9953eb993f7195c57859d953972c5f8ef4b769893c4d010d4e76ca2ae68804e3",
+      "path": "src/windows_runtime/guard_core.rs",
+      "registration_only_wrappers": 2
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "fdb07bae3a87279df12e800f42aa3965d56c871e9fec49c9f520c8ec3c78beef",
+      "original_sha256": "c3fb380ce32fef2cca283adb542665ef792d25b4262b126351c39b9bb5518b12",
+      "path": "src/windows_runtime/read_worker.rs",
+      "registration_only_wrappers": 4
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "f4fc37d8ad2c950812988c25fbfd9368d38a0a6a13020015c634431105988d1e",
+      "original_sha256": "9e9bf3b9ec3afbbdeb8715e9002f18025a01515fe3ab0861c5c84b8b146ac205",
+      "path": "src/windows_runtime/registry_store.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "16e8b69e22936f6617eb93fa2f4d4c26defb629b0d910f2f48e82ca63ece8df8",
+      "original_sha256": "16e8b69e22936f6617eb93fa2f4d4c26defb629b0d910f2f48e82ca63ece8df8",
+      "path": "src/windows_runtime/requirements_tests.rs",
+      "registration_only_wrappers": 0
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "30673bd0010debc4395d389d6801f016522f629fb8903cf9c576421ed7a5b252",
+      "original_sha256": "00395f6ed6d343b283eac577e2248b63aae311d5b3fd73c7d1066ff6c39457bc",
+      "path": "src/windows_runtime/selection.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "9c9426d8b363494806ec4d947a93bae61d0f7796c7670600a889291299d73daf",
+      "original_sha256": "b08b024d14b3dba6bfcd2fedebeaa5a6aeb74e8ba1127c727be12a067f49cc1c",
+      "path": "src/windows_runtime/uia_legacy_v2.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "12c145613fe6fa917c587a9c52aed5a370d6603be7bd8f36699929d451ef999e",
+      "original_sha256": "4e9dc10fa5702a6f7045b1c4a0c9321fcacf7a6c5b0d83091373c87806da4bb8",
+      "path": "src/windows_runtime/uia_scope.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "dbc5f94c3b03872bb7573abc3b1265c52d0915cd872e5da5a17b49d19ab437fa",
+      "original_sha256": "4e9aab06c546e94b606bc3726fdd7c7c1da562cd8b5e1e5976c260a6728ea9ff",
+      "path": "src/windows_runtime/uia_text.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "4f793fb84d5b86bdf21a16d06172ce23db2b506b6d560272846714260e858fe2",
+      "original_sha256": "6623783a687c80aa2c4924ab3205f720f4d324b5c4c6293eeb5665f20520e549",
+      "path": "src/windows_runtime/win32_identity.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "2e8df3b88108ebf2f6d6bffac60ca8bebf982c3f38cb486a855a79b5a6dbabee",
+      "original_sha256": "e306e30eaa596418f5ce7e3010aa2fae73510f761007b921945a3e92456391f5",
+      "path": "src/windows_runtime/word_admission.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "cf3939d9de3ca353f97ae257fd2c75addb3a7abafc579af12175744ee9b131cb",
+      "original_sha256": "c6917953e1484a7134c95f195025bcffc3100fdb50fe30fe5763b98eb4ba7c67",
+      "path": "src/windows_runtime/word_auto_correct.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "c1f4035cf45ca506f64710f08a8f9b78edbc7988782cc77d4ca1c2feb95e9e0c",
+      "original_sha256": "2627442909728d0a6f36e1269683dafbea290d795f08cbd97ce3291a8a7009da",
+      "path": "src/windows_runtime/word_call_gate.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "28ee77f67f5633f3d80a9a15b7dbc8d7d0e96166ce0a0dc6ac85924acf3cfe4e",
+      "original_sha256": "28ee77f67f5633f3d80a9a15b7dbc8d7d0e96166ce0a0dc6ac85924acf3cfe4e",
+      "path": "src/windows_runtime/word_call_gate_requirements.rs",
+      "registration_only_wrappers": 0
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "current_sha256": "c5535c82f968495304363485a4f202a1c78c2a108c01f3df510ec82d33441b30",
+      "original_sha256": "36553da4992eb9de0480bdd088b991d1615021fc61ccfcedc323ddf58e8a93e0",
+      "path": "src/windows_runtime/word_native_plan.rs",
+      "registration_only_wrappers": 1
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "new_definition": "canonical expand items",
+      "path": "src/windows_runtime_v201.rs",
+      "private_visibility_singletons_E2E_body_bytes_unchanged": true
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "new_definition": "consume duplicate unit items only",
+      "path": "src/bin/g-switcher-failure-e2e.rs",
+      "private_visibility_singletons_E2E_body_bytes_unchanged": true
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "new_definition": "consume duplicate unit items only",
+      "path": "tests/browser_uia_adapter.rs",
+      "private_visibility_singletons_E2E_body_bytes_unchanged": true
+    },
+    {
+      "all_original_body_bytes_preserved": true,
+      "new_definition": "consume duplicate unit items only",
+      "path": "tests/chromium_post_state_retry.rs",
+      "private_visibility_singletons_E2E_body_bytes_unchanged": true
+    }
+  ],
+  "parent": "f65298ba5456e688e5e2c06b0ca614c59618f393",
+  "production_behavior_or_public_visibility_changed": false,
+  "qualified_floor": "3.3.0",
+  "repository": "bajoicheg/g-switcher",
+  "retirements": [
+    {
+      "deleted": "undo::tests::focus_change_invalidates_undo",
+      "mapped_assertions": [
+        "unequal opaque focus token returns None",
+        "state not armed"
+      ],
+      "one_shot_and_model_direction_tests_retained": true,
+      "retained": "tests/core.rs::undo_is_invalidated_by_focus_change"
+    },
+    {
+      "English_keys_without_context_retained": true,
+      "deleted": "wikipedia_five_regressions WIKIPEDIA_FIVE_REGRESSIONS луны row",
+      "mapped_assertion": "known English keys source is never corrected",
+      "mapped_input": "opposite_layout_text(луны,Russian), context[это,текст], DEFAULT_CONFIDENCE_THRESHOLD",
+      "retained": "wikipedia_ten_regressions INTENTIONAL_KEEP луны"
+    }
+  ],
+  "schema": "project-safe-test-retirement/v1",
+  "shared_selection": {
+    "all_original_54_test_body_bytes_preserved": true,
+    "canonical_owner": "library windows_runtime_v201::selection",
+    "current_exe_exact_fixture_paths_preserved": true,
+    "ignored_fixture_holders": 2,
+    "independent_E2E_processes_and_private_singletons_preserved": true,
+    "inventory": {
+      "files": [
+        {
+          "namespace": "selection",
+          "path": "selection.rs",
+          "sha256": "00395f6ed6d343b283eac577e2248b63aae311d5b3fd73c7d1066ff6c39457bc"
+        },
+        {
+          "namespace": "selection::uia_scope",
+          "path": "uia_scope.rs",
+          "sha256": "4e9dc10fa5702a6f7045b1c4a0c9321fcacf7a6c5b0d83091373c87806da4bb8"
+        },
+        {
+          "namespace": "selection::word_admission",
+          "path": "word_admission.rs",
+          "sha256": "e306e30eaa596418f5ce7e3010aa2fae73510f761007b921945a3e92456391f5"
+        },
+        {
+          "namespace": "selection::word_admission::guard_core",
+          "path": "guard_core.rs",
+          "sha256": "9953eb993f7195c57859d953972c5f8ef4b769893c4d010d4e76ca2ae68804e3"
+        },
+        {
+          "namespace": "selection::word_admission::guard_core",
+          "path": "requirements_tests.rs",
+          "sha256": "16e8b69e22936f6617eb93fa2f4d4c26defb629b0d910f2f48e82ca63ece8df8"
+        },
+        {
+          "namespace": "selection::word_admission::registry_store",
+          "path": "registry_store.rs",
+          "sha256": "9e9bf3b9ec3afbbdeb8715e9002f18025a01515fe3ab0861c5c84b8b146ac205"
+        },
+        {
+          "namespace": "selection::word_admission::win32_identity",
+          "path": "win32_identity.rs",
+          "sha256": "6623783a687c80aa2c4924ab3205f720f4d324b5c4c6293eeb5665f20520e549"
+        },
+        {
+          "namespace": "selection::read_worker",
+          "path": "read_worker.rs",
+          "sha256": "c3fb380ce32fef2cca283adb542665ef792d25b4262b126351c39b9bb5518b12"
+        },
+        {
+          "namespace": "selection::uia_legacy",
+          "path": "uia_legacy_v2.rs",
+          "sha256": "b08b024d14b3dba6bfcd2fedebeaa5a6aeb74e8ba1127c727be12a067f49cc1c"
+        },
+        {
+          "namespace": "selection::uia_modern",
+          "path": "uia_modern.rs",
+          "sha256": "d9e7ce3a5bdabc83b39f9b7b9f98b385bde58406eaa01bbdaf7ac9b2d7198783"
+        },
+        {
+          "namespace": "selection::uia_text",
+          "path": "uia_text.rs",
+          "sha256": "4e9aab06c546e94b606bc3726fdd7c7c1da562cd8b5e1e5976c260a6728ea9ff"
+        },
+        {
+          "namespace": "selection::word_native",
+          "path": "word_native.rs",
+          "sha256": "70aba80fcc81ebfe5cbb6ae65878c5968feb325bde2b18a4c024fa1ad82a4094"
+        },
+        {
+          "namespace": "selection::word_native::plan",
+          "path": "word_native_plan.rs",
+          "sha256": "36553da4992eb9de0480bdd088b991d1615021fc61ccfcedc323ddf58e8a93e0"
+        },
+        {
+          "namespace": "selection::word_native::auto_correct",
+          "path": "word_auto_correct.rs",
+          "sha256": "c6917953e1484a7134c95f195025bcffc3100fdb50fe30fe5763b98eb4ba7c67"
+        },
+        {
+          "namespace": "selection::word_native::call_gate",
+          "path": "word_call_gate.rs",
+          "sha256": "2627442909728d0a6f36e1269683dafbea290d795f08cbd97ce3291a8a7009da"
+        },
+        {
+          "namespace": "selection::word_native::call_gate",
+          "path": "word_call_gate_requirements.rs",
+          "sha256": "28ee77f67f5633f3d80a9a15b7dbc8d7d0e96166ce0a0dc6ac85924acf3cfe4e"
+        },
+        {
+          "namespace": "selection::word_native::word_focus",
+          "path": "word_focus.rs",
+          "sha256": "32430504eaccd7c5328d879e70f794b328e63b9f881fd56d0f8982de47bfb824"
+        }
+      ],
+      "registered_unique_names": 54,
+      "registered_windows_tests": [
+        {
+          "body_sha256": "60c0929ea25f9e03e76189097d1ed327e5cd2c17eaf7a9f094326c7cd025e058",
+          "ignored": true,
+          "name": "selection::uia_scope::tests::fixture_process_holder"
+        },
+        {
+          "body_sha256": "e259cf68736c34101c7183c954751cb79bb142403b8844b5c917c456bff2b931",
+          "ignored": false,
+          "name": "selection::uia_scope::tests::actual_retained_process_exit_and_foreign_birth_revoke_identity"
+        },
+        {
+          "body_sha256": "6e78d2a00e64d3a0fe9c50b7355de8d0f742d57eaec796adb51b516080f62619",
+          "ignored": false,
+          "name": "selection::uia_scope::tests::actual_same_process_focus_change_refuses_captured_other_hwnd"
+        },
+        {
+          "body_sha256": "78404acdb88a31453e005094f0a31da357a31258746f39596b325d3891a61f9c",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::restart_refuses_previous_pending_before_any_provider_call"
+        },
+        {
+          "body_sha256": "dbfe3ee7736c6e750e52507d4c8dc9bfd233346727d591820d3980c1413fc748",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::caller_timeout_does_not_complete_worker_owned_read"
+        },
+        {
+          "body_sha256": "972c9db5e1fd3c2d0f6b73c5437f59751fa41dce754803276647a1eb8967dd10",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::late_child_does_not_clear_uncertain_native_mutation"
+        },
+        {
+          "body_sha256": "94c9c13a4de9acc92225bc9bc3b337dd088b9d43c45c33c303aa12f71c0ea659",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::foreign_completion_cannot_clear_current_operation"
+        },
+        {
+          "body_sha256": "4bc4261e27b8f928bb952163b543644a60a4cb2d13ad7664ebf5f84848e144cc",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::duplicate_child_completion_cannot_consume_another_child"
+        },
+        {
+          "body_sha256": "52e7a32038eda34aadfa7b7c732c3ca4b84d882952d2876b9c0906932cf5a1ca",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::missing_identity_never_admits"
+        },
+        {
+          "body_sha256": "af725a2924e33101453e4009ee0e5350094fd7be95dfc1b383937be5c519033b",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::persistence_failure_refuses_before_provider_admission"
+        },
+        {
+          "body_sha256": "894da52bad1ba520d8b90a9e32e1ecf821fb18aed9a91c9dc315b27437363074",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::corrupt_prior_marker_never_becomes_idle"
+        },
+        {
+          "body_sha256": "6e492054b4d7a8e4d0ad0b09c9140cb5b151bd77aaa96fa0f6f284f2fe1c00af",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::actual_host_birth_change_does_not_reuse_old_host_authority"
+        },
+        {
+          "body_sha256": "9b0a51c6be4dabb0d1f7e108c3366d024dc76b10cd3385e38ef2c9015fa68da2",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::normal_exact_completion_allows_fresh_admission"
+        },
+        {
+          "body_sha256": "cc272fa03c6cd41bdb210fd11f40e1d794280100874da6375cd814d96ec3407d",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::timed_out_window_message_quarantine_is_sticky_after_parent_completion"
+        },
+        {
+          "body_sha256": "e965637ebd7aa94d297bb13be325c665c18d265a0102324b41236e54e6c9647f",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::tests::actual_pending_worker_owns_ticket_beyond_caller_timeout"
+        },
+        {
+          "body_sha256": "0489233e65abe7e758032a175873bdfde27771685dbf726379eb8c59d68d9886",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::windows_marker_tests::active_marker_denies_external_deletion_until_verified_completion"
+        },
+        {
+          "body_sha256": "ca45636dac63b63a080e05f066809c0702cd97dc03bc129cd4c9bca76893029f",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::authority_tests::disconnected_stage_does_not_enter_provider"
+        },
+        {
+          "body_sha256": "19b3e7474e723d2d75e06f88ef7f3b63387b1d2e49410e43a96e3f07822425e0",
+          "ignored": false,
+          "name": "selection::word_admission::guard_core::authority_tests::expired_stage_does_not_enter_provider"
+        },
+        {
+          "body_sha256": "a0ebc6ce19918987b3accddc9cc80401e79cc6abe6ffc248cfaa29e9625622b3",
+          "ignored": false,
+          "name": "selection::word_admission::registry_store::tests::actual_registry_lazy_enrollment_uses_client_birth_and_retains_pending"
+        },
+        {
+          "body_sha256": "5cbfd7f9cf6c965eeb7d60c31a33f0b35145110a37bf2bef2d8e4258b8a9794b",
+          "ignored": false,
+          "name": "selection::word_admission::registry_store::tests::completion_readback_rejects_foreign_idle_and_absent_value"
+        },
+        {
+          "body_sha256": "9326ed84e2e90eca1e9ec41d47b9c90ad0b7668f760a656a920c3b269077d36e",
+          "ignored": false,
+          "name": "selection::word_admission::registry_store::tests::verified_idle_identity_and_format_are_required"
+        },
+        {
+          "body_sha256": "f0fd59b582cd822253af0214a47da728c0a96bb0f906b7992da82e103d7b9da2",
+          "ignored": true,
+          "name": "selection::word_admission::win32_identity::tests::fixture_birth_holder"
+        },
+        {
+          "body_sha256": "d4bf694cfef4944a0de067a81165186572a2642746ee4d97e919ad6f38fd51da",
+          "ignored": false,
+          "name": "selection::word_admission::tests::real_registry_foreign_clear_cannot_replace_pending"
+        },
+        {
+          "body_sha256": "e2c49843c93367ff4dddcba1dbd6a363b9d5526c968722e2b5c61b767fd99827",
+          "ignored": false,
+          "name": "selection::word_admission::tests::real_registry_idle_survives_gate_restart_and_next_pending_is_exact"
+        },
+        {
+          "body_sha256": "9802e4dabd3fb90390793305aef00539116663024565d5ca9b9d6d4e757ad98f",
+          "ignored": false,
+          "name": "selection::read_worker::tests::guarded_actual_reader_keeps_marker_after_caller_timeout_until_worker_returns"
+        },
+        {
+          "body_sha256": "53cef694fa3f3ff2d1575284f6d76b8d8878815952c35f41fe1445c3df7cf256",
+          "ignored": false,
+          "name": "selection::read_worker::tests::guarded_actual_reader_late_completion_never_clears_uncertainty"
+        },
+        {
+          "body_sha256": "50ecb70f9718184edaadd1d93f8ae2518234f9c2416692580c237583dbda4e69",
+          "ignored": false,
+          "name": "selection::read_worker::tests::provider_runs_off_the_requesting_thread"
+        },
+        {
+          "body_sha256": "bf6dbf21fd78760374cfed8541e18251fd0dd482723853dbe9a1e988c5960513",
+          "ignored": false,
+          "name": "selection::read_worker::tests::stalled_metadata_returns_none_and_never_queues_a_replacement"
+        },
+        {
+          "body_sha256": "aaeab23bb63d3fddb7c0507fd165e4d89f6c9d4b3d0e61d9226cf200589d0e6f",
+          "ignored": false,
+          "name": "selection::read_worker::tests::each_successful_request_reads_fresh_state"
+        },
+        {
+          "body_sha256": "b2b5ab66901ef6d2d07ce85527a0ce0f437239d8a3c11ac7b2a426b178c31fdf",
+          "ignored": false,
+          "name": "selection::read_worker::tests::provider_failure_returns_none_without_panicking_the_caller"
+        },
+        {
+          "body_sha256": "597e7c2f881389962b925f392256c70d1cccad79314c2e7e051c5adfd8894b83",
+          "ignored": false,
+          "name": "selection::read_worker::windows_tests::sent_message_callbacks_remain_live_but_posted_work_is_not_reentered"
+        },
+        {
+          "body_sha256": "d6e83bc6a90972bc886c60b7028f9707c4f6646fb0ebc593720f59568837b7c5",
+          "ignored": false,
+          "name": "selection::read_worker::concurrency_tests::concurrent_requests_cannot_replace_a_stalled_or_quarantined_reader"
+        },
+        {
+          "body_sha256": "a392005b447852acbcc3534bff15444a927bfa4d0e17387145dc7cc3ec8171ee",
+          "ignored": false,
+          "name": "selection::read_worker::recovery_regression::transient_stall_recovers_same_worker_with_fresh_result_only"
+        },
+        {
+          "body_sha256": "d7a93e347c579e5797a7884f6510cef907e039dd23559820de303a0ce14db01c",
+          "ignored": false,
+          "name": "selection::uia_legacy::tests::byte_index_tracks_unicode_character_offsets"
+        },
+        {
+          "body_sha256": "d7a93e347c579e5797a7884f6510cef907e039dd23559820de303a0ce14db01c",
+          "ignored": false,
+          "name": "selection::uia_text::tests::byte_index_tracks_unicode_character_offsets"
+        },
+        {
+          "body_sha256": "46f30908c05aff33e573f16bbce63dc177f0d25a0f1880b432923d1569e85a76",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::word_routing_requires_both_native_class_and_process"
+        },
+        {
+          "body_sha256": "a53b64f993f1bc09ccf291b1af6fe4d530aca539c34ec51d8139986e708bdef2",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::whole_selection_excludes_only_the_final_paragraph"
+        },
+        {
+          "body_sha256": "3c194cdc9b280b4d80064f99a210ca464418d59fd5172b9680e9bc942c1437e2",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::suffix_positions_use_native_coordinates_and_preserve_surroundings"
+        },
+        {
+          "body_sha256": "6f6caaabf185e23f95a6d5482f8ef4cb665e79381b2a72becec13694e9a16530",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::native_enter_and_tab_delimiters_are_normalized_and_preserved"
+        },
+        {
+          "body_sha256": "4ed43e1c112deaa436af3204d5011583b83a1fa92c3d97dd714dd0ebd879fb9d",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::availability_refuses_unsupported_selection_before_hotkey_admission"
+        },
+        {
+          "body_sha256": "cc530c2949a7d0b388ffbfd2357d794bae230096a11e60bc44627f283452046f",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::unsupported_mapping_and_structure_cannot_produce_a_write_plan"
+        },
+        {
+          "body_sha256": "7766d4d1bc74a2b66a2238315eecfa759ed62cf12bdcecc9c42fe6f9141582d9",
+          "ignored": false,
+          "name": "selection::word_native::plan::tests::selection_binding_accepts_exact_range_or_caret_and_terminal_paragraph_only"
+        },
+        {
+          "body_sha256": "746b03ad953a4f3bac2348a0b966427b58eb68837993bf66386763092bacdc31",
+          "ignored": false,
+          "name": "selection::word_native::auto_correct::tests::word_autocapitalization_at_document_start_preserves_case_and_original"
+        },
+        {
+          "body_sha256": "6630523401ff967d7b072c0d051113935572b13bff030e7aa27a77d25d71aabb",
+          "ignored": false,
+          "name": "selection::word_native::auto_correct::tests::later_native_paragraph_and_enter_delimiter_preserve_exact_boundaries"
+        },
+        {
+          "body_sha256": "a75538a8d088253bfd24de65a3309f37e89e0107115e5c4075c311e289afad58",
+          "ignored": false,
+          "name": "selection::word_native::auto_correct::tests::ordinary_exact_suffix_stays_exact_without_case_changes"
+        },
+        {
+          "body_sha256": "c4010de0f742ea16f4a6ef0efc8fe8440432064979c12e4dec0e037863446a5c",
+          "ignored": false,
+          "name": "selection::word_native::auto_correct::tests::arbitrary_edits_delimiter_drift_and_nonparagraph_case_drift_are_refused"
+        },
+        {
+          "body_sha256": "0b6a77982b2540d55b7b9c3474fae95ff885e7dbf125af1bd3d5ce08ad30ad7d",
+          "ignored": false,
+          "name": "selection::word_native::auto_correct::tests::permanent_word_mismatch_reads_only_once_without_retry"
+        },
+        {
+          "body_sha256": "ced6e74a71466cc24270d7450963ee91baecc1eabfb1539738bea0f84d347b7f",
+          "ignored": false,
+          "name": "selection::word_native::call_gate::cleanup_tests::undo_cleanup_attempts_once_after_authority_revocation"
+        },
+        {
+          "body_sha256": "a14bd82a6ebf6599c4ea043f6b47c31065f045ab1f860cb6338b63ff8310ff7e",
+          "ignored": false,
+          "name": "selection::word_native::call_gate::cleanup_tests::failed_undo_cleanup_is_not_repeated"
+        },
+        {
+          "body_sha256": "c318a71ee634f3e55fe318ca892fc6cb51ecc221a7c232cb534df9a6e7c6a26a",
+          "ignored": false,
+          "name": "selection::word_native::call_gate::cleanup_tests::undo_completion_never_authorizes_a_new_provider_stage"
+        },
+        {
+          "body_sha256": "445c316fa93610c46917ecfe41f58d4c2d2677da3b16b5205d5f41f1b71b0a7b",
+          "ignored": false,
+          "name": "selection::tests::runtime_policy_refuses_stale_or_paused_mutations"
+        },
+        {
+          "body_sha256": "6380e8427f154674a57fff4800b2f20c338e65b6b95cd6a3e3ab5e3e7a4809ba",
+          "ignored": false,
+          "name": "selection::tests::utf16_length_matches_windows_selection_units"
+        },
+        {
+          "body_sha256": "c9e83df21b2c112af55c0254657ac69ecb89bc83ec50f960b295b0b05866d26d",
+          "ignored": false,
+          "name": "selection::tests::suffix_math_is_utf16_based_for_plain_edit"
+        },
+        {
+          "body_sha256": "35b34ac4c5417647c31708e8eb149e70a579d80274c9cff2ae286f72c54a19c6",
+          "ignored": false,
+          "name": "selection::tests::native_class_detection_is_limited_but_modern_fallback_is_uia_driven"
+        }
+      ],
+      "schema": "GS-selection-exact-test-ownership-inventory/v1",
+      "source_unchanged": true,
+      "test_module_blocks": [
+        {
+          "end": 9314,
+          "file": "uia_scope.rs",
+          "namespace": "selection::uia_scope::tests",
+          "sha256": "82d8e33d328dbc9515d29257d05e56b3c2f4877b45d37b8f59918c4f50e51af0",
+          "start": 5116
+        },
+        {
+          "end": 8262,
+          "file": "requirements_tests.rs",
+          "namespace": "selection::word_admission::guard_core::tests",
+          "sha256": "626c9e0bb72a9a827121996f13c768790c8042970783588fe8b76674a97d5ebd",
+          "start": 180
+        },
+        {
+          "end": 9003,
+          "file": "requirements_tests.rs",
+          "namespace": "selection::word_admission::guard_core::windows_marker_tests",
+          "sha256": "20682372e38487447b86ccd924c8c8c1978d693ba6789d10d31db4ec1b16a882",
+          "start": 8291
+        },
+        {
+          "end": 8817,
+          "file": "guard_core.rs",
+          "namespace": "selection::word_admission::guard_core::authority_tests",
+          "sha256": "e5574a23403416531cf93c80cf38df2ef7ccad2b5a5d95d74779a10aad65d4ac",
+          "start": 7600
+        },
+        {
+          "end": 13091,
+          "file": "registry_store.rs",
+          "namespace": "selection::word_admission::registry_store::tests",
+          "sha256": "5f671fa51bf9ab147cc077a03dba09a996c908c95a6d4f79c437e2a0850a931f",
+          "start": 8645
+        },
+        {
+          "end": 7120,
+          "file": "win32_identity.rs",
+          "namespace": "selection::word_admission::win32_identity::tests",
+          "sha256": "da9d77bb41f916903a91751e37b0d1fabe50a286320adec2bebb1134f6058c30",
+          "start": 6762
+        },
+        {
+          "end": 8113,
+          "file": "word_admission.rs",
+          "namespace": "selection::word_admission::tests",
+          "sha256": "e90b3bb3780c87de6ca5d2e9de87bd10187a28320247119887f50ff6ed38a463",
+          "start": 6988
+        },
+        {
+          "end": 13182,
+          "file": "read_worker.rs",
+          "namespace": "selection::read_worker::tests",
+          "sha256": "dba53d8403b46a0fe699bf8acb81e6d1a9ca4cedfbb13565ccbfe0f5ccff4a09",
+          "start": 6844
+        },
+        {
+          "end": 16314,
+          "file": "read_worker.rs",
+          "namespace": "selection::read_worker::windows_tests",
+          "sha256": "ff5cddb5701284bfb78345ac0e447b700efe680e1264d7780b6223dce156c227",
+          "start": 13211
+        },
+        {
+          "end": 18793,
+          "file": "read_worker.rs",
+          "namespace": "selection::read_worker::concurrency_tests",
+          "sha256": "82d715510dd7fcd3716ee923cf94f09b44bdef1ea79b7cff334efc2559c55d7f",
+          "start": 16329
+        },
+        {
+          "end": 21270,
+          "file": "read_worker.rs",
+          "namespace": "selection::read_worker::recovery_regression",
+          "sha256": "67b3dac3ab03cb70218d2210acffcaea27f249986e9c1ce14f5922be7c23644c",
+          "start": 18808
+        },
+        {
+          "end": 19092,
+          "file": "uia_legacy_v2.rs",
+          "namespace": "selection::uia_legacy::tests",
+          "sha256": "f161658e822ea4c1ab9032e5874cbce2eed9c04116100d00407cc49992b3548e",
+          "start": 18649
+        },
+        {
+          "end": 11749,
+          "file": "uia_text.rs",
+          "namespace": "selection::uia_text::tests",
+          "sha256": "f161658e822ea4c1ab9032e5874cbce2eed9c04116100d00407cc49992b3548e",
+          "start": 11306
+        },
+        {
+          "end": 8140,
+          "file": "word_native_plan.rs",
+          "namespace": "selection::word_native::plan::tests",
+          "sha256": "1b25ae39489b7e420d334d52e6c2f80d0eb6f76784ad2209f1e5740abeb3ee7c",
+          "start": 4883
+        },
+        {
+          "end": 3762,
+          "file": "word_auto_correct.rs",
+          "namespace": "selection::word_native::auto_correct::tests",
+          "sha256": "f100e4e59284be4fbb1749eb52cb5934f7229ab7c62d895a41a7c7bb29aab4f9",
+          "start": 1667
+        },
+        {
+          "end": 1457,
+          "file": "word_call_gate_requirements.rs",
+          "namespace": "selection::word_native::call_gate::cleanup_tests",
+          "sha256": "f8bcccc5add34ad8f645bc3942b695404fee0622a124a05ddd4c1cb90b8ce033",
+          "start": 13
+        },
+        {
+          "end": 20587,
+          "file": "selection.rs",
+          "namespace": "selection::tests",
+          "sha256": "c577d270630283cb19ef7a53e2e71753af3c3c8ac54657e9addc9227f50fc4d1",
+          "start": 19017
+        }
+      ]
+    },
+    "ordinary": 52,
+    "prior_harnesses": [
+      "library",
+      "failure-bin",
+      "browser",
+      "chromium"
+    ],
+    "retirement_kind": "single test-only lexical unit owner, not skip/filter/parameter grouping",
+    "unique_registered_names": 54
+  },
+  "strict_identity_gate": {
+    "GREEN": {
+      "return_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    "RCA": "https://github.com/bajoicheg/g-switcher/issues/34",
+    "RED": {
+      "actual_installed_version": "3.5.1",
+      "original_predicate_version": "2.11.5",
+      "return_code": 1,
+      "stderr": "",
+      "stdout": ""
+    },
+    "current": "exact existing351 VERSION bytes, canonical repository/release_commit/ref and package tree equality to immutable consumer lock",
+    "original": "obsolete2.11.5/6e9f rejected authentic existing351",
+    "security_history_findings_remain_OPEN": "https://github.com/bajoicheg/g-switcher/issues/35"
+  },
+  "unique_independent_risk_cases_removed": 0,
+  "vendor_lock_adapter_checkpoint_platform_release_manual_security_rules_unchanged": true
+}

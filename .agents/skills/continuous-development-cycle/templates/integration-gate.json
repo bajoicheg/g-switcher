@@ -1,0 +1,160 @@
+{
+  "schema": "integration-gate/v1",
+  "change_id": "change-parallel",
+  "integrator_id": "integrator-1",
+  "shared_branch": "feature/integration",
+  "expected_shared_head": "1111111111111111111111111111111111111111",
+  "observed_shared_head": "1111111111111111111111111111111111111111",
+  "worker_contract": {
+    "schema": "worktree-worker-contract/v1",
+    "change_id": "change-parallel",
+    "wave": 1,
+    "base_sha": "1111111111111111111111111111111111111111",
+    "integrator_id": "integrator-1",
+    "shared_branch": "feature/integration",
+    "assignments": [
+      {
+        "worker_id": "worker-model",
+        "task_id": "task-model",
+        "role": "writer",
+        "branch": "worker/model",
+        "worktree_id": "wt-model",
+        "base_sha": "1111111111111111111111111111111111111111",
+        "write_paths": [
+          "src/model"
+        ],
+        "expected_outputs": [
+          "commit:model"
+        ],
+        "expected_evidence": [
+          "test:model-green"
+        ],
+        "can_write_shared_branch": false
+      },
+      {
+        "worker_id": "worker-ui",
+        "task_id": "task-ui",
+        "role": "writer",
+        "branch": "worker/ui",
+        "worktree_id": "wt-ui",
+        "base_sha": "1111111111111111111111111111111111111111",
+        "write_paths": [
+          "src/ui"
+        ],
+        "expected_outputs": [
+          "commit:ui"
+        ],
+        "expected_evidence": [
+          "test:ui-green"
+        ],
+        "can_write_shared_branch": false
+      }
+    ],
+    "plan_ref": "sha256:a05a841272888778dc7300d8c397925b475f70097dedef1ee4ab2a3cf750a9f5",
+    "plan": {
+      "schema": "parallel-task-plan/v1",
+      "change_id": "change-parallel",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "integrator_id": "integrator-1",
+      "shared_branch": "feature/integration",
+      "tasks": [
+        {
+          "id": "task-model",
+          "role": "writer",
+          "dependencies": [],
+          "write_paths": [
+            "src/model"
+          ],
+          "expected_outputs": [
+            "commit:model"
+          ],
+          "expected_evidence": [
+            "test:model-green"
+          ],
+          "estimated_seconds": 90
+        },
+        {
+          "id": "task-ui",
+          "role": "writer",
+          "dependencies": [],
+          "write_paths": [
+            "src/ui"
+          ],
+          "expected_outputs": [
+            "commit:ui"
+          ],
+          "expected_evidence": [
+            "test:ui-green"
+          ],
+          "estimated_seconds": 70
+        }
+      ]
+    },
+    "prior_wave_integration": null
+  },
+  "worker_results": [
+    {
+      "worker_id": "worker-model",
+      "task_id": "task-model",
+      "role": "writer",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "result_sha": "2222222222222222222222222222222222222222",
+      "state": "success",
+      "changed_paths": [
+        "src/model/model.py"
+      ],
+      "evidence_refs": [
+        "test:model-green"
+      ],
+      "output_refs": [
+        "commit:model"
+      ]
+    },
+    {
+      "worker_id": "worker-ui",
+      "task_id": "task-ui",
+      "role": "writer",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "result_sha": "3333333333333333333333333333333333333333",
+      "state": "success",
+      "changed_paths": [
+        "src/ui/view.py"
+      ],
+      "evidence_refs": [
+        "test:ui-green"
+      ],
+      "output_refs": [
+        "commit:ui"
+      ]
+    }
+  ],
+  "unresolved_conflicts": [],
+  "force_push_requested": false,
+  "verification_refs": [
+    "verification:worker-results"
+  ],
+  "diff_proofs": [
+    {
+      "worker_id": "worker-model",
+      "task_id": "task-model",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "result_sha": "2222222222222222222222222222222222222222",
+      "resolver": "git_diff_name_only",
+      "changed_paths": [
+        "src/model/model.py"
+      ],
+      "evidence_ref": "git-diff:task-model"
+    },
+    {
+      "worker_id": "worker-ui",
+      "task_id": "task-ui",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "result_sha": "3333333333333333333333333333333333333333",
+      "resolver": "git_diff_name_only",
+      "changed_paths": [
+        "src/ui/view.py"
+      ],
+      "evidence_ref": "git-diff:task-ui"
+    }
+  ]
+}

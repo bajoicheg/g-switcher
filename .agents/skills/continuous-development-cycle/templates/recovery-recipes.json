@@ -1,0 +1,11 @@
+{"schema":"recovery-recipe-catalog/v1","recipes":[
+{"id":"orphan-lease","diagnosis_code":"orphan_lease","priority":10,"requires_all":["invocation:completed"],"forbids":["external:running"],"actions":["inspect_exact_invocation","verify_pending_writes","reconcile_external"],"outcome":"reconcile"},
+{"id":"scheduler-drift","diagnosis_code":"scheduler_drift","priority":10,"requires_all":[],"forbids":[],"actions":["reconcile_scheduler","repair_scheduler_if_authorized","verify_delivery"],"outcome":"reconcile"},
+{"id":"chat-dependency","diagnosis_code":"chat_dependency_blocked","priority":10,"requires_all":[],"forbids":[],"actions":["reconcile_chat_binding","restore_chat_if_authorized","verify_delivery"],"outcome":"reconcile"},
+{"id":"backend-incompatible","diagnosis_code":"backend_incompatible","priority":10,"requires_all":[],"forbids":[],"actions":["refresh_capability_registry","route_backend","record_blocker"],"outcome":"continue"},
+{"id":"backend-unavailable","diagnosis_code":"backend_unavailable","priority":10,"requires_all":[],"forbids":[],"actions":["refresh_capability_registry","route_backend","record_blocker"],"outcome":"waiting_external"},
+{"id":"external-unknown","diagnosis_code":"external_unknown","priority":10,"requires_all":[],"forbids":[],"actions":["reconcile_external","preserve_external_guard","wait_retry_after"],"outcome":"waiting_external"},
+{"id":"rate-limited","diagnosis_code":"rate_limited","priority":10,"requires_all":[],"forbids":[],"actions":["preserve_external_guard","wait_retry_after"],"outcome":"waiting_external"},
+{"id":"budget-blocked","diagnosis_code":"budget_blocked","priority":10,"requires_all":[],"forbids":[],"actions":["record_blocker","resume_next_action"],"outcome":"blocked"},
+{"id":"policy-drift","diagnosis_code":"policy_drift","priority":10,"requires_all":[],"forbids":[],"actions":["reload_policy","validate_policy","reconcile_checkpoint"],"outcome":"reconcile"},
+{"id":"no-progress","diagnosis_code":"no_progress","priority":10,"requires_all":[],"forbids":[],"actions":["diagnose_progress","route_backend","execute_or_block"],"outcome":"continue"}]}

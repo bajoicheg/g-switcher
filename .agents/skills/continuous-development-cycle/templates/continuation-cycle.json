@@ -1,0 +1,27 @@
+{
+  "schema": "continuation-cycle/v1",
+  "milestone_kind": "commit",
+  "progress_update_emitted": true,
+  "terminal_state": {
+    "schema": "terminal-state/v2",
+    "invocation_id": "invocation-example",
+    "scope_id": "scope-example",
+    "observed_head": "1111111111111111111111111111111111111111",
+    "decision": "CONTINUE",
+    "runnable_actions": [
+      {
+        "id": "next-1",
+        "action": "observe → reconcile → choose-next → act",
+        "authority_ref": "scope:existing"
+      }
+    ],
+    "pending_external": null,
+    "blocker": null,
+    "meaningful_progress_refs": [
+      "git:commit"
+    ],
+    "completion_evidence_refs": [],
+    "checkpoint_ref": "coordination:checkpoint",
+    "lease_released": false
+  }
+}

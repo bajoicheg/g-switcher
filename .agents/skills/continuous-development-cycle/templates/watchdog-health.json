@@ -1,0 +1,45 @@
+{
+  "schema": "watchdog-health-probe/v1",
+  "repository": "example/project",
+  "observed_at_utc": "2026-09-24T00:00:00Z",
+  "signals": {
+    "scheduler": {
+      "state": "ok",
+      "desired_enabled": true,
+      "observed_enabled": true,
+      "task_id": "canonical-watchdog-task",
+      "evidence_ref": "scheduler:readback"
+    },
+    "chat": {
+      "state": "active",
+      "conversation_id": "canonical-watchdog-chat",
+      "evidence_ref": "chat:binding"
+    },
+    "invocation": {
+      "state": "idle",
+      "invocation_id": null,
+      "owner_id": null,
+      "evidence_ref": "runtime:idle"
+    },
+    "lease": {
+      "state": "released",
+      "owner_id": null,
+      "generation": 1,
+      "heartbeat_at_utc": null,
+      "expires_at_utc": null,
+      "evidence_ref": "coordination:lease"
+    },
+    "external": {
+      "state": "none",
+      "operation_key": null,
+      "task_id": null,
+      "evidence_ref": "coordination:guard"
+    },
+    "progress": {
+      "state": "fresh",
+      "source_sha": "0000000000000000000000000000000000000000",
+      "last_progress_at_utc": "2026-09-24T00:00:00Z",
+      "progress_ref": "checkpoint:current"
+    }
+  }
+}

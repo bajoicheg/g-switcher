@@ -1,0 +1,1 @@
+{"schema":"progress-observation/v1","observed_at_utc":"2026-01-01T00:10:00Z","last_meaningful_progress_at_utc":"2026-01-01T00:05:00Z","last_activity_at_utc":"2026-01-01T00:09:30Z","primitive_steps_since_progress":4,"blocker":false,"waiting_external":false,"phase":"implementation","evidence_refs":["git:example"]}

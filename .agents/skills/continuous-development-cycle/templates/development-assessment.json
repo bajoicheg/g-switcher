@@ -1,0 +1,80 @@
+{
+  "schema": "development-assessment/v1",
+  "candidate_sha": "1111111111111111111111111111111111111111",
+  "quality": {
+    "schema": "quality-assessment/v1",
+    "project_level": "MEDIUM",
+    "risk_level": "FULL",
+    "risk_categories": [
+      "cdc_core"
+    ],
+    "risk_reason": "example core candidate: mandatory FULL gates",
+    "mandatory_check_ids": [
+      "bootstrap",
+      "package",
+      "full",
+      "compatibility",
+      "fault",
+      "archived-consumer",
+      "ci"
+    ]
+  },
+  "cycle": {
+    "schema": "validation-cycle/v1",
+    "cycle_number": 1,
+    "max_validation_cycles": 2,
+    "changed_inputs": [],
+    "risk_reason": "",
+    "prior_evidence_insufficient_reason": "",
+    "strategy_revision_ref": null,
+    "budget_observation": {
+      "time_seconds": 2,
+      "tokens": null,
+      "external_starts": 0,
+      "time_limit_seconds": 60,
+      "token_limit": null,
+      "external_start_limit": 1,
+      "unknown_reason": "host does not expose token usage"
+    }
+  },
+  "required_checks": [
+    {
+      "id": "bootstrap",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "package",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "full",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "compatibility",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "fault",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "archived-consumer",
+      "exact_candidate_required": true
+    },
+    {
+      "id": "ci",
+      "exact_candidate_required": true
+    }
+  ],
+  "completed_checks": [],
+  "reuse_requests": [],
+  "change": {
+    "kind": "feature",
+    "tdd_risk_reasons": [
+      "critical_boundary"
+    ],
+    "compatible_change_ids": [],
+    "urgent": false
+  }
+}

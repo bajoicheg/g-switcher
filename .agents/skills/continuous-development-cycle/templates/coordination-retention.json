@@ -1,0 +1,12 @@
+{
+  "schema": "coordination-retention/v1",
+  "policy": {
+    "archive_after_seconds": 604800,
+    "delete_after_seconds": 2592000,
+    "never_delete_kinds": [
+      "audit",
+      "ledger"
+    ]
+  },
+  "records": []
+}

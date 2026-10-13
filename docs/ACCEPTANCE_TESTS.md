@@ -1,6 +1,6 @@
-# G-switcher 2.0.0 acceptance tests
+# G-switcher 2.0.1 acceptance tests
 
-The Windows release gate must test the full path from keyboard hook through focused-control layout selection and text replacement in a real Win32 edit control.
+The Windows release gate must test the full path from keyboard hook through focused-control validation, layout selection and verified text replacement in real Win32 controls. Version 2.0.1 additionally requires separate-process, stress and failure-path coverage; automated CI success does not replace the manual real-application compatibility gate.
 
 ## Core correction
 
@@ -15,6 +15,25 @@ The Windows release gate must test the full path from keyboard hook through focu
 - Space, Enter and Tab delimiters are preserved
 - immediate Undo restores original text and source layout
 - simulated partial `SendInput` delivery resumes from the exact unsent INPUT tail; zero initial delivery fails without destructive progress
+
+## Context generation and stale-state safety
+
+- every pending correction and Undo record is tied to a context generation
+- focus/process/thread/layout changes invalidate stale operations
+- caret movement invalidates a pending token correction before mutation
+- selection/range changes invalidate selected-text conversion and selected-text Undo
+- a queued correction never modifies a newly focused field after focus changes
+- a stale operation must not switch from a verified adapter to an unverified raw mutation fallback
+- Pause invalidates pending correction, selection and Undo state
+
+## Hook dispatch and stress
+
+- low-level keyboard and mouse hooks execute on the dedicated hook thread
+- detector scoring, UI Automation and text mutation do not execute inside the low-level hook callback
+- the mandatory stress case delivers at least 100,000 callback events
+- no stress event is dropped by runtime dispatch
+- callbacks slower than 10 ms remain within the configured release-gate allowance; the current release rule requires at least 99% of callbacks at or below 10 ms
+- after the 100,000-event stress sequence the hook still receives subsequent events
 
 ## Detector v3
 
@@ -38,11 +57,32 @@ The Windows release gate must test the full path from keyboard hook through focu
 - changing sensitivity takes effect after Save without restart
 - sensitivity never disables secure-input protection or code-safe protection
 
+## Verified text adapters
+
+For a separate-process plain Win32 `Edit` control:
+
+- caret/selection state is read through the bounded message adapter
+- the exact expected source range is re-verified immediately before replacement
+- the resulting full control text is verified after replacement
+- a failed or unexpected post-state is not accepted as success
+
+For supported separate-process `RICHEDIT50W`:
+
+- UI Automation TextPattern supplies selection/document state
+- selected-text replacement affects only the verified range
+- post-state is verified through the UIA document/range view
+- selected-text Undo restores exactly the original range
+
+For unsupported/custom controls:
+
+- no raw mutation fallback is attempted merely because a verified adapter is unavailable
+- original text is preserved
+
 ## Selected-text conversion
 
 Default action: `Ctrl+Shift+F9`.
 
-On a supported focused native Edit/RichEdit control:
+On a supported focused control with a verified adapter:
 
 - selecting `ghbdtn rfr ltkf` and invoking the action produces `привет как дела`
 - the target keyboard layout becomes Russian
@@ -68,6 +108,37 @@ For a native `EDIT` control with password state and for recognized Windows crede
 - transient candidate/context/previous/Undo state is cleared on entry
 - original user input is passed through unchanged
 - protection applies in Auto and Manual-only modes and for all sensitivity profiles
+
+For the separate-process password fixture:
+
+- UI Automation `IsPassword` is observed as true
+- no text-bearing UIA property is required to make the secure-input decision
+- automatic handling does not change the field layout
+- selected-text hotkey does not modify the password control or its layout
+
+For an unverified non-plain control, secure-state uncertainty is fail-open: no mutation is allowed.
+
+## Hung and closing target failure paths
+
+The mandatory separate-process failure harness must cover both cases below.
+
+Hung target:
+
+- the helper UI thread is deliberately blocked
+- the target becomes unresponsive to a bounded `WM_NULL` liveness probe
+- a verified range replacement attempt returns false within the bounded gate timeout
+- the original text remains unchanged after the target UI thread recovers
+
+Closing/disappearing target:
+
+- the target process is terminated while a verified mutation attempt is pending
+- the operation returns false within the bounded gate timeout
+- no other/newly focused control is modified
+
+Recovery:
+
+- after the hung and closing-target failures, a fresh separate-process `Edit` control still accepts a normal verified replacement
+- failure handling must not poison global adapter/runtime state
 
 ## Configurable hotkeys
 
@@ -126,7 +197,7 @@ With automatic correction disabled or an intentionally uncorrected token:
 - tray contains Pause while active and Resume while paused
 - configured pause hotkey toggles the same process-local state
 - while paused, `ghbdtn ` remains unchanged and no explicit conversion action modifies text
-- entering Pause clears candidate, previous-token, context, Undo and pending correction/selection state
+- entering Pause clears candidate, previous-token, context, Undo and pending correction/selection state and invalidates the active generation
 - resuming does not resurrect pre-pause state
 - restarting G-switcher always starts active
 
@@ -144,7 +215,7 @@ With automatic correction disabled or an intentionally uncorrected token:
 - first-run and Settings each expose sound on/off and 0–100% volume in 5% steps
 - a confirmed automatic correction plays one signal
 - confirmed current-word, previous-word and selected-text conversions play one signal
-- failed/refused corrections, Pause, native secure input and Undo remain silent
+- failed/refused corrections, Pause, secure input and Undo remain silent
 - 0% produces no playback even when sound is enabled
 - generated PCM has a valid RIFF/WAVE header and bounded duration
 - PCM peak amplitude rises with the configured percentage and values above 100% are clamped
@@ -163,10 +234,10 @@ With automatic correction disabled or an intentionally uncorrected token:
 - Save updates the running process without elevation
 - Cancel/close does not persist edits
 - UI states that detector context is volatile
-- UI accurately scopes secure-input wording to native protected controls
+- UI accurately scopes secure-input wording to protected/verified controls
 - Settings client area is 900×680 and all controls fit without clipping on a 1366×768 desktop work area
 - first-run close does not mark onboarding complete or silently overwrite choices
-- visible Settings version is `2.0.0`
+- visible Settings version is `2.0.1`
 
 ## Punctuation and editing
 
@@ -227,20 +298,43 @@ The following classes are not automatically rewritten:
 - `some_variable`
 - `--background`
 
+Runtime candidate tracking must preserve digits and common technical separators long enough for Code-safe classification so such tokens are not split into misleading word fragments.
+
+## Manual compatibility gate
+
+`COMPATIBILITY_2.0.1.md` is a release blocker until every intended application row is completed with an exact application version and Windows build.
+
+Required applications:
+
+- Notepad
+- Microsoft Word
+- Microsoft Edge
+- Google Chrome
+- Telegram Desktop
+- Visual Studio Code
+- Windows Terminal
+
+For each writable target, test Auto, Manual current word, Selected text, Undo, caret/focus race handling, Pause/application modes and password/sensitive-field behavior where available. Unsupported controls must be recorded as `UNSUPPORTED/FAIL-OPEN`, not `PASS`. Do not use real credentials or secrets.
+
+The repository helper `scripts/manual-compatibility-v201.ps1` may be used to detect application versions and create a local result matrix. `-ScaffoldOnly` must produce a complete PENDING matrix without user interaction; Windows CI smoke-tests this helper.
+
 ## Release gate
 
-A releasable `v2.0.0` requires one successful Windows CI run on merged `main` containing:
+A releasable 2.0.1 candidate requires one successful Windows CI run on the exact release commit containing:
 
+- read-only 2.0.1 normalization/hardening reproducibility check
 - `cargo fmt --all -- --check`
 - all Cargo resolution/build commands use the committed lockfile through `--locked`
-- all unit/integration tests, including frequency-layer, sound-wave, settings and article-corpus regressions
-- ignored real Win32 hook-to-EDIT E2E with automatic correction, article-derived cases, Undo, Pause, Manual-only, Disabled, selected-text conversion/Undo and password EDIT protection
-- `cargo clippy --all-targets -- -D warnings`
+- all unit/integration tests, including frequency-layer, sound-wave, settings, Code-safe and article-corpus regressions
+- `scripts/manual-compatibility-v201.ps1 -ScaffoldOnly` smoke test
+- ignored real same-process Win32 hook-to-EDIT E2E
+- ignored separate-process Edit/RichEdit/password E2E with focus-race and 100,000-callback stress coverage
+- mandatory hung/closing-target failure-path E2E
+- `cargo clippy --locked --all-targets -- -D warnings`
 - optimized `g-switcher.exe` build
-- Windows GUI subsystem and `2.0.0` branding/version checks derived from the Cargo package version
+- Windows GUI subsystem and `2.0.1` branding/version checks derived from the Cargo package version
 - generated SHA-256 sidecars for standalone EXE and ZIP
-- ZIP verification that its EXE is byte-identical to the checked standalone executable
-- ZIP contents include README, changelog and third-party data attribution
-- uploaded artifact named `g-switcher-2.0.0-windows-x64`
+- ZIP contents include README, changelog, `RELEASE_NOTES_2.0.1.md`, `COMPATIBILITY_2.0.1.md` and third-party data attribution
+- uploaded artifact named `g-switcher-2.0.1-windows-x64`
 
-Only that successful `main` push artifact may be used by the `v2.0.0` release workflow.
+Public promotion additionally requires the completed manual compatibility matrix and a final release review. Automated green CI alone is not release authorization.

@@ -1,0 +1,36 @@
+{
+  "schema": "evidence-reuse/v1",
+  "check_id": "package",
+  "source_candidate_sha": "1111111111111111111111111111111111111111",
+  "target_candidate_sha": "2222222222222222222222222222222222222222",
+  "source_evidence_ref": "git:original-run",
+  "source_state": "success",
+  "original_inputs": {
+    "dependency_fingerprints": {
+      "src/a.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "argv": [
+      "python",
+      "test.py"
+    ],
+    "parameters": {},
+    "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "check_definition_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "current_inputs": {
+    "dependency_fingerprints": {
+      "src/a.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "argv": [
+      "python",
+      "test.py"
+    ],
+    "parameters": {},
+    "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "check_definition_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "coverage_refs": [
+    "review:dependency-coverage"
+  ],
+  "exact_candidate_required": false
+}

@@ -1,13 +1,67 @@
 use windows_sys::Win32::Foundation::HWND;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageW, GWL_STYLE,
+    GetClassNameW, GetParent, GetWindowLongPtrW, SendMessageTimeoutW, GWL_STYLE, SMTO_ABORTIFHUNG,
+    SMTO_BLOCK,
 };
 
 const ES_PASSWORD_VALUE: isize = 0x0020;
 const EM_GETPASSWORDCHAR_VALUE: u32 = 0x00D2;
 const MAX_PARENT_DEPTH: usize = 4;
+const PASSWORD_PROBE_TIMEOUT_MS: u32 = 50;
 
 pub fn is_secure_input(hwnd: HWND, process_name: &str) -> bool {
+    let Some(is_word) = super::selection::word_admission::classify_word(hwnd as isize) else {
+        return true;
+    };
+    if is_word {
+        if !super::selection::broker_role() {
+            return true;
+        }
+        let inherited = super::selection::word_admission::current();
+        let parent = match inherited.as_ref() {
+            Some(p) => p.clone(),
+            None => match super::selection::word_admission::begin(hwnd as isize) {
+                Some(p) => p,
+                None => return true,
+            },
+        };
+        if !parent.matches(hwnd as isize) {
+            parent.quarantine();
+            return true;
+        }
+        let result = is_secure_word_input(hwnd);
+        if result.is_none() {
+            parent.quarantine();
+        }
+        if inherited.is_none() && !parent.complete(result.is_none()) {
+            return true;
+        }
+        result.unwrap_or(true)
+    } else {
+        is_secure_input_inner(hwnd, process_name)
+    }
+}
+fn is_secure_word_input(hwnd: HWND) -> Option<bool> {
+    let mut current = hwnd;
+    for _ in 0..MAX_PARENT_DEPTH {
+        if current.is_null() {
+            break;
+        }
+        if has_password_style(current)
+            || class_name(current).is_some_and(|n| is_secure_class_name(&n))
+        {
+            return Some(true);
+        }
+        if super::selection::word_security_stage(hwnd as isize, || {
+            has_password_character_checked(current)
+        })?? {
+            return Some(true);
+        }
+        current = unsafe { GetParent(current) };
+    }
+    Some(false)
+}
+fn is_secure_input_inner(hwnd: HWND, process_name: &str) -> bool {
     if is_secure_process(process_name) {
         return true;
     }
@@ -33,7 +87,22 @@ fn has_password_style(hwnd: HWND) -> bool {
 }
 
 fn has_password_character(hwnd: HWND) -> bool {
-    unsafe { SendMessageW(hwnd, EM_GETPASSWORDCHAR_VALUE, 0, 0) != 0 }
+    has_password_character_checked(hwnd).unwrap_or(false)
+}
+fn has_password_character_checked(hwnd: HWND) -> Option<bool> {
+    let mut result = 0usize;
+    let ok = unsafe {
+        SendMessageTimeoutW(
+            hwnd,
+            EM_GETPASSWORDCHAR_VALUE,
+            0,
+            0,
+            SMTO_ABORTIFHUNG | SMTO_BLOCK,
+            PASSWORD_PROBE_TIMEOUT_MS,
+            &mut result,
+        )
+    };
+    (ok != 0).then_some(result != 0)
 }
 
 fn class_name(hwnd: HWND) -> Option<String> {

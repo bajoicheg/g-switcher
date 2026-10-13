@@ -1,0 +1,7 @@
+{
+  "schema": "command-timestamp-request/v1",
+  "command_id": "command-0001",
+  "observed_at": "2026-09-26T16:31:00Z",
+  "time_source": "runtime_clock",
+  "already_timestamped_command_ids": []
+}

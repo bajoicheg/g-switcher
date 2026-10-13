@@ -1,0 +1,17 @@
+{
+  "schema": "ref-inventory/v1",
+  "policy": {
+    "max_terminal_age_days": 7,
+    "deletable_prefixes": [
+      "refs/heads/review/",
+      "refs/heads/migration/",
+      "refs/heads/backup/",
+      "refs/heads/test/"
+    ],
+    "protected_prefixes": [
+      "refs/heads/release/",
+      "refs/heads/main"
+    ]
+  },
+  "refs": []
+}

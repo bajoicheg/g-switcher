@@ -1,0 +1,8 @@
+{
+  "schema": "sensitive-context-policy/v1",
+  "forbidden_literals": [],
+  "forbidden_domain_suffixes": [],
+  "allow_example_domains": true,
+  "detect_private_ips": true,
+  "case_insensitive": true
+}

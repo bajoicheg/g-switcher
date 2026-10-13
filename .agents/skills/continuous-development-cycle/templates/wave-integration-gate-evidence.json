@@ -1,0 +1,14 @@
+{
+  "schema": "wave-integration-gate-evidence/v1",
+  "change_id": "change-parallel",
+  "plan_ref": "sha256:a05a841272888778dc7300d8c397925b475f70097dedef1ee4ab2a3cf750a9f5",
+  "wave": 1,
+  "base_sha": "1111111111111111111111111111111111111111",
+  "shared_branch": "feature/integration",
+  "ready": true,
+  "evidence_ref": "integration-gate:wave-1-green",
+  "result_artifact_ref": {
+    "path": "templates/wave-integration-gate-result.json",
+    "sha256": "sha256:34e79cc6433bd56b192f7e0812c5e285fc421aa34c95f0900bed4614d8ffe647"
+  }
+}

@@ -1,4 +1,4 @@
-# G-switcher 2.0.0 security model
+# G-switcher 2.0.1 security model
 
 G-switcher is designed as a small local desktop utility with a deliberately narrow trust boundary.
 
@@ -8,12 +8,17 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - Detector v3 uses only baked-in local RU/EN frequency and n-gram data plus local volatile context. It has no cloud model, remote dictionary or telemetry dependency.
 - The pinned 1.0.10 OpenSubtitles2018-derived frequency layer and earlier corpus additions are compiled local lexical/source-protection entries only. Source corpora and generation inputs are not downloaded during runtime.
 - Contextual words are cleared when focus/process context changes, on Pause, on unrelated Ctrl/Alt command context, on secure-input entry, and on Undo. Context cannot override exact source system/user-dictionary protection.
-- Selected text is read only after the explicit selected-text hotkey is invoked and only from the currently focused supported native Win32 text control. The selected content is held transiently only long enough to perform replacement/Undo state.
-- The clipboard is not used for selected-text conversion.
+- Low-level keyboard and mouse hooks run on a dedicated hook thread. Hook callbacks perform bounded capture/dispatch work only; detector scoring, UI Automation, control inspection and mutation run outside the callback.
+- Mutable typing state is generation-bound. Queued correction and Undo paths re-check the current generation, focused HWND, process, UI thread, keyboard layout and exact caret/range state before changing text. Stale state fails open.
+- Text mutation is allowed only through a verified adapter. Plain Win32 `Edit` uses bounded marshalled messages; supported RichEdit uses UI Automation TextPattern for exact range state plus a verified range-local replacement. The clipboard is not used as a fallback.
+- Adapter selection includes a bounded target-liveness preflight. A hung, closing, disappeared or otherwise unresponsive target is treated as unsupported for that operation and left unchanged rather than guessed at.
+- If a verified adapter is lost between queueing and execution, G-switcher does not fall through to an unverified raw mutation path.
+- Selected text is read only after the explicit selected-text hotkey is invoked and only when the currently focused control exposes a verified text adapter. The selected content is held transiently only long enough to validate the range, perform replacement and maintain one-shot Undo state.
 - Native password controls and recognized Windows credential/secure targets are excluded from automatic correction, manual conversion, selected-text conversion and text-restoring Undo operations. Entering a detected secure target clears transient G-switcher text state and original keystrokes pass through unchanged.
-- Browser DOM password fields and arbitrary custom-rendered controls may not expose secure state through the native focused HWND. G-switcher does not inspect DOM content or arbitrary accessibility trees. Per-application `Disabled` mode is the explicit safety boundary where secure-state detection cannot be verified.
+- UI Automation secure-input checks request metadata only, including `IsPassword`; the secure-input decision does not request a text-bearing UIA property or TextPattern. An unverified non-plain control fails open.
+- Per-application `Disabled` mode remains an explicit safety boundary when the user does not want G-switcher to process an application at all.
 - Secure-input protection overrides application mode and sensitivity settings.
-- Pause state is process-local, clears transient correction/selection state, and is never persisted.
+- Pause state is process-local, invalidates the active generation, clears transient correction/selection state, and is never persisted.
 - Configuration is stored per user.
 - Persisted configuration is limited to explicit choices: automatic-correction state, sensitivity profile, sound state/volume, Disabled/Manual-only executable basenames, explicit user-dictionary words, hotkey definitions and autostart state.
 - The user dictionary is never learned automatically from typing.
@@ -22,13 +27,15 @@ G-switcher is designed as a small local desktop utility with a deliberately narr
 - `Manual only` disables automatic replacement while preserving explicit actions outside secure input; `Disabled` performs no text conversion.
 - Tray status is derived locally from current process mode/layout and the latest correction/undo. It is not persisted or transmitted.
 - Normal operation does not request elevation.
-- Input injection failures are fail-open for the user's original keystroke where Windows permits safe recovery. Partial `SendInput` batches are continued from the exact unsent INPUT with bounded retries so already-delivered Backspace events are not silently abandoned.
+- Where `SendInput` is used by a supported path, partial batches resume from the exact unsent INPUT with bounded retries. Zero initial progress fails open before any destructive synthetic deletion is delivered.
 - Queued manual correction restores only modifier keys that remain physically active when the queued operation executes, preventing stale Ctrl/Shift/Alt state from being synthetically reintroduced after hotkey release.
-- Automatic and manual token conversion use the same focused-control, layout-switch and integrity boundaries.
+- Automatic, manual, selection and Undo paths share the same generation, focused-control, secure-input, verified-adapter, layout and integrity boundaries.
+- Code-safe classification protects technical tokens containing digits and common separators from accidental layout conversion; refused automatic correction leaves the original token unchanged.
 - Hotkeys are matched locally and no global online service is involved.
 - Correction audio is a fixed short PCM waveform generated in memory. Its amplitude is derived only from the explicit volume setting; typed or selected text never influences audio bytes. Playback does not write an audio file or change the system master volume.
-- The production binary is built on a Windows CI runner from the reviewed Rust source tree.
-- The release gate includes a real Win32 hook-to-EDIT test covering automatic correction/Undo, article-derived detector cases, application modes, selected-text conversion/Undo and password EDIT protection.
-- Release artifacts include SHA-256 hashes and are intended to be Authenticode-signed in a separate protected release step when a trusted signing environment is available.
-- CI receives read-only repository contents unless a specific release job requires release publication rights.
-- The `v2.0.0` publication workflow consumes only the checked artifact from a successful `main` push Windows CI run, re-verifies EXE/ZIP SHA-256 values, and confirms that the packaged EXE is byte-identical before creating the GitHub Release.
+- The production binary is built on a Windows CI runner from the reviewed Rust source tree with a committed dependency lockfile and `--locked` resolution.
+- CI normalization/hardening checks are read-only and must leave the checked-out branch unchanged.
+- The release gate includes same-process Win32 E2E, separate-process Edit/RichEdit/password E2E, a 100,000-callback hook stress test, and a dedicated failure-path E2E that hangs a target UI thread and terminates a target process during a verified mutation attempt. Both failure cases must leave text unchanged and a fresh target must remain usable afterward.
+- Release artifacts include SHA-256 sidecars and are intended to be Authenticode-signed in a separate protected release step when a trusted signing environment is available.
+- CI receives read-only repository contents unless a specific release job requires publication rights.
+- Automated CI success alone does not authorize public promotion. `COMPATIBILITY_2.0.1.md` remains the manual real-application gate for Notepad, Microsoft Word, Microsoft Edge, Google Chrome, Telegram Desktop, Visual Studio Code and Windows Terminal.

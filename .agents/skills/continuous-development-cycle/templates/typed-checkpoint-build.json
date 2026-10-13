@@ -1,0 +1,18 @@
+{
+  "schema": "typed-checkpoint-build/v1",
+  "updates": {
+    "phase": "recovery",
+    "lease_state": "released",
+    "blocker": "initial recovery",
+    "next_action": "Reconcile live repository and coordination state.",
+    "resume_capsule_ref": "coordination:resume.json"
+  },
+  "execution_continuity": {
+    "invocation_id": null,
+    "runnable_next_action": false,
+    "meaningful_progress": false,
+    "primitive_steps_since_progress": 0,
+    "completion_gate": "resumable_blocker",
+    "last_progress_ref": null
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "stuck-state-input/v1",
+  "observations": [
+    {
+      "action_fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "head": "0000000000000000000000000000000000000000",
+      "meaningful_progress": true,
+      "result_class": "success"
+    }
+  ],
+  "repeat_threshold": 2,
+  "head_stall_threshold": 3
+}
