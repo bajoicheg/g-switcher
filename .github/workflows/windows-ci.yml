@@ -82,7 +82,7 @@ jobs:
             target/release/g-switcher-2.0.0-windows-x64.zip
             target/release/g-switcher-2.0.0-windows-x64.zip.sha256
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
 
       - name: Upload generated lockfile
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
