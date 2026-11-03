@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import sys
+import tempfile
 
 sys.dont_write_bytecode = True
 from contracts import ContractError, load_yaml, semver, require_supported_runtime
@@ -49,7 +50,7 @@ from stuck_state import detect as detect_stuck
 from counterfactual_recovery import choose as choose_counterfactual
 from public_export_planner import plan as plan_public_export
 from dogfood_metrics import measure as measure_dogfood
-from package_transport import validate_manifest as validate_transport_manifest
+from package_transport import validate_manifest as validate_transport_manifest, verify_directory as verify_transport_directory
 from convergence_vector import normalize as normalize_convergence_vector
 from ci_evidence_classifier import classify as classify_ci_evidence
 from policy_migration import plan as plan_policy_migration
@@ -84,9 +85,48 @@ from consumer_adoption import assess as assess_consumer_adoption
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
+    'references/task-sharded-control-storage.md',
+    'tests/test_task_sharded_document_store.py',
+    'tests/test_released_success_registry_migration.py',
+    'scripts/managed_boot_transition.py',
+    'references/released-crossboot-recovery.md',
+    'tests/test_managed_boot_transition.py',
+    'tests/test_released_terminal_boot_recovery.py',
+    'tests/test_root_managed_boot_record.py',
+    'tests/test_released_terminal_registry_migration.py',
+    'references/agent-workers.md',
+    'schemas/agent-task-v1.schema.json',
+    'scripts/agent_check_runner.py',
+    'scripts/agent_cli_adapters.py',
+    'scripts/agent_contract.py',
+    'scripts/agent_worker.py',
+    'templates/agent-developer-pool-v1.json',
+    'templates/agent-review-task-v1.json',
+    'templates/agent-reviewer-pool-v1.json',
+    'templates/agent-task-v1.json',
+    'templates/kimi-developer-v220.yaml',
+    'templates/kimi-reviewer-v220.yaml',
+    'tests/test_agent_check_runner.py',
+    'tests/test_agent_cli_adapters.py',
+    'tests/test_agent_worker.py',
+
+    "scripts/reporting_contract.py", "scripts/receiving_ci_preflight.py",
+    "references/systemic-closeout.md", "tests/reporting_fixtures.py",
+    "tests/test_systemic_reporting.py", "tests/test_receiving_ci_preflight.py",
+    "tests/test_native_closeout.py", "tests/test_runtime_terminal_proof.py",
+    "tests/test_detached_preview.py",
     'tests/test_actions_submission_retirement.py',
     'scripts/submission_retirement.py', 'tests/test_submission_retirement.py',
     'references/unknown-retirement.md',
+    'scripts/unknown_recovery.py', 'scripts/source_publication_quarantine.py',
+    'references/native-unknown-recovery.md',
+    'tests/test_native_unknown_recovery.py', 'tests/test_native_preconsume_disposition.py',
+    'tests/test_native_bootstrap_disposition.py',
+    'tests/test_source_publication_quarantine.py',
+    'scripts/project_budget_store.py', 'tests/test_project_budget_store.py',
+    'references/project-budget-store.md',
+    'scripts/project_adoption.py', 'tests/test_project_adoption.py',
+    'references/project-adoption.md',
     'scripts/release_delivery.py', 'tests/test_release_delivery.py',
     'tests/test_release_delivery_git.py', 'tests/test_release_delivery_cli.py',
     'references/release-delivery.md', 'templates/release-delivery.json',
@@ -445,6 +485,32 @@ REQUIRED = [
     'references/lean-execution-core.md', 'references/legacy-core-2.12.1.md',
     'templates/development-assessment.json', 'templates/operation-observation.json',
     'templates/execution-strategy.json',
+    'tests/test_budget_parallel_bound.py',
+    'tests/test_canonical_decoder_fastpath.py',
+    'tests/test_document_history_batch.py',
+    'tests/test_document_single_read_bound.py',
+    'tests/test_history_object_session.py',
+    'tests/test_history_reuse.py',
+    'tests/test_intake_combined_validation.py',
+    'tests/test_intake_preparation_projection.py',
+    'tests/test_intake_row_validation_reuse.py',
+    'tests/test_native_prehandle_disposition.py',
+    'tests/test_native_report_freshness.py',
+    'tests/test_project_budget_memory.py',
+    'tests/test_rejected_preparation_close.py',
+    'tests/test_scoped_history_paths.py',
+    'tests/test_streaming_consumption.py',
+    'tests/test_streaming_dispositions.py',
+    'tests/test_streaming_intake.py',
+    'tests/test_supervisor_signal_failure.py',
+    'scripts/_cdc_vendor/__init__.py',
+    'scripts/_cdc_vendor/orjson/LICENSE-APACHE',
+    'scripts/_cdc_vendor/orjson/LICENSE-MIT',
+    'scripts/_cdc_vendor/orjson/LICENSE-MPL-2.0',
+    'scripts/_cdc_vendor/orjson/__init__.py',
+    'scripts/_cdc_vendor/orjson/orjson.cpython-312-x86_64-linux-gnu.so',
+    'scripts/_cdc_vendor/orjson/provenance.json',
+    'tests/test_packaged_decoder.py',
 ]
 
 
@@ -494,8 +560,8 @@ def validate():
     final_gate = evaluate_final_response_gate(final_gate_template['invocation_id'], final_gate_template['lease'],
                                               final_gate_template['continuity'], final_gate_template['owned_lease'],
                                               final_gate_template['release_receipt'], None, '2026-01-01T00:00:00Z')
-    if not final_gate['allowed'] or not final_gate['final_response_allowed']:
-        raise ContractError('invalid CDC 2.11.3 final-response gate template')
+    if final_gate['allowed'] or final_gate['final_response_allowed'] or final_gate['reason']!='current_authentic_reporting_binding_required':
+        raise ContractError('historical final-response example cannot grant current unbound permission')
     validate_fleet_supervisor_control(json.loads((ROOT / 'templates/fleet-supervisor-state.json').read_text()))
     adoption_plan = assess_consumer_adoption(json.loads((ROOT / 'templates/consumer-adoption-publication.json').read_text()))
     if adoption_plan['action'] != 'PREPARE_DETACHED' or adoption_plan['authorizes_ref_move']:
@@ -620,6 +686,10 @@ def validate():
     transport = validate_transport_manifest(json.loads((ROOT / 'templates/package-transport.json').read_text()))
     if transport['version'] != version:
         raise ContractError('invalid package transport template version')
+    with tempfile.TemporaryDirectory() as carrier:
+        Path(carrier,'VERSION').write_bytes((ROOT/'VERSION').read_bytes())
+        if not verify_transport_directory(transport,carrier)['content_verified']:
+            raise ContractError('invalid package transport template VERSION bytes')
     vector = normalize_convergence_vector(json.loads((ROOT / 'templates/convergence-observation.json').read_text()))
     if not vector['integrated'] or vector['adoption_state'] != 'integrated' or vector['blockers']:
         raise ContractError('invalid convergence vector template')
@@ -649,7 +719,7 @@ def validate():
     timestamp_request = json.loads((ROOT / 'templates/command-timestamp-request.json').read_text())
     timestamp_fixture_clock = datetime.fromisoformat(timestamp_request['observed_at'].replace('Z','+00:00'))
     timestamp = render_command_timestamp(timestamp_request, now=timestamp_fixture_clock)
-    if timestamp['action'] != 'EMIT_ONCE' or timestamp['display'] != '[19:31 26.09]' or timestamp['authorizes_anything']:
+    if timestamp['action'] != 'EMIT_REPORT' or timestamp['display'] != '[19:31 26.09]' or timestamp['authorizes_anything']:
         raise ContractError('invalid command timestamp template')
     rca = disposition_rca_feedback(json.loads((ROOT / 'templates/rca-feedback.json').read_text()))
     if rca['action'] != 'REINFORCE_EXISTING' or rca['authorizes_roadmap_write']:

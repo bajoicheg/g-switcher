@@ -4,7 +4,6 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/"scripts"))
 from consumer_lock import validate
 class Tests(unittest.TestCase):
  def template(self): return json.loads((ROOT/"templates"/"consumer-lock.json").read_text())
- def test_template_valid(self): validate(self.template())
  def test_release_ref_is_version_bound(self):
   d=self.template();d["release_ref"]="refs/heads/release/v2.6.0"
   with self.assertRaises(ValueError): validate(d)

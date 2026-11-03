@@ -15,9 +15,10 @@ class T(unittest.TestCase):
  def test_derived_time_source_is_rejected(self):
   d=self.data();d["time_source"]="previous_timestamp"
   with self.assertRaises(ValueError):render(d,now=self.now())
- def test_one_timestamp_per_command(self):
+ def test_each_substantive_report_of_same_command_has_current_timestamp(self):
   d=self.data();d["already_timestamped_command_ids"]=[d["command_id"]]
-  self.assertEqual(render(d,now=self.now())["action"],"SUPPRESS_DUPLICATE")
+  self.assertEqual(render(d,now=self.now())["action"],"EMIT_REPORT")
+  self.assertEqual(render(d,now=self.now())["display"],"[19:31 26.09]")
  def test_stale_timestamp_is_rejected(self):
   with self.assertRaisesRegex(ValueError,"stale"):
    render(self.data(),now=self.now(91))
@@ -27,6 +28,6 @@ class T(unittest.TestCase):
    render(d,now=self.now())
  def test_small_clock_skew_is_tolerated(self):
   d=self.data();d["observed_at"]="2026-09-26T16:31:04Z"
-  self.assertEqual(render(d,now=self.now())["action"],"EMIT_ONCE")
+  self.assertEqual(render(d,now=self.now())["action"],"EMIT_REPORT")
 if __name__=="__main__":
  unittest.main()

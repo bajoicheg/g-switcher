@@ -68,6 +68,9 @@ def _validate_proof(proof, guard, repository, source_ref, release, at):
 
 def validate_retirement(entry, record):
     """Validate immutable history independently of the current generation/clock."""
+    if isinstance(entry,dict) and entry.get('schema')=='source-publication-quarantine/v1':
+        from source_publication_quarantine import validate_source_quarantine
+        return validate_source_quarantine(entry,record)
     if isinstance(entry,dict) and entry.get('schema')=='actions-submission-retirement/v1':
         return _validate_actions_retirement(entry,record)
     op._object(entry,{'schema','outcome','replay_forbidden','guard','original_release','proof',
@@ -183,14 +186,24 @@ def _legacy_capability_descriptor(proof,registry):
         raise ValueError('explicit historical hash-matching descriptor required, never minted capability')
     payload=descriptor['payload']
     fields={'schema','invocation_id','execution_surface','managed_store_ref','managed_store_id','managed_store_revision','managed_state_revision','pool_id','task_id','attempt_id','request_ref','launch_id','lease_repository','lease_source_ref','observed_at_utc','started_at_utc'}
+    if payload.get('schema')=='managed-terminal-capability/v2':
+        fields.update(('controller_proc_pid','controller_birth','boot_id','runtime_processes'))
     op._object(payload,fields,'original managed capability descriptor payload')
     request=registry['request'];receipt=registry['receipt'];owned=registry['owned'];hold=registry['intent']
     identity=request['identity'];claim=request['claim']
     op._object(hold,{'schema','capability_ref','invocation_id','lease_repository','lease_source_ref','armed_at_utc','controller_proc_pid','controller_birth'},'original terminal hold intent')
-    invocation_keys=['pool_id','task_id','attempt_id','launch_id','managed_store_revision','lease_repository','lease_source_ref']
-    derived='managed-terminal:'+terminal._digest({k:payload[k] for k in invocation_keys}).split(':',1)[1]
+    derived='managed-terminal:'+terminal._digest(terminal.invocation_identity(payload)).split(':',1)[1]
+    if payload['schema']=='managed-terminal-capability/v2' and any(payload[k]!=hold[k] for k in ('controller_proc_pid','controller_birth')):
+        raise ValueError('original controller canonical birth binding mismatch')
+    if payload['schema']=='managed-terminal-capability/v2':
+        processes=payload['runtime_processes']
+        if (payload['boot_id']!=receipt.get('boot_id') or not isinstance(processes,list) or len(processes)!=2 or
+            {p.get('role') for p in processes}!={'worker','supervisor'} or
+            any(p.get('pid')!=receipt.get('worker_pid' if p['role']=='worker' else 'supervisor_proc_pid') or
+                not any((p.get('pid'),p.get('birth'),p.get('role'))==(row.get('pid'),row.get('birth'),row.get('role')) for row in receipt.get('process_births',[])) for p in processes)):
+            raise ValueError('original canonical runtime process binding mismatch')
     request_digest=op._hash(request)
-    if (payload['schema']!='managed-terminal-capability/v1' or payload['execution_surface']!='managed'
+    if (payload['schema'] not in ('managed-terminal-capability/v1','managed-terminal-capability/v2') or payload['execution_surface']!='managed'
             or terminal._digest(payload)!=owned['capability_ref'] or hold['capability_ref']!=owned['capability_ref']
             or hold['schema']!='managed-terminal-lease-intent/v1' or payload['invocation_id']!=derived
             or any(x!=derived for x in [owned['invocation_id'],hold['invocation_id'],proof['physical_stop']['invocation_id']])

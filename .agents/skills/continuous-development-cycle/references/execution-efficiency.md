@@ -69,9 +69,10 @@ wait for new information. UNKNOWN keeps its original operation/guard and permane
 no-replay; apply supported retirement only under its original strict contract.
 
 `cdc.py closeout REQUEST --repo PATH --remote REMOTE --coordination-ref REF`
-reads the actual existing Git lease store and immutable released revision, invokes
-the original final gate, then checks terminal/quiescent runtime, accepted/integrated
-pool and fresh absence for the exact declared owned process ID set. Physical/runtime
+uses terminal-bundle/v2 with the original managed handle. It reads the actual
+existing Git lease store, immutable release and pool history, authentic current
+report/RCA inventory, original birth-bound runtime/capability chain and fresh
+worker/supervisor/controller absence. Supplied PID booleans do not provide proof. Physical/runtime
 observations need authentic host provenance; no textual bundle creates facts or
 authority. Persist one bundle plus product remaining queue for Root intake.
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import hashlib
+import os
 from pathlib import Path
 import sys
 
@@ -91,6 +93,7 @@ def main(argv=None):
         command=sub.add_parser(name);command.add_argument('input')
         if name=='closeout':
             for option in ('repo','remote','coordination-ref'):command.add_argument('--'+option,required=True)
+            command.add_argument('--result-path',help='Create-only full actual closeout result; stdout becomes a bounded reference, not authority')
     command=sub.add_parser('inspect');command.add_argument('input')
     command.add_argument('--pointer',action='append',default=[])
     command.add_argument('--max-bytes',type=int,default=8192)
@@ -136,11 +139,25 @@ def main(argv=None):
             from release_delivery import plan
             result = plan(_load(args.input))
         else:
-            from operation_report import measure, render
+            from reporting_contract import emit
             observation = _load(args.input)
-            result = {'observation': measure(observation), 'suffix': render(observation)}
+            # Current emission includes the real body and fresh clock boundary.
+            result = emit(observation)
+        exit_code = 1 if args.command == 'closeout' and result['accepted'] is not True else 0
+        if args.command == 'closeout' and args.result_path:
+            target = Path(args.result_path).resolve()
+            encoded = (json.dumps(result, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
+            # Save the authentic result before any summary or gate interpretation.
+            # Existing records are immutable: no overwrite, rebind or label grants permission.
+            with target.open('xb') as output:
+                output.write(encoded); output.flush(); os.fsync(output.fileno())
+            result = {'schema':'cdc-closeout-command-result/v1', 'accepted':result['accepted'],
+                      'result_ref':{'path':str(target), 'sha256':hashlib.sha256(encoded).hexdigest()},
+                      'blocker_count':len(result.get('blockers',[])),
+                      'blockers_preview':[str(item)[:512] for item in result.get('blockers',[])[:8]],
+                      'full_result_saved':True, 'reference_is_authority':False}
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, allow_nan=False))
-        return 0
+        return exit_code
     except (OSError, ValueError, TypeError, KeyError) as exc:
         print('FAIL: ' + str(exc), file=sys.stderr)
         return 2

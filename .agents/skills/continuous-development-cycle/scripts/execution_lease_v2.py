@@ -103,8 +103,23 @@ def _resolved_grant_ids(record):
     return {x["grant_id"] for x in record.get("submission_resolutions",[])}
 
 def _validate_release(value, generation):
-    op._object(value, {"owner_id", "generation", "invocation_id", "at_utc",
-                       "checkpoint_ref", "external_reconciliation", "completion_reason"}, "last_release")
+    release_fields = {"owner_id", "generation", "invocation_id", "at_utc",
+                      "checkpoint_ref", "external_reconciliation", "completion_reason"}
+    if isinstance(value, dict) and "administrative_disposition" in value:
+        op._object(value, release_fields | {"administrative_disposition"}, "administrative last_release")
+        entry = value["administrative_disposition"]
+        op._object(entry, {"schema", "reference", "digest", "original_effect", "actual_wait", "replay_forbidden"}, "administrative release reference")
+        if (entry["schema"] != "postlaunch-intake-disposition/v1" or entry["original_effect"] != "UNKNOWN"
+                or entry["actual_wait"] is not None or entry["replay_forbidden"] is not True
+                or value["completion_reason"] != "administrative_unknown_retired"
+                or value["external_reconciliation"] != "unknown_preserved"):
+            raise ValueError("administrative release must preserve UNKNOWN/no wait/no replay")
+        op._text(entry["reference"], "durable administrative tombstone reference")
+        op._digest(entry["digest"], "durable administrative tombstone digest")
+    else:
+        op._object(value, release_fields, "last_release")
+        if value["completion_reason"] == "administrative_unknown_retired":
+            raise ValueError("administrative release requires durable tombstone binding")
     _uuid(value["owner_id"])
     _generation(value["generation"])
     _nullable_text(value["invocation_id"], "released invocation_id")
@@ -206,7 +221,8 @@ def validate(record):
     from submission_retirement import validate_retirement, _forbids_intent
     for entry in retirements:
         validate_retirement(entry,record)
-        grant_id=entry["guard"]["submission_claim"]["grant_id"]
+        claim=entry["guard"]["submission_claim"]
+        grant_id=claim["grant_id"] if claim is not None else entry["guard"]["operation_key"]
         if grant_id in retired_ids or grant_id in resolved_ids:
             raise ValueError("duplicate or terminal-resolved retirement")
         retired_ids.add(grant_id)
@@ -426,7 +442,7 @@ def reconcile_finalization(record, owner_id, generation, invocation_id, at, *, e
                                   updated_at_utc=at)
     return validate(result)
 
-def mark_ready(record, owner_id, generation, invocation_id, at, *, continuity_state):
+def mark_ready(record, owner_id, generation, invocation_id, at, *, continuity_state, reporting_authority=None):
     _owner(record, owner_id, generation, invocation_id, at)
     if record["finalization"]["state"] != "reconciled":
         raise ValueError("ready requires reconciled state")
@@ -437,8 +453,11 @@ def mark_ready(record, owner_id, generation, invocation_id, at, *, continuity_st
         raise ValueError("pre-release continuity state must describe an owned, not-yet-released lease")
     if continuity_state.get("checkpoint_ref") != record["finalization"]["checkpoint_ref"]:
         raise ValueError("continuity state must bind the persisted checkpoint")
-    decision = evaluate(continuity_state, now_utc=at)
-    if not decision["allowed"] or decision.get("final_response_allowed") is not True:
+    decision = evaluate(continuity_state, now_utc=at, reporting_authority=reporting_authority)
+    # Historical transactions still require supported physical closure, but
+    # their classifier grants no current reporting/final-response permission.
+    historical=continuity_state.get('schema')=='execution-continuity/v1'
+    if not decision["allowed"] or (not historical and decision.get("ready_for_native_closeout") is not True):
         raise ValueError("hard execution-continuity gate rejected finalization")
     result = copy.deepcopy(record)
     result["finalization"].update(state="ready", completion_reason=decision["reason"], updated_at_utc=at)

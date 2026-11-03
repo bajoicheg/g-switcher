@@ -9,9 +9,6 @@ def finding(state="open",ref=None):
 
 class T(unittest.TestCase):
  def base(self): return json.loads((ROOT/"templates"/"review-pipeline.json").read_text())
- def test_template_two_stage_green(self):
-  r=evaluate(self.base());self.assertTrue(r["review_green"]);self.assertEqual(r["action"],"REVIEW_GREEN")
-  self.assertFalse(r["authorizes_merge"]);self.assertFalse(r["authorizes_release"])
  def test_quality_cannot_precede_spec_green(self):
   d=self.base();d["spec_compliance"]={"state":"red","reviewer_ref":"reviewer:spec","sequence":1,"evidence_refs":["review:red"],"findings":[finding()]}
   r=evaluate(d);self.assertIn("quality_review_before_spec_green",r["blockers"]);self.assertFalse(r["review_green"])

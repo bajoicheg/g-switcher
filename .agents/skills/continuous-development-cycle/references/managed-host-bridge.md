@@ -46,3 +46,17 @@ The bridge then runs `active -> draining -> checkpointed -> reconciled -> ready 
 The bridge grants no Fleet leadership, scheduler authority, scope expansion, destructive permission or release permission beyond the task and repository authorities already provided by the caller's CDC plan/policy.
 
 Read-only closure validates exact ownership with observe authority and preserves transactional draining/checkpointed/reconciled/ready recovery. It does not request fresh product-write admission after draining begins; retries recheck the unchanged detached checkout/source and retain the same managed attempt.
+
+
+## Successful preparation rejected by external review
+
+Use `managed_host_bridge.py reject_preparation REQUEST.json` for a required writer whose actual worker succeeded but whose prepared candidate was rejected before publication/acceptance. The exact request schema is `managed-host-reject-preparation/v1` with `handle_root`, `handle_id`, a nonempty `review_ref`, explicit persisted `checkpoint_ref`, and the existing authentic `reporting_binding`. The reference records a negative decision; it is not new owner or provider authority.
+
+The package persists the original succeeded observation and negative intent before release, then uses the existing lease/reporting transaction and birth-bound worker/supervisor physical proof. Only afterward does it reconcile the pool as `review_rejected` with actual measured runtime and separate durable rejection history. It never accepts/integrates/publishes the candidate or reports project scope complete. Exact repeats observe the original closure without another start or charge; changed review/checkpoint/binding is rejected. Existing `finish` and runtime acceptance refuse a rejected preparation. Finish and rejection serialize their shared handle effects so publication cannot race before the negative intent is durable.
+
+Original attempts, time, cumulative usage and rejection history survive a normal explicit retry; the correction needs a new reservation/admission. Unresolved external guards, UNKNOWN physical state and missing original bindings remain blockers for that dependent closure. The controller-inclusive successful owner-final gate is unchanged. Installing the feature does not close or migrate old pending handles. Root worker-internal review failures are a separate exit2 path.
+
+
+## Final diff and historical scope
+
+Writer result paths describe the exact nonempty final diff of the contracted base and candidate. The complete introduced linear commit history is inspected independently: all touched paths, including intermediate add/remove/revert operations, must remain in the original declared write set. Historical touched paths may exceed the final diff. Temporary out-of-scope edits remain forbidden even when reverted. Detached preview and actual assigned-branch completion retain their distinct identity checks; this rule does not rebind any tested/reviewed candidate SHA or authorize source changes outside the claim.

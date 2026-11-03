@@ -26,6 +26,19 @@ Fresh observations and final live-ref rechecks are mandatory; a moved,
 stale/future, duplicate or mismatched object raises ValueError. The Fleet
 resolver uses this same verification. It returns no write permission.
 
+## Receiving admission before writer start
+
+Read references/systemic-closeout.md. For a real GitHub receiving repository,
+prepare_admission requires the verified canonical source/release, actual provider
+reads, existing product package/lock/adapter/checkpoint, cumulative PR/default
+workflow definitions and canonical budget. At the fresh released/unowned boundary,
+reserve and read back the required automatic receiving cycle, then pass its sealed
+ReceivingAdmission to managed_host_bridge.start and GitReleaseDelivery. Stock
+prepare binds the original exact candidate/claim/assembly to that cycle. Repeat
+ownership/budget/source/default/PR checks at each actual effect. Historical bare
+local fixture paths do not assert provider CI. Optional skip text is unsupported
+by stock prepare and cannot mutate a saved assembly or waive mandatory gates.
+
 ## Native managed delivery
 
 An already authorized managed writer constructs `GitReleaseDelivery` with the

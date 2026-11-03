@@ -112,3 +112,16 @@ Additional compute starts still need actual authorization, ownership and a
 concrete remedy after a failure. A higher cap alone is not a retry instruction.
 
 A **higher compute budget** buys room for more verified exploration, not lower standards. Prefer starts that can produce **distinct information**: a planned RED versus GREEN, a materially corrected candidate, an independent platform check, or a retry after observed service recovery. After any failed expensive start, require a **concrete correction** or recovery evidence for the affected scope before another reservation. Identical reruns with unchanged failure conditions are waste even when the numerical cap still has room.
+
+
+## Current parallel bound within the immutable admitted policy
+
+`parallel_limit` is an append-only ledger event with the normal event identity, task, wake and UTC fields plus `max_parallel_agents` and a nonempty `reference`. The limit is an integer from zero through the original policy's `max_parallel_agents`. It is a supported narrower bound, not a replacement for the original policy. Example:
+
+```json
+{"type":"parallel_limit","event_id":"cap-after-quality","task_id":"task-1","wake_id":"wake-1","at_utc":"2026-10-20T01:00:00Z","max_parallel_agents":2,"reference":"owner-approved original ceiling3; QUALITY completed"}
+```
+
+Use the existing `budget.py apply --ledger ... --event ...` under the existing trusted writer lease or registered durable CAS. A reference describes the decision; it does not authenticate an owner or grant launch permission. Reducing the bound while more workers remain active is allowed: existing workers are preserved and no new agent reservation is allowed while active count is at least the current bound. Zero pauses new agent admission. A later event may restore a bound only up to the originally admitted ceiling; real provider/native admission is still required.
+
+Historical reservations are validated against the event prefix that actually preceded them. The current bound survives new wakes. The original policy and digest, all reservations/outcomes, cumulative usage, unknowns, failure circuits and provider observations remain unchanged. Neither a lower bound nor a restoration resets charges or establishes restored provider quota. No existing live ledger is automatically migrated.

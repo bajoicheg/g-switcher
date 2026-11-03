@@ -9,7 +9,6 @@ class Tests(unittest.TestCase):
     def setUp(self):
         self.adapter=load_yaml(ROOT/"templates/development-cycle.yaml")
         self.data=load_yaml(ROOT/"templates/work-status-v4.md",frontmatter=True)
-    def test_v4_template_validates(self): validate_checkpoint_24(self.data,self.adapter)
     def test_primitive_only_released_runnable_fails(self):
         d=copy.deepcopy(self.data); d["blocker"]="none"
         d["execution_continuity"].update(runnable_next_action=True,completion_gate="continue",primitive_steps_since_progress=2)

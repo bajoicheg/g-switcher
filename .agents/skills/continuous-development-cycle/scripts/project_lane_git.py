@@ -184,7 +184,7 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
     """Conditional publication with a durable, remote-bound one-shot attempt journal."""
 
     def __init__(self, repo, remote, source_ref, remote_id, *, attempt_store=None,
-                 attempt_store_id=None, clock=None):
+                 attempt_store_id=None, clock=None, quarantine_store=None, native_handle=None):
         super().__init__(repo)
         if not isinstance(remote, str) or not remote.strip() or remote.startswith("-"):
             raise ValueError("integration remote must be a configured remote name")
@@ -198,6 +198,11 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
         self.source_ref = source_ref
         self.remote_id = remote_id
         self.attempt_store = attempt_store
+        self.quarantine_store = quarantine_store
+        self.native_handle = copy.deepcopy(native_handle)
+        if quarantine_store is not None:
+            from git_lease_store import GitLeaseStore
+            if type(quarantine_store) is not GitLeaseStore:raise ValueError("native source quarantine store required")
         self.clock = clock or _now_utc
         if remote_identity(self.repo, self.remote) != self.remote_id:
             raise ValueError("integration remote identity drift")
@@ -212,6 +217,81 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
                     or not self.attempt_store.ref.startswith("refs/heads/cdc/")
                     or branch_key(self.attempt_store.ref) == branch_key(self.source_ref)):
                 raise ValueError("publication attempt store must use an isolated coordination ref")
+
+    def _native_custody(self, item, intent, *, for_send):
+        """Derive admission from an original issued session, never an empty store."""
+        import uuid
+        import operation_intent as op
+        import managed_host_bridge as bridge
+        import managed_executor_pool as pool
+        from managed_executor_runtime import _digest as request_digest, _process, _boot
+        from managed_terminal_capability import _digest as capability_digest, invocation_identity
+        from source_publication_quarantine import assert_source_publication_not_quarantined
+        op._object(self.native_handle,{'handle_root','handle_id'},'original native publication handle custody')
+        session=bridge._load_session(self.native_handle['handle_root'],self.native_handle['handle_id'])
+        identity={'repo_root':str(self.repo),'store':session['plan']['coordination_store_id'],'coordination_ref':session['plan']['coordination_ref'],'pool_id':session['plan']['pool_id'],'task_id':session['task_id'],'attempt_id':session['attempt_id']}
+        handle=str(uuid.uuid5(uuid.NAMESPACE_URL,bridge._canonical(identity)))
+        if session['handle_id']!=handle or str(Path(session['handle_root']).resolve())!=self.native_handle['handle_root'] or Path(session['repo_root']).resolve()!=self.repo:raise ValueError('original native session repository/handle identity mismatch')
+        canonical=bridge._lease_store(session)
+        supplied=self.quarantine_store
+        if supplied is not None and (supplied.repo!=canonical.repo or supplied.store_id!=canonical.store_id or supplied.ref!=canonical.ref):raise ValueError('canonical quarantine custody substituted')
+        assert_source_publication_not_quarantined(canonical,operation_id=intent['operation_id'],result_commit=item['result_commit'],intended_commit=intent['intended_integrated_head'])
+        control,source_id=bridge._routes(session)
+        expected_ref='refs/heads/cdc/managed-host-publish-'+handle.replace('-','')
+        expected_operation=bridge._digest({'handle_id':handle,'result_commit':item['result_commit'],'observed_shared_head':session['plan']['base_sha'],'shared_ref':session['lease_source_ref']})
+        if self.source_ref!=session['lease_source_ref'] or self.remote_id!=source_id or self.remote!=session['remote'] or session['publication_ref']!=expected_ref or type(self.attempt_store) is not GitDocumentStore or self.attempt_store.ref!=expected_ref or self.attempt_store.store_id!=canonical.store_id or self.attempt_store.repo!=self.repo or item['lane_id']!=session['task_id'] or intent['operation_id']!=expected_operation or intent['observed_shared_head']!=session['plan']['base_sha'] or intent['intended_integrated_head']!=item['result_commit']:raise ValueError('native publication source/task/intent/journal custody mismatch')
+        runtime=bridge._runtime(session);request=runtime._request(session['task_id'],session['attempt_id'])
+        if request is None or request['argv'][-2:]!=['--worker-gate',str(Path(session['gate_directory'])/'worker-payload.json')]:raise ValueError('original native issued worker/session request missing')
+        historical=runtime.store.read_revision(request['claim']['store_revision'])
+        if pool.canonical_state_ref(historical)!=request['claim']['state_ref'] or historical['revision']!=request['claim']['state_revision']:raise ValueError('native publication original launch claim changed')
+        claimed=next(t for t in historical['tasks'] if t['id']==session['task_id'])
+        if claimed['active_attempt_id']!=session['attempt_id'] or claimed['reservation_token']!=session['reservation_token']:raise ValueError('native publication original pool reservation mismatch')
+        directory=Path(request['journal_directory']);descriptor=bridge._read(directory/'terminal-capability-descriptor.json');owned=bridge._read(directory/'terminal-lease-owned.json');payload=descriptor.get('payload',{})
+        ref=capability_digest(payload);derived='managed-terminal:'+capability_digest(invocation_identity(payload)).split(':',1)[1]
+        if descriptor.get('capability_ref')!=ref or owned.get('capability_ref')!=ref or payload.get('request_ref')!=request_digest(request) or payload.get('managed_store_ref')!=runtime.store.ref or payload.get('managed_store_id')!=canonical.store_id or payload.get('lease_repository')!=session['lease_repository'] or payload.get('lease_source_ref')!=self.source_ref or any(payload.get(k)!=session[k] for k in ('task_id','attempt_id')) or payload.get('invocation_id')!=derived or session['invocation_id']!=derived or owned.get('owner_id')!=session['owner_id'] or owned.get('generation')!=session['generation']:raise ValueError('original native issued publication ownership mismatch')
+        original=canonical.read_revision(owned['lease_revision'])
+        if original['owner_id']!=session['owner_id'] or original['generation']!=session['generation'] or original['invocation']['invocation_id']!=derived or original['repository']!=session['lease_repository'] or original['source_ref']!=self.source_ref:raise ValueError('original canonical native publication lease missing')
+        result,_,_=bridge._result(session,runtime)
+        if result!=item['result_commit']:raise ValueError('native publication must bind actual writer result')
+        if for_send:
+            import os
+            from unknown_recovery import _identity
+            caller_pid=os.getpid();caller=_process(caller_pid)
+            if caller is None or caller['state'] in {'Z','X'}:raise ValueError('actual current publication caller birth required')
+            caller_identity={'pid':caller_pid,'birth':caller['birth'],'boot_id':_boot()}
+            _identity(caller_identity,absent=False)
+            original_controller={'pid':payload['controller_proc_pid'],'birth':payload['controller_birth'],'boot_id':payload['boot_id']}
+            if original_controller['pid']==caller_pid:
+                if original_controller!=caller_identity:raise ValueError('original publication controller birth/boot changed')
+            else:
+                # Native bridge recovery retains the genuine original descriptor,
+                # owned invocation and still-held supervisor. It never mints a
+                # replacement terminal capability. Another live/reused/zombie
+                # original PID cannot lend that handle to a different caller.
+                _identity(original_controller,absent=True)
+            _,current=canonical.read()
+            if current['owner_id']!=session['owner_id'] or current['generation']!=session['generation'] or not current['invocation'] or current['invocation']['invocation_id']!=derived or not current['finalization'] or current['finalization']['state']!='active':raise ValueError('native publication requires exact active original lease ownership')
+            _,current_pool=runtime.store.read()
+            active=next(row for row in current_pool['tasks'] if row['id']==session['task_id'])
+            if active['status']!='running' or active['active_attempt_id']!=session['attempt_id'] or active['reservation_token']!=session['reservation_token']:raise ValueError('native publication requires exact current running pool authority')
+            observation=runtime.observe(session['task_id'],session['attempt_id'])
+            if observation['status']!='awaiting_release' or observation.get('pending_terminal_status')!='succeeded':raise ValueError('native publication requires successful worker held by original controller')
+            self._check_product_write()
+        return canonical
+
+    def _check_product_write(self):
+        """Fresh native admission; journal clocks cannot renew or waive it."""
+        import managed_host_bridge as bridge
+        import execution_lease_v2 as lease
+        import operation_intent as op
+        op._object(self.native_handle,{'handle_root','handle_id'},'original native publication handle custody')
+        session=bridge._load_session(self.native_handle['handle_root'],self.native_handle['handle_id'])
+        _,record=bridge._lease_store(session).read()
+        if (record is None or record['repository']!=session['lease_repository']
+                or record['source_ref']!=session['lease_source_ref'] or self.source_ref!=session['lease_source_ref']):
+            raise ValueError('native publication exact canonical source lease binding changed')
+        lease.check_record(record,session['owner_id'],session['generation'],session['invocation_id'],
+                           bridge._utc(),action='product_write')
 
     def publication_binding(self):
         return {
@@ -382,6 +462,9 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
                 current["submitted_at_utc"] = self.clock()
             if target in {"confirmed", "rejected", "aborted"}:
                 current["resolved_at_utc"] = self.clock()
+            if target == "submitted":
+                # Recheck after journal reads and on every CAS contention retry.
+                self._check_product_write()
             try:
                 self.attempt_store.compare_and_swap(revision, changed)
                 return copy.deepcopy(current)
@@ -410,6 +493,9 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
     def _push_cas(self, observed, intended):
         config, alias = isolated_remote_args(self.repo, self.remote, self.remote_id)
         env = git_object_environment(GIT_TERMINAL_PROMPT="0")
+        # A denial after submitted consumption leaves that original marker
+        # unresolved. It never grants a transport retry or confirmation.
+        self._check_product_write()
         try:
             result = subprocess.run(
                 ["git", "-C", str(self.repo), *config, "-c", "push.followTags=false",
@@ -474,11 +560,13 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
             if status != 0:
                 raise ValueError("intended integration is not a fast-forward containing required ancestry")
 
+        if self.native_handle is not None:
+            self._native_custody(item,intent,for_send=False)
         current = self._remote_head()
         if current == intended:
             attempt = self._get_attempt(item, intent)
-            if attempt is None:
-                return self._evidence(item, intent, attempt=None, conditional=False)
+            if attempt is None or self.native_handle is None:
+                return self._evidence(item, intent, attempt=attempt, conditional=False)
             if attempt["status"] in {"unknown", "confirmed"}:
                 if attempt["status"] == "unknown":
                     attempt = self._transition_attempt(
@@ -496,6 +584,7 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
         if self.attempt_store is None:
             raise ValueError("conditional publication requires durable attempt state")
 
+        self._native_custody(item,intent,for_send=True)
         attempt = self._prepare_attempt(item, intent)
         if attempt["status"] in {"submitted", "unknown"}:
             raise ValueError("publication attempt outcome is unresolved; push will not be replayed")
@@ -511,6 +600,7 @@ class GitLaneIntegrationPublisher(GitLaneResultVerifier):
                 return self._evidence(item, intent, attempt=attempt, conditional=False)
             raise ValueError("shared integration ref moved before conditional publication")
 
+        self._native_custody(item,intent,for_send=True)
         attempt = self._transition_attempt(item, intent, "submitted", {"prepared"})
         try:
             self._push_cas(observed, intended)

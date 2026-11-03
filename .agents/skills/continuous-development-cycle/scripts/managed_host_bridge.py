@@ -51,6 +51,7 @@ _CANCEL_FIELDS = {"schema", "handle_root", "handle_id"}
 _FINISH_FIELDS = {
     "schema", "handle_root", "handle_id", "output_refs", "evidence_refs", "checkpoint_ref",
 }
+_CURRENT_FINISH_FIELDS = _FINISH_FIELDS | {'reporting_binding'}
 _IMMUTABLE_SESSION_FIELDS = (
     "handle_id", "repo_root", "remote", "plan", "journal_root", "handle_root",
     "lease_coordination_ref", "lease_repository", "lease_source_ref",
@@ -327,8 +328,10 @@ def _validate_start(request):
     return repo, journal, handles
 
 
-def start(request):
+def start(request,*,receiving_admission=None):
     repo, journal_root, handle_root = _validate_start(request)
+    from receiving_ci_preflight import require_for_writer
+    require_for_writer(request,receiving_admission)
     identity = {"repo_root": str(repo), "store": request["plan"]["coordination_store_id"],
                 "coordination_ref": request["plan"]["coordination_ref"],
                 "pool_id": request["plan"]["pool_id"], "task_id": request["task_id"],
@@ -694,8 +697,8 @@ def _result(session, runtime):
         task, session["plan"]["base_sha"], result_commit, request["cwd"])
     if not pool._result_paths_within_claim(task, changed):
         raise ValueError("managed host worker result escapes declared write set")
-    if {pool.portable_path_key(x) for x in changed} != {pool.portable_path_key(x) for x in touched}:
-        raise ValueError("managed host worker history changed-path mismatch")
+    if not pool._result_paths_within_claim(task, touched):
+        raise ValueError("managed host worker history touched paths escape declared write set")
     return result_commit, changed, request
 
 
@@ -735,6 +738,8 @@ def _publish(session, result_commit):
         repo, session["remote"], source_ref, source_id,
         attempt_store=publication_store,
         attempt_store_id=session["plan"]["coordination_store_id"],
+        quarantine_store=_lease_store(session),
+        native_handle={"handle_root":session["handle_root"],"handle_id":session["handle_id"]},
     )
     integrator = LaneClaim(
         lane_id="managed-host-integrator-" + session["handle_id"],
@@ -805,7 +810,23 @@ def _continuity(session, result_commit, checkpoint_ref, publication, *, released
         "lease_released": released,
         "terminal_state": terminal,
     }
-    if session.get("worker_status") != "succeeded":
+    if session.get('negative_review') is not None:
+        review = session['negative_review']
+        dependency = 'managed-host-review-rejected'
+        evidence = [review['review_ref'], 'managed-host:rejection:' + session['handle_id']]
+        next_action = 'Correct the rejected preparation and explicitly admit a new attempt'
+        trigger = 'host supplies corrected preparation with a new managed reservation'
+        blocker = {'code': dependency, 'evidence_refs': evidence, 'next_action': next_action, 'recheck_trigger': trigger}
+        terminal.update(decision='BLOCKED', observed_head=session['plan']['base_sha'],
+                        meaningful_progress_refs=[checkpoint_ref], completion_evidence_refs=[], blocker=blocker)
+        continuity.update(requested_terminal_outcome='blocked', meaningful_progress_refs=[checkpoint_ref],
+                          blocker=dependency, next_action=next_action,
+                          blocker_proof={'schema': 'blocked-state-proof/v1', 'dependency_id': dependency,
+                                         'category': 'review_rejected', 'observed_at_utc': _utc(),
+                                         'max_age_seconds': 120, 'evidence_refs': evidence,
+                                         'next_action': next_action, 'recheck_trigger': trigger,
+                                         'same_invocation_work_exhausted': True})
+    elif session.get("worker_status") != "succeeded":
         # A failed attempt is resumable, never project-scope completion. The
         # exact supervisor still holds the lease until this BLOCKED transaction
         # has persisted the terminal observation and release receipt.
@@ -824,7 +845,25 @@ def _continuity(session, result_commit, checkpoint_ref, publication, *, released
                                          "observed_at_utc": _utc(), "max_age_seconds": 120,
                                          "evidence_refs": evidence, "next_action": next_action,
                                          "recheck_trigger": trigger, "same_invocation_work_exhausted": True})
+    if session.get('reporting_binding') is not None:
+        continuity.update(schema='execution-continuity/v2',reporting_binding=session['reporting_binding'])
     return continuity
+
+
+def _refresh_finish_reporting(session):
+    """Capture this gate's report after slow work, retaining the admitted RCA.
+
+    Finish/rejection validate the caller binding before any publication or
+    finalization. Later gates still authenticate the same inventory and claims;
+    only their report UUID and runtime observation time are renewed here.
+    """
+    from reporting_contract import capture
+    binding = copy.deepcopy(session['reporting_binding'])
+    report = binding['report']
+    binding['report'] = capture(report['invocation_id'], report['kind'], report['body'],
+                                completed_operation=report['completed_operation'])
+    session['reporting_binding'] = binding
+    _save_session(session)
 
 
 def _finalize_release(session, runtime, lease_store, result_commit, checkpoint_ref, publication):
@@ -862,11 +901,13 @@ def _finalize_release(session, runtime, lease_store, result_commit, checkpoint_r
         )
         revision = lease_store.compare_and_swap(revision, record)
     if record["finalization"]["state"] == "reconciled":
+        _refresh_finish_reporting(session)
         continuity = _continuity(
             session, result_commit, checkpoint_ref, publication, released=False)
         record = leasev2.mark_ready(
             record, session["owner_id"], session["generation"], session["invocation_id"], _utc(),
             continuity_state=continuity,
+            reporting_authority=_reporting_authority(session,lease_store,checkpoint_ref),
         )
         revision = lease_store.compare_and_swap(revision, record)
     released = runtime.release_execution_lease(
@@ -883,7 +924,11 @@ def _wait_terminal(runtime, session):
     while time.monotonic() < end:
         last = runtime.observe(session["task_id"], session["attempt_id"])
         if last.get("quiescent") is True:
-            return last
+            try:
+                runtime.verify_terminal(session['task_id'],session['attempt_id'])
+                return last
+            except ValueError as exc:
+                if 'physical PID still present' not in str(exc):raise
         time.sleep(.025)
     raise ValueError("managed host supervisor did not become quiescent after release")
 
@@ -917,14 +962,52 @@ def _complete_pool(session, runtime, result_commit, output_refs, evidence_refs):
     return result_ref, assessment
 
 
+def _reporting_authority(session,lease_store,checkpoint_ref):
+    from reporting_contract import authenticate
+    return authenticate(lease_store,session.get('reporting_binding'),session['invocation_id'],checkpoint_ref)
+
+
+def _closure_locked(request, operation):
+    import fcntl
+    if not isinstance(request, dict) or not {'handle_root', 'handle_id'} <= set(request):
+        raise ValueError('managed host closure request invalid')
+    session = _load_session(request['handle_root'], request['handle_id'])
+    path = Path(session['handle_root']) / 'locks' / (session['handle_id'] + '.lock')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return operation(request)
+
+
 def finish(request):
-    if not isinstance(request, dict) or set(request) != _FINISH_FIELDS or request.get("schema") != FINISH_SCHEMA:
+    current = isinstance(request, dict) and request.get('schema') == 'managed-host-finish/v2'
+    if (not isinstance(request, dict)
+            or set(request) != (_CURRENT_FINISH_FIELDS if current else _FINISH_FIELDS)
+            or request.get('schema') not in {FINISH_SCHEMA, 'managed-host-finish/v2'}):
+        raise ValueError('managed host finish request fields/schema mismatch')
+    return _closure_locked(request, _finish_locked)
+
+
+def _finish_locked(request):
+    current=isinstance(request,dict) and request.get('schema')=='managed-host-finish/v2'
+    if not isinstance(request, dict) or set(request) != (_CURRENT_FINISH_FIELDS if current else _FINISH_FIELDS) or request.get("schema") not in {FINISH_SCHEMA,'managed-host-finish/v2'}:
         raise ValueError("managed host finish request fields/schema mismatch")
     output_refs = _refs(request["output_refs"], "output_refs")
     evidence_refs = _refs(request["evidence_refs"], "evidence_refs")
     if request["checkpoint_ref"] is not None:
         _text(request["checkpoint_ref"], "checkpoint_ref")
     session = _load_session(request["handle_root"], request["handle_id"])
+    if session.get('negative_review') is not None or _runtime(session).rejection(session['task_id'], session['attempt_id']) is not None:
+        raise ValueError('durably rejected preparation cannot finish or publish')
+    if not current:
+        raise ValueError('current managed finish requires authentic reporting binding before publication')
+    if current:
+        if request['checkpoint_ref'] is None:raise ValueError('current reporting requires explicit persisted checkpoint')
+        from reporting_contract import check
+        session['reporting_binding']=copy.deepcopy(request['reporting_binding'])
+        authority=_reporting_authority(session,_lease_store(session),request['checkpoint_ref'])
+        check({'schema':'execution-continuity/v2','invocation_id':session['invocation_id'],'checkpoint_ref':request['checkpoint_ref'],'reporting_binding':session['reporting_binding']},authority,now_utc=_utc())
+        _save_session(session)
     task = _task(session["plan"], session["task_id"])
     # Read the exact terminal observation before recovering ownership. A failed
     # attempt supplies failure evidence; successful output labels cannot be
@@ -942,16 +1025,6 @@ def finish(request):
         if not set(task["expected_evidence"]) <= set(evidence_refs):
             raise ValueError("worker result missing expected evidence")
     session, runtime, lease_store = _recover_session(request["handle_root"], request["handle_id"])
-    if session.get("release_receipt") is not None and (session.get("final_response_gate") or {}).get("final_response_allowed") is True:
-        return {
-            **_public_handle(session),
-            "published_commit": session["result_commit"] if session.get("publication") is not None else None,
-            "release_receipt": session["release_receipt"],
-            "final_response_allowed": True,
-            "worker_status": session.get("worker_status", "succeeded"),
-            "scope_complete": session.get("worker_status", "succeeded") == "succeeded",
-        }
-
     observation = runtime.observe(session["task_id"], session["attempt_id"])
     if session.get("release_receipt") is None:
         status = observation.get("pending_terminal_status")
@@ -1011,14 +1084,16 @@ def finish(request):
 
     current_revision, current_lease = lease_store.read()
     release_record = lease_store.read_revision(release_receipt["lease_revision"])
+    _refresh_finish_reporting(session)
     post = _continuity(session, result_commit, checkpoint_ref, publication, released=True)
-    gate = final_response_gate.evaluate(
+    gate = final_response_gate.release_boundary(
         session["invocation_id"], current_lease, post,
         {"owner_id": session["owner_id"], "generation": session["generation"]},
         release_receipt, release_record, _utc(),
+        reporting_authority=_reporting_authority(session,lease_store,checkpoint_ref),
     )
-    if gate.get("final_response_allowed") is not True:
-        raise ValueError("managed host final-response gate rejected released execution")
+    if gate.get("release_boundary_allowed") is not True:
+        raise ValueError("managed host preparatory release gate rejected released execution")
     session["final_response_gate"] = gate
     session["state"] = "released"
     _save_session(session)
@@ -1028,10 +1103,91 @@ def finish(request):
         "changed_paths": changed_paths if "changed_paths" in locals() else None,
         "release_receipt": release_receipt,
         "current_lease_revision": current_revision,
-        "final_response_allowed": True,
+        "final_response_allowed": False,
+        "managed_finish_allowed": True,
+        "controller_exit_required": True,
         "worker_status": status,
         "scope_complete": status == "succeeded",
     }
+
+
+def reject_preparation(request):
+    fields = {'schema', 'handle_root', 'handle_id', 'review_ref', 'checkpoint_ref', 'reporting_binding'}
+    if not isinstance(request, dict) or set(request) != fields or request.get('schema') != 'managed-host-reject-preparation/v1':
+        raise ValueError('managed host reject preparation fields/schema mismatch')
+    _text(request['review_ref'], 'review_ref')
+    _text(request['checkpoint_ref'], 'checkpoint_ref')
+    return _closure_locked(request, _reject_preparation_locked)
+
+
+def _reject_preparation_locked(request):
+    session = _load_session(request['handle_root'], request['handle_id'])
+    if _task(session['plan'], session['task_id'])['role'] != 'writer':
+        raise ValueError('reject preparation requires writer')
+    runtime = _runtime(session)
+    disposition = {name: copy.deepcopy(request[name]) for name in ('review_ref', 'checkpoint_ref', 'reporting_binding')}
+    disposition.update({name: session[name] for name in ('owner_id', 'generation', 'invocation_id',
+                       'reservation_token', 'runtime_launch_id', 'lease_repository', 'lease_source_ref')})
+    prior = runtime.rejection(session['task_id'], session['attempt_id'])
+    if prior is not None and prior.get('disposition') != disposition:
+        raise ValueError('conflicting durable rejection review/checkpoint/reporting binding')
+    if session.get('negative_review') is not None and session['negative_review'] != disposition:
+        raise ValueError('conflicting durable negative review')
+    if session.get('publication') is not None:
+        raise ValueError('published preparation cannot be rejected')
+    # An interrupted publication may have durable effects before session save.
+    control, _ = _routes(session)
+    publication_store = GitDocumentStore(session['repo_root'], control, session['publication_ref'],
+                                         session['plan']['coordination_store_id'])
+    if publication_store.read()[0] is not None:
+        raise ValueError('publication history prevents rejection')
+    _, state = runtime.store.read()
+    row = next(row for row in state['tasks'] if row['id'] == session['task_id'])
+    if prior is None and (row['status'] != 'running' or row['active_attempt_id'] != session['attempt_id']
+                         or row['reservation_token'] != session['reservation_token']
+                         or row['accepted_result_ref'] is not None or row['integrated']):
+        raise ValueError('rejection requires original unaccepted running allocation')
+    session['reporting_binding'] = copy.deepcopy(request['reporting_binding'])
+    from reporting_contract import check
+    authority = _reporting_authority(session, _lease_store(session), request['checkpoint_ref'])
+    check({'schema': 'execution-continuity/v2', 'invocation_id': session['invocation_id'],
+           'checkpoint_ref': request['checkpoint_ref'], 'reporting_binding': session['reporting_binding']},
+          authority, now_utc=_utc())
+    session, runtime, lease_store = _recover_session(request['handle_root'], request['handle_id'])
+    session['reporting_binding'] = copy.deepcopy(request['reporting_binding'])
+    artifact = runtime.reject_preparation(session['task_id'], session['attempt_id'],
+                                         disposition=disposition, lease_store=lease_store)
+    session.update(negative_review=disposition, worker_status='succeeded',
+                   terminal_observation=artifact['observation'], state='review_rejected',
+                   result_commit=session['plan']['base_sha'], publication=None)
+    _save_session(session)
+    checkpoint = request['checkpoint_ref']
+    if session.get('release_receipt') is None:
+        receipt = _finalize_release(session, runtime, lease_store, session['plan']['base_sha'], checkpoint, None)
+        session.update(release_receipt=receipt, lease_revision=receipt['lease_revision'], state='released')
+        _save_session(session)
+    receipt = session['release_receipt']
+    terminal = _wait_terminal(runtime, session)
+    if terminal.get('status') != 'succeeded':
+        raise ValueError('rejected worker terminal success changed')
+    rejection = runtime.reject_preparation(session['task_id'], session['attempt_id'], disposition=disposition,
+                                           lease_store=lease_store, reconcile=True)
+    revision, current = lease_store.read()
+    release_record = lease_store.read_revision(receipt['lease_revision'])
+    _refresh_finish_reporting(session)
+    post = _continuity(session, session['plan']['base_sha'], checkpoint, None, released=True)
+    gate = final_response_gate.release_boundary(session['invocation_id'], current, post,
+               {'owner_id': session['owner_id'], 'generation': session['generation']}, receipt,
+               release_record, _utc(),
+               reporting_authority=_reporting_authority(session, lease_store, checkpoint))
+    if gate.get('release_boundary_allowed') is not True:
+        raise ValueError('rejected preparation release boundary denied')
+    session.update(state='released', final_response_gate=gate, rejection_ref=rejection['rejection_ref'])
+    _save_session(session)
+    return {**_public_handle(session), 'published_commit': None, 'release_receipt': receipt,
+            'current_lease_revision': revision, 'worker_status': 'succeeded', 'scope_complete': False,
+            'review_ref': request['review_ref'], 'rejection_ref': rejection['rejection_ref'],
+            'final_response_allowed': False, 'managed_finish_allowed': True, 'controller_exit_required': True}
 
 
 def _load_request(path):
@@ -1048,7 +1204,7 @@ def main(argv=None):
             return 2
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("start", "observe", "cancel", "finish"))
+    parser.add_argument("action", choices=("start", "observe", "cancel", "finish", "reject_preparation"))
     parser.add_argument("request")
     args = parser.parse_args(argv)
     try:
@@ -1058,6 +1214,7 @@ def main(argv=None):
             "observe": observe,
             "cancel": cancel,
             "finish": finish,
+            "reject_preparation": reject_preparation,
         }[args.action](request)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print("FAIL:", exc, file=sys.stderr)

@@ -46,9 +46,9 @@ class T(unittest.TestCase):
  def test_owned_invocation_cannot_final_respond(self):
   r=evaluate(INV_ID,self.owned(),continuity(False),{"owner_id":OWNER,"generation":1},None,None,"2026-01-01T10:02:00Z")
   self.assertFalse(r["allowed"]);self.assertEqual(r["reason"],"invocation_still_owns_exact_generation")
- def test_exact_released_generation_can_final_respond(self):
+ def test_exact_legacy_release_without_current_reporting_cannot_final_respond(self):
   lease=self.released();r=evaluate(INV_ID,lease,continuity(True),{"owner_id":OWNER,"generation":1},receipt(lease),lease,"2026-01-01T10:02:00Z")
-  self.assertTrue(r["allowed"]);self.assertTrue(r["final_response_allowed"])
+  self.assertFalse(r["allowed"]);self.assertEqual(r['reason'],'current_authentic_reporting_binding_required')
  def test_different_release_does_not_satisfy_owned_generation(self):
   lease=self.released();bad_receipt=receipt(lease);bad_receipt["release"]["generation"]=0
   r=evaluate(INV_ID,lease,continuity(True),{"owner_id":OWNER,"generation":1},bad_receipt,lease,"2026-01-01T10:02:00Z")
@@ -64,7 +64,7 @@ class T(unittest.TestCase):
   first_record=copy.deepcopy(lease);first_receipt=receipt(first_record)
   lease=self.admit(lease,other,"2026-01-01T10:02:00Z",inv2)
   r=evaluate(INV_ID,lease,continuity(True),{"owner_id":OWNER,"generation":1},first_receipt,first_record,"2026-01-01T10:03:00Z")
-  self.assertTrue(r["allowed"])
+  self.assertFalse(r["allowed"]);self.assertEqual(r['reason'],'current_authentic_reporting_binding_required')
  def test_successor_release_cannot_erase_prior_release_proof(self):
   lease=self.released();first_record=copy.deepcopy(lease);first_receipt=receipt(first_record)
   other="55555555-5555-4555-8555-555555555555"
@@ -78,7 +78,7 @@ class T(unittest.TestCase):
   lease=leasev2.release(lease,other,2,"chat-next","2026-01-01T10:03:04Z")
   self.assertEqual(lease["last_release"]["generation"],2)
   r=evaluate(INV_ID,lease,continuity(True),{"owner_id":OWNER,"generation":1},first_receipt,first_record,"2026-01-01T10:04:00Z")
-  self.assertTrue(r["allowed"])
+  self.assertFalse(r["allowed"]);self.assertEqual(r['reason'],'current_authentic_reporting_binding_required')
  def test_receipt_requires_authoritative_revision_record(self):
   lease=self.released();proof=receipt(lease)
   r=evaluate(INV_ID,lease,continuity(True),{"owner_id":OWNER,"generation":1},proof,None,"2026-01-01T10:02:00Z")

@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'budget.py'
 if SCRIPT.exists():
@@ -53,6 +54,47 @@ class BudgetTests(unittest.TestCase):
         with self.assertRaises(ValueError): budget.apply_event(ledger, altered)
         self.assertEqual(budget.summarize(ledger)['task']['compute_starts'], 1)
         self.assertEqual(self.ledger['events'], [])
+
+    def test_validation_does_not_copy_accumulated_replay_prefixes(self):
+        # A validator that deep-copies every prefix regresses admission to
+        # quadratic copy work even though it owns the entire replay scratch.
+        policy = dict(task_limits={}, wake_limits={}, max_parallel_agents=1,
+                      checkpoint_reserve={'tokens':0,'tool_calls':0},
+                      provider_max_age_seconds=60, actions_budget='normal')
+        ledger = budget.new_ledger('task-1', 'wake-1', policy)
+        for number in range(128):
+            ledger['events'].append(self.reserve('read-'+str(number), kind='status_poll',
+                operation_key='sha256:'+format(number, '064x')))
+        before = copy.deepcopy(ledger)
+        original = copy.deepcopy
+        copied_prefix_events = 0
+        def measured(value, *args, **kwargs):
+            nonlocal copied_prefix_events
+            if isinstance(value, dict) and value.get('schema') == 'budget-ledger/v1':
+                copied_prefix_events += len(value.get('events', []))
+            return original(value, *args, **kwargs)
+        with mock.patch.object(budget.copy, 'deepcopy', side_effect=measured):
+            budget.validate_ledger(ledger)
+        self.assertEqual(ledger, before)
+        self.assertLessEqual(copied_prefix_events, 256,
+            'validation must not recursively copy each accumulated event prefix')
+
+    def test_validation_preserves_input_after_duplicate_event_denial(self):
+        ledger = budget.apply_event(self.ledger, self.reserve())
+        ledger['events'].append(copy.deepcopy(ledger['events'][0]))
+        before = copy.deepcopy(ledger)
+        with self.assertRaises(ValueError):
+            budget.validate_ledger(ledger)
+        self.assertEqual(ledger, before)
+
+    def test_public_append_keeps_prior_nested_event_copies_isolated(self):
+        ledger = budget.apply_event(self.ledger, self.reserve())
+        next_ledger = budget.apply_event(ledger, self.reserve('r2', cost={
+            'tool_calls':1, 'tokens':None, 'elapsed_seconds':None}))
+        next_ledger['events'][0]['cost']['tool_calls'] = 999
+        next_ledger['policy']['checkpoint_reserve']['tokens'] = 999
+        self.assertEqual(ledger['events'][0]['cost']['tool_calls'], 1)
+        self.assertEqual(ledger['policy']['checkpoint_reserve']['tokens'], 10)
 
     def test_different_event_id_cannot_charge_same_operation_attempt_kind(self):
         event = self.reserve(); ledger = budget.apply_event(self.ledger, event)

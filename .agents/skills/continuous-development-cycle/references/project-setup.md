@@ -6,6 +6,17 @@ then use the existing managed writer with fresh source/ownership/guard evidence,
 expected HEAD, invocation-bound intent and durable budget admission. Neither
 planner executes validation commands or grants write, release or launch authority.
 
+Every initialized project checkpoint carries the central persistent-contract
+reference from `templates/work-status-v4.md`. Existing projects and migrations
+apply that same loaded-package `references/lean-execution-core.md` contract at
+entry and resume; retain their historical checkpoint body and original controls.
+When updating project instructions through the existing managed writer, use this
+short reference rather than copying a separate policy:
+
+> Apply the loaded CDC package's `references/lean-execution-core.md` persistent
+> execution contract at every project entry and resumed operation. The user need
+> not repeat it; current authorization and mandatory project gates still apply.
+
 ## Initialization request
 
 ```json

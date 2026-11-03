@@ -81,10 +81,18 @@ def _validate_submission_resolution_transition(previous, record, *, expected_rev
 def validate_coordination_transition(previous, record, *, ownership_capability=None, expected_revision=None, retirement_capability=None, retirement_store=None):
     validate_coordination_record(record)
     if previous is None:
-        if any(e['schema']=='actions-submission-retirement/v1' for e in record.get('submission_retirements',[])):
+        if isinstance(record.get('last_release'),dict) and 'administrative_disposition' in record['last_release']:raise ValueError('administrative release requires original native owner')
+        if any(e['schema'] in {'actions-submission-retirement/v1','source-publication-quarantine/v1'} for e in record.get('submission_retirements',[])):
             raise ValueError('Actions retirement requires existing authenticated original lease, never raw initialization')
         return record
     validate_coordination_record(previous)
+    release=record.get('last_release')
+    if release!=previous.get('last_release') and isinstance(release,dict) and 'administrative_disposition' in release:
+        from unknown_recovery import AdministrativeUnknownLeaseRelease
+        if type(retirement_capability) is not AdministrativeUnknownLeaseRelease:
+            raise ValueError('native administrative UNKNOWN release capability required')
+        retirement_capability.revalidate(retirement_store,expected_revision,previous,record)
+        return record
     previous_retirements=previous.get('submission_retirements',[])
     current_retirements=record.get('submission_retirements',[])
     if current_retirements[:len(previous_retirements)] != previous_retirements:
@@ -97,7 +105,12 @@ def validate_coordination_transition(previous, record, *, ownership_capability=N
         entry=appended[0]
         if entry['proof']['lease_revision']!=expected_revision:
             raise ValueError('retirement proof does not bind exact CAS revision')
-        if entry['schema']=='actions-submission-retirement/v1':
+        if entry['schema']=='source-publication-quarantine/v1':
+            from source_publication_quarantine import SourcePublicationQuarantine,quarantine_source_guard
+            if type(retirement_capability) is not SourcePublicationQuarantine:raise ValueError('source UNKNOWN CAS requires native sealed quarantine capability')
+            retirement_capability.revalidate(retirement_store,expected_revision,previous,entry)
+            transition=quarantine_source_guard
+        elif entry['schema']=='actions-submission-retirement/v1':
             if type(retirement_capability) is not ActionsRetirementEvidence:
                 raise ValueError('Actions UNKNOWN CAS requires authenticated native evidence capability')
             retirement_capability.revalidate(retirement_store,expected_revision,previous,entry)

@@ -51,4 +51,10 @@ execution_continuity:
 
 # Current work status
 
-CDC 2.4 durable operational handoff. Reconcile live repository, coordination, external operations and validation before acting.
+Apply the persistent execution contract in the loaded CDC package's
+`references/lean-execution-core.md` at every project entry and resumed operation;
+the user need not repeat it. Preserve original IDs, UNKNOWN, spent and history,
+and use its evidence, execution and reporting rules within current authorization.
+
+Reconcile changed live repository, coordination, external-operation and validation
+facts before the next action that requires them. This checkpoint grants no authority.

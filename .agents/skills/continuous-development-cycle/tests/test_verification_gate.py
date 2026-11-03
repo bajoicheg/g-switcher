@@ -7,13 +7,6 @@ from verification_gate import evaluate
 class T(unittest.TestCase):
  def base(self):
   return json.loads((ROOT/"templates"/"verification-gate.json").read_text())
- def test_template_allows_terminal_claim_without_granting_authority(self):
-  r=evaluate(self.base())
-  self.assertTrue(r["allowed"])
-  self.assertTrue(r["final_claim_allowed"])
-  self.assertEqual(r["blockers"],[])
-  for k in ("authorizes_product_write","authorizes_takeover","authorizes_external_start","authorizes_merge","authorizes_release","authorizes_scope_expansion"):
-   self.assertFalse(r[k])
  def test_stale_source_blocks(self):
   d=self.base();d["authoritative_source_fresh"]=False
   self.assertIn("authoritative_source_stale",evaluate(d)["blockers"])

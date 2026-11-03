@@ -1,3 +1,18 @@
+## Current CDC 3.6.17 process contract
+
+Use canonical `bajoicheg/g-cdc` `refs/heads/release/v3.6.17` at
+`20d6830c94c7123994400f3e3dce5840e23a5e79`, exact package TREE
+`f5480729b23a9b470e7b9d221d5a61034e292b7d`, vendored unchanged at
+`.agents/skills/continuous-development-cycle`. Apply its `references/lean-execution-core.md`
+persistent execution contract on every entry. Preserve original IDs, UNKNOWN, budgets/spent and
+history; reuse covered evidence and minimum necessary checks/coordination. Report applied results
+and separate actual usage; unavailable cost stays UNKNOWN. Storage and registry migration mechanisms
+grant no additional product role or UNKNOWN replay. The registered native role stays read_only.
+Kimi is excluded until explicit owner instruction; Fleet remains paused and Gemini deferred.
+The existing public-repository compute policy, Windows evidence, product/security/manual gates and
+source publication restrictions below remain effective. This process adoption starts no CI or Cloud.
+See `docs/cdc-adoption-3.6.17.md` and `docs/cdc-consumer-lock.json`. Earlier authority headers are history.
+
 ## Current CDC 3.5.0 process authority
 
 Canonical bajoicheg/g-cdc refs/heads/release/v3.5.0 at b8f5b2cc64878715b63af388124ac0656d1c87b4, exact417-file package tree bc7961ffc170db38bfa25d8bd132de127c24a8d0. Separately pinned canonical evidence 17b2718d405ac92bfb86e8f8834d0ebfbb9facea:release/evidence-3.5.0.json. Executable minimum3.3.0; historical records remain readable and never override current authority. Required canonical hosted CI38132248286 qualifies these identical CDC bytes; no product FULL, CI, approval, platform acceptance or release is claimed.

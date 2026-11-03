@@ -27,6 +27,7 @@ FIELDS = {
     'reserve': {'operation_key','attempt_id','kind','scope','recovery_ref','cost'},
     'outcome': {'reservation_id','status','usage','failure'},
     'provider': {'metric','remaining','source'},
+    'parallel_limit': {'max_parallel_agents','reference'},
     'remedy': {'scope','signature','reference','kind','detail'},
 }
 POLICY_FIELDS = {'task_limits','wake_limits','max_parallel_agents','checkpoint_reserve','provider_max_age_seconds','actions_budget'}
@@ -112,6 +113,9 @@ def _validate_event(event):
             if event['failure']['category'] not in ('code','configuration','infrastructure'):
                 raise ValueError('invalid failure category')
         elif event['failure'] is not None: raise ValueError('non-failure outcome must have null failure')
+    elif kind == 'parallel_limit':
+        _number(event['max_parallel_agents'],'max_parallel_agents',integer=True)
+        _text(event['reference'],'reference')
     elif kind == 'provider':
         if event['metric'] not in METRICS: raise ValueError('unsupported provider metric')
         _number(event['remaining'],'remaining',nullable=True,integer=event['metric']!='elapsed_seconds')
@@ -211,6 +215,13 @@ def _provider(ledger, at):
     return result
 
 
+def _parallel_limit(ledger):
+    """Latest operational bound; references are documentary, not authority."""
+    for event in reversed(ledger['events']):
+        if event['type'] == 'parallel_limit': return event['max_parallel_agents']
+    return ledger['policy']['max_parallel_agents']
+
+
 def decide(ledger, reservation, *, _checked=False):
     """Budget admission only. An existing reservation must NEVER launch a second effect."""
     if not _checked: validate_ledger(ledger)
@@ -228,7 +239,7 @@ def decide(ledger, reservation, *, _checked=False):
     cost = dict.fromkeys(METRICS,0); cost.update(reservation['cost'])
     if kind in COUNTERS: cost[COUNTERS[kind]] = 1
     if kind == 'ci_start' and policy['actions_budget'] == 'exhausted': reasons.append('Actions budget exhausted')
-    if kind == 'agent_start' and summary['active_agents'] >= policy['max_parallel_agents']:
+    if kind == 'agent_start' and summary['active_agents'] >= _parallel_limit(ledger):
         reasons.append('maximum parallel agents reached')
     for scope in ('task','wake'):
         for metric,limit in policy[scope+'_limits'].items():
@@ -271,7 +282,7 @@ def _scope(ledger,event):
         raise ValueError('event timestamp regresses')
 
 
-def _append(ledger,event):
+def _append(ledger,event,*,_validation_replay=False):
     _validate_event(event)
     # Exact replay is idempotent even after a later wake; it never grants a new launch.
     for old in ledger['events']:
@@ -292,6 +303,9 @@ def _append(ledger,event):
             for metric,value in previous['usage'].items():
                 if value is not None and (event['usage'][metric] is None or event['usage'][metric] < value):
                     raise ValueError('observed cumulative usage cannot regress')
+    elif event['type'] == 'parallel_limit':
+        if event['max_parallel_agents'] > ledger['policy']['max_parallel_agents']:
+            raise ValueError('parallel limit exceeds original policy maximum')
     elif event['type'] == 'provider':
         for old in ledger['events']:
             if old['type'] == 'provider' and old['metric'] == event['metric'] and _time(event['at_utc']) <= _time(old['at_utc']):
@@ -302,7 +316,10 @@ def _append(ledger,event):
         failure = failures.get(event['scope'])
         if failure is None or event['signature'] != failure['failure']['signature']:
             raise ValueError('remedy must reference the current recorded failure')
-    result = copy.deepcopy(ledger); result['events'].append(copy.deepcopy(event))
+    # validate_ledger owns its replay scratch. Public append/apply still return
+    # fully isolated copies, including all prior nested policy/event objects.
+    result = ledger if _validation_replay else copy.deepcopy(ledger)
+    result['events'].append(copy.deepcopy(event))
     return result
 
 
@@ -324,7 +341,7 @@ def validate_ledger(ledger):
         index = wakes.index(event['wake_id'])
         if index < position: raise ValueError('event belongs to an earlier wake')
         replay['wake_ids'] = wakes[:index+1]; position = index
-        length = len(replay['events']); replay = _append(replay,event)
+        length = len(replay['events']); replay = _append(replay,event,_validation_replay=True)
         if len(replay['events']) == length: raise ValueError('duplicate event in stored ledger')
 
 

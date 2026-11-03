@@ -31,10 +31,10 @@ def validate(state):
         "external_binding", "blocker", "checkpoint_ref", "next_action",
         "lease_release_required", "lease_released",
     }
-    optional = {"terminal_state", "blocker_proof"}
+    optional = {"terminal_state", "blocker_proof", "reporting_binding"}
     if not isinstance(state, dict) or not required <= set(state) or set(state) - required - optional:
         raise ValueError("execution continuity state has missing/unknown fields")
-    if state["schema"] != "execution-continuity/v1":
+    if state["schema"] not in {"execution-continuity/v1", "execution-continuity/v2"}:
         raise ValueError("unsupported execution continuity schema")
     _text(state["invocation_id"], "invocation_id")
     if state["current_state"] not in STATES:
@@ -109,15 +109,25 @@ def _terminal_evidence(state, now_utc):
     return None
 
 
-def evaluate(state, *, now_utc=None):
+def evaluate(state, *, now_utc=None, reporting_authority=None):
     validate(state)
     outcome = state["requested_terminal_outcome"]
     progress = bool(state["meaningful_progress_refs"])
     external = state["external_binding"] is not None
     blocked = state["blocker"] is not None
+    reporting=None
     def result(allowed, reason, next_state, final=False):
         return {"allowed": allowed, "reason": reason, "next_state": next_state,
-                "final_response_allowed": final}
+                "final_response_allowed": False, "ready_for_native_closeout": final and reporting is not None,
+                "reporting_verified": reporting is not None,
+                "reporting": reporting, "historical_contract":state['schema']=='execution-continuity/v1'}
+
+    if state['schema']=='execution-continuity/v2':
+        try:
+            from reporting_contract import check
+            reporting=check(state,reporting_authority,now_utc=now_utc)
+        except (ValueError,KeyError,TypeError) as exc:
+            return result(False,'reporting_binding_rejected: '+str(exc),'RECONCILE')
 
     if outcome == "continue":
         return result(True, "continue_execution", "EXECUTE")
@@ -159,10 +169,17 @@ def evaluate(state, *, now_utc=None):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("state")
+    for name in ('repo','remote','coordination-ref'):p.add_argument('--'+name)
     args = p.parse_args(argv)
     try:
         state = json.loads(Path(args.state).read_text(encoding="utf-8"))
-        result = evaluate(state)
+        authority=None
+        if state.get('schema')=='execution-continuity/v2':
+            if not all((args.repo,args.remote,args.coordination_ref)):raise ValueError('current continuity requires native canonical reporting store')
+            from git_lease_store import GitLeaseStore
+            from reporting_contract import authenticate
+            authority=authenticate(GitLeaseStore(args.repo,args.remote,args.coordination_ref),state.get('reporting_binding'),state['invocation_id'],state['checkpoint_ref'])
+        result = evaluate(state,reporting_authority=authority)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 2

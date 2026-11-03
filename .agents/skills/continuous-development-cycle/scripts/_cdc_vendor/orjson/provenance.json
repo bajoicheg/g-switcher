@@ -1,0 +1,17 @@
+{
+  "package": "orjson",
+  "version": "3.12.0",
+  "wheel": "orjson-3.12.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+  "wheel_sha256": "1192a7021b6d071aaf909864f6e924d6a2675ca360485b972b8401749311750b",
+  "distribution_source": "https://pypi.org/pypi/orjson/3.12.0/json",
+  "upstream": "https://github.com/ijl/orjson",
+  "license_expression": "MPL-2.0 AND (Apache-2.0 OR MIT)",
+  "scope": "Optional CPython3.12 manylinux x86_64 acceleration only; unsupported interpreters/platforms retain the exact stdlib decoder. Original CPython canonical encoder is unchanged and authoritative. No dumps/alternative serialization is used.",
+  "files": [
+    "scripts/_cdc_vendor/orjson/__init__.py",
+    "scripts/_cdc_vendor/orjson/orjson.cpython-312-x86_64-linux-gnu.so",
+    "scripts/_cdc_vendor/orjson/LICENSE-APACHE",
+    "scripts/_cdc_vendor/orjson/LICENSE-MIT",
+    "scripts/_cdc_vendor/orjson/LICENSE-MPL-2.0"
+  ]
+}

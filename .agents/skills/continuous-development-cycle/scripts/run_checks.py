@@ -12,6 +12,7 @@ from pathlib import Path
 import platform
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -310,9 +311,9 @@ def run_one(check, evidence, output, index, blocked, economics_plan=None, prior_
                           ended_at_utc=utc_now(), duration_seconds=round(time.monotonic()-started, 6))
             atomic_json(directory / 'result.json', result)
             return result
-    log_path = directory / "command.log"
-    temporary_log = directory / "command.log.part"
-    with temporary_log.open("xb") as log:
+    pending_error = None
+    stdout_path, stderr_path = directory / "stdout.raw", directory / "stderr.raw"
+    with stdout_path.open("xb") as stdout, stderr_path.open("xb") as stderr:
         if blocked or not source_matches(result["before"], evidence["candidate_sha"]):
             result["diagnostic"] = "candidate SHA or clean source requirement failed; command withheld"
         elif not check["argv"]:
@@ -322,7 +323,7 @@ def run_one(check, evidence, output, index, blocked, economics_plan=None, prior_
                                PYTHONDONTWRITEBYTECODE="1")
             try:
                 process = subprocess.Popen(result["argv"], cwd=evidence["worktree"], env=environment, shell=False,
-                                           stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                           stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
                                            start_new_session=(os.name == "posix"))
                 result["executed"] = True
             except OSError as error:
@@ -336,18 +337,42 @@ def run_one(check, evidence, output, index, blocked, economics_plan=None, prior_
                     result["exit_code"] = process.returncode
                     result["termination"] = "timeout"
                     result["diagnostic"] = "timeout; process terminated"
-                except BaseException:
+                except BaseException as error:
                     stop_process(process)
-                    raise
+                    result["exit_code"] = process.returncode
+                    result["termination"] = "interrupted"
+                    result["diagnostic"] = "runner interrupted: " + type(error).__name__
+                    pending_error = error
+        for stream in (stdout, stderr):
+            stream.flush()
+            os.fsync(stream.fileno())
+    result["ended_at_utc"] = utc_now()
+    result["duration_seconds"] = round(time.monotonic() - started, 6)
+    terminal = {key: result[key] for key in ("id", "candidate_sha", "plan_sha256", "environment", "argv",
+        "timeout_seconds", "started_at_utc", "ended_at_utc", "duration_seconds", "before", "executed",
+        "exit_code", "termination", "diagnostic")}
+    terminal["schema"] = "command-terminal/v1"
+    for name, path in (("stdout", stdout_path), ("stderr", stderr_path)):
+        terminal[name] = {"path": (relative / path.name).as_posix(), "sha256": file_digest(path)}
+    # Terminal bytes/facts precede JUnit parsing, source-after probing and classification.
+    # These are local observations, not authenticated provider attestation.
+    atomic_json(directory / "terminal.json", terminal)
+    result["terminal"] = {"path": (relative / "terminal.json").as_posix(),
+                          "sha256": file_digest(directory / "terminal.json")}
+    if pending_error is not None:
+        raise pending_error
+    log_path = directory / "command.log"
+    with log_path.open("xb") as log:
+        # Compatibility projection: stdout then stderr, with no chronology claim.
+        for path in (stdout_path, stderr_path):
+            with path.open("rb") as source:
+                shutil.copyfileobj(source, log)
         log.flush()
         os.fsync(log.fileno())
-    os.replace(temporary_log, log_path)
     result["log"] = {"path": (relative / "command.log").as_posix(), "sha256": file_digest(log_path)}
     if check["kind"] == "test":
         result["test_report"] = junit_report(output, (relative / "junit.xml").as_posix())
     result["after"] = observe_source(evidence["worktree"])
-    result["ended_at_utc"] = utc_now()
-    result["duration_seconds"] = round(time.monotonic() - started, 6)
     result["status"], result["reason"] = classify(check, result, output, evidence["candidate_sha"])
     atomic_json(directory / "result.json", result)
     return result
@@ -378,6 +403,7 @@ def run(args):
                 "worktree": str(worktree), "output_dir": str(output), "environment": environment,
                 "plan_sha256": digest(canonical(plan)), "started_at_utc": utc_now(), "ended_at_utc": None,
                 "runner_status": "RUNNING", "gate_status": "NOT_RUN", "final_green": False,
+                "terminal_capture_schema": "command-terminal/v1",
                 "source_before": observe_source(worktree), "source_after": None, "checks": []}
     atomic_json(output / "plan.json", plan)
     atomic_json(output / "evidence.json", evidence)

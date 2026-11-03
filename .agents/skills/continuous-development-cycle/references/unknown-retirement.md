@@ -92,3 +92,7 @@ from the configured endpoint, verify ancestry and the exact running attempt,
 and reject mixed prior-attempt or released/unrelated ownership records. Missing
 original fields remain missing and fail closed; private original-host intake is
 evaluated later against this qualified public contract.
+
+The separate claim-null source publication and prelaunch intake protocols are
+documented in [Native UNKNOWN recovery](native-unknown-recovery.md). They issue
+distinct administrative capabilities and preserve original UNKNOWN liabilities.

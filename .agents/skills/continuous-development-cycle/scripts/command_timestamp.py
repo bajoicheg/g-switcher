@@ -40,9 +40,9 @@ def render(d,*,now=None):
         raise ValueError("observed_at is ahead of fresh wall clock")
     if age>MAX_AGE_SECONDS:
         raise ValueError("observed_at is stale; acquire fresh wall clock")
-    if d["command_id"] in d["already_timestamped_command_ids"]:
-        return {"schema":"command-timestamp-evidence/v1","action":"SUPPRESS_DUPLICATE","command_id":d["command_id"],"display":None,"timezone":"Europe/Moscow","source":d["time_source"],"authorizes_anything":False}
-    return {"schema":"command-timestamp-evidence/v1","action":"EMIT_ONCE","command_id":d["command_id"],"display":observed.astimezone(MSK).strftime("[%H:%M %d.%m]"),"timezone":"Europe/Moscow","source":d["time_source"],"authorizes_anything":False}
+    # Historical command IDs stay readable; a later substantive report is a
+    # new reporting boundary even when the command continues for hours.
+    return {"schema":"command-timestamp-evidence/v2","action":"EMIT_REPORT","command_id":d["command_id"],"display":current.astimezone(MSK).strftime("[%H:%M %d.%m]"),"timezone":"Europe/Moscow","source":"runtime_clock","observed_at_utc":current.isoformat().replace('+00:00','Z'),"input_observation":d['observed_at'],"authorizes_anything":False}
 
 def main(argv=None):
     p=argparse.ArgumentParser();p.add_argument("input");a=p.parse_args(argv)

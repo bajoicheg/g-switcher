@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -75,7 +76,7 @@ class EvidenceTests(unittest.TestCase):
 
     # Removing per-command exit capture would wrongly let the final command decide.
     def test_failed_build_cannot_be_erased_by_later_success(self):
-        result = self.run_plan([self.check(code="raise SystemExit(7)"), self.check("lint")])
+        result = self.run_plan([self.check(code="import os; os.write(1, b'out\\n\\xff'); os.write(2, b'err\\n\\xfe'); raise SystemExit(7)"), self.check("lint")])
         self.assertEqual(result.returncode, 1, result.stderr)
         evidence = self.evidence()
         self.assertEqual([c["status"] for c in evidence["checks"]], ["FAIL", "PASS"])
@@ -84,6 +85,78 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["gate_status"], "FAIL")
         self.assertFalse(evidence["final_green"])
         self.assertEqual(self.validate().returncode, 1)
+        command=evidence['checks'][0]
+        raw=command['terminal']
+        receipt=json.loads((self.out/raw['path']).read_text())
+        self.assertEqual(receipt['exit_code'],7)
+        self.assertEqual((self.out/receipt['stdout']['path']).read_bytes(), b'out\n\xff')
+        self.assertEqual((self.out/receipt['stderr']['path']).read_bytes(), b'err\n\xfe')
+        self.assertEqual(raw['sha256'],hashlib.sha256((self.out/raw['path']).read_bytes()).hexdigest())
+
+    def test_terminal_survives_real_command_classifier_failure(self):
+        self.plan_path.write_text(json.dumps({'schema':'command-check-plan/v1','checks':[self.check(code="import os; os.write(1,b'raw-out'); os.write(2,b'raw-err'); raise SystemExit(9)")]}))
+        script="import sys;sys.path.insert(0,sys.argv.pop(1));import run_checks;run_checks.classify=lambda *args:(_ for _ in ()).throw(RuntimeError('interpretation failed'));raise SystemExit(run_checks.main())"
+        result=subprocess.run([sys.executable,'-B','-c',script,str(ROOT/'scripts'),'--worktree',str(self.repo),'--candidate-sha',self.sha,'--plan',str(self.plan_path),'--output-dir',str(self.out),'--environment-id','test-environment','--environment-config-sha256',CONFIG_SHA],capture_output=True,timeout=20)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn(b'interpretation failed',result.stderr)
+        receipt=json.loads((self.out/'001-build/terminal.json').read_text())
+        self.assertEqual(receipt['exit_code'],9)
+        self.assertEqual((self.out/receipt['stdout']['path']).read_bytes(),b'raw-out')
+        self.assertEqual((self.out/receipt['stderr']['path']).read_bytes(),b'raw-err')
+        self.assertEqual(self.evidence()['runner_status'],'ERROR')
+        self.assertEqual(self.validate().returncode,2)
+
+    def test_interrupted_runner_persists_actual_killed_process_terminal(self):
+        self.plan_path.write_text(json.dumps({'schema':'command-check-plan/v1','checks':[self.check(code="import os,time,pathlib; os.write(1,b'before-stop'); pathlib.Path(os.environ['EVIDENCE_CHECK_DIR'],'ready').touch(); time.sleep(30)")]}))
+        script = """import sys,time,pathlib
+sys.path.insert(0,sys.argv.pop(1));import run_checks
+Original=run_checks.subprocess.Popen
+class Interrupted(Original):
+    def wait(self,timeout=None):
+        if self._ready is not None and not hasattr(self,'interrupted_once'):
+            self.interrupted_once=True
+            end=time.monotonic()+5
+            ready=pathlib.Path(self._ready)
+            while not ready.exists() and time.monotonic()<end:time.sleep(.005)
+            if not ready.exists():raise RuntimeError('real command readiness missing')
+            raise KeyboardInterrupt()
+        return super().wait(timeout=timeout)
+    def __init__(self,*args,**kwargs):
+        directory=kwargs.get('env',{}).get('EVIDENCE_CHECK_DIR')
+        self._ready=directory+'/ready' if directory else None
+        super().__init__(*args,**kwargs)
+run_checks.subprocess.Popen=Interrupted
+raise SystemExit(run_checks.main())
+"""
+        proc=subprocess.run([sys.executable,'-B','-c',script,str(ROOT/'scripts'),'--worktree',str(self.repo),'--candidate-sha',self.sha,'--plan',str(self.plan_path),'--output-dir',str(self.out),'--environment-id','test-environment','--environment-config-sha256',CONFIG_SHA],capture_output=True,timeout=15)
+        self.assertEqual(proc.returncode,2,proc.stderr)
+        terminal=json.loads((self.out/'001-build/terminal.json').read_text())
+        self.assertTrue(terminal['executed']);self.assertEqual(terminal['termination'],'interrupted')
+        self.assertIsInstance(terminal['exit_code'],int);self.assertNotEqual(terminal['exit_code'],0)
+        self.assertEqual((self.out/terminal['stdout']['path']).read_bytes(),b'before-stop')
+        self.assertEqual(self.evidence()['runner_status'],'ERROR');self.assertEqual(self.validate().returncode,2)
+
+    def test_raw_terminal_tamper_and_downgrade_fail_legacy_remains_readable(self):
+        self.assertEqual(self.run_plan([self.check()]).returncode,0)
+        original=self.evidence();command=original['checks'][0]
+        receipt_path=self.out/command['terminal']['path'];receipt_bytes=receipt_path.read_bytes()
+        stdout=self.out/json.loads(receipt_bytes)['stdout']['path'];original_stdout=stdout.read_bytes()
+        stdout.write_bytes(b'substituted')
+        self.assertEqual(self.validate().returncode,2)
+        stdout.write_bytes(original_stdout)
+        receipt=json.loads(receipt_bytes);receipt['exit_code']=1
+        receipt_path.write_text(json.dumps(receipt))
+        self.assertEqual(self.validate().returncode,2)
+        receipt_path.write_bytes(receipt_bytes)
+        downgraded=json.loads(json.dumps(original));downgraded.pop('terminal_capture_schema')
+        self.rewrite(downgraded)
+        self.assertEqual(self.validate().returncode,2)
+        legacy=json.loads(json.dumps(downgraded));legacy['checks'][0].pop('terminal')
+        (self.out/command['result_path']).write_text(json.dumps(legacy['checks'][0]))
+        receipt_path.unlink()
+        for name in ['stdout.raw','stderr.raw']:(self.out/'001-build'/name).unlink()
+        self.rewrite(legacy)
+        self.assertEqual(self.validate().returncode,0)
 
     def test_passing_commands_and_real_test_counts_validate(self):
         result = self.run_plan([self.check(), self.junit_check()])

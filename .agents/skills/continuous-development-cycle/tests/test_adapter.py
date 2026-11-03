@@ -85,11 +85,13 @@ class AdapterTests(unittest.TestCase):
 
     def test_exception_must_match_effective_setting(self):
         data = self.template()
-        data["policy"] = {"revision": "1", "skill_min_version": "2.2.0",
-                          "skill_max_version_exclusive": "3.0.0", "approved_exceptions": [
+        data["policy"] = {"revision": "1", "skill_min_version": "3.3.0",
+                          "skill_max_version_exclusive": "4.0.0", "approved_exceptions": [
             {"setting": "execution.work.subagents", "value": "disabled", "source": "user:approved-1",
              "reason": "Temporary restriction", "recorded_at_utc": "2026-09-22T12:00:00Z"}]}
-        self.assertNotEqual(self.check(data).returncode, 0)
+        result = self.check(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("approved exception disagrees with effective setting: execution.work.subagents", result.stdout)
 
     def test_malformed_yaml_fails_without_traceback(self):
         result = self.run_text("[broken:\n")

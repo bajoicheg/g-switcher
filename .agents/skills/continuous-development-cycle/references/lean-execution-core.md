@@ -3,6 +3,51 @@
 The compact core routes existing control and quality contracts. It creates no
 second orchestrator, budget ledger, release mechanism or authority grant.
 
+## Persistent contract for every project
+
+Apply this contract at every CDC-managed project entry and resumed operation.
+The user does not need to repeat it in each task. Read it through the loaded CDC
+package; project instructions and checkpoints reference this central contract.
+Current user authorization determines scope and duration. This document grants
+no new permission and never extends an expired work window.
+
+- Preserve original task, attempt, handle, report and operation IDs, FAILED and
+  UNKNOWN outcomes, guards, claims, reservations, budgets, spent and append-only
+  history. Continuation never resets charges or quotas, refunds uncertainty,
+  invents success or repeats an effect under a replacement identity.
+- For UNKNOWN, perform one bounded reconciliation of available original facts.
+  Safely finish or stop only the old uncertain execution through its supported
+  mechanism and exclude a dangerous duplicate. Retain UNKNOWN where terminal
+  proof is absent. If duplicate exclusion is impossible, stop only the dependent
+  effect; continue independent authorized work. Never replay a one-use journal
+  or CAS after an unknown reply; use original receipts to finish only the remainder.
+- Reuse qualified evidence within its recorded scope and dependencies. Do not
+  repeat completed acceptance, unchanged FULL, login, broad inventory or an
+  unchanged probe for reassurance or reporting. Tests address a concrete
+  objective risk or an actual project requirement. Exact-candidate, platform,
+  authorization and independently mandatory release gates remain required.
+- One actual executor carries a coherent preparation, edit, necessary-check,
+  application and publication pipeline. Use references for a compact handoff
+  when a real boundary requires it, and wait for the existing terminal signal.
+  Do not add an observer, reviewing model, repeated verification or control
+  mechanism because of distrust in your own work. Required independent project
+  or release admission remains distinct from routine extra review.
+- Before an effect, save a short result/time/resource/spending forecast in the
+  existing plan. After the logical operation report the concrete applied result,
+  proof, remaining UNKNOWN, measured rounded minutes and actual usage, noting
+  material differences from that forecast. Preserve application, native, provider,
+  canonical release and consumer adoption as separate evidence boundaries.
+- Account from monotonic total-token counters over a stated scope/window, keeping
+  App, native and provider observations separate. Count each distinct child once.
+  Cached input is inside input; reasoning is inside output. Do not sum cumulative
+  snapshots or add last-token counters again. Emit numeric counts only when
+  measured; unavailable scope, tokens or money are explicitly UNKNOWN with a
+  reason, never invented zero or a cost converted from quota.
+
+Keep real Source, role, provider, lease, guard, expected-head and one-use limits,
+secrets and inherited pauses. Use the existing runtime and records; this contract
+does not introduce a guard, ledger, daemon, scheduler or orchestrator.
+
 ## Entry point
 
 `python -B scripts/cdc.py resume --capsule FILE --probe FILE` reads the existing
@@ -48,8 +93,9 @@ critical test with phrase matching or implementation duplication.
 
 Current user authorization and higher-priority instructions settle workflow
 approval requirements. Companion engineering skills do not re-request design
-or plan approval that the user already gave. They still provide independent
-reviews, isolation, debugging and evidence-before-completion discipline.
+or plan approval that the user already gave. Use their isolation, debugging and
+evidence guidance for the actual risk; independent review follows the real
+project or release contract, without a routine extra reviewer.
 
 ## Validation economics
 
@@ -64,8 +110,9 @@ recorded coverage includes it. Reuse preserves original candidate SHA and
 evidence reference. Exact-candidate release checks cannot be reused across
 SHAs. Source/control observations are action-bound and never recycled.
 
-Two validation cycles are the default. A repeat needs changed inputs, actual
-risk and why old proof is insufficient; another cycle needs a revised strategy.
+Use the minimum sufficient validation cycle. Repeat only for changed inputs or
+a concrete uncovered risk, recording why prior proof is insufficient; after two
+cycles revise the strategy before another repeat.
 Do not spend an identical full suite per worker or buy another backend's
 opinion about an unchanged product failure. Measure from existing budget and
 evidence events, retain unknowns, and reserve checkpoint capacity.
@@ -85,7 +132,10 @@ Delivered-work and escaped-defect counts need an actual comparable observation
 window, not hypothetical savings or an invented zero-defect count.
 
 Russian operation suffixes use half-up rounding to whole minutes. Under half a
-minute may display `(0 мин)`; it does not mean no work occurred. Known measured
-tokens may be included; estimates include ≈ and their basis remains in the
-observation. Unknown tokens have no placeholder. Emit a fresh Moscow timestamp
-once per user command through the existing command timestamp contract.
+minute may display `(0 мин)`; it does not mean no work occurred. Include numeric
+usage only from measured counters with provenance. Unavailable usage scope,
+tokens or money remain explicit UNKNOWN
+with a reason. Emit a fresh runtime Moscow `[HH:MM DD.MM]` timestamp for EACH
+substantive progress, blocker, continuation and final report. Only an exact
+idempotent retry of the same command_id/report_id may suppress a duplicate;
+legacy per-command timestamp behavior is compatibility, not the reporting rule.

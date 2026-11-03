@@ -107,13 +107,17 @@ class ManagedHostBridgeTests(unittest.TestCase):
                 pass
 
     def finish_request(self, handle, checkpoint=None):
+        from reporting_fixtures import binding
+        session=bridge._load_session(str(self.root/'handles'),handle['handle_id'])
+        checkpoint=checkpoint if checkpoint is not None else 'native-test:checkpoint:'+handle['handle_id']
         return {
-            "schema": "managed-host-finish/v1",
+            "schema": "managed-host-finish/v2",
             "handle_root": str(self.root / "handles"),
             "handle_id": handle["handle_id"],
             "output_refs": ["out:closure"],
             "evidence_refs": ["test:closure"],
             "checkpoint_ref": checkpoint,
+            "reporting_binding":binding(bridge._lease_store(session),session['invocation_id'],checkpoint),
         }
 
     def worker(self):
@@ -164,6 +168,52 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         ).strip()
         return row.split("\t", 1)[0]
 
+    def test_replacement_controller_finishes_original_unsubmitted_native_handle(self):
+        import ctypes,threading
+        libc=ctypes.CDLL(None,use_errno=True);previous=ctypes.c_int()
+        self.assertEqual(libc.prctl(37,ctypes.byref(previous),0,0,0),0)
+        self.assertEqual(libc.prctl(36,1,0,0,0),0)
+        self.addCleanup(lambda:libc.prctl(36,previous.value,0,0,0))
+        request_path=self.root/'recovery-start.json';request_path.write_text(json.dumps(self.start_request()))
+        code="""import json,sys,time,os
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);import managed_host_bridge as b
+r=json.loads(Path(sys.argv[2]).read_text());h=b.start(r)
+while b.observe({'schema':'managed-host-observe/v1','handle_root':r['handle_root'],'handle_id':h['handle_id']})['runtime_status']!='awaiting_release':time.sleep(.01)
+print(json.dumps({'handle':h,'original_controller':os.getpid()}),flush=True)
+"""
+        original=subprocess.Popen([sys.executable,'-B','-c',code,str(ROOT/'scripts'),str(request_path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        self.addCleanup(original.wait,timeout=5)
+        data=json.loads(original.stdout.readline());handle=data['handle']
+        # Do not reap yet: a physically present original zombie must block sends.
+        deadline=time.monotonic()+3
+        while time.monotonic()<deadline:
+            current=runtime_module._process(original.pid)
+            if current is not None and current['state']=='Z':break
+            time.sleep(.01)
+        self.assertEqual(current['state'],'Z')
+        pending=bridge._load_session(str(self.root/'handles'),handle['handle_id']);result,_,_=bridge._result(pending,bridge._runtime(pending))
+        with self.assertRaises(ValueError):bridge._publish(pending,result)
+        self.assertEqual(self.remote_head(),self.base)
+        self.assertEqual(original.wait(timeout=5),0,original.stderr.read())
+        original.stdout.close();original.stderr.close()
+        self.assertFalse(Path('/proc',str(data['original_controller'])).exists())
+        session=bridge._load_session(str(self.root/'handles'),handle['handle_id']);runtime=bridge._runtime(session)
+        issued=Path(runtime._request(session['task_id'],session['attempt_id'])['journal_directory'])/'terminal-capability-descriptor.json';descriptor=issued.read_bytes()
+        self.assertEqual(json.loads(descriptor)['payload']['controller_proc_pid'],data['original_controller'])
+        supervisor=runtime.observe(session['task_id'],session['attempt_id'])['supervisor_proc_pid'];waits=[]
+        def reap():waits.append(os.waitpid(supervisor,0))
+        reaper=threading.Thread(target=reap);reaper.start()
+        def close():
+            self.stop_test_supervisors();reaper.join(timeout=4);self.assertFalse(reaper.is_alive())
+        self.addCleanup(close)
+        finished=bridge.finish(self.finish_request(handle));reaper.join(timeout=3)
+        self.assertEqual(finished['state'],'released');self.assertTrue(finished['scope_complete']);self.assertEqual(issued.read_bytes(),descriptor)
+        self.assertEqual(waits[0][0],supervisor);self.assertIsNone(self.lease_store.read()[1]['owner_id'])
+        self.assertNotEqual(self.remote_head(),self.base)
+        terminal=runtime.verify_terminal(session['task_id'],session['attempt_id'],include_controller=True,lease_store=self.lease_store,release_receipt=finished['release_receipt'])
+        self.assertEqual(terminal['status'],'succeeded')
+
     def test_test_cleanup_waits_for_supervisor_stop_before_temp_directory_removal(self):
         import threading
         request=self.start_request();request['argv']=[sys.executable,'-c','raise SystemExit(7)']
@@ -194,6 +244,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
 
     def test_finish_retry_after_stale_activity_revalidates_same_owner_result(self):
         from datetime import datetime, timedelta, timezone
+        import reporting_contract as reporting
         handle = bridge.start(self.start_request())
         self.wait_for(handle, 'awaiting_release')
         with patch.object(bridge, '_publish', side_effect=OSError('transient before publication')):
@@ -201,8 +252,14 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
                 bridge.finish(self.finish_request(handle))
         _, first = self.lease_store.read()
         identity = (first['owner_id'], first['generation'], first['invocation']['invocation_id'])
-        delayed = (datetime.now(timezone.utc) + timedelta(seconds=601)).isoformat().replace('+00:00','Z')
-        with patch.object(bridge, '_utc', return_value=delayed):
+        delayed_at = datetime.now(timezone.utc) + timedelta(seconds=601)
+        delayed = delayed_at.isoformat().replace('+00:00','Z')
+        class RuntimeDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return delayed_at.astimezone(tz)
+        with patch.object(bridge, '_utc', return_value=delayed), \
+                patch.object(reporting, 'datetime', RuntimeDateTime):
             finished = bridge.finish(self.finish_request(handle))
         self.assertEqual(finished['state'], 'released')
         self.assertTrue(finished['scope_complete'])
@@ -246,7 +303,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.wait_for(handle, "awaiting_release")
         finished = bridge.finish(self.finish_request(handle))
         self.assertEqual(finished["state"], "released")
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(), finished["published_commit"])
         public_refs = subprocess.check_output(
             ["git", "--git-dir", str(self.remote), "for-each-ref", "--format=%(refname)"], text=True).splitlines()
@@ -319,16 +376,10 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertEqual(self.remote_head(), self.base, "worker must not publish shared source before finish")
         self.assertFalse(waiting["quiescent"])
 
-        finished = bridge.finish({
-            "schema": "managed-host-finish/v1",
-            "handle_root": str(self.root / "handles"),
-            "handle_id": handle["handle_id"],
-            "output_refs": ["out:closure"],
-            "evidence_refs": ["test:closure"],
-            "checkpoint_ref": None,
-        })
+        finished = bridge.finish(self.finish_request(handle))
         self.assertEqual(finished["state"], "released")
-        self.assertTrue(finished["final_response_allowed"])
+
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(), finished["published_commit"])
         self.assertNotEqual(finished["published_commit"], self.base)
         self.assertEqual(finished["release_receipt"]["schema"], "execution-release-receipt/v1")
@@ -346,6 +397,42 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         assessment = pool.assess(self.plan, pool_state)
         self.assertTrue(assessment["complete"])
         self.assertTrue(assessment["terminal_allowed"])
+
+
+    def test_resumed_finish_reauthenticates_inventory_and_never_trusts_cached_boolean(self):
+        import reporting_contract as reporting
+        from git_document_store import GitDocumentStore
+        handle=bridge.start(self.start_request());self.wait_for(handle,'awaiting_release')
+        request=self.finish_request(handle)
+        finished=bridge.finish(request);self.assertTrue(finished['managed_finish_allowed'])
+        session=bridge._load_session(str(self.root/'handles'),handle['handle_id'])
+        # A local cached true is not current canonical inventory authority.
+        session['final_response_gate']={'final_response_allowed':True};session['reporting_binding']=True
+        bridge._save_session(session)
+        store=GitDocumentStore(self.repo,'origin',reporting.inventory_ref(handle['invocation_id']),self.store_id)
+        revision,doc=store.read();doc['material']=[{'anomaly_id':'new-observation','fix_key':'owner-reporting-rca-backlog-enforcement','status':'admitted_open','backlog_ref':'https://github.com/example/project/issues/113','problem':'Synthetic material observation','cause':'Changed condition after first report','evidence_refs':['actual:test-observation'],'correction_refs':[],'verification_revision':None,'deferral':None}]
+        store.compare_and_swap(revision,doc)
+        with self.assertRaisesRegex(ValueError,'stale RCA inventory'):bridge.finish(request)
+        bad=dict(request,reporting_binding=True)
+        with self.assertRaisesRegex(ValueError,'reporting binding'):bridge.finish(bad)
+        self.assertEqual(self.lease_store.read()[1]['last_release'],finished['release_receipt']['release'])
+    def test_final_permission_rechecks_actual_lease_and_release_not_caller_snapshots(self):
+        import copy,final_response_gate,reporting_contract
+        handle=bridge.start(self.start_request());self.wait_for(handle,'awaiting_release')
+        finished=bridge.finish(self.finish_request(handle))
+        session=bridge._load_session(str(self.root/'handles'),handle['handle_id'])
+        post=bridge._continuity(session,session['result_commit'],finished['release_receipt']['release']['checkpoint_ref'],session['publication'],released=True)
+        authority=reporting_contract.authenticate(self.lease_store,post['reporting_binding'],handle['invocation_id'],post['checkpoint_ref'])
+        _,actual=self.lease_store.read();historical=self.lease_store.read_revision(finished['release_receipt']['lease_revision'])
+        owned={'owner_id':handle['owner_id'],'generation':handle['generation']}
+        forged=copy.deepcopy(actual);forged['activity_refs'].append('caller:unobserved-current-field')
+        result=final_response_gate.evaluate(handle['invocation_id'],forged,post,owned,finished['release_receipt'],historical,bridge._utc(),reporting_authority=authority)
+        self.assertFalse(result['final_response_allowed'])
+        forged=copy.deepcopy(historical);forged['activity_refs'].append('caller:unobserved-historical-field')
+        result=final_response_gate.evaluate(handle['invocation_id'],actual,post,owned,finished['release_receipt'],forged,bridge._utc(),reporting_authority=authority)
+        self.assertFalse(result['final_response_allowed'])
+        result=final_response_gate.evaluate(handle['invocation_id'],actual,post,None,None,None,bridge._utc(),reporting_authority=authority)
+        self.assertFalse(result['final_response_allowed'])
 
     def test_dirty_worker_is_rejected_before_publishing(self):
         request = self.start_request()
@@ -369,7 +456,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
                 self.assertEqual(self.lease_store.read()[0], revision)
         # An invalid request must leave the valid retry usable.
         finished = bridge.finish(self.finish_request(handle))
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
 
     def test_unsuccessful_terminal_workers_release_without_publishing(self):
         request = self.start_request()
@@ -381,7 +468,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertIsNone(finished["published_commit"])
         self.assertFalse(finished["scope_complete"])
         self.assertEqual(finished["worker_status"], "failed")
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(), self.base)
         self.assertIsNone(self.lease_store.read()[1]["owner_id"])
         self.assertTrue(self.wait_for(handle, "failed")["quiescent"])
@@ -398,7 +485,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertEqual(finished['worker_status'],'failed')
         self.assertFalse(finished['scope_complete'])
         self.assertIsNone(finished['published_commit'])
-        self.assertTrue(finished['final_response_allowed'])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(),self.base)
 
     def test_failed_worker_closes_while_preserving_exact_unresolved_guard_and_claims(self):
@@ -427,7 +514,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertEqual(after['last_release']['external_reconciliation'],'unknown_preserved')
         self.assertFalse(finished['scope_complete'])
         self.assertIsNone(finished['published_commit'])
-        self.assertTrue(finished['final_response_allowed'])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(),self.base)
 
     def test_failed_worker_failure_refs_recover_after_release_before_session_save(self):
@@ -460,7 +547,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertIsNone(observation.get('pending_terminal_status'))
         recovered = bridge.finish(finish)
         self.assertFalse(recovered['scope_complete'])
-        self.assertTrue(recovered['final_response_allowed'])
+        self.assertTrue(recovered['managed_finish_allowed'])
         self.assertEqual(recovered['worker_status'], 'failed')
         self.assertIsNone(recovered['published_commit'])
         self.assertEqual(self.remote_head(), self.base)
@@ -499,7 +586,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
                          bridge._load_session(str(self.root / "handles"), handle["handle_id"])["runtime_launch_id"])
         self.assertEqual(len(list((self.root / "journal").glob("**/launch.lock"))), 1)
         finished = bridge.finish(self.finish_request(handle))
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.lease_store.read()[1]["generation"], 1)
         self.assertEqual(len(list((self.root / "journal").glob("**/launch.lock"))), 1)
 
@@ -525,7 +612,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertTrue(waiting["lease_owned"])
         self.assertEqual(waiting["generation"], 1)
         self.assertEqual(len(list((self.root / "journal").glob("**/launch.lock"))), 1)
-        self.assertTrue(bridge.finish(self.finish_request(handle))["final_response_allowed"])
+        self.assertTrue(bridge.finish(self.finish_request(handle))["managed_finish_allowed"])
 
     def test_missing_required_result_refs_rejected_before_shared_effects(self):
         handle = bridge.start(self.start_request())
@@ -539,7 +626,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
                     bridge.finish(request)
                 self.assertEqual(self.remote_head(), self.base)
                 self.assertEqual(self.lease_store.read()[0], revision)
-        self.assertTrue(bridge.finish(self.finish_request(handle))["final_response_allowed"])
+        self.assertTrue(bridge.finish(self.finish_request(handle))["managed_finish_allowed"])
 
     def test_repeated_exact_start_recovers_original_handle_after_publication(self):
         request = self.start_request()
@@ -566,7 +653,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
                     bridge.start(changed)
         self.assertEqual(len(list((self.root / "handles").glob("*.json"))), 1)
         self.wait_for(handle, "awaiting_release")
-        self.assertTrue(bridge.finish(self.finish_request(handle))["final_response_allowed"])
+        self.assertTrue(bridge.finish(self.finish_request(handle))["managed_finish_allowed"])
 
     def test_repeated_start_resumes_prepared_request_before_launch(self):
         request = self.start_request()
@@ -577,7 +664,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         handle = bridge.start(request)
         self.assertEqual(handle["handle_id"], original_id)
         self.wait_for(handle, "awaiting_release")
-        self.assertTrue(bridge.finish(self.finish_request(handle))["final_response_allowed"])
+        self.assertTrue(bridge.finish(self.finish_request(handle))["managed_finish_allowed"])
 
     def test_repeated_start_resumes_unconsumed_queue_without_new_attempt(self):
         request = self.start_request()
@@ -588,7 +675,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         handle = bridge.start(request)
         self.assertEqual(handle["handle_id"], original_id)
         self.wait_for(handle, "awaiting_release")
-        self.assertTrue(bridge.finish(self.finish_request(handle))["final_response_allowed"])
+        self.assertTrue(bridge.finish(self.finish_request(handle))["managed_finish_allowed"])
         self.assertEqual(len(list((self.root / "journal").glob("**/launch.lock"))), 1)
 
     def test_crash_after_release_before_session_save_finishes_on_retry(self):
@@ -606,7 +693,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         published = self.remote_head()
         finished = bridge.finish(self.finish_request(handle))
         self.assertEqual(finished["published_commit"], published)
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertTrue(self.wait_for(handle, "succeeded")["quiescent"])
 
     def test_crash_after_release_cas_repairs_terminal_marker_on_retry(self):
@@ -624,7 +711,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         published = self.remote_head()
         finished = bridge.finish(self.finish_request(handle))
         self.assertEqual(finished["published_commit"], published)
-        self.assertTrue(finished["final_response_allowed"])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertTrue(self.wait_for(handle, "succeeded")["quiescent"])
 
 
@@ -640,14 +727,14 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         finished=bridge.finish(self.finish_request(handle,'evidence:compute-result'))
         self.assertIsNone(finished['published_commit'])
         self.assertTrue(finished['scope_complete'])
-        self.assertTrue(finished['final_response_allowed'])
+        self.assertTrue(finished['managed_finish_allowed'])
         self.assertEqual(self.remote_head(),self.base)
         self.assertIsNone(self.lease_store.read()[1]['owner_id'])
         state=GitManagedExecutorStore(self.repo,'origin',self.plan['coordination_ref'],self.plan).read()[1]
         self.assertTrue(state['tasks'][0]['integrated'])
         again=bridge.finish(self.finish_request(handle,'evidence:compute-result'))
         self.assertIsNone(again['published_commit'])
-        self.assertTrue(again['final_response_allowed'])
+        self.assertTrue(again['managed_finish_allowed'])
 
     def test_read_only_success_cannot_complete_with_unresolved_claimed_guard(self):
         import copy
@@ -697,7 +784,7 @@ subprocess.run(['git','commit','-qm','managed closure'],check=True)
         self.assertEqual(recovered['handle_id'],handle['handle_id'])
         self.assertIsNone(recovered['published_commit'])
         self.assertTrue(recovered['scope_complete'])
-        self.assertTrue(recovered['final_response_allowed'])
+        self.assertTrue(recovered['managed_finish_allowed'])
         self.assertEqual(self.remote_head(),self.base)
         released=self.lease_store.read()[1]
         self.assertIsNone(released['owner_id'])

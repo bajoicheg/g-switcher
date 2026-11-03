@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Non-serializable managed terminal-lifecycle capability for execution-lease/v2 admission."""
 from __future__ import annotations
-import copy,hashlib,json
+import copy,hashlib,json,os
 from datetime import datetime,timezone
 
 _SEAL=object()
+
+def invocation_identity(payload):
+    keys=['pool_id','task_id','attempt_id','launch_id','managed_store_revision','lease_repository','lease_source_ref']
+    if payload.get('schema')=='managed-terminal-capability/v2':
+        keys+=['controller_proc_pid','controller_birth','boot_id','runtime_processes']
+    elif payload.get('schema')!='managed-terminal-capability/v1':
+        raise ValueError('managed capability descriptor schema invalid')
+    return {key:payload[key] for key in keys}
 
 def _digest(value):
     return "sha256:"+hashlib.sha256(
@@ -35,6 +43,11 @@ class _VerifiedManagedTerminalCapability:
         _utc(at,"acquisition time")
         p=self._payload
         runtime=self._runtime
+        if p.get('schema')=='managed-terminal-capability/v2':
+            from managed_executor_runtime import _boot,_process
+            current=_process(p['controller_proc_pid'])
+            if p['boot_id']!=_boot() or p['controller_proc_pid']!=int(os.readlink('/proc/self')) or current is None or current['birth']!=p['controller_birth']:
+                raise ValueError('original controller birth/boot binding changed')
         historical=runtime.store.read_revision(p["managed_store_revision"])
         if historical.get("revision")!=p["managed_state_revision"]:
             raise ValueError("managed terminal capability state revision mismatch")
@@ -44,7 +57,8 @@ class _VerifiedManagedTerminalCapability:
         if task is None or task["status"]!="running" or task["active_attempt_id"]!=p["attempt_id"]:
             raise ValueError("managed terminal capability does not bind a durable running attempt")
         request=runtime._request(p["task_id"],p["attempt_id"])
-        if request is None or _digest(request)!=p["request_ref"]:
+        from managed_executor_runtime import _digest as request_digest
+        if request is None or request_digest(request)!=p["request_ref"]:
             raise ValueError("managed terminal capability request binding mismatch")
         observation=runtime.observe(p["task_id"],p["attempt_id"])
         if observation.get("status") not in {"starting","running","awaiting_release"} or observation.get("quiescent") is not False:
@@ -78,23 +92,34 @@ def issue(runtime,task_id,attempt_id,*,lease_repository,lease_source_ref,observe
     task=next((row for row in state["tasks"] if row["id"]==task_id),None)
     if task is None or task["status"]!="running" or task["active_attempt_id"]!=attempt_id:
         raise ValueError("managed pool does not bind the live attempt")
-    request_ref=_digest(request)
+    from managed_executor_runtime import _digest as request_digest
+    request_ref=request_digest(request)
     if observation.get("request_ref")!=request_ref or not isinstance(observation.get("launch_id"),str):
         raise ValueError("managed runtime observation does not bind launch request")
     observed_at=observed_at_utc or observation.get("created_at_utc")
     _utc(observed_at,"capability observation")
+    from managed_executor_runtime import _boot,_process
+    controller=int(os.readlink('/proc/self'));process=_process(controller)
+    if process is None:raise ValueError('native original controller birth unavailable')
+    processes=[{key:row[key] for key in ('pid','birth','role')} for row in observation.get('process_births',[]) if row.get('role') in {'worker','supervisor'}]
+    if ({row['role'] for row in processes}!={'worker','supervisor'} or len(processes)!=2 or
+        any(not isinstance(row['birth'],str) or not row['birth'].isdigit() or
+            (actual:=_process(row['pid'])) is None or actual['birth']!=row['birth'] for row in processes)):
+        raise ValueError('live original worker/supervisor births required; UNKNOWN is not minted')
     identity={"pool_id":state["pool_id"],"task_id":task_id,"attempt_id":attempt_id,
               "launch_id":observation["launch_id"],"managed_store_revision":revision,
-              "lease_repository":lease_repository,"lease_source_ref":lease_source_ref}
+              "lease_repository":lease_repository,"lease_source_ref":lease_source_ref,
+              'controller_proc_pid':controller,'controller_birth':process['birth'],'boot_id':_boot(),'runtime_processes':processes}
     invocation_id="managed-terminal:"+_digest(identity).split(":",1)[1]
-    payload={"schema":"managed-terminal-capability/v1","invocation_id":invocation_id,
+    payload={"schema":"managed-terminal-capability/v2","invocation_id":invocation_id,
              "execution_surface":"managed","managed_store_ref":runtime.store.ref,
              "managed_store_id":runtime.store.store_id,"managed_store_revision":revision,
              "managed_state_revision":state["revision"],"pool_id":state["pool_id"],
              "task_id":task_id,"attempt_id":attempt_id,"request_ref":request_ref,
              "launch_id":observation["launch_id"],"lease_repository":lease_repository,
              "lease_source_ref":lease_source_ref,"observed_at_utc":observed_at,
-             "started_at_utc":observation.get("created_at_utc") or observed_at}
+             "started_at_utc":observation.get("created_at_utc") or observed_at,
+             **{k:identity[k] for k in ('controller_proc_pid','controller_birth','boot_id','runtime_processes')}}
     return _VerifiedManagedTerminalCapability(_SEAL,runtime,payload)
 
 def reference(value):

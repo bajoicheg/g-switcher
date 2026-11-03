@@ -125,496 +125,230 @@ class GitLaneResultVerifierTests(unittest.TestCase):
                  "intended_integrated_head": result_commit,
                  "operation_id": "op-1"})
 
-    def test_integration_publisher_performs_exact_head_conditional_fast_forward(self):
-        remote = self.repo / "remote.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "origin", str(remote))
-        git(self.repo, "push", "-q", "origin", self.base + ":refs/heads/integration")
-
-        git(self.repo, "checkout", "-qb", "worker-publish", self.base)
-        result_commit = self.commit(Path("src/a/published.py"), "ok\n", "published result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "origin")
-        attempt_store = GitDocumentStore(
-            self.repo, "origin", "refs/heads/cdc/publication-attempts",
-            remote_id, protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "origin", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-cas",
-        }
-        evidence = publisher(item, integrator, intent)
-        self.assertTrue(evidence["conditional_update"])
-        self.assertFalse(evidence["force_push"])
-        self.assertEqual(evidence["integrated_head"], result_commit)
-        remote_head = subprocess.check_output(
-            ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/integration"],
-            text=True).strip()
-        self.assertEqual(remote_head, result_commit)
-        # Lost-reply/retry reconciliation is idempotent once exact readback matches.
-        self.assertEqual(publisher(item, integrator, intent), evidence)
-
-    def test_racing_publishers_submit_one_transport_for_the_same_attempt(self):
-        remote = self.repo / "remote-race.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "origin", str(remote))
-        git(self.repo, "push", "-q", "origin", self.base + ":refs/heads/integration")
-        result = self.commit(Path("src/a/race.py"), "ok\n", "race result")
-        other = self.repo / "other"
-        subprocess.run(["git", "clone", "-q", str(self.repo), str(other)], check=True)
-        git(other, "remote", "set-url", "origin", str(remote))
-        remote_id = project_lane_git.remote_identity(self.repo, "origin")
-        publishers = []
-        for checkout in (self.repo, other):
-            store = GitDocumentStore(checkout, "origin", "refs/heads/cdc/race-attempts",
-                                     remote_id, protected_refs=("refs/heads/integration",))
-            publishers.append(project_lane_git.GitLaneIntegrationPublisher(
-                checkout, "origin", "refs/heads/integration", remote_id, attempt_store=store))
-        integrator = LaneClaim("integrator", "inv", LaneKind.INTEGRATOR, self.base,
-                               str(self.repo), self.primary, executor_id="e", role="integrator")
-        item = {"lane_id": "lane", "result_commit": result}
-        intent = dict(item, observed_shared_head=self.base, intended_integrated_head=result,
-                      operation_id="race-operation")
-        ready = threading.Barrier(2)
-        calls = []
-        transition = project_lane_git.GitLaneIntegrationPublisher._transition_attempt
-        push = project_lane_git.GitLaneIntegrationPublisher._push_cas
-
-        def synchronized_transition(publisher, item, intent, target, allowed):
-            if target == "submitted":
-                ready.wait(timeout=20)
-            return transition(publisher, item, intent, target, allowed)
-
-        def observed_push(publisher, observed, intended):
-            calls.append((observed, intended))
-            return push(publisher, observed, intended)
-
-        def publish(publisher):
-            try:
-                return publisher(item, integrator, intent)
-            except ValueError as exc:
-                return str(exc)
-
-        with mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,
-                               "_transition_attempt", synchronized_transition), \
-             mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,
-                               "_push_cas", observed_push):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                results = list(executor.map(publish, publishers))
-        self.assertEqual(calls, [(self.base, result)],
-                         "one durable attempt must authorize one provider transport")
-        successes = [value for value in results if isinstance(value, dict)]
-        self.assertEqual(len(successes), 1, results)
-        self.assertTrue(successes[0]["conditional_update"])
-        self.assertEqual(git(remote, "rev-parse", "refs/heads/integration"), result)
-        self.assertEqual(publishers[1](item, integrator, intent), successes[0])
-        self.assertEqual(publishers[0].publication_attempt("race-operation")["status"], "confirmed")
-
-    def test_preexisting_intended_remote_head_is_readback_only_without_this_intents_cas(self):
-        remote = self.repo / "remote-preexisting.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "preexisting", str(remote))
-        git(self.repo, "push", "-q", "preexisting", self.base + ":refs/heads/integration")
-
-        git(self.repo, "checkout", "-qb", "worker-preexisting", self.base)
-        result_commit = self.commit(Path("src/a/preexisting.py"), "ok\n", "worker result")
-        git(self.repo, "push", "-q", "preexisting", result_commit + ":refs/heads/integration")
-        git(self.repo, "checkout", "-q", self.primary)
-
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "preexisting")
-        attempt_store = GitDocumentStore(
-            self.repo, "preexisting", "refs/heads/cdc/preexisting-attempts",
-            remote_id, protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "preexisting", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        evidence = publisher(
-            {"lane_id": "lane", "result_commit": result_commit},
-            integrator,
-            {"lane_id": "lane", "result_commit": result_commit,
-             "observed_shared_head": self.base,
-             "intended_integrated_head": result_commit,
-             "operation_id": "op-preexisting"})
-        self.assertFalse(evidence["conditional_update"])
-
-    def test_integration_publisher_requires_durable_attempt_state_before_push(self):
-        remote = self.repo / "remote-no-attempt.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "noattempt", str(remote))
-        git(self.repo, "push", "-q", "noattempt", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-no-attempt", self.base)
-        result_commit = self.commit(Path("src/a/noattempt.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "noattempt", "refs/heads/integration",
-            project_lane_git.remote_identity(self.repo, "noattempt"))
-        with self.assertRaisesRegex(ValueError, "attempt|durable"):
-            publisher(
-                {"lane_id": "lane", "result_commit": result_commit},
-                integrator,
-                {"lane_id": "lane", "result_commit": result_commit,
-                 "observed_shared_head": self.base,
-                 "intended_integrated_head": result_commit,
-                 "operation_id": "op-no-attempt"})
-
-    def test_lost_push_reply_reconciles_from_durable_attempt_after_restart_without_replay(self):
-        remote = self.repo / "remote-lost.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "lost", str(remote))
-        git(self.repo, "push", "-q", "lost", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-lost", self.base)
-        result_commit = self.commit(Path("src/a/lost.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "lost")
-        attempt_store = GitDocumentStore(
-            self.repo, "lost", "refs/heads/cdc/lost-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-lost",
-        }
-
-        class LostReply(project_lane_git.GitLaneIntegrationPublisher):
-            def _push_cas(self, observed, intended):
-                super()._push_cas(observed, intended)
-                raise project_lane_git._PublicationUnknown("lost reply")
-
-        first = LostReply(
-            self.repo, "lost", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        with self.assertRaisesRegex(ValueError, "unknown"):
-            first(item, integrator, intent)
-        self.assertEqual(
-            subprocess.check_output(
-                ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/integration"],
-                text=True).strip(),
-            result_commit)
-
-        class NoReplay(project_lane_git.GitLaneIntegrationPublisher):
-            def _push_cas(self, observed, intended):
-                raise AssertionError("publication push replayed")
-
-        restarted = NoReplay(
-            self.repo, "lost", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        evidence = restarted(item, integrator, intent)
-        self.assertTrue(evidence["conditional_update"])
-        self.assertEqual(evidence["publication_attempt_state"], "confirmed")
-
-    def test_remote_failure_porcelain_is_unknown_and_reconciles_without_replay(self):
-        remote = self.repo / "remote-failure.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "remotefailure", str(remote))
-        git(self.repo, "push", "-q", "remotefailure", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-remote-failure", self.base)
-        result_commit = self.commit(Path("src/a/remote_failure.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "remotefailure")
-        attempt_store = GitDocumentStore(
-            self.repo, "remotefailure", "refs/heads/cdc/remote-failure-attempts",
-            remote_id, protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "remotefailure", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-remote-failure",
-        }
-
-        real_run = subprocess.run
-        def remote_failure(args, *positional, **kwargs):
-            is_publication_push = (
-                isinstance(args, list)
-                and "push" in args
-                and "--porcelain" in args
-                and any(
-                    isinstance(arg, str)
-                    and arg.startswith("--force-with-lease=refs/heads/integration:")
-                    for arg in args
-                )
-            )
-            if is_publication_push:
-                return subprocess.CompletedProcess(
-                    args, 1,
-                    stdout=(
-                        "!\t" + result_commit + ":refs/heads/integration"
-                        + "\t[remote failure] (remote failed to report status)\n"
-                    ),
-                    stderr="error: failed to push some refs to 'remotefailure'\n",
-                )
-            return real_run(args, *positional, **kwargs)
-
-        with mock.patch.object(project_lane_git.subprocess, "run", side_effect=remote_failure):
-            with self.assertRaisesRegex(ValueError, "unknown"):
-                publisher(item, integrator, intent)
-
-        _, state = attempt_store.read()
-        attempt = state["attempts"]["op-remote-failure"]
-        self.assertEqual(attempt["status"], "unknown")
-
-        # Simulate the ambiguous transport having actually made B authoritative.
-        git(self.repo, "push", "-q", "remotefailure",
-            result_commit + ":refs/heads/test-only-object-seed")
-        subprocess.run(
-            ["git", "--git-dir", str(remote), "update-ref",
-             "refs/heads/integration", result_commit], check=True)
-
-        class NoReplay(project_lane_git.GitLaneIntegrationPublisher):
-            def _push_cas(self, observed, intended):
-                raise AssertionError("unknown publication must reconcile without replay")
-
-        restarted = NoReplay(
-            self.repo, "remotefailure", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        evidence = restarted(item, integrator, intent)
-        self.assertTrue(evidence["conditional_update"])
-        self.assertEqual(evidence["publication_attempt_state"], "confirmed")
-        self.assertEqual(evidence["publication_attempt_id"], attempt["attempt_id"])
-
-    def test_prepared_but_unsent_attempt_does_not_become_proof_from_matching_head(self):
-        remote = self.repo / "remote-unsent.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "unsent", str(remote))
-        git(self.repo, "push", "-q", "unsent", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-unsent", self.base)
-        result_commit = self.commit(Path("src/a/unsent.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "unsent")
-        attempt_store = GitDocumentStore(
-            self.repo, "unsent", "refs/heads/cdc/unsent-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "unsent", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-unsent",
-        }
-        attempt = publisher._prepare_attempt(item, intent)
-        self.assertEqual(attempt["status"], "prepared")
-        git(self.repo, "push", "-q", "unsent", result_commit + ":refs/heads/integration")
-        evidence = publisher(item, integrator, intent)
-        self.assertFalse(evidence["conditional_update"])
-        self.assertEqual(evidence["publication_attempt_state"], "prepared")
-
-    def test_submitted_marker_without_push_outcome_does_not_become_conditional_proof(self):
-        remote = self.repo / "remote-submitted-unsent.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "submittedunsent", str(remote))
-        git(self.repo, "push", "-q", "submittedunsent", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-submitted-unsent", self.base)
-        result_commit = self.commit(
-            Path("src/a/submitted_unsent.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "submittedunsent")
-        attempt_store = GitDocumentStore(
-            self.repo, "submittedunsent",
-            "refs/heads/cdc/submitted-unsent-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "submittedunsent", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-submitted-unsent",
-        }
-
-        attempt = publisher._prepare_attempt(item, intent)
-        attempt = publisher._transition_attempt(
-            item, intent, "submitted", {"prepared"})
-        self.assertEqual(attempt["status"], "submitted")
-
-        # Model a controller crash after the durable submitted marker but before
-        # _push_cas() is invoked. Another actor then moves the authoritative ref
-        # to the same intended bytes. The marker alone is not transport proof.
-        git(self.repo, "push", "-q", "submittedunsent",
-            result_commit + ":refs/heads/integration")
-
-        evidence = publisher(item, integrator, intent)
-        self.assertFalse(evidence["conditional_update"])
-        self.assertEqual(evidence["publication_attempt_state"], "submitted")
-        self.assertEqual(
-            attempt_store.read()[1]["attempts"]["op-submitted-unsent"]["status"],
-            "submitted")
-
-    def test_attempt_from_other_operation_or_result_is_not_reused(self):
-        remote = self.repo / "remote-mismatch.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "mismatch", str(remote))
-        git(self.repo, "push", "-q", "mismatch", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-mismatch", self.base)
-        result_commit = self.commit(Path("src/a/mismatch.py"), "ok\n", "worker result")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "mismatch")
-        attempt_store = GitDocumentStore(
-            self.repo, "mismatch", "refs/heads/cdc/mismatch-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "mismatch", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        item = {"lane_id": "lane", "result_commit": result_commit}
-        other_intent = {
-            "lane_id": "lane", "result_commit": result_commit,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-other",
-        }
-        publisher._prepare_attempt(item, other_intent)
-        git(self.repo, "push", "-q", "mismatch", result_commit + ":refs/heads/integration")
-        current_intent = dict(other_intent, operation_id="op-current")
-        self.assertFalse(publisher(item, integrator, current_intent)["conditional_update"])
-
-        mismatched_item = {"lane_id": "lane", "result_commit": self.base}
-        mismatched_intent = {
-            "lane_id": "lane", "result_commit": self.base,
-            "observed_shared_head": self.base,
-            "intended_integrated_head": result_commit,
-            "operation_id": "op-other",
-        }
-        with self.assertRaisesRegex(ValueError, "does not match"):
-            publisher(mismatched_item, integrator, mismatched_intent)
-
-    def test_concurrent_remote_move_during_cas_is_rejected_without_overwrite(self):
-        remote = self.repo / "remote-cas-race.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "casrace", str(remote))
-        git(self.repo, "push", "-q", "casrace", self.base + ":refs/heads/integration")
-        git(self.repo, "checkout", "-qb", "worker-casrace", self.base)
-        result_commit = self.commit(Path("src/a/casrace.py"), "worker\n", "worker result")
-        git(self.repo, "checkout", "-qb", "concurrent-casrace", self.base)
-        concurrent = self.commit(Path("src/b/casrace.py"), "other\n", "concurrent")
-        git(self.repo, "checkout", "-q", self.primary)
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "casrace")
-        attempt_store = GitDocumentStore(
-            self.repo, "casrace", "refs/heads/cdc/casrace-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-
-        class RacingPublisher(project_lane_git.GitLaneIntegrationPublisher):
-            def _push_cas(inner_self, observed, intended):
-                git(self.repo, "push", "-q", "casrace", concurrent + ":refs/heads/integration")
-                return super(RacingPublisher, inner_self)._push_cas(observed, intended)
-
-        publisher = RacingPublisher(
-            self.repo, "casrace", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        with self.assertRaisesRegex(ValueError, "rejected"):
-            publisher(
-                {"lane_id": "lane", "result_commit": result_commit},
-                integrator,
-                {"lane_id": "lane", "result_commit": result_commit,
-                 "observed_shared_head": self.base,
-                 "intended_integrated_head": result_commit,
-                 "operation_id": "op-casrace"})
-        self.assertEqual(
-            subprocess.check_output(
-                ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/integration"],
-                text=True).strip(),
-            concurrent)
-        _, attempt_state = attempt_store.read()
-        self.assertEqual(attempt_state["attempts"]["op-casrace"]["status"], "rejected")
-        git(self.repo, "push", "-q", "casrace",
-            result_commit + ":refs/heads/test-only-object-seed")
-        subprocess.run(
-            ["git", "--git-dir", str(remote), "update-ref",
-             "refs/heads/integration", result_commit], check=True)
-        retry = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "casrace", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        evidence = retry(
-            {"lane_id": "lane", "result_commit": result_commit},
-            integrator,
-            {"lane_id": "lane", "result_commit": result_commit,
-             "observed_shared_head": self.base,
-             "intended_integrated_head": result_commit,
-             "operation_id": "op-casrace"})
-        self.assertFalse(evidence["conditional_update"])
-        self.assertEqual(evidence["publication_attempt_state"], "rejected")
-
-    def test_integration_publisher_rejects_remote_head_movement_without_overwrite(self):
-        remote = self.repo / "remote-race.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        git(self.repo, "remote", "add", "race", str(remote))
-        git(self.repo, "push", "-q", "race", self.base + ":refs/heads/integration")
-
-        git(self.repo, "checkout", "-qb", "worker-race", self.base)
-        result_commit = self.commit(Path("src/a/race.py"), "worker\n", "worker result")
-        git(self.repo, "checkout", "-qb", "concurrent", self.base)
-        concurrent = self.commit(Path("src/b/concurrent.py"), "other\n", "concurrent")
-        git(self.repo, "push", "-q", "race", concurrent + ":refs/heads/integration")
-        git(self.repo, "checkout", "-q", self.primary)
-
-        integrator = LaneClaim(
-            "integrator", "integrator-inv", LaneKind.INTEGRATOR, self.base,
-            str(self.repo), self.primary, executor_id="integrator", role="integrator")
-        remote_id = project_lane_git.remote_identity(self.repo, "race")
-        attempt_store = GitDocumentStore(
-            self.repo, "race", "refs/heads/cdc/race-attempts", remote_id,
-            protected_refs=("refs/heads/integration",))
-        publisher = project_lane_git.GitLaneIntegrationPublisher(
-            self.repo, "race", "refs/heads/integration", remote_id,
-            attempt_store=attempt_store)
-        with self.assertRaisesRegex(ValueError, "moved"):
-            publisher(
-                {"lane_id": "lane", "result_commit": result_commit},
-                integrator,
-                {"lane_id": "lane", "result_commit": result_commit,
-                 "observed_shared_head": self.base,
-                 "intended_integrated_head": result_commit,
-                 "operation_id": "op-race"})
-        remote_head = subprocess.check_output(
-            ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/integration"],
-            text=True).strip()
-        self.assertEqual(remote_head, concurrent)
-
     def test_invalid_or_missing_commit_fails_closed(self):
         for value in ("main", "f" * 40):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 self.verifier(self.claim, value)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class NativePublicationTests(unittest.TestCase):
+    """Transport faults use actual issued runtime/pool/lease custody."""
+    def setUp(self):
+        import managed_host_bridge as bridge
+        from test_managed_host_bridge import ManagedHostBridgeTests
+        self.f=ManagedHostBridgeTests();self.f.setUp();self.addCleanup(self.f.doCleanups)
+        self.handle=bridge.start(self.f.start_request());self.f.wait_for(self.handle,'awaiting_release')
+        self.session=bridge._load_session(str(self.f.root/'handles'),self.handle['handle_id'])
+        self.result,_,_=bridge._result(self.session,bridge._runtime(self.session))
+        self.store=GitDocumentStore(self.f.repo,'origin',self.session['publication_ref'],self.f.store_id)
+        self.item={'lane_id':self.session['task_id'],'result_commit':self.result}
+        self.intent=dict(self.item,operation_id=bridge._digest({'handle_id':self.handle['handle_id'],'result_commit':self.result,'observed_shared_head':self.f.base,'shared_ref':'refs/heads/main'}),observed_shared_head=self.f.base,intended_integrated_head=self.result)
+        self.integrator=LaneClaim('integrator',self.session['invocation_id'],LaneKind.INTEGRATOR,self.f.base,str(self.f.repo),'main',executor_id=self.f.plan['integrator_id'],role='integrator')
+    def publisher(self,cls=None,**kwargs):
+        return (cls or project_lane_git.GitLaneIntegrationPublisher)(self.f.repo,'origin','refs/heads/main',self.f.store_id,attempt_store=self.store,quarantine_store=self.f.lease_store,native_handle={'handle_root':str(self.f.root/'handles'),'handle_id':self.handle['handle_id']},**kwargs)
+    def publish(self,publisher):return publisher(self.item,self.integrator,self.intent)
+
+    def install_guard(self):
+        import copy,managed_host_bridge as bridge,execution_lease_v2 as lease,operation_intent as op
+        binding={'repository':self.session['lease_repository'],'candidate_sha':self.result,
+                 'backend':'local_command','mode':'writer','environment_id':'fixture',
+                 'check_suite_fingerprint':'sha256:'+'1'*64,'environment_fingerprint':'sha256:'+'2'*64,
+                 'check_plan_digest':'sha256:'+'3'*64}
+        intent=op.prepare(binding,'guarded-publication',self.session['lease_source_ref'],bridge._utc())
+        receipt=op.verify_readback(intent,copy.deepcopy(intent),'fixture:guard-readback',bridge._utc())
+        intent=op.transition(intent,'submitting',bridge._utc(),receipt=receipt)
+        intent=op.transition(intent,'unknown',bridge._utc())
+        revision,row=self.f.lease_store.read()
+        guarded=lease.set_guard(row,self.session['owner_id'],self.session['generation'],self.session['invocation_id'],bridge._utc(),intent,'fixture:guard-readback')
+        self.f.lease_store.compare_and_swap(revision,guarded)
+
+    def expire_ownership(self):
+        from datetime import datetime,timezone
+        now=datetime.now(timezone.utc);revision,row=self.f.lease_store.read()
+        row['expires_at_utc']=now.isoformat().replace('+00:00','Z')
+        self.f.lease_store.compare_and_swap(revision,row)
+
+    def test_native_guard_blocks_direct_product_publication(self):
+        self.install_guard()
+        with self.assertRaisesRegex(ValueError,'unresolved external guard'):self.publish(self.publisher())
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+
+    def test_native_expired_ttl_cannot_use_backdated_publisher_clock(self):
+        self.expire_ownership()
+        with self.assertRaisesRegex(ValueError,'ownership is not fresh'):
+            self.publish(self.publisher(clock=lambda:'2000-01-01T00:00:00Z'))
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+
+    def test_native_stale_heartbeat_blocks_direct_product_publication(self):
+        from datetime import datetime,timedelta,timezone
+        import managed_host_bridge as bridge
+        # Advance the native clock beyond its heartbeat gate without changing
+        # the issued invocation/acquisition or waiting ten real minutes.
+        at=(datetime.now(timezone.utc)+timedelta(seconds=601)).isoformat().replace('+00:00','Z')
+        with mock.patch.object(bridge,'_utc',return_value=at):
+            with self.assertRaisesRegex(ValueError,'ownership is not fresh'):self.publish(self.publisher())
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+
+    def test_guard_racing_submitted_consumption_leaves_prepared_unsent(self):
+        fixture=self
+        class BeforeConsumption(project_lane_git.GitLaneIntegrationPublisher):
+            def _transition_attempt(inner,item,intent,target,allowed):
+                if target=='submitted':fixture.install_guard()
+                return super()._transition_attempt(item,intent,target,allowed)
+        publisher=self.publisher(BeforeConsumption)
+        with self.assertRaisesRegex(ValueError,'unresolved external guard'):self.publish(publisher)
+        self.assertEqual(publisher.publication_attempt(self.intent['operation_id'])['status'],'prepared')
+        self.assertEqual(self.f.remote_head(),self.f.base)
+
+    def test_postsubmitted_guard_denial_stays_unresolved_and_never_replays(self):
+        fixture=self
+        class AfterConsumption(project_lane_git.GitLaneIntegrationPublisher):
+            def _transition_attempt(inner,item,intent,target,allowed):
+                result=super()._transition_attempt(item,intent,target,allowed)
+                if target=='submitted':fixture.install_guard()
+                return result
+        publisher=self.publisher(AfterConsumption)
+        with self.assertRaisesRegex(ValueError,'unresolved external guard'):self.publish(publisher)
+        self.assertEqual(self.f.remote_head(),self.f.base)
+        self.assertEqual(publisher.publication_attempt(self.intent['operation_id'])['status'],'submitted')
+        original=self.store.read()
+        with self.assertRaises(ValueError):self.publish(self.publisher())
+        self.assertEqual(self.store.read(),original)
+        self.f.git('push','origin',self.result+':refs/heads/main')
+        evidence=self.publish(self.publisher())
+        self.assertFalse(evidence['conditional_update']);self.assertEqual(evidence['publication_attempt_state'],'submitted')
+        self.assertEqual(self.store.read(),original)
+
+    def test_guard_appearing_inside_transport_boundary_cannot_send(self):
+        fixture=self
+        class BeforeTransport(project_lane_git.GitLaneIntegrationPublisher):
+            def _push_cas(inner,*args):fixture.install_guard();return super()._push_cas(*args)
+        publisher=self.publisher(BeforeTransport)
+        with self.assertRaisesRegex(ValueError,'unresolved external guard'):self.publish(publisher)
+        self.assertEqual(publisher.publication_attempt(self.intent['operation_id'])['status'],'submitted')
+        self.assertEqual(self.f.remote_head(),self.f.base)
+
+    def test_integration_publisher_performs_exact_head_conditional_fast_forward(self):
+        publisher=self.publisher();evidence=self.publish(publisher)
+        self.assertTrue(evidence['conditional_update']);self.assertEqual(self.f.remote_head(),self.result)
+        self.assertEqual(self.publish(publisher),evidence)
+    def test_racing_publishers_submit_one_transport_for_the_same_attempt(self):
+        ready=threading.Barrier(2);calls=[]
+        transition=project_lane_git.GitLaneIntegrationPublisher._transition_attempt
+        push=project_lane_git.GitLaneIntegrationPublisher._push_cas
+        def synchronized(publisher,item,intent,target,allowed):
+            if target=='submitted':ready.wait(timeout=30)
+            return transition(publisher,item,intent,target,allowed)
+        def transport(publisher,*args):calls.append(args);return push(publisher,*args)
+        def submit(publisher):
+            try:return self.publish(publisher)
+            except ValueError as exc:return str(exc)
+        with mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,'_transition_attempt',synchronized),mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,'_push_cas',transport):
+            with concurrent.futures.ThreadPoolExecutor(2) as executor:results=list(executor.map(submit,[self.publisher(),self.publisher()]))
+        self.assertEqual(calls,[(self.f.base,self.result)],results)
+        self.assertEqual(len([r for r in results if isinstance(r,dict)]),1,results)
+    def test_preexisting_intended_remote_head_is_readback_only_without_this_intents_cas(self):
+        self.f.git('push','origin',self.result+':refs/heads/main')
+        legacy=project_lane_git.GitLaneIntegrationPublisher(self.f.repo,'origin','refs/heads/main',self.f.store_id,attempt_store=self.store)
+        self.assertFalse(self.publish(legacy)['conditional_update'])
+    def test_integration_publisher_requires_durable_attempt_state_before_push(self):
+        publisher=project_lane_git.GitLaneIntegrationPublisher(self.f.repo,'origin','refs/heads/main',self.f.store_id)
+        with self.assertRaisesRegex(ValueError,'durable|attempt'):self.publish(publisher)
+        self.assertEqual(self.f.remote_head(),self.f.base)
+    def test_lost_push_reply_reconciles_from_durable_attempt_after_restart_without_replay(self):
+        class LostReply(project_lane_git.GitLaneIntegrationPublisher):
+            def _push_cas(inner,*args):super()._push_cas(*args);raise project_lane_git._PublicationUnknown('lost reply')
+        with self.assertRaisesRegex(ValueError,'unknown'):self.publish(self.publisher(LostReply))
+        class NoReplay(project_lane_git.GitLaneIntegrationPublisher):
+            def _push_cas(inner,*args):raise AssertionError('transport replayed')
+        result=self.publish(self.publisher(NoReplay));self.assertTrue(result['conditional_update']);self.assertEqual(result['publication_attempt_state'],'confirmed')
+    def test_remote_failure_porcelain_is_unknown_and_reconciles_without_replay(self):
+        actual=subprocess.run
+        def failure(args,*pos,**kw):
+            if '--porcelain' in args and any(a.startswith('--force-with-lease=refs/heads/main:') for a in args):return subprocess.CompletedProcess(args,1,'!\t'+self.result+':refs/heads/main\t[remote failure] (remote failed to report status)\n','error')
+            return actual(args,*pos,**kw)
+        with mock.patch.object(project_lane_git.subprocess,'run',side_effect=failure):
+            with self.assertRaisesRegex(ValueError,'unknown'):self.publish(self.publisher())
+        self.assertEqual(self.publisher().publication_attempt(self.intent['operation_id'])['status'],'unknown')
+        self.f.git('push','origin',self.result+':refs/heads/main')
+        with mock.patch.object(project_lane_git.GitLaneIntegrationPublisher,'_push_cas',side_effect=AssertionError('replay')):self.assertTrue(self.publish(self.publisher())['conditional_update'])
+    def test_prepared_but_unsent_attempt_does_not_become_proof_from_matching_head(self):
+        publisher=self.publisher();publisher._prepare_attempt(self.item,self.intent)
+        self.f.git('push','origin',self.result+':refs/heads/main')
+        evidence=self.publish(publisher);self.assertFalse(evidence['conditional_update']);self.assertEqual(evidence['publication_attempt_state'],'prepared')
+    def test_submitted_marker_without_push_outcome_does_not_become_conditional_proof(self):
+        publisher=self.publisher();publisher._prepare_attempt(self.item,self.intent);publisher._transition_attempt(self.item,self.intent,'submitted',{'prepared'})
+        original=self.store.read();self.f.git('push','origin',self.result+':refs/heads/main')
+        evidence=self.publish(publisher);self.assertFalse(evidence['conditional_update']);self.assertEqual(evidence['publication_attempt_state'],'submitted');self.assertEqual(self.store.read(),original)
+    def test_legacy_matching_unknown_observation_does_not_gain_conditional_authority(self):
+        publisher=self.publisher();publisher._prepare_attempt(self.item,self.intent);publisher._transition_attempt(self.item,self.intent,'submitted',{'prepared'});publisher._transition_attempt(self.item,self.intent,'unknown',{'submitted'})
+        self.f.git('push','origin',self.result+':refs/heads/main');original=self.store.read()
+        legacy=project_lane_git.GitLaneIntegrationPublisher(self.f.repo,'origin','refs/heads/main',self.f.store_id,attempt_store=self.store)
+        evidence=self.publish(legacy);self.assertFalse(evidence['conditional_update']);self.assertEqual(evidence['publication_attempt_state'],'unknown');self.assertEqual(self.store.read(),original)
+    def test_attempt_from_other_operation_or_result_is_not_reused(self):
+        publisher=self.publisher()
+        for bad in (dict(self.intent,operation_id='changed-key'),dict(self.intent,lane_id='changed-lane'),dict(self.intent,result_commit=self.f.base)):
+            with self.subTest(bad=bad),self.assertRaises(ValueError):publisher(self.item,self.integrator,bad)
+        self.assertIsNone(self.store.read()[0]);self.assertEqual(self.f.remote_head(),self.f.base)
+    def test_native_handle_cannot_borrow_another_source_lease_or_journal(self):
+        import copy
+        from git_lease_store import GitLeaseStore
+        publisher=self.publisher();original=self.store.read()
+        badlease=GitLeaseStore(self.f.repo,'origin','refs/heads/cdc/substitute-lease');publisher.quarantine_store=badlease
+        with self.assertRaisesRegex(ValueError,'substituted'):self.publish(publisher)
+        publisher=self.publisher();publisher.attempt_store=GitDocumentStore(self.f.repo,'origin','refs/heads/cdc/substitute-journal',self.f.store_id)
+        with self.assertRaisesRegex(ValueError,'custody'):self.publish(publisher)
+        publisher=self.publisher();publisher.source_ref='refs/heads/alternate';self.f.git('push','origin',self.f.base+':refs/heads/alternate')
+        with self.assertRaisesRegex(ValueError,'custody'):self.publish(publisher)
+        publisher=self.publisher();publisher.native_handle['handle_id']='missing-handle'
+        with self.assertRaises(ValueError):self.publish(publisher)
+        self.assertEqual(self.store.read(),original);self.assertEqual(self.f.remote_head(),self.f.base)
+    def test_canonical_custody_absence_and_endpoint_drift_block_transport(self):
+        publisher=self.publisher();self.f.git('push','origin',':'+self.f.lease_store.ref)
+        with self.assertRaisesRegex(ValueError,'custody missing'):self.publish(publisher)
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+    def test_forged_session_context_cannot_redirect_original_native_source(self):
+        import json,managed_host_bridge as bridge
+        path=bridge._session_path(str(self.f.root/'handles'),self.handle['handle_id']);original=path.read_bytes()
+        session=json.loads(original);session['lease_source_ref']='refs/heads/alternate';session['context_digest']=bridge._digest(bridge._session_context(session));path.write_text(json.dumps(session))
+        try:
+            publisher=self.publisher();publisher.source_ref='refs/heads/alternate'
+            with self.assertRaises(ValueError):self.publish(publisher)
+            self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+        finally:path.write_bytes(original)
+    def test_another_live_controller_cannot_borrow_original_owned_handle(self):
+        import sys
+        code="""import sys
+sys.path.insert(0,sys.argv[1]);import managed_host_bridge as b
+s=b._load_session(sys.argv[2],sys.argv[3])
+try:b._publish(s,sys.argv[4])
+except ValueError:print('rejected');sys.exit(0)
+sys.exit(1)
+"""
+        observed=subprocess.run([sys.executable,'-B','-c',code,str(Path(__file__).resolve().parents[1]/'scripts'),str(self.f.root/'handles'),self.handle['handle_id'],self.result],capture_output=True,text=True,timeout=20)
+        self.assertEqual(observed.returncode,0,observed.stderr);self.assertEqual(observed.stdout.strip(),'rejected')
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+    def test_consumed_pool_authority_cannot_send_with_old_native_handle(self):
+        import managed_host_bridge as bridge,managed_executor_pool as pool
+        runtime=bridge._runtime(self.session);revision,state=runtime.store.read()
+        failed=pool.fail_attempt(runtime.plan,state,self.session['task_id'],self.session['attempt_id'],terminal_status='failed',reservation_token=self.session['reservation_token'],expected_revision=state['revision'])
+        runtime.store.compare_and_swap(revision,failed)
+        with self.assertRaisesRegex(ValueError,'running pool authority'):self.publish(self.publisher())
+        self.assertEqual(self.f.remote_head(),self.f.base);self.assertIsNone(self.store.read()[0])
+    def concurrent_commit(self):
+        self.f.git('checkout','-q','--detach',self.f.base);(self.f.repo/'concurrent').write_text('other');self.f.git('add','concurrent');self.f.git('commit','-qm','concurrent');return self.f.git('rev-parse','HEAD')
+    def test_concurrent_remote_move_during_cas_is_rejected_without_overwrite(self):
+        concurrent=self.concurrent_commit()
+        class Racing(project_lane_git.GitLaneIntegrationPublisher):
+            def _push_cas(inner,*args):self.f.git('push','origin',concurrent+':refs/heads/main');return super()._push_cas(*args)
+        with self.assertRaisesRegex(ValueError,'rejected'):self.publish(self.publisher(Racing))
+        self.assertEqual(self.f.remote_head(),concurrent);self.assertEqual(self.publisher().publication_attempt(self.intent['operation_id'])['status'],'rejected')
+        self.f.git('push','origin',self.result+':refs/heads/object-seed');subprocess.run(['git','--git-dir',str(self.f.remote),'update-ref','refs/heads/main',self.result],check=True)
+        evidence=self.publish(self.publisher());self.assertFalse(evidence['conditional_update']);self.assertEqual(evidence['publication_attempt_state'],'rejected')
+    def test_integration_publisher_rejects_remote_head_movement_without_overwrite(self):
+        concurrent=self.concurrent_commit();self.f.git('push','origin',concurrent+':refs/heads/main')
+        with self.assertRaisesRegex(ValueError,'moved'):self.publish(self.publisher())
+        self.assertEqual(self.f.remote_head(),concurrent);self.assertIsNone(self.store.read()[0])
+
+
+if __name__ == '__main__':unittest.main()

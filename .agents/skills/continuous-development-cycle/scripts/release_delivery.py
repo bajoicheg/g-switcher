@@ -49,7 +49,7 @@ class _CheckedPublisher(adoption.GitConsumerAdoptionPublisher):
 class GitReleaseDelivery:
     """An already managed owner explicitly assembles/publishes; this acquires no lease."""
     def __init__(self,repo,remote,source_ref,source_identity,canonical_source,
-                 canonical_repository,lease_store,ownership,attempt_store,assembly_store,*,clock=_utc):
+                 canonical_repository,lease_store,ownership,attempt_store,assembly_store,*,clock=_utc,receiving_admission=None):
         self.repo=repository_root(Path(repo));self.clock=clock
         self.remote=remote;self.source_ref=source_ref
         if type(lease_store) is not GitLeaseStore:
@@ -62,6 +62,12 @@ class GitReleaseDelivery:
             raise ValueError("native canonical GitSource must share the consumer object cache")
         self.canonical_source=canonical_source;self.canonical_repository=canonical_repository
         self.source=GitSource(self.repo,remote,_identity(source_identity),clock=clock)
+        from receiving_ci_preflight import github_receiving_source,ReceivingAdmission
+        self.receiving_admission=receiving_admission
+        if github_receiving_source(self.source):
+            if type(receiving_admission) is not ReceivingAdmission:
+                raise ValueError('native receiving preflight/reservation must precede delivery writer admission')
+            receiving_admission.bind_owner(self.ownership)
         if type(attempt_store) is not GitDocumentStore or type(assembly_store) is not GitDocumentStore:
             raise ValueError("authentic dedicated GitDocumentStore records required")
         for store in (attempt_store,assembly_store):
@@ -91,6 +97,8 @@ class GitReleaseDelivery:
         if self._publishing_binding is None:raise ValueError("publication release binding is missing")
         self._verify_release(self._publishing_binding)
         self._check_owner()
+        if self.receiving_admission is not None:
+            self.receiving_admission.bind_owner(self.ownership)
 
     def _git(self,*args,input_text=None,index=None,raw=False):
         env=git_object_environment(GIT_TERMINAL_PROMPT="0",GIT_AUTHOR_NAME="CDC delivery",
@@ -163,6 +171,8 @@ class GitReleaseDelivery:
             raise ValueError("bounded transaction_id required")
         if type(operation_budget) is not int or operation_budget<=0:raise ValueError("operation budget invalid")
         self._check_owner()
+        if self.receiving_admission is not None:
+            self.receiving_admission.bind_owner(self.ownership)
         if self._pending():raise ValueError("pending adoption attempt: reconcile original before preparing another")
         proof=self._verify_release(binding);binding=copy.deepcopy(proof["release"])
         snapshot=self.source.pin(self.source_ref)
@@ -233,8 +243,11 @@ class GitReleaseDelivery:
             final_tree_sha=tree,observed_package_tree=binding["package_tree"],candidate_commit=candidate,
             live_source_head=expected_head,publication_claim=None,published_head=None,readback_package_tree=None)
         state["publication_claim"]=adoption.assess(state)["claim"]
-        return dict(schema="cdc-release-delivery/v1",release=binding,rollback_from=rollback_from,state=state,
+        prepared=dict(schema="cdc-release-delivery/v1",release=binding,rollback_from=rollback_from,state=state,
             authorizes_product_write=False,authorizes_lease_mutation=False,authorizes_external_start=False)
+        if self.receiving_admission is not None:
+            self.receiving_admission.bind_prepared(prepared,self.ownership)
+        return prepared
 
     def _preserved(self,source,candidate,binding,audit,rollback_from):
         current=self._current_lock(source)
@@ -287,6 +300,8 @@ class GitReleaseDelivery:
             if pending["effect_id"]!=state["publication_claim"]["effect_id"]:
                 raise ValueError("reconcile another original pending attempt before publication")
         self._preserved(state["source_head"],state["candidate_commit"],binding,expected[-1],prepared["rollback_from"])
+        if self.receiving_admission is not None:
+            self.receiving_admission.bind_prepared(prepared,self.ownership)
         self._publishing_binding=copy.deepcopy(binding)
         try:return self.publisher.publish(state)
         finally:self._publishing_binding=None

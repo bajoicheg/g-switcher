@@ -3,8 +3,8 @@
 ## Progress-Is-Not-Terminal
 A progress update, commit, test subset, validation stage, PR, artifact or migration batch is informational. After a milestone, evaluate Terminal-State v2 and immediately continue observe → reconcile → choose-next → act whenever the terminal gate does not permit a final response.
 
-## Per-command timestamps in every CDC-managed chat
-Every user command handled under CDC in every CDC-managed chat receives one timestamp before or with the first substantive progress update. The exact format is `[HH:MM DD.MM]`, for example `[19:31 26.09]`. Use a fresh clock observation converted to Moscow time (UTC+3). Never extrapolate or manually increment from a prior timestamp. Do not add an MSK label or seconds. Timestamp evidence creates no authority.
+## Per-report timestamps in every CDC-managed chat
+Every substantive owner-facing Russian progress, blocker, continuation and final report in every CDC-managed chat receives a fresh runtime-clock observation converted to Europe/Moscow. The exact prefix is `[HH:MM DD.MM]`, for example `[19:31 26.09]`, without seconds or a timezone/MSK suffix. A long or resumed command may produce several substantive reports; its initial command timestamp does not satisfy later reports. Read a fresh clock for each report, never extrapolate or manually increment a prior timestamp. Only an exact idempotent retry of the same `(command_id, report_id)` report may suppress a duplicate. Legacy v1 per-command timestamp behavior remains compatibility only, not evidence of per-report adoption. Timestamp evidence creates no authority.
 
 ## RCA-to-roadmap feedback closure
 Every material anomaly gets one deduplicated systemic disposition. Sensitive operational context must be sanitized before it can become roadmap payload.

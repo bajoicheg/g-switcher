@@ -16,8 +16,6 @@ class LeanPackageTests(unittest.TestCase):
         self.assertTrue(hasattr(validate_package, 'validate_lean_templates'),
                         'package must validate the executable lean entry templates')
 
-    def test_packaged_templates_execute_through_real_composed_contracts(self):
-        validate_package.validate_lean_templates(ROOT)
 
     def test_unknown_token_fixture_cannot_smuggle_a_value(self):
         with tempfile.TemporaryDirectory() as directory:

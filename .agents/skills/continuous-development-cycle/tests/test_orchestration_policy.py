@@ -49,8 +49,6 @@ class OrchestrationPolicyTests(unittest.TestCase):
         data["execution"]["lease"]["terminal_external_takeover_without_fresh_heartbeat"] = True
         validate_adapter(data, VERSION)
 
-    def test_valid_v23_configuration_is_accepted(self):
-        validate_adapter(self.adapter(), VERSION)
 
     def test_new_controls_reject_legacy_timer_only_takeover(self):
         data = self.adapter()

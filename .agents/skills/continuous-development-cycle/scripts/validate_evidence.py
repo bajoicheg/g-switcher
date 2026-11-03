@@ -34,6 +34,41 @@ def validate_observation(value):
             "clean source contradicts source observations")
 
 
+def validate_terminal(root, name, result, capture_schema):
+    raw_paths = [f"{name}/{filename}" for filename in ("terminal.json", "stdout.raw", "stderr.raw")]
+    if capture_schema is None:
+        require("terminal" not in result and not any((root/path).exists() for path in raw_paths),
+                "terminal capture marker removed; raw receipt cannot be silently downgraded")
+        return  # Historical combined-log command-evidence/v1 remains readable.
+    require(capture_schema == "command-terminal/v1", "unknown terminal capture schema")
+    ref = result.get("terminal")
+    require(isinstance(ref, dict) and set(ref) == {"path", "sha256"} and ref["path"] == raw_paths[0],
+            "missing or substituted terminal receipt")
+    path = artifact(root, ref["path"])
+    require(file_digest(path) == ref["sha256"], "terminal receipt hash mismatch")
+    terminal = load_json(path)
+    keys = {"id", "candidate_sha", "plan_sha256", "environment", "argv", "timeout_seconds",
+            "started_at_utc", "ended_at_utc", "duration_seconds", "before", "executed",
+            "exit_code", "termination", "diagnostic"}
+    require(isinstance(terminal, dict) and set(terminal) == keys | {"schema", "stdout", "stderr"}
+            and terminal["schema"] == capture_schema, "invalid terminal receipt")
+    for key in keys:
+        require(terminal[key] == result[key] and (key not in {"executed", "exit_code"}
+                or type(terminal[key]) is type(result[key])), "terminal fact differs from command result: " + key)
+    for stream, expected in zip(("stdout", "stderr"), raw_paths[1:]):
+        ref = terminal[stream]
+        require(isinstance(ref, dict) and set(ref) == {"path", "sha256"} and ref["path"] == expected,
+                "substituted raw stream path")
+        require(file_digest(artifact(root, expected)) == ref["sha256"], "raw " + stream + " hash mismatch")
+    # Compare projected log incrementally, never treating concatenation as event order.
+    with artifact(root, f"{name}/command.log").open("rb") as log:
+        for expected in raw_paths[1:]:
+            with artifact(root, expected).open("rb") as source:
+                while chunk := source.read(65536):
+                    require(log.read(len(chunk)) == chunk, "command log differs from raw streams")
+        require(log.read(1) == b"", "extra projected command log bytes")
+
+
 def validate(evidence_path, plan_path, candidate, environment_config_sha256, environment_id=None):
     require(SHA_PATTERN.fullmatch(candidate), "expected candidate-sha must be a full lowercase SHA")
     require(re.fullmatch(r"[0-9a-f]{64}", environment_config_sha256), "expected environment configuration digest must be 64 lowercase hex characters")
@@ -96,6 +131,7 @@ def validate(evidence_path, plan_path, candidate, environment_config_sha256, env
                     "NOT_RUN must have no exit and a diagnostic")
         require(result["log"]["path"] == f"{name}/command.log", "unexpected command log path")
         require(file_digest(artifact(root, result["log"]["path"])) == result["log"]["sha256"], "command log hash mismatch")
+        validate_terminal(root, name, result, evidence.get("terminal_capture_schema"))
         if check["kind"] == "test":
             require(result["test_report"] == junit_report(root, f"{name}/junit.xml"), "JUnit bytes/counters differ from recorded evidence")
         else:

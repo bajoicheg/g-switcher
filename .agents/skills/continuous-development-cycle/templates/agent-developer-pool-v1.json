@@ -1,0 +1,38 @@
+{
+  "schema": "managed-executor-pool-plan/v1",
+  "pool_id": "synthetic-developer-pool",
+  "change_id": "synthetic-change",
+  "parent_invocation_id": "host-admitted-parent",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "integrator_id": "host-integrator",
+  "coordination_ref": "refs/heads/cdc/synthetic-developer-pool",
+  "coordination_store_id": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "max_parallel": 1,
+  "total_runtime_budget_seconds": 60,
+  "total_cost_budget_units": 1,
+  "tasks": [
+    {
+      "id": "synthetic-example",
+      "role": "writer",
+      "required": true,
+      "dependencies": [],
+      "executor_id": "host-qualified-codex",
+      "branch": "cdc/synthetic-example",
+      "worktree": "worktrees/synthetic-example",
+      "write_paths": [
+        "src/example.py"
+      ],
+      "expected_outputs": [
+        "out:synthetic-example"
+      ],
+      "expected_evidence": [
+        "evidence:synthetic-example"
+      ],
+      "backend_preferences": [
+        "local_command"
+      ],
+      "max_runtime_seconds": 60,
+      "max_cost_units": 1
+    }
+  ]
+}

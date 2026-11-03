@@ -77,7 +77,8 @@ class ContinuityRecoveryTests(unittest.TestCase):
                 self.assertFalse(result["allowed"])
                 lease.check_record(record, OWNER, 1, "recovery", AT, action="product_write")
             else:
-                self.assertIs(result.get("final_response_allowed"), True)
+                self.assertIs(result.get("final_response_allowed"), False)
+                self.assertTrue(result["historical_contract"], "v1 classification remains readable, not current final authority")
         record = reconciled()
         record = lease.mark_ready(record, OWNER, 1, "recovery", AT, continuity_state=assessment)
         record = lease.release(record, OWNER, 1, "recovery", AT)

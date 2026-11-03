@@ -48,15 +48,52 @@ def evaluate(request):
 
 def terminal_bundle(request, store, *, now_utc=None):
     quality_levels.fields(request,('schema','invocation_id','owned_lease','release_receipt',
-        'continuity','runtime','pool','physical','remaining_queue'), 'terminal bundle')
-    if request['schema']!='terminal-bundle/v1':raise ValueError('terminal bundle schema mismatch')
+        'continuity','runtime_binding','runtime','pool','physical','remaining_queue'), 'terminal bundle')
+    if request['schema']!='terminal-bundle/v2':raise ValueError('current terminal bundle schema required')
+    # Derive the runtime from its original managed session and join the actual
+    # canonical endpoint. Request PID/accepted booleans are observations only.
+    from git_lease_store import GitLeaseStore
+    import managed_host_bridge as bridge
+    if type(store) is not GitLeaseStore:raise ValueError('authentic canonical terminal lease store required')
+    binding=request['runtime_binding']
+    quality_levels.fields(binding,('handle_root','handle_id'),'terminal runtime binding')
+    session=bridge._load_session(binding['handle_root'],binding['handle_id'])
+    original_store=bridge._lease_store(session)
+    if (original_store.store_id,original_store.ref)!=(store.store_id,store.ref):
+        raise ValueError('terminal canonical endpoint substituted')
+    if (session['invocation_id']!=request['invocation_id'] or
+        request['owned_lease']!={'owner_id':session['owner_id'],'generation':session['generation']} or
+        session.get('release_receipt')!=request['release_receipt']):
+        raise ValueError('terminal original managed ownership/release binding mismatch')
+    actual_runtime=bridge._runtime(session)
+    native=actual_runtime.verify_terminal(session['task_id'],session['attempt_id'],
+        include_controller=True,lease_store=store,release_receipt=request['release_receipt'])
+    if native['ownership']['invocation_id']!=request['invocation_id']:
+        raise ValueError('terminal runtime invocation substituted')
+    pool_revision,pool_state=actual_runtime.store.read()
+    task=next((x for x in pool_state['tasks'] if x['id']==session['task_id']),None)
+    if (task is None or task['attempt_ids'][-1]!=session['attempt_id'] or
+        task['status']!='succeeded' or not task['accepted_result_ref'] or not task['integrated']):
+        raise ValueError('actual pool not accepted/integrated')
+    from managed_executor_runtime import _read_json, _digest
+    from pathlib import Path
+    original_request=actual_runtime._request(session['task_id'],session['attempt_id'])
+    result=_read_json(Path(original_request['journal_directory'])/'result.json')
+    if (not isinstance(result,dict) or _digest(result)!=task['accepted_result_ref'] or
+        result.get('result_commit')!=session['result_commit'] or
+        result.get('attempt_id')!=session['attempt_id']):
+        raise ValueError('terminal original accepted result mismatch')
     now=now_utc or datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
     revision,lease=store.read()
     record=store.read_revision(request['release_receipt']['lease_revision'])
+    from reporting_contract import authenticate
+    authority=authenticate(store,request['continuity'].get('reporting_binding'),request['invocation_id'],request['continuity']['checkpoint_ref'])
     gate=final_response_gate.evaluate(request['invocation_id'],lease,request['continuity'],
-        request['owned_lease'],request['release_receipt'],record,now)
+        request['owned_lease'],request['release_receipt'],record,now,reporting_authority=authority,native_terminal=native)
     runtime=request['runtime'];pool=request['pool']
     quality_levels.fields(runtime,('status','quiescent','process_ids','evidence_ref'), 'terminal runtime')
+    if runtime['status']!=native['status'] or set(runtime['process_ids'])!={x['pid'] for x in native['processes']}:
+        raise ValueError('terminal original runtime status/PID set substituted')
     if (not isinstance(runtime['process_ids'],list) or not runtime['process_ids']
             or any(type(pid) is not int or pid<=0 for pid in runtime['process_ids'])
             or len(set(runtime['process_ids']))!=len(runtime['process_ids'])):
@@ -85,8 +122,10 @@ def terminal_bundle(request, store, *, now_utc=None):
             blockers.append('physical_absence_missing_or_stale:'+str(item['pid']))
     if seen!=set(runtime['process_ids']):blockers.append('owned_process_observation_set_mismatch')
     quality_levels.texts(request['remaining_queue'],'remaining queue',allow_empty=True)
-    return {'schema':'terminal-bundle-result/v1','accepted':not blockers,'blockers':blockers,
+    return {'schema':'terminal-bundle-result/v2','accepted':not blockers,'blockers':blockers,
         'current_lease_revision':revision,
         'invocation_id':request['invocation_id'],'release_receipt':request['release_receipt'],
         'physical':physical,'runtime':runtime,'pool':pool,'remaining_queue':request['remaining_queue'],
+        'reporting':gate.get('reporting'),
+        'native_terminal':native,'pool_revision':pool_revision,
         'authorizes_external_start':False,'authorizes_product_write':False,'authorizes_release':False}

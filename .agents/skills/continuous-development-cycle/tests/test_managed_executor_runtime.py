@@ -214,8 +214,10 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
             "lease_release_required":False,"lease_released":False}
         continuity=with_terminal_evidence(continuity)
         continuity["terminal_state"]["lease_released"]=False
+        from reporting_fixtures import attach
+        reporting_authority=attach(continuity,lease_store)
         record=leasev2.mark_ready(
-            record,owner,1,invocation_id,runtime._utc(),continuity_state=continuity)
+            record,owner,1,invocation_id,runtime._utc(),continuity_state=continuity,reporting_authority=reporting_authority)
         revision=lease_store.compare_and_swap(revision,record)
 
         pre=final_gate.evaluate(
@@ -228,8 +230,10 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
         post["terminal_state"]["lease_released"]=True
         gate=final_gate.evaluate(
             invocation_id,released["record"],post,{"owner_id":owner,"generation":1},
-            released["release_receipt"],release_record,runtime._utc())
-        self.assertTrue(gate["final_response_allowed"])
+            released["release_receipt"],release_record,runtime._utc(),reporting_authority=reporting_authority)
+        self.assertFalse(gate["final_response_allowed"])
+        self.assertTrue(gate["release_boundary_allowed"], "controller has not exited; this is staged release readiness")
+        self.assertEqual(gate['reporting']['report']['invocation_id'],invocation_id)
         final=self.wait("a")
         self.assertEqual(final["status"],"succeeded");self.assertTrue(final["quiescent"])
 
@@ -670,7 +674,8 @@ subprocess.run(["git","commit","-qm","worker result"],check=True)
             self.rt.record_integration(task, accepted["result_ref"], **publication)
         continuity = self.completion()
         gate = self.rt.evaluate_parent(continuity)
-        self.assertTrue(gate["final_response_allowed"])
+        self.assertFalse(gate["final_response_allowed"], 'legacy parent state lacks current authentic reporting')
+        self.assertTrue(gate['continuity']['historical_contract'])
         self.assertTrue(gate["pool"]["complete"])
         del continuity["terminal_state"]
         self.assertFalse(self.rt.evaluate_parent(continuity)["final_response_allowed"])

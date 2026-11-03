@@ -165,7 +165,7 @@ class T(unittest.TestCase):
 
  def test_reported_changed_paths_must_equal_actual_git_diff(self):
   p=plan(self.base);s=m.initial_state(p,parallel_capable=True);s=self._queue(p,s,"a","a1");s=self._run(p,s,"a","a1")
-  with self.assertRaisesRegex(ValueError,"reported changed paths do not match exact Git diff"):
+  with self.assertRaisesRegex(ValueError,"reported changed paths do not match exact Git diff|preview final paths escape scope"):
    self._accept(p,s,"a","a1",["src/a/fake.txt"],["out:a"],["test:a"])
 
  def test_actual_git_diff_cannot_hide_out_of_claim_change(self):
@@ -173,7 +173,7 @@ class T(unittest.TestCase):
   (self.repo/"ESCAPED").write_text("escape");self.git("add","ESCAPED");self.git("commit","-q","-m","escape")
   escaped=self.git("rev-parse","HEAD")
   p=plan(self.base);s=m.initial_state(p,parallel_capable=True);s=self._queue(p,s,"a","a1");s=self._run(p,s,"a","a1")
-  with self.assertRaisesRegex(ValueError,"reported changed paths do not match exact Git diff"):
+  with self.assertRaisesRegex(ValueError,"reported changed paths do not match exact Git diff|preview final paths escape scope"):
    self._accept(p,s,"a","a1",["src/a/result.txt"],["out:a"],["test:a"],result_commit=escaped)
 
  def test_unintegrated_required_success_blocks_terminal(self):

@@ -12,6 +12,7 @@ from git_object_integrity import git_object_environment
 
 import argparse
 import copy
+import errno
 import ctypes
 from datetime import datetime, timezone
 import hashlib
@@ -94,8 +95,46 @@ def _process(pid):
                    if line.startswith("NSpid:"))
         signal_pid = int(nspids[len(own) - 1]) if len(nspids) >= len(own) else None
         return {"state": row[0], "parent": int(row[1]), "birth": row[19], "signal_pid": signal_pid}
-    except (OSError, ValueError, IndexError):
+    except (OSError, ValueError, IndexError, StopIteration):
         return None
+
+
+def _signal_descendant(target, identity, sig):
+    """Pin the translated syscall PID, then recheck its procfs birth.
+
+    Procfs PIDs and syscall PIDs can differ: _process translates NSpid.
+    A pidfd closes the check/kill reuse race; it grants no UID/LSM authority.
+    No numeric kill fallback is safe if pidfds are unavailable.
+    """
+    evidence = {"pid": target, "birth": identity["birth"],
+                "signal_pid": identity["signal_pid"], "signal": int(sig)}
+    current = _process(target)
+    if (not current or current["birth"] != identity["birth"]
+            or current["signal_pid"] != identity["signal_pid"]):
+        return {**evidence, "result": "identity_changed"}
+    if type(current["signal_pid"]) is not int or current["signal_pid"] <= 0:
+        return {**evidence, "result": "namespace_unavailable"}
+    if not hasattr(os, "pidfd_open") or not hasattr(signal, "pidfd_send_signal"):
+        return {**evidence, "result": "pidfd_unavailable"}
+    fd = None
+    try:
+        fd = os.pidfd_open(current["signal_pid"], 0)
+        checked = _process(target)
+        if (not checked or checked["birth"] != identity["birth"]
+                or checked["signal_pid"] != current["signal_pid"]):
+            return {**evidence, "result": "identity_changed"}
+        signal.pidfd_send_signal(fd, sig)
+        return {**evidence, "result": "sent"}
+    except OSError as exc:
+        return {**evidence, "result": "error", "errno": exc.errno,
+                "error_type": type(exc).__name__, "error": str(exc)}
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+# TERM grace remains .2s. Successful KILL is still not an ECHILD proof.
+_TERMINATION_BOUND_SECONDS = 1.0
 
 
 def _descendants(parent):
@@ -122,6 +161,37 @@ def _unknown(identity, reason):
     return {"schema": "managed-executor-observation/v1", "identity": identity,
             "status": "unknown", "quiescent": False, "reason": reason}
 
+
+_TERMINAL_PROOF_SEAL=object()
+
+class VerifiedTerminalProof(dict):
+    """Only an actual original runtime can issue current owner-final proof.
+
+    JSON serialization remains ordinary evidence, never this live capability.
+    Every use rechecks the original runtime/control chain and physical absence.
+    """
+    def __init__(self,seal,runtime,lease_store,release_receipt,evidence,*,boot_transition_path=None):
+        if seal is not _TERMINAL_PROOF_SEAL:raise ValueError('package-owned terminal proof required')
+        super().__init__(evidence)
+        self._seal=seal;self._runtime=runtime;self._store=lease_store
+        self._receipt=copy.deepcopy(release_receipt)
+        self._task_id=evidence['task_id'];self._attempt_id=evidence['attempt_id']
+        self._boot_transition_path=boot_transition_path
+    def revalidate_for(self,store,invocation_id,owned,receipt):
+        from git_lease_store import GitLeaseStore
+        if type(self) is not VerifiedTerminalProof or self._seal is not _TERMINAL_PROOF_SEAL or type(store) is not GitLeaseStore:
+            raise ValueError('authentic original terminal proof required')
+        if (store.store_id,store.ref)!=(self._store.store_id,self._store.ref) or receipt!=self._receipt:
+            raise ValueError('native owner-final endpoint/release binding substituted')
+        if self._boot_transition_path is None:
+            current=self._runtime.verify_terminal(self._task_id,self._attempt_id,include_controller=True,lease_store=store,release_receipt=receipt)
+        else:
+            current=self._runtime.verify_released_terminal_after_reboot(self._task_id,self._attempt_id,
+                lease_store=store,release_receipt=receipt,boot_transition_path=self._boot_transition_path)
+        binding=current['ownership']
+        if binding['invocation_id']!=invocation_id or owned!={'owner_id':binding['owner_id'],'generation':binding['generation']}:
+            raise ValueError('native owner-final original invocation substituted')
+        return dict(current)
 
 class ExecutionJournal:
     """Controller-owned records, independent of backend tool implementations."""
@@ -232,7 +302,8 @@ def _supervise(directory):
                "supervisor_pid": pid, "supervisor_proc_pid": proc_pid,
                "supervisor_birth": _process(proc_pid)["birth"], "boot_id": _boot(),
                "created_at_utc": _utc(), "started_at_utc": None, "finished_at_utc": None,
-               "exit_code": None, "elapsed_seconds": 0, "runtime_seconds": 0, "failure": None}
+               "exit_code": None, "elapsed_seconds": 0, "runtime_seconds": 0, "failure": None,
+               "process_births": [{"pid":proc_pid,"birth":_process(proc_pid)['birth'],"role":"supervisor"}]}
     _write(directory / "receipt.json", receipt)
     started = time.monotonic()
     try:
@@ -259,9 +330,17 @@ def _supervise(directory):
             with (directory / "stdout.log").open("ab") as out, (directory / "stderr.log").open("ab") as err:
                 child = subprocess.Popen(request["argv"], cwd=cwd, stdin=subprocess.DEVNULL,
                                          stdout=out, stderr=err, close_fds=True)
+            child_identity=_process(child.pid)
+            receipt['process_births'].append({'pid':child.pid,'birth':child_identity['birth'] if child_identity else None,'role':'worker','unknown_reason':None if child_identity else 'exited_before_birth_observation'})
             receipt.update(status="running", started_at_utc=_utc(), worker_pid=child.pid)
             _write(directory / "receipt.json", receipt)
         while True:
+            # Capture genuine births while processes exist; never reconstruct
+            # missing historical births after a wrapper has already exited.
+            recorded={item['pid'] for item in receipt['process_births']}
+            for descendant,identity in _descendants(proc_pid).items():
+                if descendant not in recorded:
+                    receipt['process_births'].append({'pid':descendant,'birth':identity['birth'],'role':'descendant'})
             # waitpid(ECHILD) is the closure proof: root exit alone is insufficient.
             no_children = False
             while True:
@@ -276,6 +355,7 @@ def _supervise(directory):
                     exit_code = os.waitstatus_to_exitcode(status)
                     child.returncode = exit_code
             if no_children:
+                receipt['quiescence_proof']={'method':'waitpid_ECHILD','boot_id':receipt['boot_id'],'supervisor_birth':receipt['supervisor_birth'],'request_ref':receipt['request_ref'],'process_births_digest':_digest(receipt['process_births']),'observed_at_utc':_utc()}
                 break
             elapsed = time.monotonic() - started
             if termination is None:
@@ -288,12 +368,30 @@ def _supervise(directory):
             if termination:
                 sig = signal.SIGKILL if time.monotonic() - stopping_at >= .2 else signal.SIGTERM
                 for target, identity in _descendants(proc_pid).items():
-                    current = _process(target)
-                    if current and current["birth"] == identity["birth"]:
-                        try:
-                            os.kill(current["signal_pid"], sig)
-                        except ProcessLookupError:
-                            pass
+                    outcome = _signal_descendant(target, identity, sig)
+                    previous = receipt.get("signal_failure", {})
+                    if (outcome["result"] != "sent" and
+                            (not previous or
+                             (outcome.get("errno") is not None and previous.get("errno") is None) or
+                             (outcome.get("errno") == errno.EPERM and previous.get("errno") != errno.EPERM))):
+                        # Persist first failure; prefer actual errno, especially EPERM.
+                        # ESRCH is not closure; never replace an EPERM with success.
+                        receipt.update(status="unknown", quiescent=False,
+                                       termination_reason=termination,
+                                       reason="termination signal unproved; descendant quiescence unproved",
+                                       signal_failure={**outcome, "observed_at_utc": _utc()},
+                                       elapsed_seconds=elapsed,
+                                       runtime_seconds=min(elapsed, request["timeout_seconds"]))
+                        _write(directory / "receipt.json", receipt)
+                if time.monotonic() - stopping_at >= _TERMINATION_BOUND_SECONDS:
+                    receipt.update(status="unknown", quiescent=False,
+                                   termination_reason=termination,
+                                   reason="termination deadline exceeded; descendant quiescence unproved",
+                                   failure="bounded termination failed", exit_code=exit_code,
+                                   elapsed_seconds=elapsed,
+                                   runtime_seconds=min(elapsed, request["timeout_seconds"]))
+                    _write(directory / "receipt.json", receipt)
+                    return
             time.sleep(.01)
         elapsed = time.monotonic() - started
         terminal_status=termination or ("succeeded" if exit_code == 0 else "failed")
@@ -330,6 +428,7 @@ def _supervise(directory):
                 _write(directory/"receipt.json",receipt)
                 time.sleep(.02)
                 elapsed=time.monotonic()-started
+        receipt.pop("reason", None)
         receipt.update(status=terminal_status,quiescent=True,finished_at_utc=_utc(),exit_code=exit_code,
                        elapsed_seconds=elapsed,runtime_seconds=min(elapsed,request["timeout_seconds"]),
                        failure=terminal_failure)
@@ -376,6 +475,8 @@ class ManagedExecutorRuntime:
                 "lease_source_ref":payload["lease_source_ref"],"armed_at_utc":_utc(),
                 "controller_proc_pid":proc_pid,"controller_birth":proc_state["birth"]}
         _write(paths["intent"],intent)
+        # Save the actual issued descriptor, not a later invented capability.
+        _write(directory/'terminal-capability-descriptor.json',{'schema':'original-managed-capability-descriptor/v1','capability_ref':managed_terminal_capability.reference(capability),'payload':payload})
         fd=os.open(directory,os.O_DIRECTORY)
         try:os.fsync(fd)
         finally:os.close(fd)
@@ -406,6 +507,14 @@ class ManagedExecutorRuntime:
 
     def terminal_capability(self,task_id,attempt_id,*,lease_repository,lease_source_ref,observed_at_utc=None):
         import managed_terminal_capability
+        # Ordinary start remains asynchronous so preparation may be cancelled.
+        # Only capability admission waits for the genuine worker birth; issuance
+        # still rejects missing births, terminal/unknown state and stale joins.
+        end=time.monotonic()+3
+        while time.monotonic()<end:
+            observation=self.observe(task_id,attempt_id)
+            if observation.get('status')!='starting':break
+            time.sleep(.01)
         return managed_terminal_capability.issue(
             self,task_id,attempt_id,lease_repository=lease_repository,lease_source_ref=lease_source_ref,
             observed_at_utc=observed_at_utc)
@@ -665,7 +774,229 @@ class ManagedExecutorRuntime:
         self.backend.cancel(request, self._saved_receipt(request))
         return self.observe(task_id, attempt_id)
 
+    def verify_terminal(self,task_id,attempt_id,*,include_controller=False,lease_store=None,release_receipt=None):
+        """Package-owned original journal + Git claim + current physical proof."""
+        return self._verify_terminal(task_id,attempt_id,include_controller=include_controller,
+            lease_store=lease_store,release_receipt=release_receipt)
+
+    def verify_released_terminal_after_reboot(self,task_id,attempt_id,*,lease_store,release_receipt,boot_transition_path):
+        """Explicit failed/released original only; no launch or lease capability."""
+        from managed_boot_transition import authenticate
+        request=self._request(task_id,attempt_id)
+        if request is None:raise ValueError('original runtime request missing')
+        observation=self.backend.observe(request,self._saved_receipt(request))
+        self._validate_receipt(request,observation)
+        transition=authenticate(boot_transition_path,request,observation,release_receipt)
+        return self._verify_terminal(task_id,attempt_id,include_controller=True,lease_store=lease_store,
+            release_receipt=release_receipt,boot_transition=transition)
+
+    def _verify_terminal(self,task_id,attempt_id,*,include_controller=False,lease_store=None,release_receipt=None,boot_transition=None):
+        from managed_executor_store import GitManagedExecutorStore
+        if type(self) is not ManagedExecutorRuntime or type(self.backend) is not LocalCommandBackend or type(self.store) is not GitManagedExecutorStore or type(self.journal) is not ExecutionJournal:
+            raise ValueError('authentic package-owned terminal runtime required')
+        request=self._request(task_id,attempt_id)
+        if request is None:raise ValueError('original runtime request missing')
+        observation=self.observe(task_id,attempt_id)
+        if not observation.get('quiescent') or observation.get('status') not in {'succeeded','failed','cancelled','timed_out'}:
+            raise ValueError('actual supervisor not terminal/quiescent')
+        proof=observation.get('quiescence_proof');births=observation.get('process_births')
+        if not isinstance(proof,dict) or proof.get('method')!='waitpid_ECHILD':raise ValueError('authentic supervisor quiescence proof required; wrapper exit is insufficient')
+        if (proof.get('boot_id')!=observation.get('boot_id') or proof.get('supervisor_birth')!=observation.get('supervisor_birth') or proof.get('request_ref')!=_digest(request) or not isinstance(births,list) or proof.get('process_births_digest')!=_digest(births)):
+            raise ValueError('original birth/request/boot quiescence binding mismatch')
+        reconciliation=None
+        if boot_transition is None:
+            if proof['boot_id']!=_boot():raise ValueError('original birth/request/boot quiescence binding mismatch')
+        else:
+            from managed_boot_transition import _VerifiedBootTransition
+            if type(boot_transition) is not _VerifiedBootTransition or not include_controller:
+                raise ValueError('authentic released original boot transition required')
+            reconciliation=boot_transition.revalidate(request,observation,release_receipt)
+        historical=self.store.read_revision(request['claim']['store_revision'])
+        if pool.canonical_state_ref(historical)!=request['claim']['state_ref'] or historical['revision']!=request['claim']['state_revision']:
+            raise ValueError('terminal original canonical Git launch claim mismatch')
+        task=next((row for row in historical['tasks'] if row['id']==task_id),None)
+        if task is None or task['active_attempt_id']!=attempt_id or task['reservation_token']!=request['claim']['reservation_token']:
+            raise ValueError('terminal original task/attempt/reservation mismatch')
+        births=copy.deepcopy(births)
+        ownership=None
+        if include_controller:
+            from git_lease_store import GitLeaseStore
+            from managed_terminal_capability import _digest as capability_digest,invocation_identity
+            if type(lease_store) is not GitLeaseStore:raise ValueError('terminal controller requires authentic canonical lease history')
+            paths=_terminal_hold_paths(Path(request['journal_directory']))
+            intent=_read_json(paths['intent']);owned=_read_json(paths['owned']);released=_read_json(paths['release'])
+            descriptor=_read_json(Path(request['journal_directory'])/'terminal-capability-descriptor.json')
+            if not all(isinstance(x,dict) for x in (intent,owned,released,descriptor)):raise ValueError('original issued capability/hold/release records missing; never mint historical capability')
+            payload=descriptor.get('payload')
+            if not isinstance(payload,dict) or descriptor.get('schema')!='original-managed-capability-descriptor/v1':raise ValueError('original capability descriptor invalid')
+            ref=capability_digest(payload)
+            if payload.get('schema')!='managed-terminal-capability/v2' or payload.get('boot_id')!=proof['boot_id'] or any(intent.get(k)!=payload.get(k) for k in ('controller_proc_pid','controller_birth')):
+                raise ValueError('original controller canonical birth/boot binding mismatch; legacy proof remains historical')
+            originals=payload.get('runtime_processes')
+            if (not isinstance(originals,list) or {x.get('role') for x in originals}!={'worker','supervisor'} or
+                any(not isinstance(x.get('birth'),str) or not x['birth'].isdigit() or
+                    not any((x['pid'],x['birth'],x['role'])==(row.get('pid'),row.get('birth'),row.get('role')) for row in births) or
+                    x['pid']!=observation.get('worker_pid' if x['role']=='worker' else 'supervisor_proc_pid') for x in originals)):
+                raise ValueError('original canonical runtime process PID/birth binding mismatch')
+            derived='managed-terminal:'+capability_digest(invocation_identity(payload)).split(':',1)[1]
+            if (any(value.get('capability_ref')!=ref for value in (descriptor,intent,owned,released)) or any(value.get('invocation_id')!=derived for value in (payload,intent,owned,released)) or payload.get('request_ref')!=_digest(request) or payload.get('launch_id')!=_digest(request) or payload.get('managed_store_ref')!=self.store.ref or payload.get('managed_store_id')!=self.store.store_id or any(payload.get(key)!=request['identity'].get(key) for key in ('pool_id','task_id','attempt_id'))):raise ValueError('terminal original ownership/launch/capability chain mismatch')
+            running=self.store.read_revision(payload['managed_store_revision'])
+            row=next((x for x in running['tasks'] if x['id']==task_id),None)
+            if running['revision']!=payload['managed_state_revision'] or row is None or row['status']!='running' or row['active_attempt_id']!=attempt_id or row['reservation_token']!=request['claim']['reservation_token']:raise ValueError('terminal original canonical running pool mismatch')
+            original=lease_store.read_revision(owned['lease_revision'])
+            if original['owner_id']!=owned['owner_id'] or original['generation']!=owned['generation'] or not original['invocation'] or original['invocation']['invocation_id']!=derived:raise ValueError('terminal original owned lease mismatch')
+            if release_receipt!=released.get('release_receipt') or not isinstance(release_receipt,dict):raise ValueError('terminal actual release receipt mismatch')
+            release_record=lease_store.read_revision(release_receipt['lease_revision'])
+            rel=release_receipt['release']
+            if release_record['owner_id'] is not None or release_record['last_release']!=rel or rel['owner_id']!=owned['owner_id'] or rel['generation']!=owned['generation'] or rel['invocation_id']!=derived:raise ValueError('terminal canonical historical release mismatch')
+            if reconciliation is not None and release_record.get('external_guard') is not None:
+                raise ValueError('original reboot reconciliation requires released unguarded custody')
+            births.append({'pid':intent['controller_proc_pid'],'birth':intent['controller_birth'],'role':'controller'})
+            ownership={'invocation_id':derived,'owner_id':owned['owner_id'],'generation':owned['generation'],'original_owned_revision':owned['lease_revision'],'release_revision':release_receipt['lease_revision']}
+        seen=set();reused_descendants=[]
+        for item in births:
+            pid=item.get('pid');birth=item.get('birth')
+            if type(pid) is not int or pid<=0 or pid in seen or not isinstance(birth,str) or not birth.isdigit():raise ValueError('recorded birth missing/invalid; UNKNOWN remains UNKNOWN')
+            seen.add(pid)
+            current=_process(pid)
+            if current is None and reconciliation is not None:
+                # The ordinary process reader also returns None on unreadable
+                # procfs data. Only a missing proc directory proves absence.
+                try:Path(f'/proc/{pid}').stat()
+                except FileNotFoundError:pass
+                except OSError as error:raise ValueError('physical PID identity unavailable') from error
+                else:raise ValueError('physical PID identity unavailable')
+            if current is not None:
+                current_birth=current.get('birth')
+                # Only the explicitly authenticated reboot route may distinguish
+                # an old descendant from a foreign process reusing its PID. Main
+                # process presence and ordinary same-boot proof remain strict.
+                if (reconciliation is None or item.get('role')!='descendant' or
+                    not isinstance(current_birth,str) or not current_birth.isascii() or
+                    not current_birth.isdecimal() or int(current_birth)==int(birth)):
+                    raise ValueError('physical PID still present; no wrapper-exit shortcut')
+                reused_descendants.append({'pid':pid,'original_birth':birth,'current_birth':current_birth})
+        if not {observation.get('worker_pid'),observation.get('supervisor_proc_pid')}<=seen:raise ValueError('terminal exact worker/supervisor PID set missing')
+        evidence={'schema':'managed-runtime-terminal-proof/v1','task_id':task_id,'attempt_id':attempt_id,'request_ref':_digest(request),'status':observation['status'],'exit_code':observation['exit_code'],'quiescence_method':'waitpid_ECHILD','boot_id':proof['boot_id'],'processes':births,'fresh_physical_absence':True,'observed_at_utc':_utc(),'original_claim_revision':request['claim']['store_revision'],'ownership':ownership,'authorizes_release':False}
+        if reconciliation is not None:evidence['boot_reconciliation']=reconciliation
+        if reused_descendants:evidence['reused_descendant_pids']=reused_descendants
+        if include_controller:
+            _,current_state=self.store.read()
+            current_task=next((row for row in current_state['tasks'] if row['id']==task_id),None)
+            if observation['status']=='succeeded':
+                result=_read_json(Path(request['journal_directory'])/'result.json')
+                if (current_task is None or current_task['status']!='succeeded' or not current_task['integrated'] or
+                    not isinstance(result,dict) or current_task['accepted_result_ref']!=_digest(result) or result.get('attempt_id')!=attempt_id):
+                    raise ValueError('native owner-final requires actual accepted/integrated pool result')
+            return VerifiedTerminalProof(_TERMINAL_PROOF_SEAL,self,lease_store,release_receipt,evidence,
+                boot_transition_path=None if boot_transition is None else str(boot_transition._path))
+        return evidence
+
+    def rejection(self, task_id, attempt_id):
+        return _read_json(self._terminal_hold_directory(task_id, attempt_id) / 'rejected-preparation.json')
+
+    def reject_preparation(self, task_id, attempt_id, *, disposition, lease_store, reconcile=False):
+        """Issue the negative artifact, then reconcile only after real release/proof."""
+        from managed_executor_store import GitManagedExecutorStore
+        from git_lease_store import GitLeaseStore
+        if (type(self) is not ManagedExecutorRuntime or type(self.backend) is not LocalCommandBackend
+                or type(self.store) is not GitManagedExecutorStore or type(lease_store) is not GitLeaseStore):
+            raise ValueError('authentic rejection runtime required')
+        if self._task(task_id)['role'] != 'writer':
+            raise ValueError('rejection requires writer')
+        request = self._request(task_id, attempt_id)
+        if request is None:
+            raise ValueError('original rejection request missing')
+        historical = self.store.read_revision(request['claim']['store_revision'])
+        original = next(row for row in historical['tasks'] if row['id'] == task_id)
+        if (pool.canonical_state_ref(historical) != request['claim']['state_ref']
+                or historical['revision'] != request['claim']['state_revision']
+                or original['status'] != 'running' or original['active_attempt_id'] != attempt_id
+                or original['reservation_token'] != request['claim']['reservation_token']):
+            raise ValueError('rejection original launch claim mismatch')
+        directory = Path(request['journal_directory'])
+        intent = _read_json(_terminal_hold_paths(directory)['intent'])
+        owned = _read_json(_terminal_hold_paths(directory)['owned'])
+        descriptor = _read_json(directory / 'terminal-capability-descriptor.json')
+        from managed_terminal_capability import _digest as capability_digest, invocation_identity
+        if not all(isinstance(value, dict) for value in (intent, owned, descriptor)):
+            raise ValueError('original issued rejection ownership missing')
+        payload = descriptor.get('payload', {})
+        derived = 'managed-terminal:' + capability_digest(invocation_identity(payload)).split(':', 1)[1]
+        if (descriptor.get('schema') != 'original-managed-capability-descriptor/v1'
+                or payload.get('schema') != 'managed-terminal-capability/v2'
+                or any(value.get('capability_ref') != capability_digest(payload) for value in (descriptor, intent, owned))
+                or any(value.get('invocation_id') != derived for value in (payload, intent, owned))
+                or payload.get('request_ref') != _digest(request) or payload.get('launch_id') != _digest(request)
+                or payload.get('managed_store_ref') != self.store.ref or payload.get('managed_store_id') != self.store.store_id
+                or any(payload.get(key) != request['identity'][key] for key in ('pool_id', 'task_id', 'attempt_id'))
+                or disposition['invocation_id'] != derived or disposition['owner_id'] != owned['owner_id']
+                or disposition['generation'] != owned['generation']
+                or disposition['reservation_token'] != request['claim']['reservation_token']
+                or disposition['runtime_launch_id'] != _digest(request)
+                or intent['lease_repository'] != disposition['lease_repository']
+                or intent['lease_source_ref'] != disposition['lease_source_ref']):
+            raise ValueError('rejection original capability/assignment mismatch')
+        original_lease = lease_store.read_revision(owned['lease_revision'])
+        if (original_lease['owner_id'] != owned['owner_id'] or original_lease['generation'] != owned['generation']
+                or original_lease['invocation']['invocation_id'] != derived):
+            raise ValueError('rejection original lease mismatch')
+        path = directory / 'rejected-preparation.json'
+        artifact = self.rejection(task_id, attempt_id)
+        if artifact is not None:
+            if artifact.get('disposition') != disposition or artifact.get('request_ref') != _digest(request):
+                raise ValueError('conflicting durable rejection')
+        else:
+            observation = self.observe(task_id, attempt_id)
+            if observation.get('status') != 'awaiting_release' or observation.get('pending_terminal_status') != 'succeeded':
+                raise ValueError('rejection requires actual successful worker awaiting release')
+            revision, state = self.store.read()
+            row = next(row for row in state['tasks'] if row['id'] == task_id)
+            if row['status'] != 'running' or row['active_attempt_id'] != attempt_id or row['reservation_token'] != request['claim']['reservation_token']:
+                raise ValueError('rejection requires original active allocation')
+            artifact = {'schema': 'managed-rejected-preparation/v1', 'identity': request['identity'],
+                        'claim': request['claim'], 'request_ref': _digest(request), 'launch_id': _digest(request),
+                        'disposition': copy.deepcopy(disposition), 'observation': observation}
+            _write(path, artifact)
+        if not reconcile:
+            return artifact
+        released = self.reconcile_execution_lease_hold(lease_store, task_id, attempt_id)
+        if released['status'] != 'released':
+            raise ValueError('rejection reconciliation requires actual release')
+        receipt = released['release_marker']['release_receipt']
+        historical_release = lease_store.read_revision(receipt['lease_revision'])
+        if (historical_release['owner_id'] is not None or historical_release['last_release'] != receipt['release']
+                or receipt['release']['owner_id'] != owned['owner_id']
+                or receipt['release']['generation'] != owned['generation']
+                or receipt['release']['invocation_id'] != derived
+                or receipt['release']['checkpoint_ref'] != disposition['checkpoint_ref']):
+            raise ValueError('rejection historical release mismatch')
+        proof = self.verify_terminal(task_id, attempt_id)
+        terminal = self.observe(task_id, attempt_id)
+        if proof['status'] != 'succeeded' or terminal['status'] != 'succeeded':
+            raise ValueError('rejected worker success changed')
+        closure_path = directory / 'rejected-preparation-closure.json'
+        closure = _read_json(closure_path)
+        if closure is None:
+            closure = {'schema': 'managed-rejected-preparation-closure/v1', 'rejection_ref': _digest(artifact),
+                       'release_receipt': receipt, 'terminal_observation': terminal, 'physical_proof': proof}
+            _write(closure_path, closure)
+        if (closure['rejection_ref'] != _digest(artifact) or closure['release_receipt'] != receipt
+                or closure['terminal_observation'] != terminal):
+            raise ValueError('rejection closure binding changed')
+        record = {'attempt_id': attempt_id, 'rejection_ref': _digest(closure),
+                  'review_ref': disposition['review_ref'], 'request_ref': _digest(request), 'launch_id': _digest(request),
+                  'runtime_seconds': terminal['runtime_seconds'], 'elapsed_seconds': terminal['elapsed_seconds']}
+        revision, state = self.store.read()
+        updated = pool.reject_preparation(self.plan, state, task_id, attempt_id,
+                    reservation_token=request['claim']['reservation_token'], rejection=record, expected_revision=state['revision'])
+        if updated != state:
+            self.store.compare_and_swap(revision, updated)
+        return record
+
     def accept(self, task_id, attempt_id, *, result_commit, output_refs, evidence_refs, cost_units=0):
+        if self.rejection(task_id, attempt_id) is not None:
+            raise ValueError('rejected preparation cannot be accepted')
         receipt = self.observe(task_id, attempt_id)
         if receipt["status"] != "succeeded" or not receipt["quiescent"]:
             raise ValueError("result requires observed quiescent process success")
@@ -756,13 +1087,13 @@ class ManagedExecutorRuntime:
                 "integration_commit": integration_commit, "integration_ref": integration_ref})
         return self.store.compare_and_swap(revision, updated)
 
-    def evaluate_parent(self, continuity_state, *, now_utc=None):
+    def evaluate_parent(self, continuity_state, *, now_utc=None, reporting_authority=None):
         """Read fresh pool state and combine it with the real continuity evaluator."""
         if continuity_state.get("invocation_id") != self.plan["parent_invocation_id"]:
             raise ValueError("parent invocation identity mismatch")
         revision, state = self.store.read()
         assessment = pool.assess(self.plan, state)
-        continuity = execution_continuity.evaluate(continuity_state, now_utc=now_utc)
+        continuity = execution_continuity.evaluate(continuity_state, now_utc=now_utc, reporting_authority=reporting_authority)
         allowed = assessment["terminal_allowed"] and continuity["final_response_allowed"]
         return {"schema": "managed-executor-parent-assessment/v1", "store_revision": revision,
                 "pool": assessment, "continuity": continuity, "final_response_allowed": allowed,

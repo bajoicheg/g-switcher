@@ -112,9 +112,12 @@ class EfficiencyTests(unittest.TestCase):
              'pool':{'accepted':True,'integrated':True,'evidence_ref':'actual:pool'},
              'physical':[{'pid':123,'absent':True,'observed_at_utc':'2026-01-01T10:02:00Z','evidence_ref':'actual:ps'}],
              'remaining_queue':['Windows gates pending']}
-        self.assertTrue(terminal_bundle(req,Store(),now_utc='2026-01-01T10:02:00Z')['accepted'])
-        req['physical'][0]['absent']=False
-        self.assertFalse(terminal_bundle(req,Store(),now_utc='2026-01-01T10:02:00Z')['accepted'])
+        with self.assertRaisesRegex(ValueError,'terminal bundle'):
+            terminal_bundle(req,Store(),now_utc='2026-01-01T10:02:00Z')
+        req['schema']='terminal-bundle/v2'
+        req['runtime_binding']={'handle_root':'caller-labelled','handle_id':'caller-labelled'}
+        with self.assertRaisesRegex(ValueError,'authentic canonical'):
+            terminal_bundle(req,Store(),now_utc='2026-01-01T10:02:00Z')
 
 
 if __name__=='__main__':unittest.main()
