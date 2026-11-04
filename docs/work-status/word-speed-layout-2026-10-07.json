@@ -1,0 +1,133 @@
+{
+  "scope": "first-run clipped text and Word latency",
+  "source_base": "6d9dc891e74e3bc2a1c37ca77f7e1cd142684bd3",
+  "reported_regressions": [
+    "first-run two-line management hint clipped",
+    "Word letter replacement slow"
+  ],
+  "screenshot_sha256": "022ada1de9d63dc6707874222da10417c713764d55c16610230960fbd78f08bb",
+  "design": [
+    "measure first-run text with actual assigned font and move subsequent blocks",
+    "batch fresh UIA focus metadata; reuse request only",
+    "remove redundant individual-character reads; verify entire evolving range",
+    "preserve per-character formatting, one Undo and all mutation/focus guards"
+  ],
+  "installed_word_latency_measured": false,
+  "remaining_gates": [
+    "exact candidate Windows CI and font/layout capture",
+    "installed Word latency, mixed formatting and Undo"
+  ],
+  "quality_level": "FULL",
+  "max_validation_cycles": 2,
+  "validation_cycle": {
+    "cycle": 1,
+    "reason": "First product validation after verified CDC2.12 adoption; no prior speed/layout build succeeded.",
+    "external_starts": 1,
+    "token_usage": null,
+    "token_usage_reason": "Runtime does not expose token measurement"
+  },
+  "source_reviews": {
+    "requirements": {
+      "path": ".g-switcher-fix/intent.json",
+      "reviewer": "/root/cdc_adoption_requirements",
+      "sequence": 1,
+      "source_report_sha256": "fd70acc67c3410d32137787dea1e9b8136be1c50bd70d90bc87dbc37ddc8a0bf"
+    },
+    "quality": {
+      "path": ".g-switcher-fix/intent.json",
+      "reviewer": "/root/cdc_adoption_quality",
+      "sequence": 2,
+      "source_report_sha256": "c87244159a0a22eb9d0f0caff37e8b94821cec9f2d0ea119d6ebf9578aecb49a"
+    }
+  },
+  "managed_validation": [
+    {
+      "label": "format",
+      "argv": [
+        "rustfmt",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "src/windows_runtime/first_run_layout.rs",
+        "src/windows_runtime/word_native.rs",
+        "src/windows_runtime/ui.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.064
+    },
+    {
+      "label": "layout-compile",
+      "argv": [
+        "rustc",
+        "--edition",
+        "2021",
+        "--test",
+        "src/windows_runtime/first_run_layout.rs",
+        "-o",
+        "/home/runner/work/_temp/g-switcher-word-build-dylcq2yn/first-run-layout-tests"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.114
+    },
+    {
+      "label": "layout-tests",
+      "argv": [
+        "/home/runner/work/_temp/g-switcher-word-build-dylcq2yn/first-run-layout-tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.002
+    },
+    {
+      "label": "portable-cargo-library-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 44.013
+    },
+    {
+      "label": "windows-typed-compile",
+      "argv": [
+        "cargo",
+        "check",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 12.165
+    },
+    {
+      "label": "windows-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.37
+    },
+    {
+      "label": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.008
+    }
+  ]
+}

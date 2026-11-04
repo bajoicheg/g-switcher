@@ -1,0 +1,9 @@
+{
+  "schema": "writer-reconciliation/v1",
+  "expected_head": "0000000000000000000000000000000000000000",
+  "observed_head": "0000000000000000000000000000000000000000",
+  "relation": "equal",
+  "local_changed_paths": [],
+  "remote_changed_paths": [],
+  "pending_external_guard": false
+}

@@ -1,3 +1,5 @@
+#[path = "first_run_layout.rs"]
+mod first_run_layout;
 mod settings_dialog;
 
 use std::mem::{size_of, zeroed};
@@ -7,7 +9,8 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 use anyhow::{anyhow, Result};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateFontW, DeleteObject, GetStockObject, GetSysColorBrush, SetBkMode, DEFAULT_GUI_FONT,
+    CreateFontW, DeleteObject, DrawTextW, GetDC, GetStockObject, GetSysColorBrush, ReleaseDC,
+    SelectObject, SetBkMode, DEFAULT_GUI_FONT, DT_CALCRECT, DT_NOPREFIX, DT_WORDBREAK,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Threading::Sleep;
@@ -17,15 +20,15 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
-    DestroyWindow, DispatchMessageW, GetCursorPos, GetDlgItem, GetSystemMetrics, IsDialogMessageW,
-    IsWindow, LoadCursorW, LoadIconW, LoadImageW, PeekMessageW, PostQuitMessage, RegisterClassW,
-    SendMessageW, SetForegroundWindow, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
-    TranslateMessage, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON,
-    CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, IDC_ARROW, MF_SEPARATOR, MF_STRING,
-    MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA, STM_SETICON, SW_SHOW, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, WM_APP, WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_RBUTTONUP,
-    WM_SETFONT, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE,
-    WS_VSCROLL,
+    DestroyWindow, DispatchMessageW, GetClientRect, GetCursorPos, GetDlgItem, GetSystemMetrics,
+    GetWindowRect, IsDialogMessageW, IsWindow, LoadCursorW, LoadIconW, LoadImageW, MoveWindow,
+    PeekMessageW, PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, SetWindowPos,
+    ShowWindow, SystemParametersInfoW, TrackPopupMenu, TranslateMessage, BM_GETCHECK, BM_SETCHECK,
+    BS_AUTOCHECKBOX, BS_DEFPUSHBUTTON, CBS_DROPDOWNLIST, CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL,
+    IDC_ARROW, MF_SEPARATOR, MF_STRING, MSG, PM_REMOVE, SM_CXSCREEN, SM_CYSCREEN, SPI_GETWORKAREA,
+    STM_SETICON, SWP_NOACTIVATE, SWP_NOZORDER, SW_SHOW, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP,
+    WM_CLOSE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_DESTROY, WM_GETFONT, WM_RBUTTONUP, WM_SETFONT,
+    WNDCLASSW, WS_CAPTION, WS_CHILD, WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
 
 use super::{paused, settings, toggle_pause};
@@ -627,6 +630,98 @@ unsafe fn create_first_run_controls(hwnd: HWND) {
         footer_separator,
     ] {
         SendMessageW(control, WM_SETFONT, body_font as usize, 1);
+    }
+
+    // Measure after applying the actual font. Lower sections follow the text
+    // height instead of a fixed 36px box that clipped the second line.
+    let layout = first_run_layout::Layout::new(
+        measured_static_height(description, 526, 72),
+        measured_static_height(undo, 656, 44),
+        measured_static_height(settings_hint, 656, 52),
+    );
+    for (control, x, y, width, height) in [
+        (description, 158, 78, 526, layout.description_height),
+        (separator, 32, layout.separator, 656, 2),
+        (examples_header, 32, layout.examples_header, 160, 24),
+        (examples, 32, layout.examples, 656, 26),
+        (undo_header, 32, layout.undo_header, 260, 24),
+        (undo, 32, layout.undo, 656, layout.undo_height),
+        (settings_header, 32, layout.settings_header, 260, 24),
+        (
+            settings_hint,
+            32,
+            layout.settings_hint,
+            656,
+            layout.settings_height,
+        ),
+        (footer_separator, 32, layout.footer_separator, 656, 2),
+        (autostart, 32, layout.autostart, 390, 28),
+        (sound_checkbox, 32, layout.sound, 370, 28),
+        (volume_label, 430, layout.sound + 2, 90, 24),
+        (volume, 526, layout.sound - 5, 158, 260),
+        (ok, 540, layout.button, 144, 38),
+        (footer, 32, layout.footer, 480, 24),
+    ] {
+        MoveWindow(control, x, y, width, height, 1);
+    }
+    let mut client: RECT = zeroed();
+    let mut outer: RECT = zeroed();
+    if GetClientRect(hwnd, &mut client) != 0 && GetWindowRect(hwnd, &mut outer) != 0 {
+        let width = outer.right - outer.left;
+        let height =
+            layout.client_height + (outer.bottom - outer.top) - (client.bottom - client.top);
+        let (x, y) = centered_in_work_area(width, height);
+        SetWindowPos(
+            hwnd,
+            null_mut(),
+            x,
+            y,
+            width,
+            height,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
+unsafe fn measured_static_height(control: HWND, width: i32, minimum: i32) -> i32 {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindowTextLengthW, GetWindowTextW};
+    let length = GetWindowTextLengthW(control);
+    if length <= 0 {
+        return minimum;
+    }
+    let mut text = vec![0u16; length as usize + 1];
+    let length = GetWindowTextW(control, text.as_mut_ptr(), text.len() as i32);
+    let dc = GetDC(control);
+    if dc.is_null() {
+        return minimum;
+    }
+    let font = SendMessageW(control, WM_GETFONT, 0, 0) as *mut core::ffi::c_void;
+    let previous = if font.is_null() {
+        null_mut()
+    } else {
+        SelectObject(dc, font)
+    };
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: width,
+        bottom: 0,
+    };
+    let measured = DrawTextW(
+        dc,
+        text.as_mut_ptr(),
+        length,
+        &mut rect,
+        DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX,
+    );
+    if !previous.is_null() {
+        SelectObject(dc, previous);
+    }
+    ReleaseDC(control, dc);
+    if measured > 0 {
+        minimum.max(rect.bottom - rect.top + 6)
+    } else {
+        minimum
     }
 }
 

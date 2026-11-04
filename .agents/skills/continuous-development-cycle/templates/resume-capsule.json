@@ -1,0 +1,46 @@
+{
+  "schema": "resume-capsule/v1",
+  "updated_at_utc": "2026-01-01T00:00:00Z",
+  "repository": "owner/repository",
+  "source_ref": "refs/heads/main",
+  "head_sha": "0000000000000000000000000000000000000000",
+  "policy_version": "2.4.0",
+  "checkpoint_ref": "docs/work-status/current.md",
+  "checkpoint_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "task": {
+    "phase": "recovery",
+    "current_task": "reconcile live state",
+    "next_action": "Reconcile live repository and coordination state.",
+    "blocker": "initial recovery"
+  },
+  "ownership": {
+    "lease_schema": "execution-lease/v2",
+    "owner_id": null,
+    "invocation_id": null,
+    "generation": 0,
+    "revision": null
+  },
+  "external": null,
+  "validation": {
+    "candidate_sha": "",
+    "last_green_sha": "",
+    "last_green_evidence": null,
+    "missing_gates": [
+      "live-reconciliation"
+    ]
+  },
+  "health": {
+    "state": "UNKNOWN",
+    "fingerprint": null
+  },
+  "budget": {
+    "ref": null,
+    "summary": "live budget not yet reconciled"
+  },
+  "recovery": {
+    "recommended_action": "reconcile",
+    "reason": "template requires fresh live observations"
+  },
+  "policy_revision": "template",
+  "policy_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+}

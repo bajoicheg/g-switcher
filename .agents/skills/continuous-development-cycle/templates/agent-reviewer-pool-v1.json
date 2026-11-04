@@ -1,0 +1,36 @@
+{
+  "schema": "managed-executor-pool-plan/v1",
+  "pool_id": "synthetic-reviewer-pool",
+  "change_id": "synthetic-change",
+  "parent_invocation_id": "host-admitted-parent",
+  "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "integrator_id": "host-integrator",
+  "coordination_ref": "refs/heads/cdc/synthetic-reviewer-pool",
+  "coordination_store_id": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "max_parallel": 1,
+  "total_runtime_budget_seconds": 60,
+  "total_cost_budget_units": 1,
+  "tasks": [
+    {
+      "id": "synthetic-review",
+      "role": "read_only",
+      "required": true,
+      "dependencies": [],
+      "executor_id": "host-qualified-gemini",
+      "branch": null,
+      "worktree": null,
+      "write_paths": [],
+      "expected_outputs": [
+        "out:synthetic-review"
+      ],
+      "expected_evidence": [
+        "evidence:synthetic-review"
+      ],
+      "backend_preferences": [
+        "local_command"
+      ],
+      "max_runtime_seconds": 60,
+      "max_cost_units": 1
+    }
+  ]
+}

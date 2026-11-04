@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 - 2026-09-09
+
+- Hardens pending correction and Undo with generation-bound focus/process/thread/layout/caret/range validation so stale operations fail open instead of modifying a new context.
+- Moves low-level keyboard and mouse hooks to a dedicated hook thread and keeps detector scoring, UI Automation and mutation work outside the callback.
+- Adds verified cross-process text adapters: bounded marshalled messages for plain Win32 `Edit` and UI Automation TextPattern plus range-local verified replacement for supported RichEdit controls; clipboard fallback remains absent.
+- Extends secure-input protection with metadata-only UI Automation `IsPassword` checks while continuing to exclude native password and credential targets from automatic/manual/selection/Undo mutation.
+- Adds bounded liveness preflights for text adapters so hung, closing or disappearing targets fail open rather than entering unbounded or guessed mutation paths.
+- Strengthens Code-safe runtime tracking for technical sequences containing digits and common separators without changing the 2.0.0 detector thresholds or generated frequency layer.
+- Adds mandatory separate-process E2E for Edit/RichEdit/password controls, focus-race invalidation and a 100,000-callback stress gate with dropped-event/latency assertions.
+- Adds a dedicated failure-path E2E that deliberately hangs a target UI thread and terminates a target process during mutation; both cases must leave text unchanged and a fresh target must remain usable afterward.
+- Adds a guided `scripts/manual-compatibility-v201.ps1` recorder and keeps the public release blocked until the real-application matrix for Notepad, Word, Edge, Chrome, Telegram Desktop, VS Code and Windows Terminal is completed.
+- Updates README, functional specification, acceptance tests, security model and release plan for the 2.0.1 safety contract. The checked ZIP includes 2.0.1 release notes and compatibility matrix in addition to the normal documentation and SHA-256 sidecars.
+
 ## 2.0.0 - 2026-09-05
 
 - Starts the 2.0 public-release line strictly from the reviewed 1.0.10 source and preserves its detector thresholds, generated frequency layer, collision policy and Win32 E2E regressions.
@@ -64,7 +77,7 @@
 - Adds 151 corpus-derived regression forms, including final gaps `нефти`, `наук` and `сфер`, without lowering global confidence thresholds.
 - Adds a narrow OEM-only detector fallback for known Russian targets while arbitrary punctuation remains fail-open.
 - Adds real Win32 hook-to-EDIT E2E coverage for the OEM-only `жэхэ` case and anti-regressions preserving valid English `keys` and `her`.
-- Updates package, Windows/UI metadata, CI artifact naming, release checks and gated release automation to 1.0.5.
+- Updates package/Windows/UI metadata, release checks, CI artifact naming, documentation and gated release automation to 1.0.5.
 
 ## 1.0.4 — 2026-09-03
 
@@ -150,7 +163,7 @@
 - Keeps only one previous token in volatile process memory and clears it on context changes; no typed-history persistence is introduced.
 - Expands Settings UI for application modes and hotkey editing with validation.
 - Preserves user dictionary, confidence scoring, fail-open input behavior, and undo with source-layout restoration.
-- Updates package/Windows metadata, release checks, CI artifact naming, and gated release automation to 0.8.0.
+- Updates package/Windows metadata, release checks, CI artifact naming and gated release automation to 0.8.0.
 
 ## 0.7.0 — 2026-09-02
 

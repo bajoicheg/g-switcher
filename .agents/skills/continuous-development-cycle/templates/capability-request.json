@@ -1,0 +1,1 @@
+{"schema":"capability-request/v1","task_id":"example-check","candidate_sha":"0000000000000000000000000000000000000000","required_capabilities":["os:linux","python:3"],"preferred_kinds":["codex_compute","local","other_compute","github_actions"],"forbidden_backend_ids":[],"required_backend_id":null,"max_registry_age_seconds":3600}

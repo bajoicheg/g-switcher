@@ -1,0 +1,46 @@
+{
+  "schema": "recovery-snapshot/v1",
+  "observed_at_utc": "2026-09-22T10:00:00Z",
+  "phase": "waiting_external",
+  "bindings": {
+    "repository": "example/project",
+    "default_branch": "main",
+    "working_branch": "candidate",
+    "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "policy_revision": "2",
+    "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "skill_version": "2.3.0",
+    "instructions": [
+      {
+        "path": "AGENTS.md",
+        "kind": "instruction",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "durable_verified": true
+      },
+      {
+        "path": "spec.md",
+        "kind": "specification",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "durable_verified": true
+      }
+    ],
+    "task_state_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "checkpoint_version": 3,
+    "checkpoint_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "lease_owner": "owner-1",
+    "lease_generation": 2,
+    "lease_store_revision": "r2",
+    "external_operations": [
+      {
+        "operation_key": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "attempt_id": "attempt-1",
+        "task_id": null,
+        "state": "unknown",
+        "revision": "r1"
+      }
+    ],
+    "pr_revision": "none",
+    "ci_revision": "r1",
+    "release_revision": "none"
+  }
+}

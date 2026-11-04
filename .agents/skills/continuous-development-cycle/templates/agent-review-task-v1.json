@@ -1,0 +1,49 @@
+{
+  "schema": "cdc-agent-task/v1",
+  "task_id": "synthetic-review",
+  "project_id": "synthetic-project",
+  "repository": "example/project",
+  "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "branch": null,
+  "worktree": null,
+  "objective": "Independently review the exact proposed synthetic code and developer checks.",
+  "acceptance_criteria": [
+    "The declared synthetic test passes."
+  ],
+  "allowed_files": [],
+  "allowed_operations": [
+    "read"
+  ],
+  "provider": "gemini",
+  "model": "explicit-qualified-model",
+  "role": "reviewer",
+  "execution_profile": "read-only",
+  "security_classification": "synthetic",
+  "budget": {
+    "agent_starts": 1,
+    "tokens": null,
+    "cost_units": 1
+  },
+  "limits": {
+    "timeout_seconds": 60,
+    "retry_limit": 0
+  },
+  "dependencies": [],
+  "required_tests": [],
+  "review": {
+    "required": true,
+    "provider": "codex",
+    "max_iterations": 1
+  },
+  "artifacts": {
+    "directory": "artifacts/synthetic-review"
+  },
+  "review_of": {
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "developer_provider": "codex",
+    "test_evidence": [
+      "evidence:original-developer-checks"
+    ]
+  }
+}

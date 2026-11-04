@@ -1,0 +1,7 @@
+{
+  "description": "Bounded immutable task storage and a sealed registry-only migration for an exact physically released same-boot successful writer, preserving original task, history, UNKNOWN, budgets and Source custody.",
+  "entrypoint": "SKILL.md",
+  "name": "continuous-development-cycle",
+  "schema": "continuous-development-cycle/v3",
+  "version": "3.6.17"
+}

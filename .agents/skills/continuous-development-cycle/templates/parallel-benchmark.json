@@ -1,0 +1,29 @@
+{
+  "schema": "parallel-benchmark/v1",
+  "benchmark_id": "fixture-benchmark-1",
+  "representative_task_ref": "change-parallel",
+  "candidate_sha": "1111111111111111111111111111111111111111",
+  "package_tree": "2222222222222222222222222222222222222222",
+  "environment_ref": "templates/parallel-benchmark-environment.json",
+  "plan_ref": "sha256:cf0a55486c00e3a663baace3db67a1c470ba0b3fe458d4e26c597d7b3ef21e42",
+  "plan_artifact_ref": {
+    "path": "templates/parallel-benchmark-plan.json",
+    "sha256": "sha256:cf0a55486c00e3a663baace3db67a1c470ba0b3fe458d4e26c597d7b3ef21e42"
+  },
+  "workstreams": 2,
+  "observation_refs": [
+    {
+      "path": "templates/parallel-benchmark-observation-sequential.json",
+      "sha256": "sha256:08b01996db10e1f416498292c87d869f5b48bcddb937e802cab2ff40a2422e59"
+    },
+    {
+      "path": "templates/parallel-benchmark-observation-parallel.json",
+      "sha256": "sha256:88a4d1354f57e99cb8d1a3bdd84cc5b6e52b060ec2407d6103304fabfdcd4c1a"
+    }
+  ],
+  "evidence_class": "fixture",
+  "environment_artifact_ref": {
+    "path": "templates/parallel-benchmark-environment.json",
+    "sha256": "sha256:2a93930d191d2ed6c4a48dd974efaf3195168e6aa9fa75688a3b0dbdad445766"
+  }
+}

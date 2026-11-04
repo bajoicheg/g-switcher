@@ -1,0 +1,30 @@
+{
+  "schema": "migration-transaction/v1",
+  "transaction_id": "migration-example",
+  "source_head": "1111111111111111111111111111111111111111",
+  "target_ref": "refs/heads/main",
+  "items": [
+    {
+      "path": "vendor/a.txt",
+      "blob_sha1": "2222222222222222222222222222222222222222"
+    },
+    {
+      "path": "vendor/b.txt",
+      "blob_sha1": "3333333333333333333333333333333333333333"
+    },
+    {
+      "path": "vendor/c.txt",
+      "blob_sha1": "4444444444444444444444444444444444444444"
+    }
+  ],
+  "completed_paths": [],
+  "operation_budget": 10,
+  "per_item_operations": 2,
+  "batch_overhead_operations": 1,
+  "finalization_reserve_operations": 3,
+  "detached_checkpoints": [],
+  "final_tree_sha": null,
+  "expected_subtree_tree": "5555555555555555555555555555555555555555",
+  "observed_subtree_tree": null,
+  "policy_reconciled": false
+}

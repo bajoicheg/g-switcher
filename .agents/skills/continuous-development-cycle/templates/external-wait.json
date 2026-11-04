@@ -1,0 +1,16 @@
+{
+  "schema": "external-wait/v1",
+  "operation_key": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "attempt_id": "attempt-1",
+  "task_id": "task-1",
+  "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "phase": "queued",
+  "phase_started_at_utc": "2026-09-22T10:00:00Z",
+  "last_successful_observation": null,
+  "last_poll_at_utc": null,
+  "observation_valid": false,
+  "source_valid": false,
+  "unchanged_polls": 0,
+  "error_polls": 0,
+  "trusted_retry_after": null
+}

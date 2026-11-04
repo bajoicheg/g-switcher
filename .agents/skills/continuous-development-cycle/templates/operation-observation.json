@@ -1,0 +1,41 @@
+{
+  "schema": "operation-observation/v1",
+  "observation_ref": "example/measurement-not-live",
+  "comparison_group": "example/equivalent-work-window-and-environment",
+  "elapsed_seconds": 240,
+  "tokens": {
+    "value": null,
+    "provenance": "unknown",
+    "source": null,
+    "basis": null
+  },
+  "budget_ref": null,
+  "phases": {
+    "startup": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    },
+    "implementation": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    },
+    "validation": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    },
+    "wait": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    }
+  },
+  "delivery": {
+    "delivered": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    },
+    "escaped_defects": {
+      "value": null,
+      "unknown_reason": "illustrative template; measurement not yet observed"
+    }
+  }
+}

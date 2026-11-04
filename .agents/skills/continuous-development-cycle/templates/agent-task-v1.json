@@ -1,0 +1,51 @@
+{
+  "schema": "cdc-agent-task/v1",
+  "task_id": "synthetic-example",
+  "project_id": "synthetic-project",
+  "repository": "example/project",
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "branch": "cdc/synthetic-example",
+  "worktree": "worktrees/synthetic-example",
+  "objective": "Implement the synthetic example within the declared file scope.",
+  "acceptance_criteria": [
+    "The declared synthetic test passes."
+  ],
+  "allowed_files": [
+    "src/example.py"
+  ],
+  "allowed_operations": [
+    "read",
+    "edit"
+  ],
+  "provider": "codex",
+  "model": "explicit-qualified-model",
+  "role": "developer",
+  "execution_profile": "workspace-write",
+  "security_classification": "synthetic",
+  "budget": {
+    "agent_starts": 1,
+    "tokens": null,
+    "cost_units": 1
+  },
+  "limits": {
+    "timeout_seconds": 60,
+    "retry_limit": 0
+  },
+  "dependencies": [],
+  "required_tests": [
+    [
+      "python3",
+      "-B",
+      "tests/test_example.py"
+    ]
+  ],
+  "review": {
+    "required": true,
+    "provider": "gemini",
+    "max_iterations": 1
+  },
+  "artifacts": {
+    "directory": "artifacts/synthetic-example"
+  },
+  "review_of": null
+}

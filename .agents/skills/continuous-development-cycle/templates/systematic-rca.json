@@ -1,0 +1,36 @@
+{
+  "schema": "systematic-rca/v1",
+  "anomaly_id": "anomaly-terminal-guard",
+  "material": true,
+  "anomaly_class": "stale_state",
+  "fix_key": "terminal-provider-reconciliation",
+  "problem": "Provider is terminal while the durable guard still reports running.",
+  "evidence_refs": [
+    "provider:terminal",
+    "coordination:guard-running"
+  ],
+  "hypotheses": [
+    {
+      "id": "provider-still-running",
+      "statement": "The provider task is still executing.",
+      "discriminating_test": "Read exact provider task state.",
+      "observed_result": "Provider reports terminal failure.",
+      "supported": false
+    },
+    {
+      "id": "reconciliation-gap",
+      "statement": "Provider terminal observation was not reconciled into durable guard state.",
+      "discriminating_test": "Compare exact provider task with operation-key-bound guard.",
+      "observed_result": "Exact operation matches and guard remains running.",
+      "supported": true
+    }
+  ],
+  "selected_hypothesis_id": "reconciliation-gap",
+  "correction": "Re-enter reconciliation for the exact operation key and terminalize the durable guard.",
+  "defense_in_depth": "Wake the owning invocation on provider-terminal observation and retain no-TTL-takeover checks.",
+  "invariant": "A provider-terminal task cannot remain indefinitely represented as running, and terminal state alone never grants takeover.",
+  "existing_fix_keys": [
+    "terminal-provider-reconciliation"
+  ],
+  "sensitive_context_detected": false
+}

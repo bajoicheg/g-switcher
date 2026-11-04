@@ -2,9 +2,9 @@
 
 G-switcher is a Windows desktop utility that automatically corrects text typed in the wrong Russian/English keyboard layout. The application is local-only: it does not require network access, telemetry, cloud services, or an online account.
 
-Version 2.0.0 is built strictly from the reviewed 1.0.10 code line. It keeps the same conservative detector and pinned OpenSubtitles2018 frequency layer, then adds an optional in-memory correction sound, a compact 768p-safe Settings layout, conflicting-hotkey validation, work-area-aware dialog placement, clearer startup errors, and a verified public-release package.
+Version 2.0.1 continues the reviewed 2.0.0 line without changing its conservative detector thresholds or pinned OpenSubtitles2018 frequency layer. The release focuses on safety and cross-process input hardening: generation-bound context checks, verified Edit/RichEdit adapters, metadata-only UI Automation password checks, dedicated low-level hook dispatch, bounded fail-open behavior for hung/disappearing targets, stronger Code-safe handling, and substantially expanded Windows release-gate E2E coverage.
 
-## 2.0.0 behavior
+## 2.0.1 behavior
 
 - Russian ↔ English automatic layout correction.
 - Detector v3 combines conservative layout heuristics with a baked-in local RU/EN frequency model, common n-gram scoring, word-shape signals, exact known-word protection and volatile two-word context.
@@ -22,9 +22,11 @@ Version 2.0.0 is built strictly from the reviewed 1.0.10 code line. It keeps the
 - Three sensitivity profiles control the heuristic confidence threshold: `Conservative`, `Normal` and `Aggressive`. `Normal` is the default.
 - Exact user-dictionary source matches protect valid text; explicit user-dictionary target matches receive maximum confidence.
 - Context is limited to at most two immediately previous completed words, remains RAM-only, and is cleared on relevant focus/process/control changes and Undo.
-- Native selected-text conversion for supported Win32 Edit/RichEdit controls; default hotkey `Ctrl+Shift+F9`.
-- Selected-text conversion uses the physical Russian/English keyboard mapping directly and does not use or modify the clipboard.
-- Native password controls and recognized Windows credential/secure targets are excluded from G-switcher processing. For browser/custom controls that do not expose native secure state, use the per-application `Disabled` mode when protection cannot be verified.
+- Pending corrections and Undo operations are generation-bound and re-check focus, process, thread, layout and exact text/range state before mutation; stale state fails open rather than modifying a new context.
+- Low-level keyboard and mouse hooks run on a dedicated hook thread; expensive correction logic is dispatched outside the callback, with callback-latency and dropped-event metrics exercised by the release gate.
+- Native selected-text conversion uses a verified synchronous text adapter. Plain Win32 `Edit` controls use marshalled system messages; supported RichEdit controls use UI Automation TextPattern for range state plus a verified range-local replacement. The clipboard is never used.
+- Native password controls and recognized Windows credential/secure targets are excluded from G-switcher processing. UI Automation `IsPassword` is queried as metadata only; no text-bearing UIA property is requested for the secure-input decision.
+- Unsupported, unverified, hung or disappearing text targets fail open. Bounded liveness checks prevent entering mutation paths when the target UI thread is already unresponsive.
 - Configurable current-word, previous-word, Undo, Pause and selected-text hotkeys.
 - Per-application modes by executable basename: `Auto`, `Manual only`, and `Disabled`.
 - Native Settings process picker enumerates running processes plus already configured applications.
@@ -42,6 +44,7 @@ Version 2.0.0 is built strictly from the reviewed 1.0.10 code line. It keeps the
 - Startup failures are shown in a native Windows error dialog even though the release uses the GUI subsystem.
 - Live tray tooltip shows the active mode, current process/layout and the latest correction/undo when applicable.
 - Partial `SendInput` delivery resumes from the first unsent INPUT instead of abandoning a correction after already-delivered Backspace events; zero initial progress still fails open without modifying text.
+- Code-safe mode protects technical tokens containing digits and common separators from accidental layout correction.
 - Standard-user operation with fail-open input behavior.
 - Single-instance protection, per-user settings and autostart.
 - No network access in normal runtime operation.
@@ -50,14 +53,18 @@ Version 2.0.0 is built strictly from the reviewed 1.0.10 code line. It keeps the
 
 Normal typing is evaluated only in volatile memory. G-switcher retains the current candidate token, at most one previous token for manual previous-word conversion, and at most two completed context words in RAM. These values are cleared on relevant context changes and are never persisted or transmitted.
 
-Selected text is read only when the user invokes the selected-text hotkey, only from the currently focused supported Win32 text control, and only for the duration required to replace that selection. The clipboard is not used. Native password fields and recognized Windows credential/secure targets are excluded from G-switcher processing.
+Selected text is read only when the user invokes the selected-text hotkey, only from the currently focused control when a verified text adapter is available, and only for the duration required to validate and replace that range. The clipboard is not used. Native password fields, UIA password elements and recognized Windows credential/secure targets are excluded from G-switcher processing; unsupported or unverified controls are left unchanged.
 
 Persisted data is limited to explicit user configuration: automatic-correction state, sensitivity profile, sound state/volume, application mode lists, explicitly entered dictionary words, hotkey definitions and autostart state. Pause state, typed candidate text, previous-token text, contextual words and selected text are not persisted.
 
 ## Release assurance
 
-The Windows CI gate uses the committed dependency lockfile for resolution, then runs formatting, unit/integration tests, PCM-wave and settings regressions, a real Win32 low-level-hook-to-EDIT end-to-end test, Clippy with warnings denied, and an optimized release build. The E2E covers automatic correction and Undo, Pause, Manual-only/Disabled modes, selected-text conversion and Undo, password EDIT protection, OEM-key regressions, article-derived correction cases, the OEM-only `жэхэ` case, ten-corpus corrections such as `математика`/`европа`/`физика`, `keys`/`her`/`dyer`/`ytd`/`cnf` source-collision protection, and the exact basic phrase `Vfvf vskf hfve ghbdtn ` → `Мама мыла раму привет `. The built EXE is then checked for Windows GUI subsystem, G-switcher 2.0.0 version metadata and forbidden residue. CI produces checksums for both the standalone EXE and a ZIP containing the EXE, documentation, changelog and third-party data attribution.
+The Windows CI gate uses the committed dependency lockfile and first verifies that the 2.0.1 normalization/hardening scripts are reproducible and do not mutate the checked-out branch. It then runs formatting, unit/integration tests, the manual-compatibility recorder smoke test, a real same-process Win32 hook-to-Edit E2E, a separate-process Edit/RichEdit/password E2E, a controlled hung/closing-target failure-path E2E, Clippy with warnings denied, an optimized release build and release/branding checks. The cross-process gate includes automatic correction, manual conversion, selected text, Undo, password fail-open, focus races and a 100,000-callback stress test with zero dropped events required. The failure-path gate deliberately hangs a target UI thread and terminates a target process during a verified mutation attempt; both cases must leave text unchanged within a bounded timeout and a fresh target must remain usable afterward.
+
+The built EXE is checked for Windows GUI subsystem, G-switcher 2.0.1 version metadata and forbidden residue. CI produces SHA-256 sidecars for both the standalone EXE and the Windows x64 ZIP. The ZIP includes the executable, README, changelog, 2.0.1 release notes, compatibility matrix and third-party data attribution.
+
+Automated CI success is necessary but not sufficient for public promotion. `COMPATIBILITY_2.0.1.md` remains the manual release gate for Notepad, Microsoft Word, Microsoft Edge, Google Chrome, Telegram Desktop, Visual Studio Code and Windows Terminal; unsupported controls must be recorded as `UNSUPPORTED/FAIL-OPEN`, not implied as supported.
 
 The CI artifact is not Authenticode-signed. A trusted signing certificate or trusted signing service is still required for reputation-based Windows distribution without possible SmartScreen warnings.
 
-See `docs/FUNCTIONAL_SPEC.md`, `docs/ACCEPTANCE_TESTS.md` and `docs/SECURITY_MODEL.md`.
+See `docs/FUNCTIONAL_SPEC.md`, `docs/ACCEPTANCE_TESTS.md`, `docs/SECURITY_MODEL.md`, `COMPATIBILITY_2.0.1.md` and `RELEASE_NOTES_2.0.1.md`.

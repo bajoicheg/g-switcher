@@ -1,0 +1,7 @@
+## Current CDC 3.5.0 process authority
+
+Canonical bajoicheg/g-cdc refs/heads/release/v3.5.0 at b8f5b2cc64878715b63af388124ac0656d1c87b4, exact417-file package tree bc7961ffc170db38bfa25d8bd132de127c24a8d0. Separately pinned canonical evidence 17b2718d405ac92bfb86e8f8834d0ebfbb9facea:release/evidence-3.5.0.json. Executable minimum3.3.0; historical records remain readable and never override current authority. Required canonical hosted CI38132248286 qualifies these identical CDC bytes; no product FULL, CI, approval, platform acceptance or release is claimed.
+
+All schedulers/watchdogs/Fleet background stay PAUSED. Fleet authority is bajoicheg/g-cdc refs/heads/cdc/fleet; retired G-Supervisor stays owner-cancelled and disabled. Use invocation-bound native ownership, one-use intents/guards, expected-head CAS, accepted integration and genuine executor closure. Never replace an owner, clear guards manually or replay UNKNOWN. Prior complete instruction bytes are preserved at docs/history/cdc-instructions-before-3.5.0.md; old version labels are historical audit, not executable compatibility authority. Product/security/platform/manual/budget constraints remain authoritative.
+
+CDC3.5.0 process package/lock is current. Product phase, blocker, budgets and platform gates above are preserved; package CI is not product acceptance. The referenced control revision is the authentic prior released safe boundary; genuine new invocation, publication, lease release and physical closure are independently pinned in private per-consumer receipts. Schedulers remain PAUSED.

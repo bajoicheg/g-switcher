@@ -1,0 +1,77 @@
+{
+  "schema": "verification-gate/v2",
+  "claim_id": "claim-1",
+  "claim_kind": "COMPLETE",
+  "expected_head": "1111111111111111111111111111111111111111",
+  "observed_head": "1111111111111111111111111111111111111111",
+  "authoritative_source_fresh": true,
+  "required_checks": [],
+  "checkpoint": {
+    "required": true,
+    "valid": true,
+    "policy_current": true,
+    "evidence_ref": "checkpoint:current"
+  },
+  "ownership": {
+    "authoritative_source": "coordination",
+    "lease_state": "released",
+    "guard_state": "none",
+    "evidence_ref": "coordination:released"
+  },
+  "artifacts": [
+    {
+      "id": "package-artifact",
+      "required": true,
+      "verified": true,
+      "candidate_sha": "1111111111111111111111111111111111111111",
+      "evidence_ref": "artifact:sha-bound"
+    }
+  ],
+  "clean_state": {
+    "required": true,
+    "clean": true,
+    "evidence_ref": "git:clean"
+  },
+  "completion_evidence_refs": [
+    "scope:complete",
+    "verification:fresh"
+  ],
+  "reused_checks": [
+    {
+      "schema": "evidence-reuse/v1",
+      "check_id": "package",
+      "source_candidate_sha": "1111111111111111111111111111111111111111",
+      "target_candidate_sha": "1111111111111111111111111111111111111111",
+      "source_evidence_ref": "git:original-run",
+      "source_state": "success",
+      "original_inputs": {
+        "dependency_fingerprints": {
+          "src/a.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "argv": [
+          "python",
+          "test.py"
+        ],
+        "parameters": {},
+        "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "check_definition_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "current_inputs": {
+        "dependency_fingerprints": {
+          "src/a.py": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "argv": [
+          "python",
+          "test.py"
+        ],
+        "parameters": {},
+        "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "check_definition_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "coverage_refs": [
+        "review:dependency-coverage"
+      ],
+      "exact_candidate_required": false
+    }
+  ]
+}

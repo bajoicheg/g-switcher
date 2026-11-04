@@ -1,0 +1,18 @@
+{
+  "schema": "provider-terminal-observation/v1",
+  "operation_key": "ci:example:run-1",
+  "provider_status": "success",
+  "provider_evidence_ref": "provider:run-1",
+  "guard": {
+    "present": true,
+    "state": "running",
+    "operation_key": "ci:example:run-1"
+  },
+  "owner": {
+    "active": true,
+    "executor_stopped_proven": false,
+    "pending_shared_writes": false
+  },
+  "external_effects_state": "reconciled",
+  "lease_expired": true
+}

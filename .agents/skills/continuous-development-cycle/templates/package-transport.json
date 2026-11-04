@@ -1,0 +1,17 @@
+{
+  "canonical_repository": "owner/canonical-cdc",
+  "entries": [
+    {
+      "blob_sha1": "601c643270ca45416e6e6ffbac8c22c59cef06a9",
+      "mode": "100644",
+      "path": "VERSION",
+      "size": 7
+    }
+  ],
+  "hash_algorithm": "git-sha1",
+  "package_tree": "6ae8567de7b6572e7ec0fd46f09043c0815d3803",
+  "release_commit": "0000000000000000000000000000000000000000",
+  "release_ref": "refs/heads/release/v3.6.17",
+  "schema": "cdc-package-transport/v1",
+  "version": "3.6.17"
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "fleet-control-input/v1",
+  "projects": [
+    {
+      "repository": "owner/repository",
+      "source_ref": "refs/heads/main",
+      "state": "HEALTHY",
+      "runnable_work": false,
+      "owner_active": false,
+      "guard_present": false,
+      "watchdog_enabled": true,
+      "next_action": "continue current scope"
+    }
+  ]
+}

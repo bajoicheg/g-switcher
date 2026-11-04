@@ -1,0 +1,11 @@
+{
+  "canonical_repository": "bajoicheg/g-cdc",
+  "checkpoint_schema": "development-work-status/v4",
+  "local_core_modifications_allowed": false,
+  "package_tree": "f5480729b23a9b470e7b9d221d5a61034e292b7d",
+  "release_commit": "20d6830c94c7123994400f3e3dce5840e23a5e79",
+  "release_ref": "refs/heads/release/v3.6.17",
+  "safe_boundary_required": true,
+  "schema": "cdc-consumer-lock/v1",
+  "version": "3.6.17"
+}

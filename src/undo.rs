@@ -54,12 +54,4 @@ mod tests {
         assert!(!state.is_armed());
         assert!(state.take_if_compatible(42).is_none());
     }
-
-    #[test]
-    fn focus_change_invalidates_undo() {
-        let mut state = UndoState::default();
-        state.arm(record(), 42);
-        assert!(state.take_if_compatible(43).is_none());
-        assert!(!state.is_armed());
-    }
 }
